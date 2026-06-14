@@ -42,7 +42,7 @@ namespace FiftyOne.IpIntelligence.Examples
         /// <returns></returns>
         public static string TryGetValue<TData>(this TData data, Func<TData, string> function)
             where TData : IElementData
-            => TryGetValue(data, function, ex => $"Unknown ({ex.Message})");
+            => TryGetValue(data, function, ex => ex.Message);
         
         /// <summary>
         /// Execute the specified function on the supplied <see cref="IElementData"/> instance.
@@ -55,7 +55,7 @@ namespace FiftyOne.IpIntelligence.Examples
         /// <returns></returns>
         public static IReadOnlyList<string> TryGetValue<TData>(this TData data, Func<TData, IReadOnlyList<string>> function)
             where TData : IElementData
-            => TryGetValue(data, function, ex => new[]{$"Unknown ({ex.Message})"});
+            => TryGetValue(data, function, ex => new[]{ex.Message});
         
         private static TResult TryGetValue<TData, TResult>(
             this TData data,
@@ -123,7 +123,7 @@ namespace FiftyOne.IpIntelligence.Examples
         /// </summary>
         private static string NoValue<T>(IAspectPropertyValue<T> apv)
         {
-            return $"Unknown ({(apv == null ? "property missing from the resource key or data file" : apv.NoValueMessage)})";
+            return $"No value ({(apv == null ? "property missing from the resource key or data file" : apv.NoValueMessage)})";
         }
         /// <inheritdoc cref="NoValue{T}(IAspectPropertyValue{T})"/>
         private static IReadOnlyList<string> NoValueList<T>(IAspectPropertyValue<T> apv)
