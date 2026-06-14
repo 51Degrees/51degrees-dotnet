@@ -82,37 +82,53 @@ namespace FiftyOne.IpIntelligence.Examples
         /// <returns></returns>
         public static string GetHumanReadable<T>(this IAspectPropertyValue<T> apv)
         {
-            return apv.HasValue ? apv.Value.ToString() : $"Unknown ({apv.NoValueMessage})";
+            return apv != null && apv.HasValue ? apv.Value.ToString() : NoValue(apv);
         }
         /// <inheritdoc cref="GetHumanReadable{T}(IAspectPropertyValue{T})"/>
         public static string GetHumanReadable<T>(this IAspectPropertyValue<IReadOnlyList<IWeightedValue<T>>> apv)
         {
-            if (!apv.HasValue)
-                return $"Unknown ({apv.NoValueMessage})";
-            
-            var values = apv.Value.Select(x => 
+            if (apv == null || !apv.HasValue)
+                return NoValue(apv);
+
+            var values = apv.Value.Select(x =>
                 Math.Abs(x.Weighting() - 1.0f) < 0.0001f ? x.Value.ToString() : $"({x.Value} @ {x.Weighting():F4})");
             return string.Join(", ", values);
         }
         /// <summary>
         /// Get a human-readable version of the specified <see cref="IAspectPropertyValue"/>.
-        /// If no value has be set, the result will be 'Unknown' + the 
+        /// If no value has be set, the result will be 'Unknown' + the
         /// <see cref="IAspectPropertyValue.NoValueMessage"/>.
         /// </summary>
         /// <param name="apv"></param>
         /// <returns></returns>
         public static IReadOnlyList<string> GetHumanReadableList<T>(this IAspectPropertyValue<IReadOnlyList<T>> apv)
         {
-            return apv.HasValue
+            return apv != null && apv.HasValue
                 ? apv.Value.Select(x => x.ToString()).ToList()
-                : (IReadOnlyList<string>)new[] { $"Unknown ({apv.NoValueMessage})" };
+                : NoValueList(apv);
         }
         /// <inheritdoc cref="GetHumanReadableList{T}(IAspectPropertyValue{IReadOnlyList{T}})"/>
         public static IReadOnlyList<string> GetHumanReadableList<T>(this IAspectPropertyValue<IReadOnlyList<IWeightedValue<T>>> apv)
         {
-            return apv.HasValue
+            return apv != null && apv.HasValue
                 ? apv.Value.Select(x => $"{x.Value} ({x.Weighting() * 100}%)").ToList()
-                : (IReadOnlyList<string>)new[] { $"Unknown ({apv.NoValueMessage})" };
+                : NoValueList(apv);
+        }
+
+        /// <summary>
+        /// Build the 'Unknown' message for a property that has no value. Handles the
+        /// case where the property is entirely absent from the response (a null
+        /// <see cref="IAspectPropertyValue{T}"/>), which happens when the resource key
+        /// or data file does not include the property.
+        /// </summary>
+        private static string NoValue<T>(IAspectPropertyValue<T> apv)
+        {
+            return $"Unknown ({(apv == null ? "property missing from the resource key or data file" : apv.NoValueMessage)})";
+        }
+        /// <inheritdoc cref="NoValue{T}(IAspectPropertyValue{T})"/>
+        private static IReadOnlyList<string> NoValueList<T>(IAspectPropertyValue<T> apv)
+        {
+            return new[] { NoValue(apv) };
         }
     }
 }
