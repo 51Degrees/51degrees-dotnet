@@ -1,0 +1,117 @@
+name: CI probe
+
+# Runs one platform of the CI, and only the steps asked for, against the
+# branch it is dispatched on. For finding and checking a fix without a full
+# nightly. Temporary: remove once the nightly is green.
+#
+# The steps run the same ci/*.ps1 scripts the shared workflows run, in the
+# same order, with the same secrets. A step not listed is skipped, so a run
+# can go straight to the integration tests after a build, or narrow the test
+# run to one assembly with the filter input.
+#
+# To probe the publish stage's test job, give the run id of a nightly whose
+# publish Build succeeded: its package artifact is downloaded and
+# install-package.ps1 rebuilds the examples against it before the tests.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: 'Runner image'
+        type: choice
+        default: ubuntu-22.04
+        options: [ubuntu-22.04, ubuntu-22.04-arm, windows-latest, macos-latest, macos-15-intel]
+      arch:
+        description: 'Architecture'
+        type: choice
+        default: x64
+        options: [x64, x86, arm64]
+      configuration:
+        type: choice
+        default: Release
+        options: [Release, Debug]
+      build-method:
+        type: choice
+        default: dotnet
+        options: [dotnet, msbuild]
+      steps:
+        description: 'Comma separated ci scripts to run, in this order'
+        type: string
+        default: 'fetch-assets,setup-environment,build-project,run-unit-tests,run-integration-tests'
+      filter:
+        description: 'Regex for the test assemblies to run, in place of the scripts'' own'
+        type: string
+        default: ''
+      package-run-id:
+        description: 'Run id whose package artifact the examples are built against (publish test probe)'
+        type: string
+        default: ''
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  Probe:
+    name: ${{ inputs.image }} ${{ inputs.arch }} ${{ inputs.configuration }} ${{ inputs.build-method }}
+    runs-on: ${{ inputs.image }}
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+    steps:
+      - name: Checkout common-ci
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.repository_owner }}/common-ci
+
+      - name: Clone this repository at ${{ github.ref_name }}
+        run: |
+          ./steps/configure-git.ps1 -GitHubToken '${{ secrets.ACCESS_TOKEN }}' -GitHubUser Automation51D -GitHubEmail 51DCI@51degrees.com
+          ./steps/clone-repo.ps1 -RepoName '${{ github.event.repository.name }}' -OrgName '${{ github.repository_owner }}' -Branch '${{ github.ref_name }}'
+
+      - name: Download the package artifact
+        if: inputs.package-run-id != ''
+        run: gh run download '${{ inputs.package-run-id }}' -R '${{ github.repository }}' -n package -D package
+
+      - name: Run the steps
+        env:
+          SECRETS: ${{ toJSON(secrets) }}
+          FIFTYONE_TEST_FILTER: ${{ inputs.filter }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $keys = ConvertFrom-Json -AsHashtable $env:SECRETS
+          $options = @{
+            RepoName = '${{ github.event.repository.name }}'
+            OrgName = '${{ github.repository_owner }}'
+            Name = '${{ inputs.image }}_${{ inputs.arch }}_${{ inputs.configuration }}' -replace '[^\w]', '_'
+            Arch = '${{ inputs.arch }}'
+            Configuration = '${{ inputs.configuration }}'
+            BuildMethod = '${{ inputs.build-method }}'
+            Keys = $keys
+            DryRun = $true
+          }
+          # The scripts read the secrets they need by these names.
+          $options += $keys
+          if ('${{ inputs.package-run-id }}') {
+            # A publish test rebuilds the examples at the versions being
+            # published, which the scripts compute from the tags.
+            ./steps/run-script.ps1 "./$($options.RepoName)/ci/get-next-package-version.ps1" @{ RepoName = $options.RepoName; VariableName = 'Version' }
+            $options.Version = $Version
+          }
+          foreach ($step in '${{ inputs.steps }}'.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }) {
+            Write-Host "::group::$step"
+            if ($step -eq 'set-resource-keys') {
+              ./steps/set-resource-keys.ps1 -Keys $keys
+            } else {
+              ./steps/run-script.ps1 "./$($options.RepoName)/ci/$step.ps1" $options
+            }
+            Write-Host "::endgroup::"
+          }
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ inputs.image }}-${{ inputs.arch }}-${{ inputs.configuration }}
+          path: ${{ github.event.repository.name }}/test-results
+          if-no-files-found: ignore

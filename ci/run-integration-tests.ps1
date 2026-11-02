@@ -19,6 +19,11 @@ $PSNativeCommandUseErrorActionPreference = $true
 # FiftyOne.DeviceDetection.Example.Tests.Web is left out. It holds the generic
 # base classes the web example tests derive from, and has no tests of its own.
 $Filter = "^FiftyOne\.(?!DeviceDetection\.Example\.Tests\.Web\.dll$).*Examples?\.Tests.*\.dll$"
+# A run can be narrowed to some assemblies by setting FIFTYONE_TEST_FILTER,
+# which the probe workflow does.
+if ($env:FIFTYONE_TEST_FILTER) {
+    $Filter = $env:FIFTYONE_TEST_FILTER
+}
 # The shared integration step allows five minutes without output before it
 # treats a test as hung. The IP Intelligence examples load the 6 GB
 # Enterprise file and can take longer than that, so they get the 20 minutes
