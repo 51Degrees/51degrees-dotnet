@@ -329,9 +329,9 @@ ASALocalRun/
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
 package-lock.json
-FiftyOne.GeoLocation/FiftyOne.GeoLocation/FiftyOne.GeoLocation.xml
-FiftyOne.GeoLocation/FiftyOne.GeoLocation.Cloud/FiftyOne.GeoLocation.Cloud.xml
-FiftyOne.GeoLocation/FiftyOne.GeoLocation.Core/FiftyOne.GeoLocation.Core.xml
-FiftyOne.GeoLocation/FiftyOne.GeoLocation.DigitalElement/FiftyOne.GeoLocation.DigitalElement.xml
-FiftyOne.GeoLocation/FiftyOne.GeoLocation.Nominatim/FiftyOne.GeoLocation.Nominatim.xml
+GeoLocation/GeoLocation/FiftyOne.GeoLocation.xml
+GeoLocation/Cloud/FiftyOne.GeoLocation.Cloud.xml
+GeoLocation/Core/FiftyOne.GeoLocation.Core.xml
+GeoLocation/FiftyOne.GeoLocation.DigitalElement/FiftyOne.GeoLocation.DigitalElement.xml
+GeoLocation/FiftyOne.GeoLocation.Nominatim/FiftyOne.GeoLocation.Nominatim.xml
 test-results/

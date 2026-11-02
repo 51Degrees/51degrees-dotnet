@@ -2,7 +2,7 @@
 
 ![51Degrees](https://raw.githubusercontent.com/51Degrees/common-ci/main/images/logo/360x67.png "Data rewards the curious") **Common Dotnet**
 
-[Developer Documentation](https://51degrees.com/pipeline-dotnet/index.html?utm_source=github&utm_medium=readme&utm_campaign=common-dotnet&utm_content=readme.md&utm_term=fiftyone-common "developer documentation")
+[Developer Documentation](https://51degrees.com/pipeline-dotnet/index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=fiftyone-common "developer documentation")
 
 [![NuGet](https://img.shields.io/nuget/v/FiftyOne.Common.svg)](https://www.nuget.org/packages/FiftyOne.Common)
 

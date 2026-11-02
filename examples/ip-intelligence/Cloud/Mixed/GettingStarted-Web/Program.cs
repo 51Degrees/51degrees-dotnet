@@ -122,9 +122,9 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.Cloud.GettingStartedWeb
                         $"'appsettings.json' or the environment variable " +
                         $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud " +
                         $"service is accessed using a 'ResourceKey'. For more information " +
-                        $"see https://51degrees.com/documentation/_info__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-cloud-mixed-gettingstarted-web-program.cs&utm_term=resource-key-required. " +
+                        $"see https://51degrees.com/documentation/_info__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-mixed-gettingstarted-web-program.cs&utm_term=resource-key-required. " +
                         $"A resource key with the properties required by this example can be " +
-                        $"created for free at https://configure.51degrees.com/1QWJwHxl?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-cloud-mixed-gettingstarted-web-program.cs&utm_term=resource-key-required. " +
+                        $"created for free at https://configure.51degrees.com/1QWJwHxl?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-mixed-gettingstarted-web-program.cs&utm_term=resource-key-required. " +
                         $"Once complete, populate the config file or environment variable " +
                         $"mentioned at the start of this message with the key.");
                 }

@@ -7,11 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.DeviceDetection\FiftyOne.DeviceDetection.csproj" />
+    <ProjectReference Include="..\..\DeviceDetection\FiftyOne.DeviceDetection.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\pipeline\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\pipeline\Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
     <PackageReference Include="System.Text.Json" Version="8.0.6" />
   </ItemGroup>
 

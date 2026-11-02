@@ -7,14 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\FiftyOne.GeoLocation.Cloud\FiftyOne.GeoLocation.Cloud.csproj" />
+    <ProjectReference Include="..\..\..\Cloud\FiftyOne.GeoLocation.Cloud.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- This example uses FiftyOne.Pipeline.Web types (IFlowDataProvider); reference the
          package directly rather than relying on a transitive dependency. -->
-    <FiftyOneReference Include="FiftyOne.DeviceDetection.Cloud" ProjectPath="..\..\..\..\device-detection\FiftyOne.DeviceDetection.Cloud\FiftyOne.DeviceDetection.Cloud.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection.Cloud" ProjectPath="..\..\..\..\device-detection\Cloud\FiftyOne.DeviceDetection.Cloud.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
   </ItemGroup>
 
 

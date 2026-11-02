@@ -61,7 +61,7 @@ using System.Threading.Tasks;
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Performance-Console/Program.cs).
 /// 
 /// This example requires an enterprise IP Intelligence data file (.ipi). 
-/// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-onpremise-performance-console-program.cs&amp;utm_term=header).
+/// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-performance-console-program.cs&amp;utm_term=header).
 /// 
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
@@ -376,7 +376,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Performance
                     //
                     // Note that the Lite data file is only used for illustration, and has limited accuracy
                     // and capabilities. Find out about the Enterprise data file on our pricing page:
-                    // https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-onpremise-performance-console-program.cs&utm_term=main
+                    // https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-performance-console-program.cs&utm_term=main
                     Examples.ExampleUtils.FindDataFile(Constants.ENTERPRISE_IPI_DATA_FILE_NAME);
                 // Do the same for the yaml evidence file.
                 var evidenceFile = options.EvidenceFile != null ? options.EvidenceFile :

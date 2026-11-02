@@ -5,23 +5,23 @@ VisualStudioVersion = 18.6.11819.183 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{A0095379-E196-4179-B093-CD0B09721BE4}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Core", "FiftyOne.Pipeline.Core\FiftyOne.Pipeline.Core.csproj", "{B82E962E-E523-429A-AC0C-08FAFEB7EAB2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Core", "Core\FiftyOne.Pipeline.Core.csproj", "{B82E962E-E523-429A-AC0C-08FAFEB7EAB2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines", "FiftyOne.Pipeline.Engines\FiftyOne.Pipeline.Engines.csproj", "{56B751A1-AB6C-4A28-B85B-3CC27F54A59B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines", "Engines\FiftyOne.Pipeline.Engines.csproj", "{56B751A1-AB6C-4A28-B85B-3CC27F54A59B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.TestHelpers", "FiftyOne.Pipeline.Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj", "{0938E0EB-3CDE-4E52-AF1E-B0DD2A1C3B89}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.TestHelpers", "Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj", "{0938E0EB-3CDE-4E52-AF1E-B0DD2A1C3B89}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.FiftyOne", "FiftyOne.Pipeline.Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj", "{261BDAE3-857F-4709-9DE8-B89BFA0DD5AB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.FiftyOne", "Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj", "{261BDAE3-857F-4709-9DE8-B89BFA0DD5AB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{6CCEFD1B-2C07-439B-980F-541F8F92FEA0}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Examples.Tests", "Tests\FiftyOne.Pipeline.Examples.Tests\FiftyOne.Pipeline.Examples.Tests.csproj", "{FB348514-6228-404B-8B73-A5A59693DEAA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Examples.Tests", "Tests\Examples.Tests\FiftyOne.Pipeline.Examples.Tests.csproj", "{FB348514-6228-404B-8B73-A5A59693DEAA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Core.Tests", "Tests\FiftyOne.Pipeline.Core.Tests\FiftyOne.Pipeline.Core.Tests.csproj", "{04CAF121-A8D1-48FB-8CD4-408EB554BD57}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Core.Tests", "Tests\Core.Tests\FiftyOne.Pipeline.Core.Tests.csproj", "{04CAF121-A8D1-48FB-8CD4-408EB554BD57}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.Tests", "Tests\FiftyOne.Pipeline.Engines.Tests\FiftyOne.Pipeline.Engines.Tests.csproj", "{7DBD8ED0-F532-43CF-85C4-9408D0971F90}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.Tests", "Tests\Engines.Tests\FiftyOne.Pipeline.Engines.Tests.csproj", "{7DBD8ED0-F532-43CF-85C4-9408D0971F90}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.FiftyOne.Tests", "Tests\FiftyOne.Pipeline.Engines.FiftyOne.Tests\FiftyOne.Pipeline.Engines.FiftyOne.Tests.csproj", "{5161FF64-971E-4A2F-8323-742C19903180}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.FiftyOne.Tests", "Tests\Engines.FiftyOne.Tests\FiftyOne.Pipeline.Engines.FiftyOne.Tests.csproj", "{5161FF64-971E-4A2F-8323-742C19903180}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CustomFlowElement", "CustomFlowElement", "{531CC9F6-C5C2-420B-877C-AACC83DB749B}"
 	ProjectSection(SolutionItems) = preProject
@@ -44,33 +44,33 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ResultCaching", "ResultCach
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Examples.ResultCaching", "Examples\ResultCaching\Examples.ResultCaching.csproj", "{5D134966-E05F-4F89-89FF-D46F3FEDEEC3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Examples.Shared", "FiftyOne.Pipeline.Examples.Shared\FiftyOne.Pipeline.Examples.Shared.csproj", "{194A4093-B146-410E-9F99-423FEE0C218B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Examples.Shared", "Examples.Shared\FiftyOne.Pipeline.Examples.Shared.csproj", "{194A4093-B146-410E-9F99-423FEE0C218B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "3. Client-side Evidence", "3. Client-side Evidence", "{42BCA093-E11F-4371-B348-651379F73C1E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Examples.ClientSideEvidence.Shared", "Examples\CustomFlowElement\3. Client-side evidence\ClientSideEvidence.Shared\Examples.ClientSideEvidence.Shared.csproj", "{4DD8C2AF-3C86-4B6E-8EE3-BF9400C4E05B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Benchmarks", "Tests\FiftyOne.Pipeline.Benchmarks\FiftyOne.Pipeline.Benchmarks.csproj", "{2FE642A4-A475-43CB-9B25-3986FE15CBD0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Benchmarks", "Tests\Benchmarks\FiftyOne.Pipeline.Benchmarks.csproj", "{2FE642A4-A475-43CB-9B25-3986FE15CBD0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "UsageSharing", "UsageSharing", "{C0FD4943-55F0-4AF9-A3EA-31EB71FED2C8}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Examples.UsageSharing", "Examples\UsageSharing\Examples.UsageSharing.csproj", "{E6C265A5-BD88-4C12-821F-CF505D1DCB76}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did", "FiftyOne.Did\FiftyOne.Did.csproj", "{3C365D6D-3112-4BA9-AFB6-359C4F15721B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did", "Did\FiftyOne.Did.csproj", "{3C365D6D-3112-4BA9-AFB6-359C4F15721B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did.Tests", "Tests\FiftyOne.Did.Tests\FiftyOne.Did.Tests.csproj", "{BD49B7A4-DCFD-4897-AE77-4BFA24CD5E40}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did.Tests", "Tests\Did.Tests\FiftyOne.Did.Tests.csproj", "{BD49B7A4-DCFD-4897-AE77-4BFA24CD5E40}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did.Core", "FiftyOne.Did.Core\FiftyOne.Did.Core.csproj", "{13432A61-8807-435D-B8C0-664773D1CE70}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did.Core", "Did.Core\FiftyOne.Did.Core.csproj", "{13432A61-8807-435D-B8C0-664773D1CE70}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did.Cloud", "FiftyOne.Did.Cloud\FiftyOne.Did.Cloud.csproj", "{F9FDB936-8339-4EDC-B185-6474499C7BBB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did.Cloud", "Did.Cloud\FiftyOne.Did.Cloud.csproj", "{F9FDB936-8339-4EDC-B185-6474499C7BBB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did.Cloud.Tests", "Tests\FiftyOne.Did.Cloud.Tests\FiftyOne.Did.Cloud.Tests.csproj", "{F261E12B-68F4-4451-8AAA-804160DEF6A7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did.Cloud.Tests", "Tests\Did.Cloud.Tests\FiftyOne.Did.Cloud.Tests.csproj", "{F261E12B-68F4-4451-8AAA-804160DEF6A7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Did", "Did", "{E3050EB0-7B22-4BDD-A7C6-DF018E7023C7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Examples.Did.CreatorContextWeb", "Examples\Did\CreatorContextWeb\Examples.Did.CreatorContextWeb.csproj", "{A9C0665D-80E8-4517-B63E-CC445097A496}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did.Examples.Tests", "Tests\FiftyOne.Did.Examples.Tests\FiftyOne.Did.Examples.Tests.csproj", "{43CCB272-441C-49C5-9F82-5256087EA80C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.Did.Examples.Tests", "Tests\Did.Examples.Tests\FiftyOne.Did.Examples.Tests.csproj", "{43CCB272-441C-49C5-9F82-5256087EA80C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AgentSignature", "AgentSignature", "{30E7DA46-FE10-4BC8-973B-8F856E6352A0}"
 EndProject

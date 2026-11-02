@@ -10,7 +10,7 @@
   </PropertyGroup>
     
 	<ItemGroup>
-		<FiftyOneReference Include="FiftyOne.DeviceDetection" ProjectPath="..\..\..\device-detection\FiftyOne.DeviceDetection\FiftyOne.DeviceDetection.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+		<FiftyOneReference Include="FiftyOne.DeviceDetection" ProjectPath="..\..\..\device-detection\DeviceDetection\FiftyOne.DeviceDetection.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
 		<PackageReference Include="YamlDotNet" Version="16.2.1" />
 	</ItemGroup>
 </Project>

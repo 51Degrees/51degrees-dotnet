@@ -16,8 +16,8 @@
        JavaScript builder, and the two cloud engines turn the cloud's answer
        into the device and 51Did data that script carries. -->
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
-    <FiftyOneReference Include="FiftyOne.Did.Cloud" ProjectPath="..\..\..\..\pipeline\FiftyOne.Did.Cloud\FiftyOne.Did.Cloud.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Did.Cloud" ProjectPath="..\..\..\..\pipeline\Did.Cloud\FiftyOne.Did.Cloud.csproj" Version="$(FiftyOnePipelineVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.33" />
   </ItemGroup>
 
