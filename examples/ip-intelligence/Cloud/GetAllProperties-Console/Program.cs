@@ -38,7 +38,7 @@ using System.Linq;
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/Cloud/GetAllProperties-Console/Program.cs).
 ///
-/// To run this example, create a Resource Key for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-cloud-getallproperties-console-program.cs&amp;utm_term=header and supply it as the first command-line argument or via the 51DEGREES_RESOURCE_KEY environment variable. By default the pipeline talks to cloud.51degrees.com; set 51D_CLOUD_ENDPOINT to point at a self-hosted Cloud service instead.
+/// To run this example, create a Resource Key for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-getallproperties-console-program.cs&amp;utm_term=header and supply it as the first command-line argument or via the 51DEGREES_RESOURCE_KEY environment variable. By default the pipeline talks to cloud.51degrees.com; set 51D_CLOUD_ENDPOINT to point at a self-hosted Cloud service instead.
 /// </summary>
 namespace FiftyOne.IpIntelligence.Examples.Cloud.GetAllProperties
 {
@@ -171,7 +171,7 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.GetAllProperties
             {
                 Console.WriteLine($"No resource key specified on the command line or in the " +
                     $"environment variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. " +
-                    $"Obtain a resource key at https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-cloud-getallproperties-console-program.cs&utm_term=resource-key-required and supply it " +
+                    $"Obtain a resource key at https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-getallproperties-console-program.cs&utm_term=resource-key-required and supply it " +
                     $"as the first argument or via that environment variable.");
             }
             else

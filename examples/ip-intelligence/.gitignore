@@ -328,10 +328,10 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
-FiftyOne.IpIntelligence/FiftyOne.IpIntelligence.Cloud/FiftyOne.IpIntelligence.Cloud.xml
-FiftyOne.IpIntelligence/FiftyOne.IpIntelligence/FiftyOne.IpIntelligence.xml
-FiftyOne.IpIntelligence/FiftyOne.IpIntelligence.Data/FiftyOne.IpIntelligence.Shared.xml
-FiftyOne.IpIntelligence/FiftyOne.IpIntelligence.Hash.Engine.OnPremise/FiftyOne.IpIntelligence.Hash.Engine.OnPremise.xml
+IpIntelligence/Cloud/FiftyOne.IpIntelligence.Cloud.xml
+IpIntelligence/IpIntelligence/FiftyOne.IpIntelligence.xml
+IpIntelligence/FiftyOne.IpIntelligence.Data/FiftyOne.IpIntelligence.Shared.xml
+IpIntelligence/FiftyOne.IpIntelligence.Hash.Engine.OnPremise/FiftyOne.IpIntelligence.Hash.Engine.OnPremise.xml
 
 # docs
 4.1/*

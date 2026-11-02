@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\FiftyOne.Pipeline.CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" />
-    <ProjectReference Include="..\..\..\FiftyOne.Pipeline.Core\FiftyOne.Pipeline.Core.csproj" />
+    <ProjectReference Include="..\..\..\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" />
+    <ProjectReference Include="..\..\..\Core\FiftyOne.Pipeline.Core.csproj" />
   </ItemGroup>
 
 </Project>

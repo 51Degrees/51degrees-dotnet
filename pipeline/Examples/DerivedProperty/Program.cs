@@ -181,7 +181,7 @@ Rules:
             Console.WriteLine(
                 "    https://51degrees.com/documentation" +
                 "?utm_source=code&utm_medium=example" +
-                "&utm_campaign=pipeline-dotnet" +
+                "&utm_campaign=51degrees-dotnet" +
                 "&utm_content=examples-derivedproperty-program.cs" +
                 "&utm_term=find-out-more");
             Console.WriteLine(
@@ -189,7 +189,7 @@ Rules:
             Console.WriteLine(
                 "    https://51degrees.com" +
                 "?utm_source=code&utm_medium=example" +
-                "&utm_campaign=pipeline-dotnet" +
+                "&utm_campaign=51degrees-dotnet" +
                 "&utm_content=examples-derivedproperty-program.cs" +
                 "&utm_term=about-51degrees");
         }

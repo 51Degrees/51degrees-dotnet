@@ -1,0 +1,27 @@
+name: Data File Change (ip-intelligence)
+
+# Regenerates the ip-intelligence property accessors from the latest data file and
+# opens a pull request when they changed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        type: boolean
+        default: false
+
+jobs:
+  DataFileChange:
+    name: Data File Change
+    uses: 51Degrees/common-ci/.github/workflows/nightly-data-file-change.yml@main
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      data-type: IpIntelligence
+      data-product: EnterpriseV4
+      data-filename: 51Degrees-EnterpriseV4.ipi.gz
+      dryrun: ${{ inputs.dryrun || false }}
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+      data-key: ${{ secrets.DEVICE_DETECTION_KEY }}
+      data-url: ${{ secrets.DEVICE_DETECTION_URL }}

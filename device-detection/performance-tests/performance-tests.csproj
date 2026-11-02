@@ -10,13 +10,13 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\pipeline\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
+		<FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\pipeline\Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
 		<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.33" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\FiftyOne.DeviceDetection.Hash.Engine.OnPremise\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj" />
-		<ProjectReference Include="..\Tests\FiftyOne.DeviceDetection.TestHelpers\FiftyOne.DeviceDetection.TestHelpers.csproj" />
+		<ProjectReference Include="..\Hash.Engine.OnPremise\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj" />
+		<ProjectReference Include="..\Tests\TestHelpers\FiftyOne.DeviceDetection.TestHelpers.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

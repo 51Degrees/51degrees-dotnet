@@ -27,6 +27,13 @@ they build on. Each package is still published to NuGet under its own id.
 | `cxx` | Submodule of [51degrees-cxx](https://github.com/51Degrees/51degrees-cxx), with the C and C++ code the on-premise engines build and the data file submodules |
 | `FiftyOne.slnx` | A solution holding every project. `FiftyOne.Core.slnf` leaves out the .NET Framework projects for `dotnet build`. Each folder also keeps the solutions it had before |
 
+A project's folder is its package id without the product prefix, so
+`pipeline/Core` holds `FiftyOne.Pipeline.Core.csproj` and
+`device-detection/Cloud` holds `FiftyOne.DeviceDetection.Cloud.csproj`. The
+project file keeps the full name, which is what sets the assembly and package
+id. The package named after the product alone keeps the product word, as in
+`device-detection/DeviceDetection`.
+
 ## Getting the code
 
 ```
@@ -57,8 +64,8 @@ On Windows with Visual Studio, `msbuild FiftyOne.slnx -restore` builds the
 
 Or one product, for example `dotnet build pipeline/FiftyOne.Pipeline.sln`.
 
-The on-premise engines, `FiftyOne.DeviceDetection.Hash.Engine.OnPremise` and
-`FiftyOne.IpIntelligence.Engine.OnPremise`, compile the C and C++ code in
+The on-premise engines, `device-detection/Hash.Engine.OnPremise` and
+`ip-intelligence/Engine.OnPremise`, compile the C and C++ code in
 `cxx` into a native library before the managed build. That needs
 [CMake](https://cmake.org/) 3.24 or later, a C++17 compiler and PowerShell 7
 on the path, and a platform other than `AnyCPU`, for example:

@@ -1,0 +1,8 @@
+<Project>
+  <!-- The settings shared by the whole repository come first. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" />
+  <PropertyGroup>
+    <!-- The family version from the root file, unless the build passes one. -->
+    <Version Condition="'$(Version)' == ''">$(FiftyOneIpIntelligenceVersion)</Version>
+  </PropertyGroup>
+</Project>

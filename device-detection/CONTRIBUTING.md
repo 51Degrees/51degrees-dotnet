@@ -29,7 +29,7 @@ dotnet build -p:Platform=x64
 
 If you hit the generator-mismatch error after switching CMake versions, delete the
 stale native build dir and rebuild:
-`FiftyOne.DeviceDetection.Hash.Engine.OnPremise/build/`.
+`Hash.Engine.OnPremise/build/`.
 
 ### Test projects
 

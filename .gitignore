@@ -9,3 +9,6 @@ build/
 *.user
 TestResults/
 test-results/
+
+# Written by CI from a secret, never committed
+51Degrees.snk

@@ -90,7 +90,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.IpIntelligence.Examples.Cloud\FiftyOne.IpIntelligence.Examples.Cloud.csproj" />
+    <ProjectReference Include="..\..\Examples.Cloud\FiftyOne.IpIntelligence.Examples.Cloud.csproj" />
   </ItemGroup>
 
 </Project>
