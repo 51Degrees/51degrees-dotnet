@@ -114,8 +114,8 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.JavaScriptBuilder" ProjectPath="..\..\..\..\pipeline\FiftyOne.Pipeline.JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj" Version="$(FiftyOnePipelineVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\FiftyOne.Pipeline.Web.Framework\FiftyOne.Pipeline.Web.Framework.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.JavaScriptBuilder" ProjectPath="..\..\..\..\pipeline\JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\Web.Framework\FiftyOne.Pipeline.Web.Framework.csproj" Version="$(FiftyOnePipelineVersion)" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json">
       <Version>8.0.1</Version>
@@ -128,11 +128,11 @@
     <PackageReference Include="System.Text.Json" Version="8.0.6" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.IpIntelligence.Examples.OnPremise\FiftyOne.IpIntelligence.Examples.OnPremise.csproj">
+    <ProjectReference Include="..\..\Examples.OnPremise\FiftyOne.IpIntelligence.Examples.OnPremise.csproj">
       <Project>{ed6b5c33-946e-2d4c-a7c2-0f606f1f9887}</Project>
       <Name>FiftyOne.IpIntelligence.Examples.OnPremise</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\FiftyOne.IpIntelligence.Examples\FiftyOne.IpIntelligence.Examples.csproj">
+    <ProjectReference Include="..\..\Examples\FiftyOne.IpIntelligence.Examples.csproj">
       <Project>{6e062311-b25d-42f3-978f-6868ced67942}</Project>
       <Name>FiftyOne.IpIntelligence.Examples</Name>
     </ProjectReference>

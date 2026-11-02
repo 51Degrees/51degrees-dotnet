@@ -1,0 +1,43 @@
+name: Pull Requests
+
+# Builds and tests pull requests into main with the shared workflow. A run
+# that is not a dry run merges each pull request that passes and is approved,
+# so a run started by a pull request is always a dry run, and a dispatched run
+# is one unless asked otherwise.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        type: boolean
+        default: true
+      common-ci-ref:
+        type: string
+        default: ''
+
+jobs:
+  PullRequests:
+    name: Pull Requests
+    uses: 51Degrees/common-ci/.github/workflows/nightly-pull-requests.yml@main
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      dryrun: ${{ github.event_name == 'pull_request' || inputs.dryrun }}
+      # A pull_request run builds only that pull request, against main.
+      prs: ${{ github.event.pull_request.number || '' }}
+      branch: main
+      cache-assets: true
+      common-ci-ref: ${{ inputs.common-ci-ref || '' }}
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+      StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
+      DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
+      DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}
+      IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
+      TestResourceKey: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
+      AcceptCHBrowserKey: ${{ secrets.ACCEPTCH_BROWSER_KEY }}
+      AcceptCHHardwareKey: ${{ secrets.ACCEPTCH_HARDWARE_KEY }}
+      AcceptCHPlatformKey: ${{ secrets.ACCEPTCH_PLATFORM_KEY }}
+      AcceptCHNoneKey: ${{ secrets.ACCEPTCH_NONE_KEY }}

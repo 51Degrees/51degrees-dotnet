@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.Pipeline.Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" />
+    <ProjectReference Include="..\..\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" />
   </ItemGroup>
 
   <ItemGroup>

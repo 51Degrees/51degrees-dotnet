@@ -52,7 +52,7 @@ namespace GettingStarted
                 // works unchanged against either.
                 .SetEndPoint(GetCloudEndpoint())
                 // A resource key with the properties needed by the examples
-                // can be created at https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=pipeline-dotnet&utm_content=examples-cloudrequestengine-gettingstarted-program.cs&utm_term=main.
+                // can be created at https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloudrequestengine-gettingstarted-program.cs&utm_term=main.
                 // The aligned _51DEGREES_RESOURCE_KEY environment variable is
                 // checked first, then the legacy RESOURCE_KEY variable.
                 .SetResourceKey(GetResourceKey())

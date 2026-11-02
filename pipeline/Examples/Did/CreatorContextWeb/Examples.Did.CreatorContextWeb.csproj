@@ -11,7 +11,7 @@
   <ItemGroup>
     <!-- The package from this repository rather than the published one,
          so the example is built and tested against the branch. -->
-    <ProjectReference Include="..\..\..\FiftyOne.Did\FiftyOne.Did.csproj" />
+    <ProjectReference Include="..\..\..\Did\FiftyOne.Did.csproj" />
   </ItemGroup>
 
   <ItemGroup>

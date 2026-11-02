@@ -7,13 +7,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{9D
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Cloud", "Cloud", "{AD25ACE3-78A8-41C9-8C7F-BB6A3EB8DF41}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.GeoLocation.Core", "FiftyOne.GeoLocation.Core\FiftyOne.GeoLocation.Core.csproj", "{165846C0-5EB9-40F6-810E-C9829D8742D1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.GeoLocation.Core", "Core\FiftyOne.GeoLocation.Core.csproj", "{165846C0-5EB9-40F6-810E-C9829D8742D1}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.GeoLocation.Cloud", "FiftyOne.GeoLocation.Cloud\FiftyOne.GeoLocation.Cloud.csproj", "{2577D867-C9C4-4DDB-981A-D57BDD29F596}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.GeoLocation.Cloud", "Cloud\FiftyOne.GeoLocation.Cloud.csproj", "{2577D867-C9C4-4DDB-981A-D57BDD29F596}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Cloud", "Cloud", "{9EEE8476-F8FE-447C-BD21-B17295841F37}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.GeoLocation", "FiftyOne.GeoLocation\FiftyOne.GeoLocation.csproj", "{CA3E4F63-958A-4EF4-9CB6-DD58284E0579}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.GeoLocation", "GeoLocation\FiftyOne.GeoLocation.csproj", "{CA3E4F63-958A-4EF4-9CB6-DD58284E0579}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CombiningServices", "Examples\CombiningServices\CombiningServices.csproj", "{00F7075A-9D33-4D4C-B71B-105A96309318}"
 EndProject
@@ -26,9 +26,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Getting Started", "Examples
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{9D0E3976-C067-4231-AECA-1CCEC9A26458}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.GeoLocation.Example.Tests", "Tests\FiftyOne.GeoLocation.Example.Tests\FiftyOne.GeoLocation.Example.Tests.csproj", "{A510F671-9814-4758-98A1-68A292E96F5F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.GeoLocation.Example.Tests", "Tests\Example.Tests\FiftyOne.GeoLocation.Example.Tests.csproj", "{A510F671-9814-4758-98A1-68A292E96F5F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.GeoLocation.Tests", "Tests\FiftyOne.GeoLocation.Tests\FiftyOne.GeoLocation.Tests.csproj", "{49E4FA7D-D203-4770-948C-53E6042E487C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.GeoLocation.Tests", "Tests\GeoLocation.Tests\FiftyOne.GeoLocation.Tests.csproj", "{49E4FA7D-D203-4770-948C-53E6042E487C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Web Integration - AspNetCore", "Examples\Cloud\AspNetCore\Web Integration - AspNetCore.csproj", "{E65AF744-2E23-4A45-AEB2-3EEFB254C584}"
 EndProject

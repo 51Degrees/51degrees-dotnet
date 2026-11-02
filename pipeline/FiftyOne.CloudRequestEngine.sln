@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29806.167
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.CloudRequestEngine", "FiftyOne.Pipeline.CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj", "{EAB6E20C-282D-4DDB-8140-E5EEC7BD16B6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.CloudRequestEngine", "CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj", "{EAB6E20C-282D-4DDB-8140-E5EEC7BD16B6}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Core", "FiftyOne.Pipeline.Core\FiftyOne.Pipeline.Core.csproj", "{6307E596-B556-48CC-B1FF-F1827FF913D2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Core", "Core\FiftyOne.Pipeline.Core.csproj", "{6307E596-B556-48CC-B1FF-F1827FF913D2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines", "FiftyOne.Pipeline.Engines\FiftyOne.Pipeline.Engines.csproj", "{DC52A550-06C1-4929-88BB-1B4421818056}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines", "Engines\FiftyOne.Pipeline.Engines.csproj", "{DC52A550-06C1-4929-88BB-1B4421818056}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{B8538FC6-3541-48BD-961A-48435A4C0450}"
 EndProject
@@ -15,7 +15,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{EA98A923
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Pipeline", "Pipeline", "{DA004A1D-25AA-40A4-80FB-6AEADF8A0568}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.CloudRequestEngine.Tests", "Tests\FiftyOne.Pipeline.CloudRequestEngine.Tests\FiftyOne.Pipeline.CloudRequestEngine.Tests.csproj", "{A7664E83-EA72-4E2B-96FC-DB0F5FE182E5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.CloudRequestEngine.Tests", "Tests\CloudRequestEngine.Tests\FiftyOne.Pipeline.CloudRequestEngine.Tests.csproj", "{A7664E83-EA72-4E2B-96FC-DB0F5FE182E5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CustomFlowElement", "CustomFlowElement", "{C708372E-C9CA-42EE-B7CD-35EF232883EE}"
 	ProjectSection(SolutionItems) = preProject
@@ -38,9 +38,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Examples.CloudEngine", "Exa
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Examples.ClientSideEvidence.Shared", "Examples\CustomFlowElement\3. Client-side evidence\ClientSideEvidence.Shared\Examples.ClientSideEvidence.Shared.csproj", "{6BC1128B-063B-4D2C-83D9-0A520CB7A6F6}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.CloudRequestEngine.Examples.Tests", "Tests\FiftyOne.Pipeline.CloudRequestEngine.Examples.Tests\FiftyOne.Pipeline.CloudRequestEngine.Examples.Tests.csproj", "{BE170EB1-04E1-4B1A-899E-9520DC8275CE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.CloudRequestEngine.Examples.Tests", "Tests\CloudRequestEngine.Examples.Tests\FiftyOne.Pipeline.CloudRequestEngine.Examples.Tests.csproj", "{BE170EB1-04E1-4B1A-899E-9520DC8275CE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.TestHelpers", "FiftyOne.Pipeline.Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj", "{667C01BE-ADFE-4BEE-BA17-2A04FEF97906}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.TestHelpers", "Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj", "{667C01BE-ADFE-4BEE-BA17-2A04FEF97906}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

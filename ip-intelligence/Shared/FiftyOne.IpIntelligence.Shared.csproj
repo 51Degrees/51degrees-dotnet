@@ -1,0 +1,63 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Platforms>AnyCPU;x64;ARM64</Platforms>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DocumentationFile>FiftyOne.IpIntelligence.Shared.xml</DocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    
+    <!-- NuGet package properties -->
+    <PackageId>FiftyOne.IpIntelligence.Shared</PackageId>
+    <Title>51Degrees IP Intelligence Shared Components for the Pipeline API</Title>
+    <Description>Shared classes used by the 51Degrees IP Intelligence engine for the Pipeline API.</Description>
+    <Authors>51Degrees Engineering</Authors>
+    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
+    <PackageIconUrl>https://51degrees.com/portals/0/Logos/Square%20Logo.png?width=64</PackageIconUrl>
+    <Copyright>51Degrees Mobile Experts Limited</Copyright>
+    <PackageTags>51degrees;pipeline;pipeline-api;ip-intelligence;ip;ip-address;shared;common;models;utilities</PackageTags>
+    <RepositoryUrl>https://github.com/51Degrees/ip-intelligence-dotnet</RepositoryUrl>
+    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.ipintelligence.shared-fiftyone.ipintelligence.shared.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageIcon>51d-logo.png</PackageIcon>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Images\51d-logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Messages.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Messages.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Messages.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Messages.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+	
+</Project>

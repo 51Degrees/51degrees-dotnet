@@ -53,7 +53,7 @@ using System.Text;
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/GettingStarted-Console/Program.cs).
 ///
 /// This example requires an enterprise IP Intelligence data file (.ipi).
-/// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-onpremise-gettingstarted-console-program.cs&amp;utm_term=header).
+/// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-gettingstarted-console-program.cs&amp;utm_term=header).
 ///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)

@@ -1,0 +1,107 @@
+name: Nightly Pipeline
+
+# Package and submodule updates, then every open pull request, then a
+# publish. A scheduled run publishes as a dry run until this repository takes
+# over from the separate repositories, so nothing reaches NuGet from here
+# before then.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        type: boolean
+        default: true
+      prs:
+        description: 'Comma separated pull request numbers to build, all open ones when empty'
+        type: string
+        default: ''
+      common-ci-ref:
+        type: string
+        default: ''
+  # Off until this repository takes over from the separate repositories it
+  # replaces. Their schedules are turned off then, so the same jobs never run
+  # in both.
+  # schedule:
+  #   - cron: '0 1 * * *'
+
+jobs:
+  PackageUpdate:
+    name: Nightly Package Update
+    uses: 51Degrees/common-ci/.github/workflows/nightly-package-update.yml@main
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      dryrun: ${{ inputs.dryrun || false }}
+      common-ci-ref: ${{ inputs.common-ci-ref || '' }}
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+
+  SubmoduleUpdate:
+    name: Nightly Submodule Update
+    uses: 51Degrees/common-ci/.github/workflows/nightly-submodule-update.yml@main
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      dryrun: ${{ inputs.dryrun || false }}
+      common-ci-ref: ${{ inputs.common-ci-ref || '' }}
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+
+  PullRequests:
+    if: ${{ !cancelled() }}
+    needs: [PackageUpdate, SubmoduleUpdate]
+    name: Nightly Pull Requests
+    uses: 51Degrees/common-ci/.github/workflows/nightly-pull-requests.yml@main
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      # A run that is not a dry run merges each pull request that passes and
+      # is approved.
+      dryrun: ${{ github.event_name == 'schedule' || inputs.dryrun }}
+      prs: ${{ inputs.prs || '' }}
+      branch: main
+      cache-assets: true
+      common-ci-ref: ${{ inputs.common-ci-ref || '' }}
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+      StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
+      DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
+      DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}
+      IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
+      TestResourceKey: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
+      AcceptCHBrowserKey: ${{ secrets.ACCEPTCH_BROWSER_KEY }}
+      AcceptCHHardwareKey: ${{ secrets.ACCEPTCH_HARDWARE_KEY }}
+      AcceptCHPlatformKey: ${{ secrets.ACCEPTCH_PLATFORM_KEY }}
+      AcceptCHNoneKey: ${{ secrets.ACCEPTCH_NONE_KEY }}
+
+  Publish:
+    if: ${{ !cancelled() }}
+    needs: PullRequests
+    name: Nightly Publish
+    uses: 51Degrees/common-ci/.github/workflows/nightly-publish.yml@main
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      # A scheduled run has no inputs, so it is a dry run until this line
+      # changes at the switch-over.
+      dryrun: ${{ github.event_name == 'schedule' || inputs.dryrun }}
+      build-platform: windows-latest
+      cache-assets: true
+      common-ci-ref: ${{ inputs.common-ci-ref || '' }}
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+      StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
+      DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
+      DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}
+      IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
+      TestResourceKey: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
+      AcceptCHBrowserKey: ${{ secrets.ACCEPTCH_BROWSER_KEY }}
+      AcceptCHHardwareKey: ${{ secrets.ACCEPTCH_HARDWARE_KEY }}
+      AcceptCHPlatformKey: ${{ secrets.ACCEPTCH_PLATFORM_KEY }}
+      AcceptCHNoneKey: ${{ secrets.ACCEPTCH_NONE_KEY }}
+      ApiKey: ${{ secrets.NUGET_API_KEY }}
+      CodeSigningKeyVaultUrl: ${{ secrets.CODE_SIGNING_KEY_VAULT_URL }}
+      CodeSigningKeyVaultClientId: ${{ secrets.CODE_SIGNING_KEY_VAULT_CLIENT_ID }}
+      CodeSigningKeyVaultTenantId: ${{ secrets.CODE_SIGNING_KEY_VAULT_TENANT_ID }}
+      CodeSigningKeyVaultClientSecret: ${{ secrets.CODE_SIGNING_KEY_VAULT_CLIENT_SECRET }}
+      CodeSigningKeyVaultCertificateName: ${{ secrets.CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME }}

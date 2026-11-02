@@ -1,0 +1,195 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ExceptionAutoUpdate" xml:space="preserve">
+    <value>Error during check for data update</value>
+  </data>
+  <data name="ExceptionAutoUpdateOnStartupFailed" xml:space="preserve">
+    <value>Update on startup failed for {0} with status {1}. See log for details</value>
+  </data>
+  <data name="ExceptionAutoUpdateRefreshEngine" xml:space="preserve">
+    <value>An error occurred when applying a data update to engine '{0}'</value>
+  </data>
+  <data name="ExceptionMissingDataUpdateService" xml:space="preserve">
+    <value>Some enabled features ({0}) require an IDataUpdateService but one has not been supplied. This can be corrected by passing an IDataUpdateService instance to the engine builder constructor. If building from configuration, an IServiceProvider instance, able to resolve an IDataUpdateService, must be passed to the pipeline builder.</value>
+  </data>
+  <data name="ExceptionMissingLicenseKey" xml:space="preserve">
+    <value>Some enabled features ({0}) require a license key but one has not been supplied. This can be corrected by passing a license key to the engine builder. If building from configuration, check the associated builder implementation to determine the correct parameter name to use.</value>
+  </data>
+  <data name="ExceptionPollingIntervalTooLarge" xml:space="preserve">
+    <value>Polling interval timespan too large. Must be less than {0} seconds but is {1} seconds</value>
+  </data>
+  <data name="ExceptionProcessingError" xml:space="preserve">
+    <value>Failed to retrieve {0} because processing threw an exception in engine(s) '{1}'.</value>
+  </data>
+  <data name="ExceptionProcessingMultipleErrors" xml:space="preserve">
+    <value>Failed to retrieve {0} because processing threw multiple exceptions in engine(s) '{1}'.</value>
+  </data>
+  <data name="ExceptionProcessingTimeout" xml:space="preserve">
+    <value>Failed to retrieve {0} because the processing for engine(s) '{1}' took longer than the specified timeout.</value>
+  </data>
+  <data name="ExceptionRandomizationTooLarge" xml:space="preserve">
+    <value>Update randomization timespan too large. Must be less than {0} seconds but is {1} seconds</value>
+  </data>
+  <data name="MessageAutoUpdateCheck" xml:space="preserve">
+    <value>Checking for update</value>
+  </data>
+  <data name="MessageAutoUpdateCheckFileSystem" xml:space="preserve">
+    <value>Checking file system</value>
+  </data>
+  <data name="MessageAutoUpdateCreateTimer" xml:space="preserve">
+    <value>Creating update check timer</value>
+  </data>
+  <data name="MessageAutoUpdateCreateWatcher" xml:space="preserve">
+    <value>Creating file system watcher</value>
+  </data>
+  <data name="MessageAutoUpdateOnStartup" xml:space="preserve">
+    <value>Updating on startup</value>
+  </data>
+  <data name="MessageAutoUpdateRefreshEngine" xml:space="preserve">
+    <value>Attempting to refresh engine with new data</value>
+  </data>
+  <data name="MessageAutoUpdateRegisterDataFile" xml:space="preserve">
+    <value>Registering file with auto update service</value>
+  </data>
+  <data name="MessageAutoUpdateUnhandledError" xml:space="preserve">
+    <value>An unhandled error occurred while checking for automatic updates for engine '{0}'</value>
+  </data>
+  <data name="MissingPropertyMessageDataUpgradeRequired" xml:space="preserve">
+    <value>This is because your license or data file does not include this property. It is available with the {0} license/data for the {1}. To upgrade, see https://51degrees.com/pricing?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-messages.resx&amp;utm_term=missingpropertymessagedataupgraderequired.</value>
+  </data>
+  <data name="MissingPropertyMessageCloudRequestFailed" xml:space="preserve">
+    <value>This is because an upstream cloud request failed, so no data was available to populate the property.</value>
+  </data>
+  <data name="MissingPropertyMessagePrefix" xml:space="preserve">
+    <value>Property '{0}' not found in data for element '{1}'. </value>
+  </data>
+  <data name="MissingPropertyMessageProductNotInCloudResource" xml:space="preserve">
+    <value>This is because your resource key does not include access to any properties under '{0}'. Check or create a resource key with the properties you need in the configurator at https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-messages.resx&amp;utm_term=missingpropertymessageproductnotincloudresource.</value>
+  </data>
+  <data name="MissingPropertyMessagePropertyExcluded" xml:space="preserve">
+    <value>This is because the property has been excluded when configuring the engine.</value>
+  </data>
+  <data name="MissingPropertyMessagePropertyNotInCloudResource" xml:space="preserve">
+    <value>This is because your resource key does not include access to this property. The properties included for your key under '{0}' are {1}. Check or change your key in the configurator at https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-messages.resx&amp;utm_term=missingpropertymessagepropertynotincloudresource.</value>
+  </data>
+  <data name="MissingPropertyMessageUnknown" xml:space="preserve">
+    <value>The reason for this is unknown. Please check that the aspect and property name are correct.</value>
+  </data>
+</root>
