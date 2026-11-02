@@ -1,0 +1,35 @@
+[  
+    {
+        "Image": "ubuntu-latest",
+        "Name": "Ubuntu_Any_CPU_Release",
+        "Configuration": "Release",
+        "Arch": "Any CPU",
+        "RunPerformance": false,
+        "BuildMethod": "dotnet"
+    },
+    {
+        "Image": "ubuntu-latest",
+        "Name": "Ubuntu_Any_CPU_Debug",
+        "Configuration": "Debug",
+        "Arch": "Any CPU",
+        "RunPerformance": false,
+        "BuildMethod": "dotnet"
+    },
+    {
+        "Image": "windows-latest",
+        "Name": "Windows_Any_CPU_Release",
+        "Configuration": "Release",
+        "Arch": "Any CPU",
+        "RunPerformance": false,
+        "BuildMethod": "dotnet"
+    },
+    {
+        "Image": "windows-latest",
+        "Name": "Windows_Any_CPU_Debug",
+        "Configuration": "Debug",
+        "Arch": "Any CPU",
+        "RunPerformance": false,
+        "BuildMethod": "dotnet"
+    }
+      
+]
