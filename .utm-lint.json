@@ -5,6 +5,6 @@
   ],
   "exclude": [
     "^ip-intelligence/[^/]+/FiftyOne\\.IpIntelligence[^/]*\\.xml$",
-    "^location/[^/]+/FiftyOne\\.GeoLocation[^/]*\\.xml$"
+    "^location/GeoLocation/[^/]+/FiftyOne\\.GeoLocation[^/]*\\.xml$"
   ]
 }

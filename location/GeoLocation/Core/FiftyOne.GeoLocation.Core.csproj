@@ -32,7 +32,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="System.CodeDom" Version="6.0.0" />
   </ItemGroup>
@@ -50,11 +50,11 @@
       <LastGenOutput>JavaScriptResource.cs</LastGenOutput>
       <Generator>TextTemplatingFilePreprocessor</Generator>
     </None>
-    <None Include="..\README.md">
+    <None Include="..\..\README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
-    <None Include="..\Images\51d-logo.png">
+    <None Include="..\..\Images\51d-logo.png">
       <Pack>True</Pack>
       <PackagePath></PackagePath>
     </None>

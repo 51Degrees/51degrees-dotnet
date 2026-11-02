@@ -38,18 +38,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\README.md">
+    <None Include="..\..\README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
-    <None Include="..\Images\51d-logo.png">
+    <None Include="..\..\Images\51d-logo.png">
       <Pack>True</Pack>
       <PackagePath></PackagePath>
     </None>
   </ItemGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineVersion)" />
   </ItemGroup> 
 
 </Project>

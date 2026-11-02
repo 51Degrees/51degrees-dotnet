@@ -136,9 +136,9 @@
     <Project Path="ip-intelligence/Tests/Translation.Tests/FiftyOne.IpIntelligence.Translation.Tests.csproj" />
   </Folder>
   <Folder Name="/location/">
-    <Project Path="location/Cloud/FiftyOne.GeoLocation.Cloud.csproj" />
-    <Project Path="location/Core/FiftyOne.GeoLocation.Core.csproj" />
-    <Project Path="location/GeoLocation/FiftyOne.GeoLocation.csproj" />
+    <Project Path="location/GeoLocation/Cloud/FiftyOne.GeoLocation.Cloud.csproj" />
+    <Project Path="location/GeoLocation/Core/FiftyOne.GeoLocation.Core.csproj" />
+    <Project Path="location/GeoLocation/GeoLocation/FiftyOne.GeoLocation.csproj" />
   </Folder>
   <Folder Name="/location/Examples/">
     <Project Path="location/Examples/CombiningServices/CombiningServices.csproj" />

@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\GeoLocation\FiftyOne.GeoLocation.csproj" />
+    <ProjectReference Include="..\..\..\GeoLocation\GeoLocation\FiftyOne.GeoLocation.csproj" />
   </ItemGroup>
 
 </Project>

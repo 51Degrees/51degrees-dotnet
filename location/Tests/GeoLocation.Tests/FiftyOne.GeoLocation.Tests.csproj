@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Cloud\FiftyOne.GeoLocation.Cloud.csproj" />
+    <ProjectReference Include="..\..\GeoLocation\Cloud\FiftyOne.GeoLocation.Cloud.csproj" />
   </ItemGroup>
 
 </Project>
