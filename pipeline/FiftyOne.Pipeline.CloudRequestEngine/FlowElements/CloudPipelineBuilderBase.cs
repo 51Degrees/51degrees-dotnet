@@ -219,6 +219,34 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
+        /// The seconds a request to the cloud service may take before it
+        /// is given up. The same setting the
+        /// <see cref="CloudRequestEngineBuilder.SetTimeOutSeconds(int)"/>
+        /// method sets on the engine this builder creates.
+        /// </summary>
+        protected int CloudRequestTimeoutSeconds { get; set; }
+            = Constants.CLOUD_REQUEST_TIMEOUT_DEFAULT_SECONDS;
+
+        /// <summary>
+        /// Set the seconds a request to the cloud service may take before
+        /// it is given up. The default of
+        /// <see cref="Constants.CLOUD_REQUEST_TIMEOUT_DEFAULT_SECONDS"/>
+        /// covers the first request to the service, including the DNS
+        /// lookup and the TLS handshake, so a cold machine may need more.
+        /// </summary>
+        /// <param name="timeoutSeconds">
+        /// The timeout in seconds. A value below one means no timeout.
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        public TBuilder SetCloudRequestTimeOutSeconds(int timeoutSeconds)
+        {
+            CloudRequestTimeoutSeconds = timeoutSeconds;
+            return this as TBuilder;
+        }
+
+        /// <summary>
         /// Create and return a new pipeline based on the configuration
         /// so far.
         /// </summary>
@@ -272,6 +300,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             {
                 cloudRequestEngineBuilder.SetCloudRequestOrigin(CloudRequestOrigin);
             }
+            cloudRequestEngineBuilder.SetTimeOutSeconds(CloudRequestTimeoutSeconds);
             var cloudRequestEngine = cloudRequestEngineBuilder.Build();
 
             // Add the cloud request engine as the first element.
