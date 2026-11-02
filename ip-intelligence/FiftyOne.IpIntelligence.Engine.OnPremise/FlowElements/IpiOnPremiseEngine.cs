@@ -466,10 +466,11 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
                 }
             }
 
-            // Synthetic echo properties — populated from request evidence
+            // Synthetic echo properties, populated from request evidence
             // during ProcessEngine. Component must be "Network" so they
-            // align with common-metadata's Network component (VendorIds:
-            // ["ip"]) and resolve against the CloudV5* product entries.
+            // align with the Network component of the 51Degrees property
+            // metadata (VendorIds: ["ip"]) and resolve against the CloudV5*
+            // product entries.
             var networkComponent = new Data.ComponentMetaDataIpi("Network");
             var noDataTiers = new System.Collections.Generic.List<string>();
             var noDefault = new ValueMetaDataDefault("N/A");

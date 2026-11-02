@@ -63,7 +63,7 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
             var ipv6 = Wrapper.Engine.Properties.Single(p => p.Name == "IpV6");
 
             Assert.AreEqual("Network", ip.Component.Name,
-                "Synthetic Ip property must have Component.Name 'Network' to match common-metadata.");
+                "Synthetic Ip property must have Component.Name 'Network' to match the property metadata.");
             Assert.AreEqual("Network", ipv6.Component.Name,
                 "Synthetic IpV6 property must have Component.Name 'Network'.");
 

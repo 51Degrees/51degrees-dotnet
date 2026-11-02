@@ -400,9 +400,9 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             Assert.IsNotNull(detectedBrowserVersion);
 
             {
-                // Workaround for a known detection limitation.
-                // Remove once the upstream fix is deployed.
-                // See https://github.com/51Degrees/Pearl/issues/1617
+                // Workaround for a known limitation in how the data file
+                // detects headless browsers. Remove once a data file with the
+                // fix is published.
                 Dictionary<string, IEnumerable<string>> knownMismatches = new() {
                     {
                         "Edge", [ // only affects headless mode*

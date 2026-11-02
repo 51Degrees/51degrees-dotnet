@@ -491,7 +491,7 @@
         <member name="T:FiftyOne.Pipeline.DerivedProperty.Data.DerivedPropertyMetaData">
             <summary>
             The property definition a script carries, holding every field of the
-            51Degrees common-metadata property schema so that a script is a
+            51Degrees property metadata schema so that a script is a
             complete property definition rather than only a name and a type.
             </summary>
         </member>
@@ -507,7 +507,7 @@
             Always false in format 1. List outputs are deferred.
             </param>
             <param name="defaultValue">
-            The string form of the value common-metadata records as the
+            The string form of the value the property metadata records as the
             default, or null where the script gives none. It is carried
             through to the metadata and nothing reads it while a request is
             being processed.
@@ -582,7 +582,7 @@
         </member>
         <member name="P:FiftyOne.Pipeline.DerivedProperty.Data.DerivedPropertyMetaData.DefaultValue">
             <summary>
-            The string form of the value common-metadata records as the
+            The string form of the value the property metadata records as the
             default, or null where the script gives none. Every script ends
             in an Else and so always chooses a value, which is why nothing
             reads this while a request is being processed.
@@ -933,7 +933,7 @@
         <member name="T:FiftyOne.Pipeline.DerivedProperty.Data.DerivedMapping">
             <summary>
             A mapping of names to places. Names are matched without regard to
-            case, as configuration files and common-metadata do.
+            case, as configuration files and the property metadata do.
             </summary>
         </member>
         <member name="M:FiftyOne.Pipeline.DerivedProperty.Data.DerivedMapping.#ctor(System.Int32)">
@@ -1738,6 +1738,13 @@
             <summary>
             The HumanConfidence script, embedded from
             scripts/HumanConfidence.yaml of the derived-properties
+            repository.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.Pipeline.DerivedProperty.BuiltInScript.IsGdpr">
+            <summary>
+            The IsGdpr script, embedded from
+            scripts/IsGdpr.yaml of the derived-properties
             repository.
             </summary>
         </member>

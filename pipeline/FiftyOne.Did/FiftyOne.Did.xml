@@ -642,9 +642,12 @@
         </member>
         <member name="T:FiftyOne.Did.Client.FactorOutcome">
             <summary>
-            The outcome of one creator context factor, reported when the context
-            is <see cref="F:FiftyOne.Did.Client.ContextOutcome.Mismatch"/> or
-            <see cref="F:FiftyOne.Did.Client.ContextOutcome.Misconfigured"/>.
+            The outcome of one creator context factor. The factors are reported
+            when the context is <see cref="F:FiftyOne.Did.Client.ContextOutcome.Mismatch"/>, when it is
+            <see cref="F:FiftyOne.Did.Client.ContextOutcome.Misconfigured"/> with the transport compared,
+            and whenever any factor is <see cref="F:FiftyOne.Did.Client.FactorOutcome.NotRecorded"/>, whatever the
+            overall outcome, so a verified result shows how many factors it rests
+            on.
             </summary>
         </member>
         <member name="F:FiftyOne.Did.Client.FactorOutcome.Verified">

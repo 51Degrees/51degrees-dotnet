@@ -57,7 +57,7 @@ namespace FiftyOne.Pipeline.DerivedProperty.Data
 
     /// <summary>
     /// A mapping of names to places. Names are matched without regard to
-    /// case, as configuration files and common-metadata do.
+    /// case, as configuration files and the property metadata do.
     /// </summary>
     public sealed class DerivedMapping : DerivedNode
     {

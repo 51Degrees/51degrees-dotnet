@@ -124,7 +124,7 @@ namespace FiftyOne.Pipeline.DerivedProperty.Data
 
     /// <summary>
     /// The property definition a script carries, holding every field of the
-    /// 51Degrees common-metadata property schema so that a script is a
+    /// 51Degrees property metadata schema so that a script is a
     /// complete property definition rather than only a name and a type.
     /// </summary>
     public sealed class DerivedPropertyMetaData
@@ -140,7 +140,7 @@ namespace FiftyOne.Pipeline.DerivedProperty.Data
         /// Always false in format 1. List outputs are deferred.
         /// </param>
         /// <param name="defaultValue">
-        /// The string form of the value common-metadata records as the
+        /// The string form of the value the property metadata records as the
         /// default, or null where the script gives none. It is carried
         /// through to the metadata and nothing reads it while a request is
         /// being processed.
@@ -258,7 +258,7 @@ namespace FiftyOne.Pipeline.DerivedProperty.Data
         public bool IsList { get; }
 
         /// <summary>
-        /// The string form of the value common-metadata records as the
+        /// The string form of the value the property metadata records as the
         /// default, or null where the script gives none. Every script ends
         /// in an Else and so always chooses a value, which is why nothing
         /// reads this while a request is being processed.
