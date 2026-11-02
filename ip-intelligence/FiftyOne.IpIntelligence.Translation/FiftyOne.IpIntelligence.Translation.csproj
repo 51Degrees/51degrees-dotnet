@@ -46,7 +46,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FiftyOne.Pipeline.Translation" Version="4.5.128" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Translation" ProjectPath="..\..\pipeline\FiftyOne.Pipeline.Elements\FiftyOne.Pipeline.Translation\FiftyOne.Pipeline.Translation.csproj" Version="$(FiftyOnePipelineVersion)" />
   </ItemGroup>
 
 </Project>

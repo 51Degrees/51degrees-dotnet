@@ -38,8 +38,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FiftyOne.Caching" Version="4.5.2" />
-    <PackageReference Include="FiftyOne.Common" Version="5.1.8" />
+    <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\caching\FiftyOne.Caching\FiftyOne.Caching.csproj" Version="$(FiftyOneCachingVersion)" />
+    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\common\FiftyOne.Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
   </ItemGroup>
 
   <!-- JsonLoader uses System.Text.Json on net8.0 but Newtonsoft.Json on

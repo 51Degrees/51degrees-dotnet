@@ -1,4 +1,6 @@
 <Project>
+  <!-- The settings shared by the whole repository come first. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" />
   <PropertyGroup>
     <AssemblyVersion>5.1.0.0</AssemblyVersion>      <!-- PIN to major.minor.0.0; matches current 5.x shipping line (last published 5.1.4) -->
                                                      <!-- Version is supplied by CI via /p:Version= (gitversion) -->

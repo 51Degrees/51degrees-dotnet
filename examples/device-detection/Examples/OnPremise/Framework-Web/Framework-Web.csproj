@@ -120,7 +120,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FiftyOne.Pipeline.Web" Version="4.5.128" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\..\pipeline\Web Integration\FiftyOne.Pipeline.Web.Framework\FiftyOne.Pipeline.Web.Framework.csproj" Version="$(FiftyOnePipelineVersion)" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json">
       <Version>8.0.1</Version>
     </PackageReference>

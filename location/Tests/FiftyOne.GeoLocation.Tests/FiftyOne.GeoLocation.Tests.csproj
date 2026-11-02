@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FiftyOne.Common.TestHelpers" Version="5.1.8" />
-    <PackageReference Include="FiftyOne.Pipeline.Engines.TestHelpers" Version="4.5.128" />
+    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\FiftyOne.Common.TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.TestHelpers" ProjectPath="..\..\..\pipeline\FiftyOne.Pipeline.Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" Version="$(FiftyOnePipelineVersion)" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
     <PackageReference Include="coverlet.collector" Version="3.2.0">
       <PrivateAssets>all</PrivateAssets>

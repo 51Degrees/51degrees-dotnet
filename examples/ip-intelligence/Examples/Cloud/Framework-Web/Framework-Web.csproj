@@ -80,8 +80,8 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FiftyOne.Pipeline.JavaScriptBuilder" Version="4.5.128" />
-    <PackageReference Include="FiftyOne.Pipeline.Web" Version="4.5.128" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.JavaScriptBuilder" ProjectPath="..\..\..\..\..\pipeline\FiftyOne.Pipeline.Elements\FiftyOne.Pipeline.JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\..\pipeline\Web Integration\FiftyOne.Pipeline.Web.Framework\FiftyOne.Pipeline.Web.Framework.csproj" Version="$(FiftyOnePipelineVersion)" />
     <PackageReference Include="Microsoft.Extensions.Configuration">
       <Version>8.0.0</Version>
     </PackageReference>

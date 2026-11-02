@@ -1,0 +1,18 @@
+<Project>
+
+  <!--
+    Turns each FiftyOneReference item into the reference the FiftyOneReferences
+    property asks for. Directory.Build.props explains the property and the item.
+    The item's ProjectPath metadata is the path of the project, relative to the
+    project that declares it, and its Version metadata is the published
+    package version.
+  -->
+  <ItemGroup Condition="'$(FiftyOneReferences)' == 'Project'">
+    <ProjectReference Include="@(FiftyOneReference->'%(ProjectPath)')" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(FiftyOneReferences)' != 'Project'">
+    <PackageReference Include="@(FiftyOneReference)" />
+  </ItemGroup>
+
+</Project>

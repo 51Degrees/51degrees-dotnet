@@ -1,4 +1,6 @@
 <Project>
+  <!-- The settings shared by the whole repository come first. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" />
   <PropertyGroup>
     <Version>4.5.40</Version>                       <!-- CI overrides via /p:Version= per release -->
     <AssemblyVersion>4.5.0.0</AssemblyVersion>      <!-- PIN to major.minor.0.0; do not bump per patch -->

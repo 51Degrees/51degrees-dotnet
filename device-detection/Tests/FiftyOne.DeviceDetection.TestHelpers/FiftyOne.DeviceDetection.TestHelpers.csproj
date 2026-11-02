@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FiftyOne.Common.TestHelpers" Version="5.1.8" />
+    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\FiftyOne.Common.TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonVersion)" />
   </ItemGroup>
 
 </Project>

@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FiftyOne.DeviceDetection" Version="4.5.179" />
-    <PackageReference Include="FiftyOne.Pipeline.Web" Version="4.5.128" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection" ProjectPath="..\..\..\..\..\..\device-detection\FiftyOne.DeviceDetection\FiftyOne.DeviceDetection.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\..\..\pipeline\Web Integration\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.33" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.33" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />

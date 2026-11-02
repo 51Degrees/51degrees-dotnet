@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FiftyOne.DeviceDetection" Version="4.5.179" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection" ProjectPath="..\..\..\..\..\..\device-detection\FiftyOne.DeviceDetection\FiftyOne.DeviceDetection.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />

@@ -1,0 +1,59 @@
+<Project>
+
+  <!--
+    Shared by every project in this repository. The folders that came from
+    separate repositories keep their own Directory.Build.props, and each of
+    those imports this file first.
+  -->
+  <PropertyGroup>
+    <FiftyOneRoot>$(MSBuildThisFileDirectory)</FiftyOneRoot>
+  </PropertyGroup>
+
+  <!--
+    A developer's own settings, not committed. The usual content is one line
+    that switches to project references, see below.
+  -->
+  <Import Project="$(FiftyOneRoot)Directory.Build.local.props" Condition="Exists('$(FiftyOneRoot)Directory.Build.local.props')" />
+
+  <!--
+    How a project reaches a FiftyOne package that another folder of this
+    repository builds. The project declares the dependency once, as
+
+      <FiftyOneReference Include="FiftyOne.Pipeline.Engines"
+                         ProjectPath="..\..\pipeline\FiftyOne.Pipeline.Engines\FiftyOne.Pipeline.Engines.csproj"
+                         Version="$(FiftyOnePipelineVersion)" />
+
+    and Directory.Build.targets turns it into one of:
+
+      Package  a PackageReference to the published package, the default, so
+               a checkout builds the way a consumer's project does;
+      Project  a ProjectReference to the project next to it, for a change
+               that crosses packages, which is what CI builds and tests.
+
+    Choose with any of these, the first that is set wins:
+
+      dotnet build -p:FiftyOneReferences=Project
+      a Directory.Build.local.props file next to this one holding
+        <Project><PropertyGroup><FiftyOneReferences>Project</FiftyOneReferences></PropertyGroup></Project>
+      the FiftyOneReferences environment variable
+  -->
+  <PropertyGroup>
+    <FiftyOneReferences Condition="'$(FiftyOneReferences)' == ''">Package</FiftyOneReferences>
+  </PropertyGroup>
+
+  <!--
+    The published version of each package family that the Package mode
+    restores. Until the first release from this repository these are the
+    versions the separate repositories last published. The nightly package
+    update changes them here.
+  -->
+  <PropertyGroup>
+    <FiftyOneCommonVersion>5.1.8</FiftyOneCommonVersion>
+    <FiftyOneCachingVersion>4.5.2</FiftyOneCachingVersion>
+    <FiftyOnePipelineVersion>4.5.128</FiftyOnePipelineVersion>
+    <FiftyOneDeviceDetectionVersion>4.5.179</FiftyOneDeviceDetectionVersion>
+    <FiftyOneIpIntelligenceVersion>4.5.154</FiftyOneIpIntelligenceVersion>
+    <FiftyOneGeoLocationVersion>4.5.195</FiftyOneGeoLocationVersion>
+  </PropertyGroup>
+
+</Project>
