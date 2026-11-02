@@ -166,9 +166,10 @@
   <!--
     The FiftyOne packages that reach this project only through the projects
     it references. An old-style project does not see those, so in Project
-    mode each is declared here as well.
+    mode each is declared here as well. In Package mode NuGet brings them
+    in already, and declaring them again conflicts with those versions.
   -->
-  <ItemGroup>
+  <ItemGroup Condition="'$(FiftyOneReferences)' == 'Project'">
     <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\..\..\caching\Caching\FiftyOne.Caching.csproj" Version="$(FiftyOneCachingVersion)" />
     <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\..\common\Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
     <FiftyOneReference Include="FiftyOne.IpIntelligence" ProjectPath="..\..\..\..\ip-intelligence\IpIntelligence\FiftyOne.IpIntelligence.csproj" Version="$(FiftyOneIpIntelligenceVersion)" />
