@@ -1,0 +1,47 @@
+﻿{
+  "PipelineOptions": {
+    "Elements": [
+      {
+        "BuilderName": "MathElement"
+      }
+      // None of the following configuration is needed. It is included 
+      // here to illustrate the possible options and default values.
+      //{
+      //  // The JsonBuilderElement produces a JSON version of the flowdata. 
+      //  // It should be placed after all data elements.
+      //  "BuilderName": "JsonBuilderElement",
+      //  "BuildParameters": {
+      //  }
+      //},
+      //{
+      //  // The JavaScriptBuilderElement creates some JavaScript code that
+      //  // is used to expose the json data from the JsonBuilderElement in
+      //  // client-side code and retrieve additional evidence values 
+      //  // asynchronously on the client.
+      //  "BuilderName": "JavaScriptBuilderElement",
+      //  "BuildParameters": {
+      //    // If false, cookies used to store client-side evidence values 
+      //    // will be deleted as soon as the data is sent to the server.
+      //    "EnableCookies": true,
+      //    // The protocol to use when sending data from the client. 
+      //    // Defaults to the protocol used in the current request.
+      //    "Protocol": "https", 
+      //    // The host to use when sending data from the client. Defaults 
+      //    // to the host used in the current request.
+      //    "Host": "www.example.com",
+      //    // The endpoint to use when sending data from the client. 
+      //    // Defaults to an endpoint that the ASP.NET integration will 
+      //    // automatically intercept and handle.
+      //    "Endpoint": "/51dpipeline/json",
+      //    // The name of the global scope JavaScript object that 
+      //    // is created on the client-side. 
+      //    "ObjectName": "fod",
+      //    // True to minify the JavaScript output. False to leave it
+      //    // un-minified.
+      //    "Minify": true
+      //  }
+      //}
+    ],
+    "ClientSideEvidenceEnabled": true
+  }
+}

@@ -1,0 +1,102 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <!-- The vendored Stubble.Core source (compiled in below) uses C# 9 features, matching
+         Stubble's own LangVersion=latest. This only enables newer syntax; it does not
+         change the netstandard2.0 target. -->
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>FiftyOne.Pipeline.JavaScriptBuilderElement</AssemblyName>
+    <RootNamespace>FiftyOne.Pipeline.JavaScriptBuilder</RootNamespace>
+    <Platforms>AnyCPU</Platforms>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DocumentationFile>FiftyOne.Pipeline.JavaScriptBuilderElement.xml</DocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+
+    <!-- NuGet package properties -->
+    <PackageId>FiftyOne.Pipeline.JavaScriptBuilder</PackageId>
+    <Title>JavaScript builder element for the 51Degrees Pipeline API</Title>
+    <PackageDescription>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains an element that produces JavaScript code that can be used to access Pipeline results in client-side code and provide additional evidence that is not available from the initial request to the web server.</PackageDescription>
+    <Authors>51Degrees Engineering</Authors>
+    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
+    <PackageIconUrl>https://51degrees.com/portals/0/Logos/Square%20Logo.png?width=64</PackageIconUrl>
+    <Copyright>51Degrees Mobile Experts Limited</Copyright>
+    <PackageTags>51degrees,pipeline,data service</PackageTags>
+    <RepositoryUrl>https://github.com/51Degrees/pipeline-dotnet</RepositoryUrl>
+    <PackageIcon>51d-logo.png</PackageIcon>
+    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=pipeline-dotnet&amp;utm_content=fiftyone.pipeline.elements-fiftyone.pipeline.javascriptbuilderelement-fiftyone.pipeline.javascriptbuilder.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <Description>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains an element that produces JavaScript code used to access Pipeline results in client-side code and provide additional evidence that is not available from the initial request to the web server.</Description>
+    <NeutralLanguage>en</NeutralLanguage>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\..\Images\51d-logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Templates\JavaScriptResource.mustache" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NUglify" Version="1.20.7" />
+    <PackageReference Include="System.CodeDom" Version="6.0.0" />
+    <!-- Dependency closure of the vendored Stubble.Core source compiled into this assembly
+         (see the Compile Include below). The Stubble code uses these types, so they are
+         declared here directly. -->
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="5.0.0" />
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\FiftyOne.Pipeline.Engines\FiftyOne.Pipeline.Engines.csproj" />
+    <ProjectReference Include="..\FiftyOne.Pipeline.JsonBuilderElement\FiftyOne.Pipeline.JsonBuilder.csproj" />
+  </ItemGroup>
+
+  <!-- Stubble.Core ({{mustache}} templating) is vendored as SOURCE and compiled directly
+       into this assembly: no separate Stubble.Core.dll, no package dependency, no version
+       juggling. Assembly-attribute files (and obj) are excluded so they don't duplicate
+       this project's generated assembly attributes. Stubble's source-level warnings are
+       silenced for this strict (warnings-as-errors) project via vendor/Stubble/.editorconfig. -->
+  <ItemGroup>
+    <Compile Include="..\..\vendor\Stubble\src\Stubble.Core\**\*.cs"
+             Exclude="..\..\vendor\Stubble\src\Stubble.Core\obj\**\*.cs;..\..\vendor\Stubble\src\Stubble.Core\Properties\AssemblyInfo.cs;..\..\vendor\Stubble\src\Stubble.Core\GlobalSuppressions.cs"
+             LinkBase="Stubble" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Messages.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Messages.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Messages.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Messages.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

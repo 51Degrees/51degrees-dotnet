@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>FiftyOne.Pipline.IpSplitter</AssemblyName>
+    <RootNamespace>FiftyOne.Pipeline.IpSplitter</RootNamespace>
+    <Platforms>AnyCPU</Platforms>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\FiftyOne.Pipeline.Core\FiftyOne.Pipeline.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>performance_tests</RootNamespace>
+    <AssemblyName>performance_tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="build\**" />
+    <Content Remove="build\**" />
+    <EmbeddedResource Remove="build\**" />
+    <None Remove="build\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Web Integration\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" />
+    <ProjectReference Include="..\Web Integration\Examples\Math\FiftyOne.Pipeline.Math.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,601 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+using FiftyOne.Common.TestHelpers;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
+using FiftyOne.Pipeline.Engines.Data;
+using FiftyOne.Pipeline.Engines.FlowElements;
+using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
+using FiftyOne.Pipeline.Engines.FiftyOne.Data;
+using System.Linq;
+
+namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
+{
+    [TestClass]
+    public class SetHeadersElementTests
+    {
+        // These inner classes are used to create stubs for testing against.
+        #region inner classes
+        private class SetHeadersSourceData : ElementDataBase
+        {
+            public SetHeadersSourceData(ILogger<ElementDataBase> logger, IPipeline pipeline) : base(logger, pipeline)
+            {
+            }
+        }
+
+        private class ActivePropertySourceElement : FlowElementBase<SetHeadersSourceData, IElementPropertyMetaData>
+        {
+            private Dictionary<string, object> _propertyValuesToReturn;
+            private IReadOnlyCollection<string> _properties;
+
+            /// <summary>
+            /// Test source element
+            /// </summary>
+            /// <param name="logger"></param>
+            /// <param name="elementDataFactory"></param>
+            /// <param name="propertyValuesToReturn">
+            /// The properties and values that the test element will return.
+            /// </param>
+            /// <param name="properties">
+            /// The properties that should be returned from the element. Might
+            /// be different to the keys in propertyValuesToReturn for some
+            /// tests.
+            /// </param>
+            public ActivePropertySourceElement(
+                ILogger<FlowElementBase<SetHeadersSourceData, IElementPropertyMetaData>> logger,
+                Func<IPipeline, FlowElementBase<SetHeadersSourceData, IElementPropertyMetaData>, SetHeadersSourceData> elementDataFactory,
+                Dictionary<string, object> propertyValuesToReturn,
+                IReadOnlyCollection<string> properties)
+                : base(logger, elementDataFactory)
+            {
+                _propertyValuesToReturn = propertyValuesToReturn;
+                _properties = properties;
+            }
+
+            public override string ElementDataKey => "setheaderssourceelement";
+
+            public override IEvidenceKeyFilter EvidenceKeyFilter => new EvidenceKeyFilterWhitelist(new List<string>());
+
+            public override IList<IElementPropertyMetaData> Properties => _properties
+                .Select(p => new ElementPropertyMetaData(this, p, typeof(object), true))
+                .Cast<IElementPropertyMetaData>()
+                .ToList();
+
+            protected override void ManagedResourcesCleanup()
+            {
+            }
+
+            protected override void ProcessInternal(IFlowData data)
+            {
+                var sourceData = data.GetOrAdd(ElementDataKey, p => CreateElementData(p));
+                sourceData.PopulateFrom(_propertyValuesToReturn);
+            }
+
+            protected override void UnmanagedResourcesCleanup()
+            {
+            }
+        }
+
+        /// <summary>
+        /// Simulates an engine that declares SetHeader* properties but skips adding
+        /// element data to IFlowData (e.g. CloudDeviceDetectionHashEngine when no
+        /// device properties are requested via the 'values' query parameter).
+        /// </summary>
+        private class PassivePropertySourceElement : FlowElementBase<SetHeadersSourceData, IElementPropertyMetaData>
+        {
+            private List<string> _propertyNames;
+
+            public PassivePropertySourceElement(
+                ILogger<FlowElementBase<SetHeadersSourceData, IElementPropertyMetaData>> logger,
+                Func<IPipeline, FlowElementBase<SetHeadersSourceData, IElementPropertyMetaData>, SetHeadersSourceData> elementDataFactory,
+                List<string> propertyNames)
+                : base(logger, elementDataFactory)
+            {
+                _propertyNames = propertyNames;
+            }
+
+            public override string ElementDataKey => "passivesourceelement";
+
+            public override IEvidenceKeyFilter EvidenceKeyFilter => new EvidenceKeyFilterWhitelist(new List<string>());
+
+            public override IList<IElementPropertyMetaData> Properties => _propertyNames
+                .Select(p => new ElementPropertyMetaData(this, p, typeof(object), true))
+                .Cast<IElementPropertyMetaData>()
+                .ToList();
+
+            protected override void ManagedResourcesCleanup()
+            {
+            }
+
+            protected override void ProcessInternal(IFlowData data)
+            {
+                // Intentionally does not add element data to flow data.
+            }
+
+            protected override void UnmanagedResourcesCleanup()
+            {
+            }
+        }
+
+        /// <summary>
+        /// Simulates on-premise engine data where values are accessed
+        /// through TryGetValue (lazy loading from native results) and
+        /// the base _data dictionary is NOT eagerly populated.
+        /// This mirrors DeviceDataBaseOnPremise behavior.
+        /// </summary>
+        private class LazyLoadedSourceData : AspectDataBase
+        {
+            private readonly Dictionary<string, object> _lazyValues;
+
+            public LazyLoadedSourceData(
+                ILogger<AspectDataBase> logger,
+                IPipeline pipeline,
+                IAspectEngine engine,
+                Dictionary<string, object> values)
+                : base(logger, pipeline, engine)
+            {
+                _lazyValues = values;
+            }
+
+            protected override bool TryGetValue<T>(string key, out T value)
+            {
+                if (_lazyValues.TryGetValue(key, out var obj))
+                {
+                    value = (T)obj;
+                    return true;
+                }
+                value = default;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Source element that uses LazyLoadedSourceData to simulate
+        /// an on-premise engine where the base dictionary is not populated.
+        /// </summary>
+        private class LazyLoadedSourceElement :
+            AspectEngineBase<LazyLoadedSourceData, IAspectPropertyMetaData>
+        {
+            private readonly Dictionary<string, object> _propertyValuesToReturn;
+            private readonly IReadOnlyCollection<string> _properties;
+
+            public LazyLoadedSourceElement(
+                ILogger<AspectEngineBase<LazyLoadedSourceData, IAspectPropertyMetaData>> logger,
+                Func<IPipeline, FlowElementBase<LazyLoadedSourceData, IAspectPropertyMetaData>, LazyLoadedSourceData> elementDataFactory,
+                Dictionary<string, object> propertyValuesToReturn,
+                IReadOnlyCollection<string> properties)
+                : base(logger, elementDataFactory)
+            {
+                _propertyValuesToReturn = propertyValuesToReturn;
+                _properties = properties;
+            }
+
+            public override string ElementDataKey => "lazyloadedsourceelement";
+
+            public override IEvidenceKeyFilter EvidenceKeyFilter =>
+                new EvidenceKeyFilterWhitelist(new List<string>());
+
+            public override IList<IAspectPropertyMetaData> Properties => _properties
+                .Select(p => (IAspectPropertyMetaData)new AspectPropertyMetaData(
+                    this, p, typeof(string), "", new List<string>(), true))
+                .ToList();
+
+            public override string DataSourceTier => "test";
+
+            protected override void ManagedResourcesCleanup() { }
+            protected override void UnmanagedResourcesCleanup() { }
+
+            protected override void ProcessEngine(IFlowData data, LazyLoadedSourceData aspectData)
+            {
+                // Values are already in _lazyValues from construction;
+                // we intentionally do NOT call PopulateFrom, mirroring
+                // how on-premise engines work.
+            }
+        }
+        #endregion
+
+        private SetHeadersElement _element;
+        private ActivePropertySourceElement _sourceElement;
+        private TestLoggerFactory _loggerFactory;
+        private IPipeline _pipeline;
+
+        [TestInitialize]
+        public void Init()
+        {
+            _loggerFactory = new TestLoggerFactory();
+        }
+
+        /// <summary>
+        /// Helper method to create the flow elements and configure the pipeline.
+        /// </summary>
+        /// <param name="propertyValues"></param>
+        /// <param name="properties">
+        /// If not provided the keys from propertyValues will be used.
+        /// </param>
+        private void CreatePipeline(
+            Dictionary<string, object> propertyValues,
+            IReadOnlyCollection<string> properties = null)
+        {
+            _sourceElement = new ActivePropertySourceElement(
+                _loggerFactory.CreateLogger<ActivePropertySourceElement>(),
+                (IPipeline pipeline, FlowElementBase<SetHeadersSourceData, IElementPropertyMetaData> element) =>
+                {
+                    return new SetHeadersSourceData(_loggerFactory.CreateLogger<SetHeadersSourceData>(), pipeline);
+                },
+                propertyValues,
+                properties ?? propertyValues.Keys);
+
+            _element = new SetHeadersElementBuilder(_loggerFactory).Build();
+            _pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(_sourceElement)
+                .AddFlowElement(_element)
+                .Build();
+        }
+
+        /// <summary>
+        /// The 'SetHeaderAcceptCH' property contains JSON for a single
+        /// header.
+        /// Output from SetHeadersElement should contain the expected 
+        /// header value.
+        /// </summary>
+        [TestMethod]
+        // Output should be the same whether value is wrapped in 
+        // AspectPropertyValue or not.
+        [DataRow(true)]
+        [DataRow(false)]
+        public void SetHeadersElement(bool valueIsAPV)
+        {
+            var valueStr = "UA-Platform";
+            object value = valueStr;
+            if (valueIsAPV)
+            {
+                value = new AspectPropertyValue<string>(valueStr);
+            }
+
+            var propertyNameValues = new Dictionary<string, object>() 
+            {
+                { "SetHeaderBrowserAccept-CH", value }
+            };
+            CreatePipeline(propertyNameValues);            
+            using var data = _pipeline.CreateFlowData();
+            data.Process();
+
+            // Verify the output
+            var typedOutput = GetFromFlowData(data);
+            Assert.HasCount(1, typedOutput.ResponseHeaderDictionary);
+            Assert.IsTrue(typedOutput.ResponseHeaderDictionary.ContainsKey("Accept-CH"));
+            Assert.AreEqual("UA-Platform", typedOutput.ResponseHeaderDictionary["Accept-CH"]);
+        }
+
+        /// <summary>
+        /// The 'SetHeaderAcceptCH' property is set to various invalid values.
+        /// Output from SetHeadersElement should be an empty dictionary.
+        /// </summary>
+        [TestMethod]
+        [DataRow(null)]
+        [DataRow(123)]
+        [DataRow("Unknown")]
+        public void SetHeadersElement_InvalidPropertyValues(object sourcePropertyValue)
+        {
+            var propertyNameValues = new Dictionary<string, object>()
+            {
+                { "SetHeaderBrowserAccept-CH", sourcePropertyValue }
+            };
+            CreatePipeline(propertyNameValues);
+            using var data = _pipeline.CreateFlowData();
+            data.Process();
+
+            // Verify the output
+            var typedOutput = GetFromFlowData(data);
+            Assert.IsEmpty(typedOutput.ResponseHeaderDictionary);
+        }
+
+        /// <summary>
+        /// Require the element to return a value for a property that is not
+        /// populated and verify that a warning is logged.
+        /// </summary>
+        [TestMethod]
+        public void SetHeadersElement_MissingProperty()
+        {
+            CreatePipeline(new(), ["SetHeaderBrowserAccept-CH"]);
+            using var data = _pipeline.CreateFlowData();
+            data.Process();
+
+            // Verify the output
+            var typedOutput = GetFromFlowData(data);
+            Assert.IsEmpty(typedOutput.ResponseHeaderDictionary);
+            Assert.HasCount(
+                1, 
+                _loggerFactory.Loggers.SelectMany(i=>i.WarningEntries),
+                "One warning should be logged to indicate that the " +
+                "SetHeaderBrowserAccept-CH property could not be found.");
+        }
+
+        /// <summary>
+        /// The 'SetHeader*' property is set to various invalid values
+        /// that are wrapped in an AspectPropertyValue.
+        /// Output from SetHeadersElement should be an empty dictionary.
+        /// </summary>
+        [TestMethod]
+        [DataRow(false)]
+        [DataRow(true, null)]
+        public void SetHeadersElement_APV_InvalidPropertyValues(bool hasValue, string sourcePropertyValue = null)
+        {
+            var value = new AspectPropertyValue<string>();
+            if (hasValue)
+            {
+                value.Value = sourcePropertyValue;
+            }
+
+            var propertyNameValues = new Dictionary<string, object>()
+            {
+                { "SetHeaderBrowserAccept-CH", value }
+            };
+            CreatePipeline(propertyNameValues);
+            using var data = _pipeline.CreateFlowData();
+            data.Process();
+
+            // Verify the output
+            var typedOutput = GetFromFlowData(data);
+            Assert.IsEmpty(typedOutput.ResponseHeaderDictionary);
+        }
+
+        /// <summary>
+        /// Test that various invalid property names cause
+        /// an exception to be thrown
+        /// </summary>
+        [TestMethod]
+        [DataRow("SetHeader")]
+        [DataRow("SetHeaderBrowser")]
+        public void SetHeadersElement_InvalidPropertyNames(string sourcePropertyName)
+        {
+            var propertyNameValues = new Dictionary<string, object>()
+            {
+                { sourcePropertyName, "TEST" }
+            };
+            CreatePipeline(propertyNameValues);
+            using var data = _pipeline.CreateFlowData();
+            Assert.ThrowsExactly<AggregateException>(() => data.Process());
+        }
+
+
+        /// <summary>
+        /// Test that multiple properties will result in multiple headers
+        /// being set in the response.
+        /// </summary>
+        [TestMethod]
+        public void SetHeadersElement_MultipleProperties()
+        {
+            var propertyNameValues = new Dictionary<string, object>()
+            {
+                { "SetHeaderBrowserAccept-CH", "Sec-CH-UA" },
+                { "SetHeaderHardwareCritical-CH", "Sec-CH-UA-Model,Sec-CH-UA-Mobile" }
+            };
+            CreatePipeline(propertyNameValues);
+            using var data = _pipeline.CreateFlowData();
+            data.Process();
+
+            var typedOutput = GetFromFlowData(data);
+            Assert.HasCount(2, typedOutput.ResponseHeaderDictionary);
+            Assert.IsTrue(typedOutput.ResponseHeaderDictionary.ContainsKey("Accept-CH"));
+            Assert.IsTrue(typedOutput.ResponseHeaderDictionary.ContainsKey("Critical-CH"));
+            Assert.AreEqual("Sec-CH-UA",
+                typedOutput.ResponseHeaderDictionary["Accept-CH"]);
+            Assert.AreEqual("Sec-CH-UA-Model,Sec-CH-UA-Mobile",
+                typedOutput.ResponseHeaderDictionary["Critical-CH"]);
+        }
+
+        /// <summary>
+        /// Test that the SetHeadersElement will combine values from 
+        /// multiple properties that are associated with the same header.
+        /// </summary>
+        [TestMethod]
+        public void SetHeadersElement_MultipleProperties_SameHeader()
+        {
+            var propertyNameValues = new Dictionary<string, object>()
+            {
+                { "SetHeaderBrowserAccept-CH", "Sec-CH-UA" },
+                { "SetHeaderHardwareAccept-CH", "Sec-CH-UA-Model,Sec-CH-UA-Mobile" }
+            };
+            CreatePipeline(propertyNameValues);
+            using var data = _pipeline.CreateFlowData();
+            data.Process();
+
+            var typedOutput = GetFromFlowData(data);
+            Assert.HasCount(1, typedOutput.ResponseHeaderDictionary);
+            Assert.IsTrue(typedOutput.ResponseHeaderDictionary.ContainsKey("Accept-CH"));
+            Assert.AreEqual("Sec-CH-UA,Sec-CH-UA-Model,Sec-CH-UA-Mobile", 
+                typedOutput.ResponseHeaderDictionary["Accept-CH"]);
+        }
+
+        /// <summary>
+        /// Test that the SetHeadersElement will remove duplicate values from multiple properties 
+        /// that are associated with the same header.
+        /// I.e. there is only one 'Sec-CH-UA-Model' in the output, despite it appearing in both
+        /// property values below.
+        /// </summary>
+        [TestMethod]
+        public void SetHeadersElement_MultipleProperties_DuplicateValues()
+        {
+            var propertyNameValues = new Dictionary<string, object>()
+            {
+                { "SetHeaderBrowserAccept-CH", "Sec-CH-UA,Sec-CH-UA-Model" },
+                { "SetHeaderHardwareAccept-CH", "Sec-CH-UA-Model,Sec-CH-UA-Mobile" }
+            };
+            CreatePipeline(propertyNameValues);
+            using var data = _pipeline.CreateFlowData();
+            data.Process();
+
+            var typedOutput = GetFromFlowData(data);
+            Assert.HasCount(1, typedOutput.ResponseHeaderDictionary);
+            Assert.IsTrue(typedOutput.ResponseHeaderDictionary.ContainsKey("Accept-CH"));
+            Assert.AreEqual("Sec-CH-UA,Sec-CH-UA-Model,Sec-CH-UA-Mobile",
+                typedOutput.ResponseHeaderDictionary["Accept-CH"]);
+        }
+
+        /// <summary>
+        /// Source element declares a SetHeader* property but skips adding its element data
+        /// to IFlowData (simulating e.g. DeviceDetectionHashEngine when no device
+        /// properties are requested). SetHeadersElement should produce an empty dictionary
+        /// rather than throwing a KeyNotFoundException.
+        /// </summary>
+        [TestMethod]
+        public void SetHeadersElement_SourceElementSkipped_EmptyDictionary()
+        {
+            var passiveElement = new PassivePropertySourceElement(
+                _loggerFactory.CreateLogger<PassivePropertySourceElement>(),
+                (pipeline, element) => new SetHeadersSourceData(
+                    _loggerFactory.CreateLogger<SetHeadersSourceData>(), pipeline),
+                ["SetHeaderBrowserAccept-CH"]);
+
+            _element = new SetHeadersElement(
+                _loggerFactory.CreateLogger<SetHeadersElement>(),
+                (pipeline, element) => new SetHeadersData(
+                    _loggerFactory.CreateLogger<SetHeadersData>(), pipeline));
+
+            _pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(passiveElement)
+                .AddFlowElement(_element)
+                .Build();
+
+            using var data = _pipeline.CreateFlowData();
+            // Should not throw even though the source element added no element data.
+            data.Process();
+
+            var typedOutput = GetFromFlowData(data);
+            Assert.IsEmpty(typedOutput.ResponseHeaderDictionary);
+        }
+
+        /// <summary>
+        /// One source element is active (adds element data with a SetHeader* property)
+        /// and one is passive (skips adding element data). SetHeadersElement should
+        /// include the header from the active element and silently skip the passive one.
+        /// </summary>
+        [TestMethod]
+        public void SetHeadersElement_OneSourceElementSkipped_PartialDictionary()
+        {
+            var activeElement = new ActivePropertySourceElement(
+                _loggerFactory.CreateLogger<ActivePropertySourceElement>(),
+                (pipeline, element) => new SetHeadersSourceData(
+                    _loggerFactory.CreateLogger<SetHeadersSourceData>(), pipeline),
+                new Dictionary<string, object>
+                {
+                    { "SetHeaderBrowserAccept-CH", "Sec-CH-UA" }
+                },
+                ["SetHeaderBrowserAccept-CH"]);
+
+            var passiveElement = new PassivePropertySourceElement(
+                _loggerFactory.CreateLogger<PassivePropertySourceElement>(),
+                (pipeline, _) => new SetHeadersSourceData(
+                    _loggerFactory.CreateLogger<SetHeadersSourceData>(), pipeline),
+                ["SetHeaderHardwareCritical-CH"]);
+
+            _element = new SetHeadersElement(
+                _loggerFactory.CreateLogger<SetHeadersElement>(),
+                (pipeline, _) => new SetHeadersData(
+                    _loggerFactory.CreateLogger<SetHeadersData>(), pipeline));
+
+            _pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(activeElement)
+                .AddFlowElement(passiveElement)
+                .AddFlowElement(_element)
+                .Build();
+
+            using var data = _pipeline.CreateFlowData();
+            data.Process();
+
+            var typedOutput = GetFromFlowData(data);
+            Assert.HasCount(1, typedOutput.ResponseHeaderDictionary);
+            Assert.IsTrue(typedOutput.ResponseHeaderDictionary.ContainsKey("Accept-CH"));
+            Assert.AreEqual("Sec-CH-UA", typedOutput.ResponseHeaderDictionary["Accept-CH"]);
+            Assert.IsFalse(typedOutput.ResponseHeaderDictionary.ContainsKey("Critical-CH"));
+        }
+
+        /// <summary>
+        /// Verify that SetHeadersElement works with on-premise style data
+        /// where the base dictionary is NOT eagerly populated (values are
+        /// only available through the TryGetValue override).
+        /// This test would fail without the AspectDataBase.TryGet override
+        /// that routes through TryGetValue.
+        /// </summary>
+        [TestMethod]
+        [DataRow(true)]
+        [DataRow(false)]
+        public void SetHeadersElement_LazyLoadedData(bool valueIsAPV)
+        {
+            var valueStr = "Sec-CH-UA";
+            object value = valueIsAPV
+                ? new AspectPropertyValue<string>(valueStr)
+                : (object)valueStr;
+
+            var propertyValues = new Dictionary<string, object>()
+            {
+                { "SetHeaderBrowserAccept-CH", value }
+            };
+
+            var lazyElement = new LazyLoadedSourceElement(
+                _loggerFactory.CreateLogger<LazyLoadedSourceElement>(),
+                (pipeline, element) => new LazyLoadedSourceData(
+                    _loggerFactory.CreateLogger<LazyLoadedSourceData>(),
+                    pipeline,
+                    (IAspectEngine)element,
+                    propertyValues),
+                propertyValues,
+                propertyValues.Keys);
+
+            _element = new SetHeadersElementBuilder(_loggerFactory).Build();
+            _pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(lazyElement)
+                .AddFlowElement(_element)
+                .Build();
+
+            using var data = _pipeline.CreateFlowData();
+            data.Process();
+
+            var typedOutput = GetFromFlowData(data);
+            Assert.HasCount(1, typedOutput.ResponseHeaderDictionary);
+            Assert.IsTrue(typedOutput.ResponseHeaderDictionary.ContainsKey("Accept-CH"));
+            Assert.AreEqual("Sec-CH-UA", typedOutput.ResponseHeaderDictionary["Accept-CH"]);
+
+            Assert.IsEmpty(
+                _loggerFactory.Loggers.SelectMany(i => i.WarningEntries),
+                "No warnings should be logged when values are available " +
+                "through lazy loading.");
+        }
+
+        private SetHeadersData GetFromFlowData(IFlowData data)
+        {
+            var output = data.ElementDataAsDictionary();
+            var elementOutput = output[_element.ElementDataKey];
+            Assert.IsNotNull(elementOutput);
+            Assert.IsInstanceOfType(elementOutput, typeof(SetHeadersData));
+            var typedOutput = elementOutput as SetHeadersData;
+            Assert.IsNotNull(typedOutput.ResponseHeaderDictionary);
+            return typedOutput;
+        }
+    }
+}

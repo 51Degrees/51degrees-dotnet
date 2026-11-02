@@ -1,0 +1,182 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+namespace FiftyOne.Pipeline.CloudRequestEngine
+{
+    /// <summary>
+    /// Cloud request engine constants.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", 
+        "CA1707:Identifiers should not contain underscores", 
+        Justification = "51Degrees coding style is for constant names " +
+            "to be all-caps with an underscore to separate words.")]
+    public static class Constants
+    {
+        /// <summary>
+        /// This is the environment variable key which can be used to specify 
+        /// the  URL for the cloud service.
+        /// </summary>
+        public const string FOD_CLOUD_API_URL = "FOD_CLOUD_API_URL";
+
+        /// <summary>
+        /// Default URL and API path for the cloud service.
+        /// </summary>
+        public const string CLOUD_URI_DEFAULT = "https://cloud.51degrees.com/api/v4/";
+
+        /// <summary>
+        /// Default filename for the data endpoint.
+        /// </summary>
+        public const string DATA_FILENAME = "json";
+
+        /// <summary>
+        /// Default filename for the properties endpoint.
+        /// </summary>
+        public const string PROPERTIES_FILENAME = "accessibleproperties";
+
+        /// <summary>
+        /// Default filename for the evidence keys endpoint.
+        /// </summary>
+        public const string EVIDENCE_KEYS_FILENAME = "evidencekeys";
+
+        /// <summary>
+        /// Default data endpoint for cloud service.
+        /// </summary>
+        public const string DATA_ENDPOINT_DEFAULT = CLOUD_URI_DEFAULT + DATA_FILENAME;
+
+        /// <summary>
+        /// Default properties endpoint for cloud service.
+        /// </summary>
+        public const string PROPERTIES_ENDPOINT_DEFAULT = CLOUD_URI_DEFAULT + PROPERTIES_FILENAME;
+
+        /// <summary>
+        /// Default evidence keys endpoint for cloud service.
+        /// </summary>
+        public const string EVIDENCE_KEYS_ENDPOINT_DEFAULT = CLOUD_URI_DEFAULT + EVIDENCE_KEYS_FILENAME;
+
+        /// <summary>
+        /// The name of the origin HTTP header
+        /// </summary>
+        public const string ORIGIN_HEADER_NAME = "Origin";
+
+        /// <summary>
+        /// Default value for license key when building CloudRequestEngine
+        /// </summary>
+        public const string LICENSE_KEY_DEFAULT = null;
+
+        /// <summary>
+        /// Default value for resource key when building CloudRequestEngine
+        /// </summary>
+        public const string RESOURCE_KEY_DEFAULT = null;
+
+        /// <summary>
+        /// Default value that the origin header will be set to when calling 
+        /// the cloud service with CloudRequestEngine
+        /// </summary>
+        public const string CLOUD_REQUEST_ORIGIN_DEFAULT = null;
+
+        /// <summary>
+        /// Default timeout in seconds for a request to the cloud service.
+        /// This bounds how long a caller thread blocks on a slow or
+        /// unreachable cloud, so it is kept low. Because an occasional
+        /// slow request that hits this timeout is counted as a failure,
+        /// the recovery circuit breaker is deliberately insensitive
+        /// (see <c>CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_DEFAULT</c>
+        /// and <c>CLOUD_REQUEST_FAILURES_WINDOW_SECONDS_DEFAULT</c>) so
+        /// that stray timeouts on a healthy cloud do not trip it; only a
+        /// sustained high failure rate, which signals a real outage, does.
+        /// </summary>
+        public const int CLOUD_REQUEST_TIMEOUT_DEFAULT_SECONDS = 2;
+
+        /// <summary>
+        /// Default recovery period in seconds for CloudRequestEngine once
+        /// the failure threshold trips the breaker. Kept short so that a
+        /// trip suppresses requests only briefly before probing the cloud
+        /// again, which bounds both the blackout and the exception volume
+        /// emitted while the breaker is open.
+        /// </summary>
+        public const double CLOUD_REQUEST_RECOVERY_SECONDS_DEFAULT = 10.0;
+
+        /// <summary>
+        /// Whether exponential backoff is enabled by default. Enabled so
+        /// that after a trip the breaker probes the cloud again quickly
+        /// (see the initial delay below) rather than sitting in a fixed
+        /// <see cref="CLOUD_REQUEST_RECOVERY_SECONDS_DEFAULT"/> blackout,
+        /// backing off further only if the outage persists. When this is
+        /// true the simple <see cref="CLOUD_REQUEST_RECOVERY_SECONDS_DEFAULT"/>
+        /// period is not used.
+        /// </summary>
+        public const bool CLOUD_REQUEST_EXPONENTIAL_BACKOFF_ENABLED_DEFAULT = true;
+
+        /// <summary>
+        /// Default initial delay in seconds for exponential backoff recovery.
+        /// The first recovery probe after a trip happens this soon, so a
+        /// brief cloud blip clears quickly.
+        /// </summary>
+        public const double CLOUD_REQUEST_EXPONENTIAL_BACKOFF_INITIAL_DELAY_SECONDS_DEFAULT = 2.0;
+
+        /// <summary>
+        /// Default maximum delay in seconds for exponential backoff recovery.
+        /// Caps how long the breaker stays suppressed between probes so a
+        /// prolonged outage never parks recovery for long.
+        /// </summary>
+        public const double CLOUD_REQUEST_EXPONENTIAL_BACKOFF_MAX_DELAY_SECONDS_DEFAULT = 10.0;
+
+        /// <summary>
+        /// Default multiplier for exponential backoff recovery.
+        /// </summary>
+        public const double CLOUD_REQUEST_EXPONENTIAL_BACKOFF_MULTIPLIER_DEFAULT = 2.0;
+
+        /// <summary>
+        /// Default number of failures to occur within some time
+        /// for CloudRequestEngine to temporarily stop sending requests.
+        /// </summary>
+        public const int CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_MIN = 1;
+
+        /// <summary>
+        /// Maximal number of failures to occur within some time
+        /// for CloudRequestEngine to temporarily stop sending requests.
+        /// </summary>
+        public const int CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_MAX = 1000;
+
+        /// <summary>
+        /// Default number of failures that must occur within
+        /// <see cref="CLOUD_REQUEST_FAILURES_WINDOW_SECONDS_DEFAULT"/>
+        /// for CloudRequestEngine to enter its recovery period. Set high
+        /// so that stray request timeouts on an otherwise healthy cloud
+        /// do not trip the breaker; reaching this many failures in the
+        /// window signals that the cloud is genuinely unavailable rather
+        /// than occasionally slow.
+        /// </summary>
+        public const int CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_DEFAULT = 100;
+
+        /// <summary>
+        /// Default time period in seconds within which
+        /// <see cref="CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_DEFAULT"/>
+        /// failed requests must occur for CloudRequestEngine to enter its
+        /// recovery period. A short window means the threshold reflects a
+        /// failure rate (a burst of failures signalling an outage) rather
+        /// than failures accumulated slowly over a long period.
+        /// </summary>
+        public const int CLOUD_REQUEST_FAILURES_WINDOW_SECONDS_DEFAULT = 10;
+
+    }
+}

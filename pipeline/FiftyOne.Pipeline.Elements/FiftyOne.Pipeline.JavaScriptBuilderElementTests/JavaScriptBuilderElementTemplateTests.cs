@@ -1,0 +1,542 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Core.TypedMap;
+using FiftyOne.Pipeline.JavaScriptBuilder.Data;
+using FiftyOne.Pipeline.JavaScriptBuilder.FlowElement;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
+using Newtonsoft.Json.Linq;
+using OpenQA.Selenium;
+using System.IO;
+using System.Text;
+
+namespace FiftyOne.Pipeline.JavaScript.Tests
+{
+    [TestClass]
+    public class JavaScriptBuilderElementTemplateTests: JavaScriptBuilderElementTestsBase
+    {
+        private WebApplication webApp { get; set; }
+        private CancellationTokenSource webAppKillSwitch { get; set; }
+        private JObject jsonData { get; set; } = new();
+        private string fullJS { get; set; } = "";
+
+        /// <summary>
+        /// Server-side captured POST data from requests to /51dpipeline/json.
+        /// </summary>
+        private string capturedPostData { get; set; }
+        /// <summary>
+        /// Server-side flag set when /51dpipeline/completed is called.
+        /// </summary>
+        private bool capturedCompleted { get; set; }
+
+        [ClassInitialize]
+        public static new void ClassInit(TestContext context) => JavaScriptBuilderElementTestsBase.ClassInit(context).Wait();
+
+        [ClassCleanup]
+        public static new void ClassCleanup() => JavaScriptBuilderElementTestsBase.ClassCleanup().Wait();
+
+        [TestInitialize]
+        public override async Task Init()
+        {
+            await base.Init();
+
+            var builder = WebApplication.CreateBuilder();
+            webApp = builder.Build();
+
+            webApp.MapGet("/51dpipeline/js", () => Results.Content(fullJS, "text/javascript"));
+            webApp.MapGet("/{*rest}", (string rest) =>
+            Results.Content(
+            """
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Test Page</title>
+              </head>
+              <script src="/51dpipeline/js">
+              </script>
+              <body>
+                Did the script already finish??
+              </body>
+            </html>
+            """
+            , "text/html"));
+            webApp.MapPost("/51dpipeline/json", async (HttpContext ctx) =>
+            {
+                using var reader = new StreamReader(ctx.Request.Body);
+                var body = await reader.ReadToEndAsync();
+                capturedPostData = body;
+                Console.WriteLine($"[POST DATA] > {body}");
+                return Results.Content(jsonData.ToString(), "application/json");
+            });
+            webApp.MapPost("/51dpipeline/completed", () =>
+            {
+                capturedCompleted = true;
+                return Results.Empty;
+            });
+
+            webApp.Use((ctx, next) =>
+            {
+                ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
+                ctx.Response.Headers["Cache-Control"] = "no-store";
+                return next();
+            });
+
+            webApp.Urls.Add(ClientServerUrl);
+
+            webAppKillSwitch = new CancellationTokenSource();
+            await webApp.StartAsync(webAppKillSwitch.Token);
+
+            Driver.Manage().Cookies.DeleteAllCookies();
+            // Navigate to the client site.
+            Driver.Navigate().GoToUrl(ClientServerUrl);
+        }
+
+        private static string BuildXHRJS(string dstUrl, string method = "POST", string postData = "dummy", bool acceptJson = false)
+        {
+            StringBuilder s = new();
+            s.Append("xhr = new XMLHttpRequest();");
+            s.Append($"xhr.open('{method}', '{dstUrl}', true);");
+            if (acceptJson)
+            {
+                s.Append("xhr.setRequestHeader(\"Accept\", \"application/json;charset=UTF-8\");");
+            }
+            s.Append($"xhr.send('{postData}');");
+            return s.ToString();
+        }
+
+
+        [TestMethod]
+        [Timeout(300_000)]
+        public void JavaScriptBuilderTemplate_VerifyInterception()
+        {
+            capturedPostData = null;
+            IJavaScriptExecutor js = Driver;
+            var q = js.ExecuteScript(BuildXHRJS($"{ClientServerUrl}51dpipeline/json"));
+            WaitUntil(() => capturedPostData != null, "POST data from intercepted XHR");
+            Assert.IsNotNull(capturedPostData);
+        }
+
+        private string BuildTemplateScript(JObject data, bool enableCookies = false)
+        {
+            int firstColon = ClientServerUrl.IndexOf(":");
+            var javaScriptBuilderElement =
+                new JavaScriptBuilderElementBuilder(LoggerFactory)
+                .SetMinify(false)
+                .SetProtocol(ClientServerUrl.Substring(0, firstColon))
+                .SetHost(ClientServerUrl.Substring(firstColon + 3))
+                .SetEnableCookies(enableCookies)
+                .Build();
+            var flowData = new Mock<IFlowData>();
+            Configure(flowData, data);
+
+            IJavaScriptBuilderElementData result = null;
+            flowData.Setup(d => d.GetOrAdd(
+                It.IsAny<ITypedKey<IJavaScriptBuilderElementData>>(),
+                It.IsAny<Func<IPipeline, IJavaScriptBuilderElementData>>()))
+                .Returns<ITypedKey<IJavaScriptBuilderElementData>, Func<IPipeline, IJavaScriptBuilderElementData>>((k, f) =>
+                {
+                    result = f(flowData.Object.Pipeline);
+                    return result;
+                });
+
+            javaScriptBuilderElement.Process(flowData.Object);
+            return result.JavaScript;
+        }
+
+        /// <summary>
+        /// Waits until the script reports that processing has finished,
+        /// through fod.complete(), and leaves the data it delivered in
+        /// window.fodCompleteData for the test to read.
+        /// </summary>
+        /// <remarks>
+        /// The tests below were first written against fod.isComplete and
+        /// fod.data. Both were taken out of the template before it merged,
+        /// in javascript-templates commit 4a388ee, because their semantics
+        /// were unsettled. Completion is read here through complete()
+        /// instead, which fires on the same condition, completed or failed,
+        /// and hands over the same object fod.data held. A complete()
+        /// registered after processing has finished is called at once, so
+        /// it does not matter whether the page or the test gets here first.
+        /// </remarks>
+        private void WaitForComplete(IJavaScriptExecutor js, string description)
+        {
+            WaitUntil(
+                () => js.ExecuteScript("return typeof window.fod === 'object';") is bool b && b,
+                "window.fod to exist");
+            js.ExecuteScript(
+                "window.fodCompleted = false; window.fodCompleteData = null;" +
+                "window.fod.complete(function (data) {" +
+                " window.fodCompleteData = data; window.fodCompleted = true; });");
+            WaitUntil(
+                () => js.ExecuteScript("return window.fodCompleted === true;") is bool b && b,
+                description);
+        }
+
+        [TestMethod]
+        [Timeout(300_000)]
+        public void JavaScriptBuilderTemplate_PageContract_StaticJson()
+        {
+            jsonData = new JObject {
+                { "device", new JObject { { "ismobile", "True" } } },
+            };
+            fullJS = BuildTemplateScript(jsonData);
+
+            Driver.Manage().Cookies.DeleteAllCookies();
+            ((IJavaScriptExecutor)Driver).ExecuteScript("sessionStorage.clear();");
+            Driver.Navigate().GoToUrl(ClientServerUrl);
+
+            IJavaScriptExecutor js = Driver;
+            WaitForComplete(js, "fod.complete() to fire");
+            Assert.AreEqual("True", (string)js.ExecuteScript("return window.fodCompleteData.device.ismobile;"),
+                "complete() must deliver the embedded JSON");
+            Assert.AreEqual("True", (string)js.ExecuteScript("return window.fod.device.ismobile;"),
+                "and the object itself must read the same value");
+            Assert.IsNull(capturedPostData);
+        }
+
+        [TestMethod]
+        [Timeout(300_000)]
+        public void JavaScriptBuilderTemplate_PageContract_DataTracksRefreshedJson()
+        {
+            var embeddedJson = new JObject {
+                { "device", new JObject { { "snippetjavascript", "window.snippet_ran_51d = true;" } } },
+                { "javascriptProperties", new JArray { "device.snippetjavascript" } },
+            };
+            var refreshedJson = new JObject {
+                { "device", new JObject { { "marker", "refreshed" } } },
+            };
+            jsonData = refreshedJson;
+            fullJS = BuildTemplateScript(embeddedJson);
+
+            Driver.Manage().Cookies.DeleteAllCookies();
+            ((IJavaScriptExecutor)Driver).ExecuteScript("sessionStorage.clear();");
+            Driver.Navigate().GoToUrl(ClientServerUrl);
+
+            IJavaScriptExecutor js = Driver;
+            WaitForComplete(js, "fod.complete() to fire after refresh");
+            Assert.AreEqual("refreshed", (string)js.ExecuteScript("return window.fodCompleteData.device.marker;"),
+                "complete() must deliver the refreshed JSON, not the embedded one");
+            Assert.AreEqual("refreshed", (string)js.ExecuteScript("return window.fod.device.marker;"),
+                "and the object itself must read the refreshed value");
+        }
+
+        [TestMethod]
+        [Timeout(300_000)]
+        public void JavaScriptBuilderTemplate_EvidenceBox_RidesPostBodyAndInputsRecordOnly()
+        {
+            var embeddedJson = new JObject {
+                { "device", new JObject { { "snippetjavascript", "window.snippet_ran_51d = true;" } } },
+                { "javascriptProperties", new JArray { "device.snippetjavascript" } },
+            };
+            jsonData = new JObject {
+                { "device", new JObject { { "marker", "refreshed" } } },
+            };
+            capturedPostData = null;
+            fullJS = "window.fodEvidence = { 'id.email': 'user@example.com' };"
+                + BuildTemplateScript(embeddedJson);
+
+            Driver.Manage().Cookies.DeleteAllCookies();
+            ((IJavaScriptExecutor)Driver).ExecuteScript("sessionStorage.clear();");
+            Driver.Navigate().GoToUrl(ClientServerUrl);
+
+            WaitUntil(() => capturedPostData != null, "POST data with id.email");
+            Assert.IsTrue(
+                capturedPostData.Contains("id.email=user%40example.com"),
+                $"[{capturedPostData}] does not contain the url-encoded email");
+
+            IJavaScriptExecutor js = Driver;
+            WaitForComplete(js, "fod.complete() to fire");
+
+            // The record of the request's inputs is kept in session storage
+            // under fod_inputs as the plain string, id.email included where
+            // the page supplied it, so that a stored answer is never reused
+            // for different inputs. It is not hashed, because session storage
+            // on the publisher's origin is reachable only by the joint
+            // controllers, being the publisher and 51Degrees. That record is
+            // the one place the email may be stored. Any other entry is still
+            // a leak, and so is the unencoded email in any entry at all.
+            var rawEmailKeys = ((IReadOnlyCollection<object>)js.ExecuteScript(
+                "var found = [];" +
+                "for (var i = 0; i < sessionStorage.length; i++) {" +
+                " var k = sessionStorage.key(i); var v = sessionStorage.getItem(k);" +
+                " if (v && v.indexOf('user@example.com') !== -1) found.push(k); }" +
+                "return found;")).Select(k => (string)k).ToList();
+            Assert.AreEqual(0, rawEmailKeys.Count,
+                "email leaked to sessionStorage unencoded, in: " +
+                string.Join(", ", rawEmailKeys));
+            var encodedEmailKeys = ((IReadOnlyCollection<object>)js.ExecuteScript(
+                "var found = [];" +
+                "for (var i = 0; i < sessionStorage.length; i++) {" +
+                " var k = sessionStorage.key(i); var v = sessionStorage.getItem(k);" +
+                " if (v && v.indexOf('user%40example.com') !== -1) found.push(k); }" +
+                "return found;")).Select(k => (string)k).ToList();
+            CollectionAssert.AreEqual(new[] { "fod_inputs" }, encodedEmailKeys,
+                "email leaked to sessionStorage outside the record of the " +
+                "request's inputs, or the record no longer holds it as the " +
+                "plain string, found in: " + string.Join(", ", encodedEmailKeys));
+            Assert.IsFalse((bool)js.ExecuteScript(
+                "return document.cookie.indexOf('user') !== -1;"), "email leaked to cookies");
+            Assert.IsFalse((bool)js.ExecuteScript(
+                "return window.location.href.indexOf('user') !== -1;"), "email leaked to URL");
+        }
+
+        public static IEnumerable<object[]> GetValidateSetCookieBlockData()
+        {
+            string[][] snippetFragments =
+            {
+                ["javascriptalpha", "", "\"51D_alpha=\" + 42", "", "51D_alpha=42"], // plain plus
+                ["javascriptbeta", "if(true){", "\"51D_beta=\" + 29", "}", "51D_beta=29"], // plus in block
+                ["gammajavascript", "", "\"51D_gamma=\" + \"zoomies\"", ", a=7", "51D_gamma=zoomies"], // plus in comma
+                ["kappajavascript", "let q = x => x(3); q(e => ", "\"51D_kappa=\" + e", ")", "51D_kappa=3"], // plus in lambda
+                ["omegajavascript", "let q = x => x(7); q(e => ", "`51D_omega=${e}`", ")", "51D_omega=7"], // template in lambda
+            };
+            bool[] useCookies = { true, false };
+            return snippetFragments.SelectMany(snippet => useCookies.Select(use =>
+            {
+                var args = new object[snippet.Length + 1];
+                for(int i = 0; i < snippet.Length; ++i)
+                {
+                    args[i] = snippet[i];
+                }
+                args[snippet.Length] = use;
+                return args;
+            }));
+        }
+
+        [TestMethod]
+        [DynamicData(nameof(GetValidateSetCookieBlockData), DynamicDataSourceType.Method)]
+        [Timeout(600_000)]
+        public void JavaScriptBuilderTemplate_ValidateSetCookieBlockCall(
+            string propName,
+            string prefixJunk,
+            string propSetExpr,
+            string suffixJunk,
+            string expectedData,
+            bool enableCookies)
+        {
+            // ----- ----- PHASE 0. Preparation ----- -----
+
+            // Build code fragments
+
+            Func<string, string, string, string, string, (JObject json, string expectedData, string testCode)> BuildNewDataObject = (propName, prefixJunk, propSetExpr, suffixJunk, expectedData)
+                =>
+            {
+                string propSetFlag = $"{propName}_snippet_set_block_called_51d";
+                string propCode =
+                    $"""
+                console.log("starting snippet ({propName})");
+                {prefixJunk}document.cookie = {propSetExpr}{suffixJunk}
+                ;
+                window.{propSetFlag} = true;
+                console.log("leaving snippet ({propName})");
+                """;
+                string testCode = $"return window.{propSetFlag};";
+
+                return (
+                    new JObject {
+                        { "device", new JObject { { propName, propCode } } },
+                        { "javascriptProperties", new JArray { $"device.{propName}" } },
+                    },
+                    expectedData,
+                    testCode
+                );
+            };
+
+            // Reusable blocks
+
+            Func<JObject, string> BuildScript = (jsonData) =>
+            {
+                int firstColon = ClientServerUrl.IndexOf(":");
+                var javaScriptBuilderElement =
+                    new JavaScriptBuilderElementBuilder(LoggerFactory)
+                    .SetMinify(false)
+                    .SetProtocol(ClientServerUrl.Substring(0, firstColon))
+                    .SetHost(ClientServerUrl.Substring(firstColon + 3))
+                    .SetEnableCookies(enableCookies)
+                    .Build();
+                var flowData = new Mock<IFlowData>();
+                Configure(flowData, jsonData);
+
+                IJavaScriptBuilderElementData result = null;
+                flowData.Setup(d => d.GetOrAdd(
+                    It.IsAny<ITypedKey<IJavaScriptBuilderElementData>>(),
+                    It.IsAny<Func<IPipeline, IJavaScriptBuilderElementData>>()))
+                    .Returns<ITypedKey<IJavaScriptBuilderElementData>, Func<IPipeline, IJavaScriptBuilderElementData>>((k, f) =>
+                    {
+                        result = f(flowData.Object.Pipeline);
+                        return result;
+                    });
+
+                javaScriptBuilderElement.Process(flowData.Object);
+                return result.JavaScript;
+            };
+
+            // Completion testers
+
+            capturedPostData = null;
+            capturedCompleted = false;
+            Action<string> WaitAndValidatePostData = (expectedData) =>
+            {
+                WaitUntil(() => capturedPostData != null, $"POST data containing [{expectedData}]");
+                Assert.IsTrue(capturedPostData.Contains(expectedData), $"[{capturedPostData}] does not contain [{expectedData}]");
+            };
+            Action WaitAndValidateScriptCompletion = () => {
+                WaitUntil(() => capturedCompleted, "script completion callback");
+            };
+            IJavaScriptExecutor js = Driver;
+            Action<string> WaitAndValidateSnippetCalled = (testCode) =>
+            {
+                object lastResult = null;
+                WaitUntil(() =>
+                {
+                    lastResult = js.ExecuteScript(testCode);
+                    return lastResult is bool;
+                }, $"snippet flag from [{testCode}]");
+                Assert.IsTrue((bool)lastResult);
+            };
+
+            string additionalCode
+                = "; window.onload = (e) => { fod.complete(function (data) { "
+                + BuildXHRJS($"{ClientServerUrl}51dpipeline/completed", acceptJson: true)
+                + " }); };";
+
+            // ----- ----- PHASE 1. Run script to set values ----- -----
+
+            Console.WriteLine(
+                """
+                ===== ===== ===== ===== =====
+                           PHASE 1
+                
+                """);
+
+            var mainData = BuildNewDataObject(propName, prefixJunk, propSetExpr, suffixJunk, expectedData);
+            jsonData = mainData.json;
+            fullJS = BuildScript(jsonData) + additionalCode;
+
+            // Reload page to trigger script execution
+            Driver.Manage().Cookies.DeleteAllCookies();
+            Driver.Navigate().GoToUrl(ClientServerUrl);
+
+            WaitAndValidatePostData(expectedData);
+            WaitAndValidateScriptCompletion();
+            WaitAndValidateSnippetCalled(mainData.testCode);
+
+            // ----- ----- PHASE 2. Replace snippet code, check post data still contains saved value ----- -----
+
+            Console.WriteLine(
+                """
+                ===== ===== ===== ===== =====
+                           PHASE 2
+                
+                """);
+
+            var secondaryData = BuildNewDataObject("prop2javascript", "", "\"51D_prop2=\"+769", "", "51D_prop2=769");
+            jsonData = secondaryData.json;
+            capturedPostData = null;
+            capturedCompleted = false;
+
+            string lastFullJS = fullJS;
+            fullJS = BuildScript(jsonData) + additionalCode;
+            Assert.AreNotEqual(lastFullJS, fullJS);
+
+            string extraCookie = "51D_saved_ext=829";
+            if (enableCookies)
+            {
+                Driver.Manage().Cookies.AddCookie(new Cookie(extraCookie.Split("=")[0], extraCookie.Split("=")[1]));
+            }
+
+            // Reload page to trigger script execution
+            Driver.Navigate().GoToUrl(ClientServerUrl);
+
+            WaitAndValidatePostData(secondaryData.expectedData);
+            WaitAndValidatePostData(mainData.expectedData);
+            if (enableCookies)
+            {
+                WaitAndValidatePostData(extraCookie);
+            }
+            WaitAndValidateScriptCompletion();
+            WaitAndValidateSnippetCalled(secondaryData.testCode);
+            Assert.IsNull(js.ExecuteScript(mainData.testCode));
+
+            // Check for no cookies
+            // TODO: Make more strict after template PR merge
+            int cookieCount = Driver.Manage().Cookies.AllCookies.Count;
+            if (!enableCookies && cookieCount > 0)
+            {
+                Assert.Fail($"Detected cookies after script completion: {cookieCount}");
+            }
+        }
+
+        private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(60);
+
+        /// <summary>
+        /// Polls <paramref name="condition"/> until it returns true or
+        /// <see cref="WaitTimeout"/> elapses, failing the test on timeout.
+        /// Replaces the previous unbounded spin loops: those would hang until the
+        /// runner's hang-dump aborted the thread mid-WebDriver-command, crashing
+        /// the shared Chrome tab and poisoning every later test in the class.
+        /// </summary>
+        private void WaitUntil(Func<bool> condition, string description)
+        {
+            var deadline = DateTime.UtcNow + WaitTimeout;
+            while (!condition())
+            {
+                DumpNewLogs();
+                if (DateTime.UtcNow >= deadline)
+                {
+                    Assert.Fail($"Timed out after {WaitTimeout.TotalSeconds:0}s waiting for {description}.");
+                }
+                Thread.Sleep(1000);
+            }
+            DumpNewLogs();
+        }
+
+        private void DumpNewLogs()
+        {
+            bool hrPrinted = false;
+            var entries = Driver.Manage().Logs.GetLog(LogType.Browser);
+            foreach (var entry in entries)
+            {
+                if (!hrPrinted)
+                {
+                    Console.WriteLine("----- ----- -----");
+                    hrPrinted = true;
+                }
+                Console.WriteLine($"[BROWSER] > ${entry}");
+            }
+        }
+
+        [TestCleanup]
+        public override async Task Cleanup()
+        {
+            await base.Cleanup();
+            capturedPostData = null;
+            capturedCompleted = false;
+            webAppKillSwitch.Cancel();
+            await webApp.StopAsync();
+            jsonData.RemoveAll();
+        }
+    }
+}
