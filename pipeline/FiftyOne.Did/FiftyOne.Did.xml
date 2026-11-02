@@ -1727,6 +1727,27 @@
             the person's browsing history or interactions.
             </summary>
         </member>
+        <member name="T:FiftyOne.Did.Model.UsageExtensions">
+            <summary>
+            The mapping between <see cref="T:FiftyOne.Did.Model.Usage"/> and the <c>id.usage</c>
+            string the cloud uses, so an application can send back the usage
+            it read without spelling the values out itself. Every 51Did
+            package exposes this mapping.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.Did.Model.UsageExtensions.IdUsage(FiftyOne.Did.Model.Usage)">
+            <summary>
+            The <c>id.usage</c> value the cloud uses for this usage:
+            <c>non-marketing</c>, <c>standard</c> or <c>personalized</c>.
+            </summary>
+            <param name="usage">
+            The usage read from a 51Did.
+            </param>
+            <returns>
+            The <c>id.usage</c> string, or null for a value that is not one
+            of the three usages the cloud issues.
+            </returns>
+        </member>
         <member name="F:Owid.Client.Constants.BaseDate">
             <summary>
             The base data for OWIDs. The date and time information is stored
