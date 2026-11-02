@@ -521,9 +521,9 @@ whose signature covers the original bytes. Compare them by content.
 
 - `https://github.com/SWAN-community/owid-dotnet`, OWID envelope
   library this package builds on.
-- The [51Did inspector](https://51degrees.com/developers/51did-inspector?utm_source=github&utm_medium=readme&utm_campaign=pipeline-dotnet&utm_content=fiftyone.did-readme.md&utm_term=see-also)
+- The [51Did inspector](https://51degrees.com/developers/51did-inspector?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=fiftyone.did-readme.md&utm_term=see-also)
   on `51degrees.com` for a visual breakdown of the same byte layout,
   with signature verification and a "Live 51d.es v3" sample.
-- The [51Did comparer](https://51degrees.com/developers/51did-comparer?utm_source=github&utm_medium=readme&utm_campaign=pipeline-dotnet&utm_content=fiftyone.did-readme.md&utm_term=see-also)
+- The [51Did comparer](https://51degrees.com/developers/51did-comparer?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=fiftyone.did-readme.md&utm_term=see-also)
   for a side-by-side, byte-by-byte comparison of two 51Dids that
   highlights the envelope-vs-match-key distinction in action.

@@ -291,7 +291,7 @@ namespace FiftyOne.Did.Examples.Tests
         {
             var page = PageText();
             StringAssert.Contains(page, "Find out more");
-            StringAssert.Contains(page, "utm_campaign=pipeline-dotnet");
+            StringAssert.Contains(page, "utm_campaign=51degrees-dotnet");
             StringAssert.Contains(
                 page, "https://github.com/51Degrees/pipeline-dotnet");
         }

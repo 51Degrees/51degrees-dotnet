@@ -56,7 +56,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             "'{0}'. Check or create a resource key with the properties you " +
             "need in the configurator at " +
             "https://configure.51degrees.com?utm_source=code&utm_medium=comment" +
-            "&utm_campaign=pipeline-dotnet&utm_content=fiftyone.pipeline." +
+            "&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline." +
             "cloudrequestengine-messages.resx&utm_term=" +
             "exceptionfailedtoloadproperties.";
 

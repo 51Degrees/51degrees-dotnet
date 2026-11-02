@@ -86,7 +86,7 @@ namespace AspNetCore
                      resourceKey.ToString().StartsWith("!!")))
                 {
                     throw new Exception("You need to create a resource key at " +
-                        "https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=location-dotnet&utm_content=examples-cloud-aspnetcore-startup.cs&utm_term=resource-key-required and paste it into the " +
+                        "https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-aspnetcore-startup.cs&utm_term=resource-key-required and paste it into the " +
                         "appsettings.json file in this example.");
                 }
             }

@@ -43,7 +43,7 @@ using FiftyOne.IpIntelligence.Translation.FlowElements;
 /// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/ip-intelligence/OnPremise/GettingStarted-Web). 
 /// 
 /// This example requires an enterprise IP Intelligence data file (.ipi). 
-/// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-onpremise-gettingstarted-web-startup.cs&amp;utm_term=header).
+/// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-gettingstarted-web-startup.cs&amp;utm_term=header).
 /// 
 /// Required NuGet Dependencies:
 /// - [Microsoft.AspNetCore.App](https://www.nuget.org/packages/Microsoft.AspNetCore.App/)

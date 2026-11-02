@@ -56,7 +56,7 @@ using System.Net.Http;
 /// For production use, you will eventually need to use a Distributor service and license key
 /// to keep your data file updated.
 /// 
-/// To obtain access to enterprise data files for hosting, please contact us at https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-onpremise-updatedatafile-console-program.cs&amp;utm_term=header
+/// To obtain access to enterprise data files for hosting, please contact us at https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-updatedatafile-console-program.cs&amp;utm_term=header
 /// 
 /// # Command Line Usage
 /// The data file path is provided via the first command line argument. Here's how it works:
@@ -284,7 +284,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                         // file to a temporary file (createTempDataCopy parameter == true).
                         //
                         // For automatic updates from the distributor service you will need to provide a license key.
-                        // A license key can be obtained with a subscription from https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=run
+                        // A license key can be obtained with a subscription from https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=run
                         // For testing with a custom URL, no license key is required.
                         .UseOnPremise(dataFile, licenseKey ?? string.Empty, true)
                         // Enable update on startup, the auto update system
@@ -378,7 +378,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                 {
                     logger.LogError("In order to test this example you will need a 51Degrees " +
                                     "Enterprise license which can be obtained on a trial basis or purchased " +
-                                    "from our pricing page https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=license-key-required. You must supply the " +
+                                    "from our pricing page https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=license-key-required. You must supply the " +
                                     "license key " + KEY_SUBMISSION_PATHS);
                     throw new ArgumentException("No license key available", nameof(licenseKey));
                 }
@@ -496,7 +496,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                 {
                     Console.Error.WriteLine("In order to test this example you will need a 51Degrees " +
                                           "Enterprise license which can be obtained on a trial basis or purchased " +
-                                          "from our pricing page https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=license-key-or-update-url-required. You must supply the " +
+                                          "from our pricing page https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=license-key-or-update-url-required. You must supply the " +
                                           "license key " + KEY_SUBMISSION_PATHS + 
                                           ", or provide a custom data update URL using --data-update-url");
                     return 1;

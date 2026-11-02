@@ -89,7 +89,7 @@ namespace FiftyOne.DeviceDetection.Examples
         /// </summary>
         public const string PRICING_MESSAGE =
             "Some properties used by this example are not available " +
-            "with a free resource key. See https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=device-detection-dotnet-examples&utm_content=examples-examplebase-exampleutils.cs&utm_term=pricing_message " +
+            "with a free resource key. See https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=pricing_message " +
             "to get a paid subscription with more properties.";
 
         /// <summary>
@@ -398,7 +398,7 @@ namespace FiftyOne.DeviceDetection.Examples
                         $"data file is available from the device-detection-data repository on " +
                         $"GitHub https://github.com/51Degrees/device-detection-data. Find out " +
                         $"about the Enterprise data file, which includes automatic daily " +
-                        $"updates, on our pricing page: https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=device-detection-dotnet-examples&utm_content=examples-examplebase-exampleutils.cs&utm_term=data-file-age-warning");
+                        $"updates, on our pricing page: https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=data-file-age-warning");
                 }
                 if (info.Tier == "Lite")
                 {
@@ -406,7 +406,7 @@ namespace FiftyOne.DeviceDetection.Examples
                         $"contains a more limited set of properties than the Enterprise " +
                         $"data file. " +
                         $"Find out about the Enterprise data file on our pricing page: " +
-                        $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=device-detection-dotnet-examples&utm_content=examples-examplebase-exampleutils.cs&utm_term=lite-data-file");
+                        $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=lite-data-file");
                 }
             }
         }
@@ -472,7 +472,7 @@ namespace FiftyOne.DeviceDetection.Examples
             //-
             //[getHighEntropyValues()](https://developer.mozilla.org/en-US/docs/Web/API/NavigatorUAData/getHighEntropyValues)
             //-
-            //[device.sua](https://51degrees.com/blog/openrtb-structured-user-agent-and-user-agent-client-hints?utm_source=code&utm_medium=example&utm_campaign=device-detection-dotnet-examples&utm_content=examples-examplebase-exampleutils.cs&utm_term=evidencevalues)
+            //[device.sua](https://51degrees.com/blog/openrtb-structured-user-agent-and-user-agent-client-hints?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=evidencevalues)
             //- [OpenRTB 2.6
             //spec](https://github.com/InteractiveAdvertisingBureau/openrtb2.x/blob/main/2.6.md#objectuseragent)
 

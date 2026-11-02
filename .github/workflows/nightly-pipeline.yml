@@ -11,6 +11,10 @@ on:
       dryrun:
         type: boolean
         default: true
+      prs:
+        description: 'Comma separated pull request numbers to build, all open ones when empty'
+        type: string
+        default: ''
       common-ci-ref:
         type: string
         default: ''
@@ -51,7 +55,11 @@ jobs:
     with:
       repo-name: ${{ github.event.repository.name }}
       org-name: ${{ github.event.repository.owner.login }}
-      dryrun: ${{ inputs.dryrun || false }}
+      # A run that is not a dry run merges each pull request that passes and
+      # is approved.
+      dryrun: ${{ github.event_name == 'schedule' || inputs.dryrun }}
+      prs: ${{ inputs.prs || '' }}
+      branch: main
       cache-assets: true
       common-ci-ref: ${{ inputs.common-ci-ref || '' }}
     secrets:

@@ -2,7 +2,7 @@
 
 ![51Degrees](https://raw.githubusercontent.com/51Degrees/common-ci/main/images/logo/360x67.png "Data rewards the curious") **Pipeline API**
 
-[Developer Documentation](https://51degrees.com/location-dotnet/index.html?utm_source=github&utm_medium=readme&utm_campaign=location-dotnet&utm_content=readme.md&utm_term=51degrees-geo-location-engines "developer documentation")
+[Developer Documentation](https://51degrees.com/location-dotnet/index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=51degrees-geo-location-engines "developer documentation")
 ## Introduction
 
 This repository contains engines for the .NET implementation of the Pipeline API 
@@ -16,7 +16,7 @@ Visual Studio 2019 or later is recommended. Although Visual Studio Code can be u
 
 The Pipeline engines are written in C# and target .NET Standard 2.0.3.
 
-The [tested versions](https://51degrees.com/documentation/_info__tested_versions.html?utm_source=github&utm_medium=readme&utm_campaign=location-dotnet&utm_content=readme.md&utm_term=dependencies) page shows 
+The [tested versions](https://51degrees.com/documentation/_info__tested_versions.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=dependencies) page shows 
 the .NET versions that we currently test against. The software may run fine against other versions, 
 but additional caution should be applied.
 
@@ -53,6 +53,6 @@ with the `dotnet test` command.
 
 For complete documentation on the Pipeline API and associated engines, see the [51Degrees documentation site][Documentation].
 
-[Documentation]: https://51degrees.com/documentation/index.html?utm_source=github&utm_medium=readme&utm_campaign=location-dotnet&utm_content=readme.md&utm_term=project-documentation
+[Documentation]: https://51degrees.com/documentation/index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=project-documentation
 [nuget]: https://www.nuget.org/packages/FiftyOne.GeoLocation/
 
