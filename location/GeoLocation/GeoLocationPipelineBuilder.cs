@@ -82,7 +82,7 @@ namespace FiftyOne.GeoLocation
         /// </summary>
         /// <param name="resourceKey">
         /// The resource key to use when querying the cloud service. 
-        /// Obtain one from https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=location-dotnet&amp;utm_content=fiftyone.geolocation-geolocationpipelinebuilder.cs&amp;utm_term=usecloud
+        /// Obtain one from https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.geolocation-geolocationpipelinebuilder.cs&amp;utm_term=usecloud
         /// </param>
         /// <param name="provider">
         /// The Geo Location provider to use.
@@ -102,7 +102,7 @@ namespace FiftyOne.GeoLocation
         /// </summary>
         /// <param name="resourceKey">
         /// The resource key to use when querying the cloud service. 
-        /// Obtain one from https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=location-dotnet&amp;utm_content=fiftyone.geolocation-geolocationpipelinebuilder.cs&amp;utm_term=usecloud-2
+        /// Obtain one from https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.geolocation-geolocationpipelinebuilder.cs&amp;utm_term=usecloud-2
         /// </param>
         /// <param name="endpoint">
         /// The 51Degrees cloud URL.
