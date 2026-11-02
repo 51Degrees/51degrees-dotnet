@@ -16,7 +16,9 @@ $PSNativeCommandUseErrorActionPreference = $true
 # by build-project.ps1. On a publish, install-package.ps1 has rebuilt the
 # examples against the packages about to be published, which is what a
 # customer installs.
-$Filter = "^FiftyOne\..*Examples?\.Tests.*\.dll$"
+# FiftyOne.DeviceDetection.Example.Tests.Web is left out. It holds the generic
+# base classes the web example tests derive from, and has no tests of its own.
+$Filter = "^FiftyOne\.(?!DeviceDetection\.Example\.Tests\.Web\.dll$).*Examples?\.Tests.*\.dll$"
 ./dotnet/run-integration-tests.ps1 `
     -RepoName $RepoName `
     -Name $Name `
