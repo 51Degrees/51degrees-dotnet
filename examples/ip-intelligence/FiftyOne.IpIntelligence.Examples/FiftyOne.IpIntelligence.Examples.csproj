@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>FiftyOne.IpIntelligence.Examples</AssemblyName>
+    <Platforms>AnyCPU;x64;ARM64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FiftyOneReference Include="FiftyOne.IpIntelligence" ProjectPath="..\..\..\ip-intelligence\FiftyOne.IpIntelligence\FiftyOne.IpIntelligence.csproj" Version="$(FiftyOneIpIntelligenceVersion)" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+
+</Project>

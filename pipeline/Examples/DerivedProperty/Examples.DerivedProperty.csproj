@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.Pipeline.Elements\FiftyOne.Pipeline.DerivedProperty\FiftyOne.Pipeline.DerivedProperty.csproj" />
+    <ProjectReference Include="..\..\FiftyOne.Pipeline.DerivedProperty\FiftyOne.Pipeline.DerivedProperty.csproj" />
   </ItemGroup>
 
   <ItemGroup>

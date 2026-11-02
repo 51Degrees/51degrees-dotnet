@@ -27,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Examples\OnPremise\Mixed\GettingStarted-API\GettingStarted-API.csproj" />
+    <ProjectReference Include="..\..\OnPremise\Mixed\GettingStarted-API\GettingStarted-API.csproj" />
   </ItemGroup>
 
   <ItemGroup>

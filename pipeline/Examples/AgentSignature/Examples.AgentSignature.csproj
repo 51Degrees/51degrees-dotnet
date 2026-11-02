@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.Pipeline.Elements\FiftyOne.Pipeline.AgentSignature\FiftyOne.Pipeline.AgentSignature.csproj" />
+    <ProjectReference Include="..\..\FiftyOne.Pipeline.AgentSignature\FiftyOne.Pipeline.AgentSignature.csproj" />
     <ProjectReference Include="..\..\FiftyOne.Pipeline.Examples.Shared\FiftyOne.Pipeline.Examples.Shared.csproj" />
   </ItemGroup>
 

@@ -56,7 +56,7 @@ using System.IO;
 /// example, so that nothing outside is needed. A real pipeline puts
 /// device detection or IP intelligence in that position instead.
 ///
-/// This example is available in full on [GitHub](https://github.com/51Degrees/pipeline-dotnet/blob/master/Examples/DerivedProperty/Program.cs).
+/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/pipeline/Examples/DerivedProperty/Program.cs).
 ///
 /// The script the example runs is
 /// @include DerivedProperty/ReaderEngagement.yaml

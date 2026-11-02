@@ -69,13 +69,13 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
                     ExampleUtils.FindFile("FiftyOne.IpIntelligence.Examples.sln"))!);
 
         private static readonly string CloudExamplePath =
-            Path.Combine(RepoRootPath, "Examples", "Cloud", "GettingStarted-Console");
+            Path.Combine(RepoRootPath, "Cloud", "GettingStarted-Console");
         private static readonly string MixedCloudExamplePath =
-            Path.Combine(RepoRootPath, "Examples", "Cloud", "Mixed", "GettingStarted-Console");
+            Path.Combine(RepoRootPath, "Cloud", "Mixed", "GettingStarted-Console");
         private static readonly string GetAllPropertiesExamplePath =
-            Path.Combine(RepoRootPath, "Examples", "Cloud", "GetAllProperties-Console");
+            Path.Combine(RepoRootPath, "Cloud", "GetAllProperties-Console");
         private static readonly string MetadataExamplePath =
-            Path.Combine(RepoRootPath, "Examples", "Cloud", "Metadata-Console");
+            Path.Combine(RepoRootPath, "Cloud", "Metadata-Console");
 
         public static IEnumerable<object[]> CloudExamplesToTest =>
         [

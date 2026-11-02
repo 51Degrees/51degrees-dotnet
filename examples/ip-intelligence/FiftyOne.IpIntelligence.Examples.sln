@@ -5,29 +5,29 @@ VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{1D4011D4-6726-43F6-83B1-5AF22757F1CB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples", "Examples\FiftyOne.IpIntelligence.Examples\FiftyOne.IpIntelligence.Examples.csproj", "{6E062311-B25D-42F3-978F-6868CED67942}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples", "FiftyOne.IpIntelligence.Examples\FiftyOne.IpIntelligence.Examples.csproj", "{6E062311-B25D-42F3-978F-6868CED67942}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "OnPremise", "OnPremise", "{C21687C0-CBEF-43B0-A950-2D0BF31F5B92}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Mixed", "Mixed", "{A8B5E4C7-3D86-4B9E-9C3F-2E1A5D7F8B64}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Console", "Examples\OnPremise\Mixed\GettingStarted-Console\GettingStarted-Console.csproj", "{E7F8A9B2-5C63-4D87-9E21-8A3B7C5D4F96}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Console", "OnPremise\Mixed\GettingStarted-Console\GettingStarted-Console.csproj", "{E7F8A9B2-5C63-4D87-9E21-8A3B7C5D4F96}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Web", "Examples\OnPremise\Mixed\GettingStarted-Web\GettingStarted-Web.csproj", "{F8C7D3A5-2B94-4E6F-8D71-9A3C5E2B1D84}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Web", "OnPremise\Mixed\GettingStarted-Web\GettingStarted-Web.csproj", "{F8C7D3A5-2B94-4E6F-8D71-9A3C5E2B1D84}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Console", "Examples\OnPremise\GettingStarted-Console\GettingStarted-Console.csproj", "{D1EDC50D-2C53-4339-B3C3-A9B0FFD1347D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Console", "OnPremise\GettingStarted-Console\GettingStarted-Console.csproj", "{D1EDC50D-2C53-4339-B3C3-A9B0FFD1347D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UpdateDataFile-Console", "Examples\OnPremise\UpdateDataFile-Console\UpdateDataFile-Console.csproj", "{FB95E20A-AB97-4799-9AC9-67D0C75769A3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UpdateDataFile-Console", "OnPremise\UpdateDataFile-Console\UpdateDataFile-Console.csproj", "{FB95E20A-AB97-4799-9AC9-67D0C75769A3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OfflineProcessing-Console", "Examples\OnPremise\OfflineProcessing-Console\OfflineProcessing-Console.csproj", "{69E076B4-5D89-4342-976D-C2E09C63DDA3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OfflineProcessing-Console", "OnPremise\OfflineProcessing-Console\OfflineProcessing-Console.csproj", "{69E076B4-5D89-4342-976D-C2E09C63DDA3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Metadata-Console", "Examples\OnPremise\Metadata-Console\Metadata-Console.csproj", "{95A12C9A-94F1-4E5A-A60D-AFBF92078302}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Metadata-Console", "OnPremise\Metadata-Console\Metadata-Console.csproj", "{95A12C9A-94F1-4E5A-A60D-AFBF92078302}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Performance-Console", "Examples\OnPremise\Performance-Console\Performance-Console.csproj", "{78076324-C3CF-4698-A487-DF57DA0DD113}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Performance-Console", "OnPremise\Performance-Console\Performance-Console.csproj", "{78076324-C3CF-4698-A487-DF57DA0DD113}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Web", "Examples\OnPremise\GettingStarted-Web\GettingStarted-Web.csproj", "{3F6EF5A7-9C6E-4695-9B7B-30324CDC4066}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Web", "OnPremise\GettingStarted-Web\GettingStarted-Web.csproj", "{3F6EF5A7-9C6E-4695-9B7B-30324CDC4066}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Framework-Web", "Examples\OnPremise\Framework-Web\Framework-Web.csproj", "{8A145E60-3FAC-421B-9EBB-732F86A07395}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Framework-Web", "OnPremise\Framework-Web\Framework-Web.csproj", "{8A145E60-3FAC-421B-9EBB-732F86A07395}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 EndProject
@@ -37,37 +37,37 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Exa
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Cloud", "Cloud", "{CA60EA6E-1E38-462D-A4A9-02DD86E92784}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Framework-Web", "Examples\Cloud\Framework-Web\Framework-Web.csproj", "{DB6892B3-8319-4B36-A1B9-E83E83DB37EF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Framework-Web", "Cloud\Framework-Web\Framework-Web.csproj", "{DB6892B3-8319-4B36-A1B9-E83E83DB37EF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetAllProperties", "Examples\Cloud\GetAllProperties-Console\GetAllProperties.csproj", "{E8F2FD98-C2A0-71EF-662F-6031ACD0B101}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetAllProperties", "Cloud\GetAllProperties-Console\GetAllProperties.csproj", "{E8F2FD98-C2A0-71EF-662F-6031ACD0B101}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Console", "Examples\Cloud\GettingStarted-Console\GettingStarted-Console.csproj", "{3156366A-FBFF-15F5-81AB-07DC688804B2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Console", "Cloud\GettingStarted-Console\GettingStarted-Console.csproj", "{3156366A-FBFF-15F5-81AB-07DC688804B2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Web", "Examples\Cloud\GettingStarted-Web\GettingStarted-Web.csproj", "{DD0BEAAA-0A7B-5D73-21D5-07DA6E231EEA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Web", "Cloud\GettingStarted-Web\GettingStarted-Web.csproj", "{DD0BEAAA-0A7B-5D73-21D5-07DA6E231EEA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Metadata-Console", "Examples\Cloud\Metadata-Console\Metadata-Console.csproj", "{C89D3693-76BF-F318-AF28-E4206912FD74}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Metadata-Console", "Cloud\Metadata-Console\Metadata-Console.csproj", "{C89D3693-76BF-F318-AF28-E4206912FD74}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples.OnPremise", "Examples\FiftyOne.IpIntelligence.Examples.OnPremise\FiftyOne.IpIntelligence.Examples.OnPremise.csproj", "{ED6B5C33-946E-2D4C-A7C2-0F606F1F9887}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples.OnPremise", "FiftyOne.IpIntelligence.Examples.OnPremise\FiftyOne.IpIntelligence.Examples.OnPremise.csproj", "{ED6B5C33-946E-2D4C-A7C2-0F606F1F9887}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples.Cloud", "Examples\FiftyOne.IpIntelligence.Examples.Cloud\FiftyOne.IpIntelligence.Examples.Cloud.csproj", "{92BAF1E2-9A11-1EB1-0983-21DC7D2938BD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples.Cloud", "FiftyOne.IpIntelligence.Examples.Cloud\FiftyOne.IpIntelligence.Examples.Cloud.csproj", "{92BAF1E2-9A11-1EB1-0983-21DC7D2938BD}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-API", "Examples\OnPremise\Mixed\GettingStarted-API\GettingStarted-API.csproj", "{78E299B6-162A-1418-8981-81F537EA66C7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-API", "OnPremise\Mixed\GettingStarted-API\GettingStarted-API.csproj", "{78E299B6-162A-1418-8981-81F537EA66C7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Mixed", "Mixed", "{F94255C2-7DA2-4EA1-BD04-1605F2C2FB1E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Console", "Examples\Cloud\Mixed\GettingStarted-Console\GettingStarted-Console.csproj", "{FD621FB7-685A-77A7-569A-6660C8AB3A2B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Console", "Cloud\Mixed\GettingStarted-Console\GettingStarted-Console.csproj", "{FD621FB7-685A-77A7-569A-6660C8AB3A2B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Web", "Examples\Cloud\Mixed\GettingStarted-Web\GettingStarted-Web.csproj", "{54BF883A-8A2F-31D4-0551-6FE55BA78905}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Web", "Cloud\Mixed\GettingStarted-Web\GettingStarted-Web.csproj", "{54BF883A-8A2F-31D4-0551-6FE55BA78905}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Metrics-Console", "Examples\OnPremise\Metrics-Console\Metrics-Console.csproj", "{1E193E69-D990-6118-D8C6-58AACA355D1D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Metrics-Console", "OnPremise\Metrics-Console\Metrics-Console.csproj", "{1E193E69-D990-6118-D8C6-58AACA355D1D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Compare-Console", "Examples\OnPremise\Compare-Console\Compare-Console.csproj", "{0A054884-E546-A798-FF1E-51DA5035D3EA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Compare-Console", "OnPremise\Compare-Console\Compare-Console.csproj", "{0A054884-E546-A798-FF1E-51DA5035D3EA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Areas", "Examples\OnPremise\Areas\Areas.csproj", "{3139BBC3-F48B-4B81-F679-B784D37CAD93}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Areas", "OnPremise\Areas\Areas.csproj", "{3139BBC3-F48B-4B81-F679-B784D37CAD93}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Suspicious-Console", "Examples\OnPremise\Suspicious-Console\Suspicious-Console.csproj", "{E89EFAB2-C6E5-4698-B559-61A87433E885}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Suspicious-Console", "OnPremise\Suspicious-Console\Suspicious-Console.csproj", "{E89EFAB2-C6E5-4698-B559-61A87433E885}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LocationAnalysis-Console", "Examples\OnPremise\LocationAnalysis-Console\LocationAnalysis-Console.csproj", "{B7C2A4E9-6D15-4F8A-9C3B-E5A18D2F7640}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LocationAnalysis-Console", "OnPremise\LocationAnalysis-Console\LocationAnalysis-Console.csproj", "{B7C2A4E9-6D15-4F8A-9C3B-E5A18D2F7640}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests", "Tests\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj", "{8F4C44DC-5690-4CAF-BEFE-E9E8ADBB1205}"
 EndProject

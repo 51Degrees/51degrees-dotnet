@@ -13,7 +13,7 @@
 		</PackageReference>
 		<FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\FiftyOne.Common.TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonVersion)" />
 		<FiftyOneReference Include="FiftyOne.Pipeline.Engines.TestHelpers" ProjectPath="..\..\..\pipeline\FiftyOne.Pipeline.Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" Version="$(FiftyOnePipelineVersion)" />
-		<FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\pipeline\Web Integration\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
+		<FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\pipeline\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
 		<PackageReference Include="MSTest.TestAdapter" Version="4.0.2" />
 		<PackageReference Include="MSTest.TestFramework" Version="4.0.2" />

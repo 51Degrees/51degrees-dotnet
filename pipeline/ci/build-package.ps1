@@ -27,8 +27,8 @@ foreach($Solution in $Solutions){
 
 # Now build the web package using the NuSpec file, as this is handled differently.
 
-$NuspecPath = [IO.Path]::Combine($pwd, $RepoName, "Web Integration", "FiftyOne.Pipeline.Web.nuspec")
-$CorePath = [IO.Path]::Combine($pwd, $RepoName, "Web Integration", "FiftyOne.Pipeline.Web")
+$NuspecPath = [IO.Path]::Combine($pwd, $RepoName, "FiftyOne.Pipeline.Web.nuspec")
+$CorePath = [IO.Path]::Combine($pwd, $RepoName, "FiftyOne.Pipeline.Web")
 $WebSolutionPath = [IO.Path]::Combine($pwd, $RepoName, "FiftyOne.Pipeline.Web.sln")
 
 ./environments/setup-msbuild.ps1

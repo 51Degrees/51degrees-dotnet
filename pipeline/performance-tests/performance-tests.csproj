@@ -14,8 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Web Integration\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" />
-    <ProjectReference Include="..\Web Integration\Examples\Math\FiftyOne.Pipeline.Math.csproj" />
+    <ProjectReference Include="..\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" />
+    <ProjectReference Include="..\Examples\Math\FiftyOne.Pipeline.Math.csproj" />
   </ItemGroup>
 
 </Project>

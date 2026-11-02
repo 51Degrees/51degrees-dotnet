@@ -175,9 +175,9 @@ related CI scripts:
   - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-core.ps1]
   - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-package-nuget.ps1]
   - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-framework.ps1]
-  - [https://github.com/51Degrees/device-detection-dotnet/blob/main/ci/run-performance-tests-console.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/device-detection/ci/run-performance-tests-console.ps1]
 - Copying native binaries:
-  - [https://github.com/51Degrees/device-detection-dotnet/blob/main/ci/build-package.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/device-detection/ci/build-package.ps1]
 
 #### Strong naming
 
@@ -196,7 +196,7 @@ Strong-name signing changes the assembly identity (it now carries a public key t
 - Update any hardcoded assembly-qualified names (`Assembly.Load`, `Type.GetType`, `.config`) to include the new public key token.
 - Do a clean rebuild: clear `bin`/`obj` and remove any stale unsigned 51Degrees DLLs from output/deploy folders.
 
-For a working .NET Framework reference, see the [Cloud/Framework-Web example](https://github.com/51Degrees/device-detection-dotnet-examples/blob/main/Examples/Cloud/Framework-Web/Web.config), whose `Web.config` already contains the full `<assemblyBinding>` redirect block.
+For a working .NET Framework reference, see the [Cloud/Framework-Web example](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/device-detection/Cloud/Framework-Web/Web.config), whose `Web.config` already contains the full `<assemblyBinding>` redirect block.
 
 ## Examples
 

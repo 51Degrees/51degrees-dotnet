@@ -132,7 +132,6 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.OnPremise
             appSettingsPath = appSettingsPath.Remove(pos);
             AppSettingsPath = Path.Combine(
                 appSettingsPath,
-                "Examples",
                 "Legacy Web",
                 exampleDirName,
                 "appsettings.json");

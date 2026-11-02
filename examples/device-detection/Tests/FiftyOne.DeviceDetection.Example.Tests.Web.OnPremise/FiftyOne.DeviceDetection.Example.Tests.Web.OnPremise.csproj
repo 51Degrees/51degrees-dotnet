@@ -24,13 +24,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Examples\Legacy Web\UACH-manual\Client-Hints Not Integrated.csproj">
+    <ProjectReference Include="..\..\Legacy Web\UACH-manual\Client-Hints Not Integrated.csproj">
       <EnableStaticWebAssets>false</EnableStaticWebAssets>
     </ProjectReference>
-    <ProjectReference Include="..\..\Examples\Legacy Web\UACH\Client-Hints.csproj">
+    <ProjectReference Include="..\..\Legacy Web\UACH\Client-Hints.csproj">
       <EnableStaticWebAssets>false</EnableStaticWebAssets>
     </ProjectReference>
-    <ProjectReference Include="..\..\Examples\OnPremise\GettingStarted-Web\GettingStarted-Web.csproj">
+    <ProjectReference Include="..\..\OnPremise\GettingStarted-Web\GettingStarted-Web.csproj">
       <EnableStaticWebAssets>false</EnableStaticWebAssets>
     </ProjectReference>
     <ProjectReference Include="..\FiftyOne.DeviceDetection.Example.Tests.Web\FiftyOne.DeviceDetection.Example.Tests.Web.csproj" />

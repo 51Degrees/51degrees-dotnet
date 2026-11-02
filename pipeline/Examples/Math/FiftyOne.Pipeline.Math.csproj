@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>FiftyOne.Pipeline.Math</RootNamespace>
+    <AssemblyName>FiftyOne.Pipeline.Math</AssemblyName>
+    <Version>1.0.0</Version>
+    <Platforms>AnyCPU</Platforms>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\FiftyOne.Pipeline.Core\FiftyOne.Pipeline.Core.csproj" />
+  </ItemGroup>
+
+</Project>

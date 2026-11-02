@@ -38,6 +38,14 @@ IP Intelligence translation resources are embedded from
 `cxx/ip-intelligence-data/Translations`. CI puts the Enterprise files in the
 same folders.
 
+## Layout
+
+Every package project sits directly under its product folder, with that
+folder's tests in `Tests` and examples in `Examples`, as the node repository
+does. The two example repositories became `examples/device-detection` and
+`examples/ip-intelligence`, with their `Cloud`, `OnPremise` and `Tests` folders
+at the top. `git log --follow -m` traces a file back through the import.
+
 ## Frameworks
 
 `pipeline` and `device-detection` keep a `global.json` that pins the SDK they

@@ -27,11 +27,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Examples\OnPremise\GettingStarted-Console\GettingStarted-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\MatchMetrics-Console\MatchMetrics-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\Metadata-Console\Metadata-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\OfflineProcessing-Console\OfflineProcessing-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\UpdateDataFile-Console\UpdateDataFile-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\GettingStarted-Console\GettingStarted-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\MatchMetrics-Console\MatchMetrics-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\Metadata-Console\Metadata-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\OfflineProcessing-Console\OfflineProcessing-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\UpdateDataFile-Console\UpdateDataFile-Console.csproj" />
   </ItemGroup>
 
   <!--

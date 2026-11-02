@@ -69,7 +69,7 @@ public class TestCloudMixedWebExample
                 ExampleUtils.FindFile("FiftyOne.IpIntelligence.Examples.sln"))!);
 
     private static readonly string WebExampleDir =
-        Path.Combine(RepoRootPath, "Examples", "Cloud", "Mixed", "GettingStarted-Web");
+        Path.Combine(RepoRootPath, "Cloud", "Mixed", "GettingStarted-Web");
 
     private string _originalCurrentDirectory;
     private CancellationTokenSource _cts;

@@ -40,7 +40,7 @@ using System.Threading.Tasks;
 /// using 51Degrees reverse geocoding alongside 
 /// 51Degrees device detection.
 /// 
-/// This example is available in full on [GitHub](https://github.com/51Degrees/location-dotnet/blob/master/Examples/CombiningServices/Program.cs). 
+/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/location/Examples/CombiningServices/Program.cs). 
 /// 
 /// To run this example, you will need to create a **resource key**. 
 /// The resource key is used as short-hand to store the particular set of 

@@ -10,7 +10,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\pipeline\Web Integration\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
+		<FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\pipeline\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
 		<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.33" />
 	</ItemGroup>
 

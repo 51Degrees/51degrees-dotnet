@@ -86,7 +86,7 @@
     <PackageReference Include="Moq" Version="4.20.72" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.DeviceDetection.Data\FiftyOne.DeviceDetection.Shared.csproj">
+    <ProjectReference Include="..\..\FiftyOne.DeviceDetection.Shared\FiftyOne.DeviceDetection.Shared.csproj">
       <Project>{BB852540-9036-4BCE-8626-BD8B1EA6B8D8}</Project>
       <Name>FiftyOne.DeviceDetection.Shared</Name>
     </ProjectReference>

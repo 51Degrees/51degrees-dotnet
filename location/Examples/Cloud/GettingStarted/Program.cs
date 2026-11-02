@@ -33,7 +33,7 @@ using System.Threading.Tasks;
 /// 
 /// Getting started example of using 51Degrees reverse geocoding.
 /// 
-/// This example is available in full on [GitHub](https://github.com/51Degrees/location-dotnet/blob/main/Examples/Cloud/GettingStarted/Program.cs). 
+/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/location/Examples/Cloud/GettingStarted/Program.cs). 
 /// 
 /// To run this example, you will need to create a **resource key**. 
 /// The resource key is used as short-hand to store the particular set of 

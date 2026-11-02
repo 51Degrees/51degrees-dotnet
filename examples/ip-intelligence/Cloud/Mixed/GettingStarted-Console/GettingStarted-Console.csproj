@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Platforms>AnyCPU;x64;ARM64</Platforms>
+    <AssemblyName>FiftyOne.IpIntelligence.Examples.Mixed.Cloud.GettingStartedConsole</AssemblyName>
+    <Configurations>Debug;Release;CoreRelease;CoreDebug</Configurations>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DefineConstants>NETCORE</DefineConstants>
+    <RootNamespace>FiftyOne.IpIntelligence.Examples.Mixed.Cloud.GettingStartedConsole</RootNamespace>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FiftyOneReference Include="FiftyOne.DeviceDetection" ProjectPath="..\..\..\..\..\device-detection\FiftyOne.DeviceDetection\FiftyOne.DeviceDetection.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\FiftyOne.IpIntelligence.Examples.Cloud\FiftyOne.IpIntelligence.Examples.Cloud.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

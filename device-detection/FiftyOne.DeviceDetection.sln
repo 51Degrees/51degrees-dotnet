@@ -13,7 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.DeviceDetection", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.DeviceDetection.Tests.Core", "Tests\FiftyOne.DeviceDetection.Tests.Core\FiftyOne.DeviceDetection.Tests.Core.csproj", "{D3E76B20-B2C1-4F11-9456-3528656E646D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.DeviceDetection.Shared", "FiftyOne.DeviceDetection.Data\FiftyOne.DeviceDetection.Shared.csproj", "{BB852540-9036-4BCE-8626-BD8B1EA6B8D8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.DeviceDetection.Shared", "FiftyOne.DeviceDetection.Shared\FiftyOne.DeviceDetection.Shared.csproj", "{BB852540-9036-4BCE-8626-BD8B1EA6B8D8}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.DeviceDetection.Cloud.Tests", "Tests\FiftyOne.DeviceDetection.Cloud.Tests\FiftyOne.DeviceDetection.Cloud.Tests.csproj", "{BD8C5C66-F2C7-4E58-8460-C2E26D831A1A}"
 EndProject

@@ -3,7 +3,7 @@
     "path": "FiftyOne.DeviceDetection.sln",
     "projects": [
       "FiftyOne.DeviceDetection.Cloud\\FiftyOne.DeviceDetection.Cloud.csproj",
-      "FiftyOne.DeviceDetection.Data\\FiftyOne.DeviceDetection.Shared.csproj",
+      "FiftyOne.DeviceDetection.Shared\\FiftyOne.DeviceDetection.Shared.csproj",
       "FiftyOne.DeviceDetection.Hash.Engine.OnPremise\\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj",
       "FiftyOne.DeviceDetection.PropertyKeyed\\FiftyOne.DeviceDetection.PropertyKeyed.csproj",
       "FiftyOne.DeviceDetection.RobotsTxt\\FiftyOne.DeviceDetection.RobotsTxt.csproj",

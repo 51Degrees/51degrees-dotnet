@@ -36,7 +36,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FiftyOne.DeviceDetection.Data\FiftyOne.DeviceDetection.Shared.csproj" />
+    <ProjectReference Include="..\FiftyOne.DeviceDetection.Shared\FiftyOne.DeviceDetection.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Examples\Cloud\GettingStarted-Web-ClientOnly\GettingStarted-Web-ClientOnly.csproj" />
+    <ProjectReference Include="..\..\Cloud\GettingStarted-Web-ClientOnly\GettingStarted-Web-ClientOnly.csproj" />
     <ProjectReference Include="..\FiftyOne.DeviceDetection.Example.Tests.Web\FiftyOne.DeviceDetection.Example.Tests.Web.csproj" />
   </ItemGroup>
 

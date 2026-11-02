@@ -187,9 +187,20 @@ public class NativeEngineLoadTests
         }
     }
 
-    private static string GetNativeDllPath(string fileName) =>
-        Path.Combine(
+    /// <summary>
+    /// The package puts the native library under runtimes/win-x64/native. A
+    /// project reference to the engine, which is how this repository builds
+    /// itself, copies it next to the test assembly instead.
+    /// </summary>
+    private static string GetNativeDllPath(string fileName)
+    {
+        var fromPackage = Path.Combine(
             AppContext.BaseDirectory, "runtimes", "win-x64", "native", fileName);
+        var fromProject = Path.Combine(AppContext.BaseDirectory, fileName);
+        return File.Exists(fromPackage) || !File.Exists(fromProject)
+            ? fromPackage
+            : fromProject;
+    }
 
     private static string DescribeChain(Exception ex)
     {

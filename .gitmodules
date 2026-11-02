@@ -4,12 +4,12 @@
 [submodule "pipeline/FiftyOne.Pipeline.Core/Configuration/Validation"]
 	path = pipeline/FiftyOne.Pipeline.Core/Configuration/Validation
 	url = ../configuration-validation
-[submodule "pipeline/FiftyOne.Pipeline.Elements/FiftyOne.Pipeline.JavaScriptBuilderElement/Templates"]
-	path = pipeline/FiftyOne.Pipeline.Elements/FiftyOne.Pipeline.JavaScriptBuilderElement/Templates
+[submodule "pipeline/FiftyOne.Pipeline.JavaScriptBuilderElement/Templates"]
+	path = pipeline/FiftyOne.Pipeline.JavaScriptBuilderElement/Templates
 	url = ../javascript-templates
 [submodule "pipeline/owid-dotnet"]
 	path = pipeline/owid-dotnet
 	url = https://github.com/SWAN-community/owid-dotnet.git
-[submodule "pipeline/FiftyOne.Pipeline.Elements/FiftyOne.Pipeline.DerivedProperty/Scripts"]
-	path = pipeline/FiftyOne.Pipeline.Elements/FiftyOne.Pipeline.DerivedProperty/Scripts
+[submodule "pipeline/FiftyOne.Pipeline.DerivedProperty/Scripts"]
+	path = pipeline/FiftyOne.Pipeline.DerivedProperty/Scripts
 	url = ../derived-properties

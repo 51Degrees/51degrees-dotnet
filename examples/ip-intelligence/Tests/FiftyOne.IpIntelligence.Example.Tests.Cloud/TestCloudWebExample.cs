@@ -73,7 +73,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
                     ExampleUtils.FindFile("FiftyOne.IpIntelligence.Examples.sln"))!);
 
         private static readonly string WebExampleDir =
-            Path.Combine(RepoRootPath, "Examples", "Cloud", "GettingStarted-Web");
+            Path.Combine(RepoRootPath, "Cloud", "GettingStarted-Web");
 
         private string _originalCurrentDirectory;
         private CancellationTokenSource _cts;

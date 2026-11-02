@@ -31,7 +31,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FiftyOne.Pipeline.Core\FiftyOne.Pipeline.Core.csproj" />
-    <ProjectReference Include="..\FiftyOne.Pipeline.Elements\FiftyOne.Pipeline.JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj" />
+    <ProjectReference Include="..\FiftyOne.Pipeline.JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj" />
     <ProjectReference Include="..\FiftyOne.Pipeline.Engines\FiftyOne.Pipeline.Engines.csproj" />
   </ItemGroup>
 

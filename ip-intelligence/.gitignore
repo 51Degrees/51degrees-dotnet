@@ -330,7 +330,7 @@ ASALocalRun/
 .mfractor/
 FiftyOne.DeviceDetection/FiftyOne.DeviceDetection.Cloud/FiftyOne.DeviceDetection.Cloud.xml
 FiftyOne.DeviceDetection/FiftyOne.DeviceDetection/FiftyOne.DeviceDetection.xml
-FiftyOne.DeviceDetection/FiftyOne.DeviceDetection.Data/FiftyOne.DeviceDetection.Shared.xml
+FiftyOne.DeviceDetection/FiftyOne.DeviceDetection.Shared/FiftyOne.DeviceDetection.Shared.xml
 FiftyOne.DeviceDetection/FiftyOne.DeviceDetection.Hash.Engine.OnPremise/FiftyOne.DeviceDetection.Hash.Engine.OnPremise.xml
 
 # docs

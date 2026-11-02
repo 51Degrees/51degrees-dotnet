@@ -53,7 +53,7 @@ using System.Net.Http;
 /// For further details of what each setting does, see the 
 /// [Share Usage reference](/documentation/4.5/_pipeline_api__features__usage_sharing.html) 
 ///
-/// This example is available in full on [GitHub](https://github.com/51Degrees/pipeline-dotnet/blob/master/Examples/UsageSharing/Program.cs).
+/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/pipeline/Examples/UsageSharing/Program.cs).
 /// 
 /// Expected output
 /// ```

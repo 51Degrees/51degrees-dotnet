@@ -31,9 +31,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Examples\Cloud\GettingStarted-Console\GettingStarted-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\Cloud\GettingStarted-Web\GettingStarted-Web.csproj" />
-    <ProjectReference Include="..\..\Examples\Cloud\Mixed\GettingStarted-Web\GettingStarted-Web.csproj" />
+    <ProjectReference Include="..\..\Cloud\GettingStarted-Console\GettingStarted-Console.csproj" />
+    <ProjectReference Include="..\..\Cloud\GettingStarted-Web\GettingStarted-Web.csproj" />
+    <ProjectReference Include="..\..\Cloud\Mixed\GettingStarted-Web\GettingStarted-Web.csproj" />
   </ItemGroup>
 
 </Project>

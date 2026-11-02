@@ -293,9 +293,9 @@ FiftyOne.Pipeline.Engines/FiftyOne.Pipeline.Engines.xml
 FiftyOne.Pipeline.Engines.FiftyOne/FiftyOne.Pipeline.Engines.FiftyOne.xml
 FiftyOne.Pipeline.CloudRequestEngine/FiftyOne.Pipeline.CloudRequestEngine.xml
 FiftyOne.Pipeline.Web.Shared/FiftyOne.Pipeline.Web.Shared.xml
-FiftyOne.Pipeline.Elements/FiftyOne.Pipeline.JavaScriptBuilderElement/FiftyOne.Pipeline.JavaScriptBuilderElement.xml
-FiftyOne.Pipeline.Elements/FiftyOne.Pipeline.JsonBuilderElement/FiftyOne.Pipeline.JsonBuilder.xml
-FiftyOne.Pipeline.Elements/FiftyOne.Pipeline.AgentSignature/FiftyOne.Pipeline.AgentSignature.xml
-Web Integration/FiftyOne.Pipeline.Web/FiftyOne.Pipeline.Web.xml
-Web Integration/FiftyOne.Pipeline.Web.Framework/FiftyOne.Pipeline.Web.Framework.xml
+FiftyOne.Pipeline.JavaScriptBuilderElement/FiftyOne.Pipeline.JavaScriptBuilderElement.xml
+FiftyOne.Pipeline.JsonBuilderElement/FiftyOne.Pipeline.JsonBuilder.xml
+FiftyOne.Pipeline.AgentSignature/FiftyOne.Pipeline.AgentSignature.xml
+FiftyOne.Pipeline.Web/FiftyOne.Pipeline.Web.xml
+FiftyOne.Pipeline.Web.Framework/FiftyOne.Pipeline.Web.Framework.xml
 test-results/

@@ -31,16 +31,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Examples\OnPremise\GettingStarted-Console\GettingStarted-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\Metadata-Console\Metadata-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\Metrics-Console\Metrics-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\OfflineProcessing-Console\OfflineProcessing-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\UpdateDataFile-Console\UpdateDataFile-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\Compare-Console\Compare-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\LocationAnalysis-Console\LocationAnalysis-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\Suspicious-Console\Suspicious-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\Performance-Console\Performance-Console.csproj" />
-    <ProjectReference Include="..\..\Examples\OnPremise\Mixed\GettingStarted-Console\GettingStarted-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\GettingStarted-Console\GettingStarted-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\Metadata-Console\Metadata-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\Metrics-Console\Metrics-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\OfflineProcessing-Console\OfflineProcessing-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\UpdateDataFile-Console\UpdateDataFile-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\Compare-Console\Compare-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\LocationAnalysis-Console\LocationAnalysis-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\Suspicious-Console\Suspicious-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\Performance-Console\Performance-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\Mixed\GettingStarted-Console\GettingStarted-Console.csproj" />
   </ItemGroup>
 
 </Project>

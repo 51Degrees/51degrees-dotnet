@@ -25,7 +25,7 @@ they build on. Each package is still published to NuGet under its own id.
 | `location` | The Location packages, `FiftyOne.Geolocation*` |
 | `examples/device-detection`, `examples/ip-intelligence` | The Device Detection and IP Intelligence examples, with their tests |
 | `cxx` | Submodule of [51degrees-cxx](https://github.com/51Degrees/51degrees-cxx), with the C and C++ code the on-premise engines build and the data file submodules |
-| `FiftyOne.slnx` | A solution holding every project. Each folder also keeps the solutions it had before |
+| `FiftyOne.slnx` | A solution holding every project. `FiftyOne.Core.slnf` leaves out the .NET Framework projects for `dotnet build`. Each folder also keeps the solutions it had before |
 
 ## Getting the code
 
@@ -49,8 +49,11 @@ stored with [Git LFS](https://git-lfs.github.com/). Install Git LFS and run
 Everything, from the repository root:
 
 ```
-dotnet build FiftyOne.slnx
+dotnet build FiftyOne.Core.slnf
 ```
+
+On Windows with Visual Studio, `msbuild FiftyOne.slnx -restore` builds the
+.NET Framework projects as well.
 
 Or one product, for example `dotnet build pipeline/FiftyOne.Pipeline.sln`.
 
@@ -69,7 +72,7 @@ Platform Toolset `v142` and Windows SDK `10.0.18362.0` or later.
 
 The ASP.NET (.NET Framework) projects, such as `FiftyOne.Pipeline.Web.Framework`
 and the `Framework-Web` examples, build with `msbuild` on Windows and are left
-out of the `.Core.slnf` solution filters that `dotnet build` uses elsewhere.
+out of the `.Core.slnf` solution filters that `dotnet build` uses.
 
 ## Package and project references
 
@@ -132,7 +135,12 @@ The repositories `common-dotnet`, `caching-dotnet`, `pipeline-dotnet`,
 `device-detection-dotnet`, `ip-intelligence-dotnet`, `location-dotnet`,
 `device-detection-dotnet-examples` and `ip-intelligence-dotnet-examples` were
 brought in with `git subtree add`, without `--squash`, so commit SHAs match the
-originals. Use `git log --follow` to trace a file back through the import.
+originals. The imported commits keep their original paths, so to trace a file
+back through the import ask git to follow renames through merges:
+
+```
+git log --follow -m -- pipeline/README.md
+```
 
 ## Licence
 

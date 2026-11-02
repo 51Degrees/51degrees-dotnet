@@ -48,7 +48,7 @@ using CoreConstants = FiftyOne.Pipeline.Core.Constants;
 /// the signature against it and reports a status and a reason.
 ///
 /// This example is available in full on
-/// [GitHub](https://github.com/51Degrees/pipeline-dotnet/blob/master/Examples/AgentSignature/Program.cs).
+/// [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/pipeline/Examples/AgentSignature/Program.cs).
 ///
 /// A signature says which agent sent a request. It does not say what kind
 /// of agent it is. The properties that describe the kind of agent, being
