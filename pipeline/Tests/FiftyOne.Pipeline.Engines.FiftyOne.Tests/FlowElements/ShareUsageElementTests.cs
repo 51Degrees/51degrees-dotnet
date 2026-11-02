@@ -28,11 +28,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 using FiftyOne.Common.TestHelpers;
 using FiftyOne.Pipeline.Engines.TestHelpers;
@@ -160,6 +162,72 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 _tracker.Object,
                 shareAll);
             _shareUsageElement.AddPipeline(_pipeline.Object);
+        }
+
+        /// <summary>
+        /// Opens the queue and the send so a test can fill the queue
+        /// directly and drain it, independent of thread timing.
+        /// </summary>
+        private class QueueOpenShareUsageElement : ShareUsageElement
+        {
+            public QueueOpenShareUsageElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                int minimumEntriesPerMessage,
+                int maximumQueueSize,
+                ITracker tracker)
+                : base(logger, httpClient, 1, minimumEntriesPerMessage,
+                      maximumQueueSize, 100, 100, 1, true,
+                      "http://51Degrees.com/test", new List<string>(),
+                      new List<string>(), new List<KeyValuePair<string, string>>(),
+                      Engines.Constants.DEFAULT_ASP_COOKIE_NAME, tracker, false)
+            {
+            }
+
+            public void Enqueue(string clientIp) =>
+                EvidenceCollection.Add(new ShareUsageData() { ClientIP = clientIp });
+
+            public int Queued => EvidenceCollection.Count;
+
+            public Task SendAsync() => BuildAndSendXmlAsync();
+        }
+
+        /// <summary>
+        /// Every entry put on the queue is sent exactly once, including
+        /// when the queue holds more than a full message when a send
+        /// starts. The queue is filled directly so the result does not
+        /// depend on thread timing.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_FullBatch_SendsEveryEntryOnce()
+        {
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, 2, 100, _tracker.Object);
+            element.AddPipeline(_pipeline.Object);
+            var clientIps = Enumerable.Range(1, 7)
+                .Select(i => $"10.1.0.{i}")
+                .ToList();
+            foreach (var ip in clientIps)
+            {
+                element.Enqueue(ip);
+            }
+
+            while (element.Queued > 0)
+            {
+                element.SendAsync().Wait();
+            }
+
+            var sent = _xmlContent
+                .SelectMany(xml => Regex.Matches(xml, "<ClientIP>([^<]+)</ClientIP>")
+                    .Cast<System.Text.RegularExpressions.Match>()
+                    .Select(m => m.Groups[1].Value))
+                .ToList();
+            var neverSent = clientIps.Except(sent).ToList();
+            Assert.AreEqual(clientIps.Count, sent.Count,
+                $"Queued {clientIps.Count} entries but {sent.Count} were sent " +
+                $"in {_xmlContent.Count} message(s). " +
+                $"Never sent: {string.Join(", ", neverSent)}");
+            CollectionAssert.AreEquivalent(clientIps, sent);
         }
 
         /// <summary>

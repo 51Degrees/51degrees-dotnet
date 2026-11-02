@@ -93,8 +93,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         {
             List<ShareUsageData> allData = new List<ShareUsageData>();
             ShareUsageData currentData;
-            while (EvidenceCollection.TryTake(out currentData, TakeTimeout) &&
-                allData.Count < MinEntriesPerMessage * 2)
+            // The size is checked before taking from the queue. Checked the
+            // other way round, a full message still took one more entry off
+            // the queue and then dropped it, so a busy server lost about one
+            // entry in every message.
+            while (allData.Count < MinEntriesPerMessage * 2 &&
+                EvidenceCollection.TryTake(out currentData, TakeTimeout))
             {
                 allData.Add(currentData);
             }
