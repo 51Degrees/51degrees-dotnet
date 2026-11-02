@@ -59,11 +59,8 @@
 
   <ItemGroup>
     <Compile Remove="build\**" />
-    <Compile Remove="device-detection-cxx\**" />
     <EmbeddedResource Remove="build\**" />
-    <EmbeddedResource Remove="device-detection-cxx\**" />
     <None Remove="build\**" />
-    <None Remove="device-detection-cxx\**" />
   </ItemGroup>
 
   <ItemGroup>

@@ -368,9 +368,9 @@ template <typename T> T SwigValueInit() {
 #include <cstring>
 
 
-#include "device-detection-cxx/src/hash/EngineHash.hpp"
-#include "device-detection-cxx/src/hash/ResultsHashSerializer.hpp"
-#include "device-detection-cxx/src/Transform.hpp"
+#include "cxx/src/dd/hash/EngineHash.hpp"
+#include "cxx/src/dd/hash/ResultsHashSerializer.hpp"
+#include "cxx/src/dd/Transform.hpp"
 
 using namespace FiftyoneDegrees::Common;
 using namespace FiftyoneDegrees::DeviceDetection;

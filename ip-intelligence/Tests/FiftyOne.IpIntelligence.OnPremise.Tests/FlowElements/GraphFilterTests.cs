@@ -131,10 +131,7 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
             var folders = new[]
             {
                 "ip-intelligence-data",
-                Path.Combine(
-                    "FiftyOne.IpIntelligence.Engine.OnPremise",
-                    "ip-intelligence-cxx",
-                    "ip-intelligence-data")
+                Path.Combine("cxx", "ip-intelligence-data")
             };
             var current = new DirectoryInfo(AppContext.BaseDirectory);
             while (current != null)

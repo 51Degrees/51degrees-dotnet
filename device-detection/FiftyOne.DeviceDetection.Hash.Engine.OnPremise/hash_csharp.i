@@ -124,4 +124,4 @@
     }
 }
 
-%include "./device-detection-cxx/src/hash/hash.i";
+%include "cxx/src/dd/hash/hash.i";

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0...3.10 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.24)
 
 set (CMAKE_C_STANDARD 11)
 set (CMAKE_CXX_STANDARD 11)
@@ -55,7 +55,10 @@ elseif (APPLE)
 endif()
 message(STATUS "OS name: ${OS}")
 
-include(${CMAKE_CURRENT_LIST_DIR}/ip-intelligence-cxx/CMakeLists.txt NO_POLICY_SCOPE)
+# The C and C++ code is the cxx submodule at the repository root. Only IP
+# Intelligence is built here.
+set(FIFTYONE_BUILD_DEVICE_DETECTION OFF)
+include(${CMAKE_CURRENT_LIST_DIR}/../../cxx/CMakeLists.txt NO_POLICY_SCOPE)
 
 if (RebuildSwig)
     find_package(SWIG 4.0 COMPONENTS csharp)
@@ -66,7 +69,7 @@ if (RebuildSwig)
     else()
         message(STATUS "Rebuilding SWIG interfaces")
         set(SRCOUT ${CMAKE_CURRENT_LIST_DIR}/Interop/Swig)
-        execute_process(COMMAND ${SWIG_EXECUTABLE} -c++ -csharp -namespace FiftyOne.IpIntelligence.Engine.OnPremise.Interop -module IpIntelligenceEngineModule -dllimport FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll -outdir ${CMAKE_CURRENT_LIST_DIR}/Interop/Swig -o ${CMAKE_CURRENT_LIST_DIR}/IpIntelligenceEngineSwig_csharp.cpp ${CMAKE_CURRENT_LIST_DIR}/ipi_csharp.i)
+        execute_process(COMMAND ${SWIG_EXECUTABLE} -c++ -csharp -I${CMAKE_CURRENT_LIST_DIR}/../.. -namespace FiftyOne.IpIntelligence.Engine.OnPremise.Interop -module IpIntelligenceEngineModule -dllimport FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll -outdir ${CMAKE_CURRENT_LIST_DIR}/Interop/Swig -o ${CMAKE_CURRENT_LIST_DIR}/IpIntelligenceEngineSwig_csharp.cpp ${CMAKE_CURRENT_LIST_DIR}/ipi_csharp.i)
     endif()
 endif()
 
@@ -92,6 +95,8 @@ else()
     )
 endif()
 
+# The wrapper includes through cxx/, so the repository root is on its include path.
+target_include_directories(fiftyone-ipi-dotnet PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../..)
 target_link_libraries(fiftyone-ipi-dotnet fiftyone-ip-intelligence-cxx)
 if (MSVC)
     # /wd4100 needed to disable "unreferenced formal parameter" which comes from the SWIG file

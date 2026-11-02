@@ -77,11 +77,8 @@
 
   <ItemGroup>
     <Compile Remove="build\**" />
-    <Compile Remove="ip-intelligence-cxx\**" />
     <EmbeddedResource Remove="build\**" />
-    <EmbeddedResource Remove="ip-intelligence-cxx\**" />
     <None Remove="build\**" />
-    <None Remove="ip-intelligence-cxx\**" />
   </ItemGroup>
 
   <ItemGroup>
