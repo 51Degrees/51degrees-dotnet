@@ -47,13 +47,13 @@ try {
             continue
         }
         Write-Host "::group::Packing $($family.Name) $($v.Next)"
-        # Packed as Any CPU, as the separate repositories published them. A
-        # platform here makes the managed assemblies x64 only, which an Arm64
-        # or x86 project cannot reference. The native libraries are added
-        # per platform from package-files.
-        $platform = @()
-        foreach ($solution in $family.Solutions) {
-            dotnet pack $solution @packArgs @platform
+        # Each project is packed on its own, as the separate repositories did,
+        # so it builds as Any CPU. Packed through a solution, the engines take
+        # the platform the solution maps them to, which is x64, and an Arm64
+        # or x86 project cannot reference an x64 assembly. The native
+        # libraries are added per platform from package-files.
+        foreach ($project in Get-PackableProjects -Solutions $family.Solutions) {
+            dotnet pack $project @packArgs
         }
         Write-Host "::endgroup::"
     }

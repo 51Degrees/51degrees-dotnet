@@ -101,3 +101,25 @@ function Get-SolutionPlatform {
     param ([Parameter(Mandatory)]$Item, [Parameter(Mandatory)][string]$Arch)
     return $Item.Platform ? $Arch : "Any CPU"
 }
+
+# The package projects of the given solutions and solution filters, as paths
+# relative to the repository root. Tests, examples, tools and performance
+# tests are left out, as they are never packed.
+function Get-PackableProjects {
+    param ([Parameter(Mandatory)][string[]]$Solutions)
+    $projects = foreach ($solution in $Solutions) {
+        $folder = Split-Path $solution -Parent
+        if ($solution -like '*.slnf') {
+            $filter = Get-Content $solution -Raw | ConvertFrom-Json
+            $base = Join-Path $folder (Split-Path $filter.solution.path -Parent)
+            $filter.solution.projects | ForEach-Object { Join-Path $base $_ }
+        } else {
+            Select-String -Path $solution -Pattern '^Project\("[^"]+"\)\s*=\s*"[^"]+",\s*"([^"]+\.csproj)"' |
+                ForEach-Object { Join-Path $folder $_.Matches[0].Groups[1].Value }
+        }
+    }
+    $projects |
+        ForEach-Object { $_.Replace('\', '/') } |
+        Where-Object { "/$_" -notmatch '/(Tests|Examples|examples|Tools|performance-tests)/' -and $_ -notmatch '\.Tests?\.csproj$' } |
+        Sort-Object -Unique
+}
