@@ -42,6 +42,18 @@
   </PropertyGroup>
 
   <!--
+    A solution build drops its Configuration and Platform when it reaches a
+    project outside the solution, which in Project mode is every reference
+    into another folder. The on-premise engines then build their native
+    library for the machine rather than the platform asked for, so an x86
+    build of the examples loaded an x64 library. Keeping the parent's values
+    builds the referenced projects the same way as the solution's own.
+  -->
+  <PropertyGroup>
+    <ShouldUnsetParentConfigurationAndPlatform>false</ShouldUnsetParentConfigurationAndPlatform>
+  </PropertyGroup>
+
+  <!--
     Examples, tests, tools and performance tests are never packed, as the
     specification says. A project under one of those folders can still set
     IsPackable itself.
