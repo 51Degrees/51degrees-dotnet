@@ -19,12 +19,18 @@ $PSNativeCommandUseErrorActionPreference = $true
 # FiftyOne.DeviceDetection.Example.Tests.Web is left out. It holds the generic
 # base classes the web example tests derive from, and has no tests of its own.
 $Filter = "^FiftyOne\.(?!DeviceDetection\.Example\.Tests\.Web\.dll$).*Examples?\.Tests.*\.dll$"
-./dotnet/run-integration-tests.ps1 `
+# The shared integration step allows five minutes without output before it
+# treats a test as hung. The IP Intelligence examples load the 6 GB
+# Enterprise file and can take longer than that, so they get the 20 minutes
+# the separate examples repository allowed.
+./dotnet/run-unit-tests.ps1 `
     -RepoName $RepoName `
     -Name $Name `
     -Configuration $Configuration `
     -Arch $Arch `
     -BuildMethod $BuildMethod `
+    -BlameHangTimeout "20m" `
+    -OutputFolder "integration" `
     -Filter $Filter
 if ($LASTEXITCODE -ne 0) {
     throw "The example tests failed."
