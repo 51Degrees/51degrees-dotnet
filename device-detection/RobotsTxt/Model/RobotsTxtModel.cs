@@ -24,7 +24,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Model;
 
 /// <summary>
 /// A model for all the data needed to work with Robots.Txt. Provided in JSON
-/// format from a transformation of Daphne data.
+/// format from a transformation of the device data.
 /// </summary>
 public class RobotsTxtModel
 {

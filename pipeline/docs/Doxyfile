@@ -818,13 +818,15 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = ../FiftyOne.Pipeline.Core \
-                         ../FiftyOne.Pipeline.Elements \
-                         ../FiftyOne.Pipeline.Engines \
-                         ../FiftyOne.Pipeline.Engines.FiftyOne \
-                         ../README.md \
-                         ../Examples \
-                         "../Examples"
+INPUT                  = ../Core \
+                         ../Engines \
+                         ../Engines.FiftyOne \
+                         ../CloudRequestEngine \
+                         ../JsonBuilderElement \
+                         ../JavaScriptBuilderElement \
+                         ../Web \
+                         ../Web.Shared \
+                         ../README.md
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses

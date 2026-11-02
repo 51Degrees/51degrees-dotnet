@@ -818,11 +818,11 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = ../FiftyOne.DeviceDetection/FiftyOne.DeviceDetection.Cloud \
-                         ../FiftyOne.DeviceDetection/FiftyOne.DeviceDetection \
-                         ../FiftyOne.DeviceDetection/FiftyOne.DeviceDetection.Hash.Engine.OnPremise \
+INPUT                  = ../Cloud \
+                         ../DeviceDetection \
+                         ../Hash.Engine.OnPremise \
                          ../README.md \
-                         ../device-detection-dotnet-examples/Examples 
+                         ../../examples/device-detection
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
@@ -898,7 +898,7 @@ EXCLUDE_SYMBOLS        =
 # that contain example code fragments that are included (see the \include
 # command).
 
-EXAMPLE_PATH           = ../device-detection-dotnet-examples/Examples \
+EXAMPLE_PATH           = ../../examples/device-detection \
                          ../../../src/snippets
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
@@ -2177,7 +2177,7 @@ SKIP_FUNCTION_MACROS   = NO
 # the path). If a tag file is not located in the directory in which doxygen is
 # run, you must also specify the path to the tagfile here.
 
-TAGFILES               = ../pipeline-dotnet/docs/tagfile=../../pipeline-dotnet/4.4/
+TAGFILES               = ../../pipeline/docs/tagfile=../../pipeline-dotnet/4.4/
 
 # When a file name is specified after GENERATE_TAGFILE, doxygen will create a
 # tag file that is based on the input files it reads. See section "Linking to
