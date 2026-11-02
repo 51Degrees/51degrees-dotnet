@@ -6,9 +6,19 @@
     The item's ProjectPath metadata is the path of the project, relative to the
     project that declares it, and its Version metadata is the published
     package version.
+
+    In Project mode the referenced project is outside the solution being
+    built, and Directory.Build.props keeps the solution's Configuration and
+    Platform for it. The device detection and IP Intelligence projects take
+    that platform, so an x86 build gets an x86 native library. The other
+    families only define Any CPU, and are asked for that by name, so an x86 or
+    x64 solution does not ask them for a configuration they do not have.
   -->
   <ItemGroup Condition="'$(FiftyOneReferences)' == 'Project'">
-    <ProjectReference Include="@(FiftyOneReference->'%(ProjectPath)')" />
+    <_FiftyOneAnyCpuReference Include="@(FiftyOneReference)" Exclude="FiftyOne.DeviceDetection*;FiftyOne.IpIntelligence*" />
+    <_FiftyOnePlatformReference Include="@(FiftyOneReference)" Exclude="@(_FiftyOneAnyCpuReference)" />
+    <ProjectReference Include="@(_FiftyOnePlatformReference->'%(ProjectPath)')" />
+    <ProjectReference Include="@(_FiftyOneAnyCpuReference->'%(ProjectPath)')" SetPlatform="Platform=AnyCPU" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(FiftyOneReferences)' != 'Project'">
