@@ -1,0 +1,384 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+using FiftyOne.DeviceDetection.Shared.Data;
+using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.Data.Types;
+using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines;
+using FiftyOne.Pipeline.Engines.Data;
+using FiftyOne.Pipeline.Engines.FlowElements;
+using FiftyOne.Pipeline.Engines.Services;
+using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
+using System;
+using System.Collections.Generic;
+
+namespace FiftyOne.DeviceDetection.Tests.Core.Data
+{
+    /// <summary>
+    /// These tests verify that the DeviceDataBaseOnPremise class is passing 'get property value'
+    /// calls to the appropriate type-specific method (which is overridden in the inheriting class) 
+    /// </summary>
+    [TestClass]
+    public class DeviceDataOnPremiseTests
+    {
+        private Mock<ILogger<AspectDataBase>> _logger;
+
+        private Mock<IFlowData> _flowData;
+
+        private Mock<IAspectEngine> _engine;
+
+        private Mock<IMissingPropertyService> _missingPropertyService;
+
+        private const string _testPropertyNameBool = "testpropertybool";
+        private const string _testPropertyNameDouble = "testpropertydouble";
+        private const string _testPropertyNameInteger = "testpropertyinteger";
+        private const string _testPropertyNameString = "testpropertystring";
+        private const string _testPropertyNameJavaScript = "testpropertyjavascript";
+        private const string _testPropertyNameList = "testpropertylist";
+
+        private static readonly bool _testValueBool = true;
+        private static readonly double _testValueDouble = 1.1;
+        private static readonly int _testValueInteger = 1;
+        private static readonly string _testValueString = "string";
+        private static readonly JavaScript _testValueJavaScript = new JavaScript("javscript");
+        private static readonly IReadOnlyList<string> _testValueList = new List<string>();
+
+        private static readonly Dictionary<string, Tuple<Type, object>> _testProperties = 
+            new Dictionary<string, Tuple<Type, object>>()
+        {
+            { _testPropertyNameBool, new Tuple<Type, object>(typeof(bool), _testValueBool) },
+            { _testPropertyNameDouble, new Tuple<Type, object>(typeof(double), _testValueDouble) },
+            { _testPropertyNameInteger, new Tuple<Type, object>(typeof(int), _testValueInteger) },
+            { _testPropertyNameString, new Tuple<Type, object>(typeof(string), _testValueString) },
+            { _testPropertyNameJavaScript, new Tuple<Type, object>(typeof(JavaScript), _testValueJavaScript) },
+            { _testPropertyNameList, new Tuple<Type, object>(typeof(IReadOnlyList<string>), _testValueList) }
+        };
+
+        /// <summary>
+        /// Test class to extend the results wrapper and add a single property.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        private class TestResults : DeviceDataBaseOnPremise<IDisposable>
+        {
+            private Dictionary<string, object> _values = new Dictionary<string, object>();
+
+            internal TestResults(
+                ILogger<AspectDataBase> logger,
+                IPipeline pipeline,
+                IAspectEngine engine,
+                IMissingPropertyService missingPropertyService)
+                : base(logger, pipeline, engine, missingPropertyService)
+            {
+                // The ResultManager needs to have something added to it 
+                // in order to allow access to the values.
+                // For this test, we can just give it a null reference.
+                Results.AddResult(null);
+            }
+
+            public void AddValue(string propertyName, object value)
+            {
+                _values.Add(propertyName, value);
+            }
+
+            protected override IAspectPropertyValue<bool> GetValueAsBool(string propertyName)
+            {
+                return GetValueInternal<bool>(propertyName);
+            }
+
+            protected override IAspectPropertyValue<double> GetValueAsDouble(string propertyName)
+            {
+                return GetValueInternal<double>(propertyName);
+            }
+
+            protected override IAspectPropertyValue<int> GetValueAsInteger(string propertyName)
+            {
+                return GetValueInternal<int>(propertyName);
+            }
+
+            protected override IAspectPropertyValue<string> GetValueAsString(string propertyName)
+            {
+                return GetValueInternal<string>(propertyName);
+            }
+
+            protected override IAspectPropertyValue<JavaScript> GetValueAsJavaScript(string propertyName)
+            {
+                return GetValueInternal<JavaScript>(propertyName);
+            }
+
+            public override IAspectPropertyValue<IReadOnlyList<string>> GetValues(string propertyName)
+            {
+                return GetValueInternal<IReadOnlyList<string>>(propertyName);
+            }
+
+            private IAspectPropertyValue<T> GetValueInternal<T>(string propertyName)
+            {
+                if (_values.ContainsKey(propertyName))
+                {
+                    return new AspectPropertyValue<T>((T)_values[propertyName]);
+                }
+                else
+                {
+                    throw new PropertyMissingException();
+                }
+            }
+
+            protected override bool PropertyIsAvailable(string propertyName)
+            {
+                return _testProperties.ContainsKey(propertyName);
+            }
+        }
+
+        private void SetupElementProperties()
+        {
+            var properties = new Dictionary<string, IElementPropertyMetaData>();
+            foreach (var entry in _testProperties)
+            {
+                var property = new ElementPropertyMetaData(
+                    _engine.Object,
+                    entry.Key,
+                    entry.Value.Item1,
+                    true,
+                    "category");
+                properties.Add(entry.Key, property);
+            }
+
+            var elementProperties = new Dictionary<string, IReadOnlyDictionary<string, IElementPropertyMetaData>>();
+            elementProperties.Add(_engine.Object.ElementDataKey, properties);
+            _flowData.SetupGet(f => f.Pipeline.ElementAvailableProperties)
+                .Returns(elementProperties);
+        }
+
+        private TestResults _results;
+
+        /// <summary>
+        /// Initialise the test instance.
+        /// </summary>
+        [TestInitialize]
+        public void Init()
+        {
+            _logger = new Mock<ILogger<AspectDataBase>>();
+            _missingPropertyService = new Mock<IMissingPropertyService>();
+            _engine = new Mock<IAspectEngine>();
+            _engine.SetupGet(e => e.ElementDataKey).Returns("test");
+            _flowData = new Mock<IFlowData>();
+            var pipeline = new Mock<IPipeline>();
+            _flowData.Setup(f => f.Pipeline).Returns(pipeline.Object);
+            SetupElementProperties();
+
+            IReadOnlyList<string> expected = new List<string>();
+            _results = new TestResults(
+                    _logger.Object,
+                    _flowData.Object.Pipeline,
+                    _engine.Object,
+                    _missingPropertyService.Object);
+            foreach(var property in _testProperties)
+            {
+                _results.AddValue(property.Key, property.Value.Item2);
+            }
+        }
+
+        /// <summary>
+        /// Check that a string list is returned from the internal results
+        /// instance using the correct get method.
+        /// </summary>
+        [TestMethod]
+        public void GetList()
+        { 
+            TestAccessingValue(_testPropertyNameList, _testValueList);
+        }
+
+        /// <summary>
+        /// Check that a string is returned from the internal results instance
+        /// using the correct get method.
+        /// </summary>
+        [TestMethod]
+        public void GetString()
+        {
+            TestAccessingValue(_testPropertyNameString, _testValueString);
+        }
+
+        /// <summary>
+        /// Check that a bool is returned from the internal results instance
+        /// using the correct get method.
+        /// </summary>
+        [TestMethod]
+        public void GetBool()
+        {
+            TestAccessingValue(_testPropertyNameBool, _testValueBool);
+        }
+
+        /// <summary>
+        /// Check that a int is returned from the internal results instance
+        /// using the correct get method.
+        /// </summary>
+        [TestMethod]
+        public void GetInt()
+        {
+            TestAccessingValue(_testPropertyNameInteger, _testValueInteger);
+        }
+
+        /// <summary>
+        /// Check that a double is returned from the internal results instance
+        /// using the correct get method.
+        /// </summary>
+        [TestMethod]
+        public void GetDouble()
+        {
+            TestAccessingValue(_testPropertyNameDouble, _testValueDouble);
+        }
+
+        /// <summary>
+        /// Check that a double is returned from the internal results instance
+        /// using the correct get method.
+        /// </summary>
+        [TestMethod]
+        public void GetJavaScript()
+        {
+            TestAccessingValue(_testPropertyNameJavaScript, _testValueJavaScript);
+        }
+
+        /// <summary>
+        /// Check that the stored string is reachable through
+        /// <see cref="IProvidesValuesAsString"/>, and that asking for it
+        /// does not change what the typed accessor answers.
+        /// </summary>
+        /// <remarks>
+        /// This is the point of the interface. A Bool property in a data
+        /// file can store a value that is not one of that type's values,
+        /// and device detection does exactly that, storing "Unknown" for
+        /// the properties the 51Degrees JavaScript fills in until it has
+        /// run. The typed accessor has to answer in its own type, so
+        /// without this a caller cannot tell that from a stored "False".
+        /// </remarks>
+        [TestMethod]
+        public void GetStringThroughTheInterface()
+        {
+            var asString = _results as IProvidesValuesAsString;
+            Assert.IsNotNull(
+                asString,
+                "On-premise device data should offer its stored strings.");
+
+            var value = asString.GetValueAsString(_testPropertyNameString);
+            Assert.IsTrue(value.HasValue);
+            Assert.AreEqual(_testValueString, value.Value);
+
+            // The typed accessor is untouched by the interface being
+            // there, which is what keeps this change from moving any
+            // existing caller.
+            var typed = _results[_testPropertyNameBool];
+            Assert.AreEqual(
+                _testValueBool, ((IAspectPropertyValue)typed).Value);
+        }
+
+        /// <summary>
+        /// A property the data does not hold reaches the caller the same
+        /// way through the interface as through the typed accessor, being
+        /// a <see cref="PropertyMissingException"/> rather than a value
+        /// that is empty or false.
+        /// </summary>
+        /// <remarks>
+        /// The interface adds a route to a value and changes nothing
+        /// about how an absent property is reported, which matters
+        /// because a caller that read a missing property as a value would
+        /// draw a conclusion from something this data file does not
+        /// carry.
+        /// </remarks>
+        [TestMethod]
+        public void GetStringThroughTheInterface_UnknownProperty()
+        {
+            var asString = _results as IProvidesValuesAsString;
+            Assert.IsNotNull(asString);
+
+            Assert.ThrowsExactly<PropertyMissingException>(
+                () => asString.GetValueAsString("NotAPropertyName"),
+                "A property the data does not hold should be reported as "
+                + "missing, in the same way as through any other "
+                + "accessor.");
+        }
+
+        /// <summary>
+        /// A value set directly on the data, as a flow element that runs
+        /// after the engine might set one, can be read back singly without
+        /// first populating the whole dictionary through AsDictionary.
+        /// </summary>
+        /// <remarks>
+        /// Before this was fixed a single read asked the engine alone, so
+        /// it answered that there was no such value until something called
+        /// AsDictionary, after which the same read found it.
+        /// </remarks>
+        [TestMethod]
+        public void TryGet_ValueSetDirectly_IsFoundWithoutPopulating()
+        {
+            const string name = "setdirectly";
+            var expected = new AspectPropertyValue<string>("set directly");
+            _results[name] = expected;
+
+            Assert.IsTrue(
+                _results.TryGet(name, out var value),
+                "A value set directly on the data should be found by a "
+                + "single read.");
+            Assert.AreSame(expected, value);
+        }
+
+        /// <summary>
+        /// Where a key is both one of the engine's properties and has had
+        /// a value set directly, a single read answers with the value that
+        /// was set, as the IP intelligence data does.
+        /// </summary>
+        [TestMethod]
+        public void TryGet_EnginePropertyAlsoSetDirectly_SetValueIsRead()
+        {
+            var expected = new AspectPropertyValue<string>("set directly");
+            _results[_testPropertyNameString] = expected;
+
+            Assert.IsTrue(
+                _results.TryGet(_testPropertyNameString, out var value));
+            Assert.AreSame(expected, value);
+        }
+
+        /// <summary>
+        /// A key that is neither one of the engine's properties nor set
+        /// directly is still reported as not found.
+        /// </summary>
+        [TestMethod]
+        public void TryGet_UnknownKey_IsNotFound()
+        {
+            Assert.IsFalse(_results.TryGet("notapropertyname", out _));
+        }
+
+        private void TestAccessingValue(string propertyName, object expectedResult)
+        {
+            var value = _results[propertyName];
+            Assert.IsTrue(typeof(IAspectPropertyValue).IsAssignableFrom(value.GetType()));
+            Assert.AreEqual(expectedResult, ((IAspectPropertyValue)value).Value);
+
+            var dict = _results.AsDictionary();
+            Assert.IsTrue(dict.ContainsKey(_testPropertyNameInteger));
+            var dictValue = dict[propertyName];
+            Assert.IsTrue(typeof(IAspectPropertyValue).IsAssignableFrom(dictValue.GetType()));
+            Assert.AreEqual(expectedResult, ((IAspectPropertyValue)dictValue).Value);
+        }
+    }
+}

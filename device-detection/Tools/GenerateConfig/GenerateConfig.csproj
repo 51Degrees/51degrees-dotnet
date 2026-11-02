@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Platforms>AnyCPU;x64;x86;ARM64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\FiftyOne.DeviceDetection\FiftyOne.DeviceDetection.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FiftyOne.Pipeline.Web" Version="4.5.128" />
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+  </ItemGroup>
+
+</Project>
