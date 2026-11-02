@@ -8,9 +8,15 @@ param (
 $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
 
+. "$PSScriptRoot/packages.ps1"
+
 $RepoPath = [IO.Path]::Combine($pwd, $RepoName)
 $summary = New-Item -ItemType Directory -Force "$RepoPath/test-results/performance-summary"
-$references = $Version ? @() : @("-p:FiftyOneReferences=Project")
+# On a publish the examples build against the packages install-package.ps1
+# put in the local feed, at the versions being published. Without the
+# version properties they would restore the last published versions from
+# nuget.org instead.
+$references = $Version ? (Get-VersionProperties -Versions (Get-FamilyVersions -RepoName $RepoName)) : @("-p:FiftyOneReferences=Project")
 $runConfiguration = $Configuration.Contains("Release") ? "Release" : "Debug"
 
 # The device detection console example, with the TAC file and the evidence
