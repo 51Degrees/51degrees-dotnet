@@ -47,7 +47,11 @@ try {
             continue
         }
         Write-Host "::group::Packing $($family.Name) $($v.Next)"
-        $platform = $family.Platform ? @("-p:Platform=x64") : @()
+        # Packed as Any CPU, as the separate repositories published them. A
+        # platform here makes the managed assemblies x64 only, which an Arm64
+        # or x86 project cannot reference. The native libraries are added
+        # per platform from package-files.
+        $platform = @()
         foreach ($solution in $family.Solutions) {
             dotnet pack $solution @packArgs @platform
         }
