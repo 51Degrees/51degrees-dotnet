@@ -20,6 +20,8 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using System;
+using System.Globalization;
 using System.Linq;
 
 namespace FiftyOne.IpIntelligence.Examples
@@ -74,10 +76,26 @@ namespace FiftyOne.IpIntelligence.Examples
         public const string GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR = "GEOIPEVIDENCEFILE";
 
         /// <summary>
-        /// Ports used for running web examples and their tests.
+        /// Ports used for running web examples and their tests. When these
+        /// are taken on a machine, set _51DEGREES_EXAMPLE_HTTP_PORTS and
+        /// _51DEGREES_EXAMPLE_HTTPS_PORTS to other ports, comma separated.
         /// </summary>
-        public static readonly int[] LOCALHOST_HTTP_PORTS = new int[] { 5101 };
-        public static readonly int[] LOCALHOST_HTTPS_PORTS = new int[] { 5001, 5002 };
+        public static readonly int[] LOCALHOST_HTTP_PORTS =
+            PortsFromEnvironment("_51DEGREES_EXAMPLE_HTTP_PORTS", new int[] { 5101 });
+        public static readonly int[] LOCALHOST_HTTPS_PORTS =
+            PortsFromEnvironment("_51DEGREES_EXAMPLE_HTTPS_PORTS", new int[] { 5001, 5002 });
+
+        private static int[] PortsFromEnvironment(string name, int[] defaults)
+        {
+            var value = Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return defaults;
+            }
+            return value.Split(',')
+                .Select(p => int.Parse(p.Trim(), CultureInfo.InvariantCulture))
+                .ToArray();
+        }
 
         /// <summary>
         /// The URLs that the web server should listen on.

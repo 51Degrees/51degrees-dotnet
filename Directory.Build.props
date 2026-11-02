@@ -42,6 +42,15 @@
   </PropertyGroup>
 
   <!--
+    Examples, tests, tools and performance tests are never packed, as the
+    specification says. A project under one of those folders can still set
+    IsPackable itself.
+  -->
+  <PropertyGroup>
+    <IsPackable Condition="$(MSBuildProjectDirectory.Contains('Tests')) or $(MSBuildProjectDirectory.Contains('Examples')) or $(MSBuildProjectDirectory.Contains('examples')) or $(MSBuildProjectDirectory.Contains('performance-tests')) or $(MSBuildProjectDirectory.Contains('Tools')) or $(MSBuildProjectDirectory.EndsWith('.Test'))">false</IsPackable>
+  </PropertyGroup>
+
+  <!--
     The published version of each package family that the Package mode
     restores. Until the first release from this repository these are the
     versions the separate repositories last published. The nightly package
