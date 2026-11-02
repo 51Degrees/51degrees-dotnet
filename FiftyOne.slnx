@@ -133,7 +133,6 @@
   </Folder>
   <Folder Name="/ip-intelligence/Tests/">
     <Project Path="ip-intelligence/Tests/FiftyOne.IpIntelligence.CloudTests/FiftyOne.IpIntelligence.CloudTests.csproj" />
-    <Project Path="ip-intelligence/Tests/FiftyOne.IpIntelligence.Example.Tests.OnPremise/FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj" />
     <Project Path="ip-intelligence/Tests/FiftyOne.IpIntelligence.OnPremise.Tests/FiftyOne.IpIntelligence.OnPremise.Tests.csproj" />
     <Project Path="ip-intelligence/Tests/FiftyOne.IpIntelligence.Tests.Core/FiftyOne.IpIntelligence.Tests.Core.csproj" />
     <Project Path="ip-intelligence/Tests/FiftyOne.IpIntelligence.Translation.Tests/FiftyOne.IpIntelligence.Translation.Tests.csproj" />
