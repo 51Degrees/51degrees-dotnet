@@ -776,7 +776,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// <summary>
         /// Whether the signature covers something that ties it to the
         /// request it arrived on. The protocol draft has an agent cover
-        /// '@authority' or '@target-uri', and a signature covering neither
+        /// '&#64;authority' or '&#64;target-uri', and a signature covering neither
         /// would check out against a request sent to any other site, so
         /// one captured elsewhere could be replayed here.
         /// </summary>
@@ -1160,7 +1160,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// components are built from those headers and from the request
         /// line, being the method, the path and the query string. Where an
         /// integration supplies no request line, a signature covering
-        /// '@target-uri', '@method', '@path' or '@query' cannot be rebuilt
+        /// '&#64;target-uri', '&#64;method', '&#64;path' or '&#64;query' cannot be rebuilt
         /// and reads Unverified with the ComponentUnavailable reason.
         /// </remarks>
         private sealed class FlowDataComponentResolver : IComponentResolver
@@ -1300,7 +1300,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             }
 
             /// <summary>
-            /// Build the '@target-uri' component from the parts that make
+            /// Build the '&#64;target-uri' component from the parts that make
             /// it up. Every part has to be there, because a target address
             /// missing its path or its query is a different address and
             /// would produce a signature base the agent never signed.
@@ -1445,9 +1445,9 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// A signature names the parts of the request it covers, and it may
         /// name any request header, so the element cannot write the list
         /// down in advance. It accepts every header instead, together with
-        /// the protocol, which '@authority' and '@scheme' are built from,
-        /// and the three request line values, which '@method', '@path',
-        /// '@query' and '@target-uri' are built from. A fixed list of
+        /// the protocol, which '&#64;authority' and '&#64;scheme' are built from,
+        /// and the three request line values, which '&#64;method', '&#64;path',
+        /// '&#64;query' and '&#64;target-uri' are built from. A fixed list of
         /// headers would leave a signature covering any other header unable
         /// to be rebuilt, because a web integration only puts evidence into
         /// the request that some element has asked for.
@@ -1480,8 +1480,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 Core.Constants.EVIDENCE_SEPERATOR;
 
             /// <summary>
-            /// The keys carrying the request line, which '@method',
-            /// '@path', '@query' and '@target-uri' are built from.
+            /// The keys carrying the request line, which '&#64;method',
+            /// '&#64;path', '&#64;query' and '&#64;target-uri' are built from.
             /// </summary>
             private static readonly string[] RequestLineKeys = new[]
             {
@@ -1529,11 +1529,11 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             /// or not that caller uses this element and whether or not it
             /// is entitled to. Leaving them out is not the answer either:
             /// a forwarded request would then arrive carrying no path and
-            /// no query, and a signature covering '@path', '@query' or
-            /// '@target-uri' could not be rebuilt at all, which is the
+            /// no query, and a signature covering '&#64;path', '&#64;query' or
+            /// '&#64;target-uri' could not be rebuilt at all, which is the
             /// greater part of what this element is for on the cloud
             /// path. Narrowing what is sent is not open either, because
-            /// '@query' is defined as the whole query string.
+            /// '&#64;query' is defined as the whole query string.
             /// </para>
             /// <para>
             /// Holding the cost to the callers who need it therefore
@@ -1573,8 +1573,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             /// <remarks>
             /// Any header at all is accepted beyond the named keys,
             /// because a signature may cover one this element cannot know
-            /// in advance. The protocol, which '@scheme' and the port in
-            /// '@authority' are built from, is itself written as
+            /// in advance. The protocol, which '&#64;scheme' and the port in
+            /// '&#64;authority' are built from, is itself written as
             /// 'header.protocol', so the test on the prefix covers it too.
             /// </remarks>
             public override bool Include(string key)

@@ -54,7 +54,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
 
         /// <summary>
         /// Every request header is asked for, together with the protocol
-        /// that '@authority' and '@scheme' are built from, and nothing that
+        /// that '&#64;authority' and '&#64;scheme' are built from, and nothing that
         /// is not a header the element could be asked to rebuild.
         /// </summary>
         /// <param name="key">The evidence key.</param>

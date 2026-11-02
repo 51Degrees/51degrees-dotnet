@@ -189,7 +189,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         }
 
         /// <summary>
-        /// The two architecture v2 vectors that cover '@authority' only send
+        /// The two architecture v2 vectors that cover '&#64;authority' only send
         /// no 'Signature-Agent' header at all. A signature that names no
         /// agent gives this element nowhere to fetch a key from, so there is
         /// nothing to check the signature against and the only honest answer
@@ -338,7 +338,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         }
 
         /// <summary>
-        /// Changing one character of the host means the '@authority' line of
+        /// Changing one character of the host means the '&#64;authority' line of
         /// the signature base no longer matches the one the agent signed, so
         /// the signature reads Invalid with the SignatureMismatch reason.
         /// This is the check that stops a signature being replayed against a
@@ -567,7 +567,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         #region Components and absent signatures
 
         /// <summary>
-        /// A signature that covers '@target-uri' cannot be rebuilt, because
+        /// A signature that covers '&#64;target-uri' cannot be rebuilt, because
         /// the web integration puts the request headers into evidence but
         /// not the request line, so there is no way to know the URI the
         /// agent asked for. The element says so with Unverified and the

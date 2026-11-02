@@ -85,7 +85,7 @@ namespace FiftyOne.Pipeline.AgentSignature
 
         /// <summary>
         /// The complete key used when the 'Host' HTTP header is passed as
-        /// evidence. The '@authority' derived component is built from it.
+        /// evidence. The '&#64;authority' derived component is built from it.
         /// </summary>
         public const string EVIDENCE_HOST_KEY =
             Core.Constants.EVIDENCE_HOST_KEY;
@@ -309,7 +309,7 @@ namespace FiftyOne.Pipeline.AgentSignature
         /// The signature covers nothing that ties it to the request it
         /// arrived on, so the same signature would check out against any
         /// request sent to this site. The protocol draft requires an agent
-        /// to cover either '@authority' or '@target-uri'.
+        /// to cover either '&#64;authority' or '&#64;target-uri'.
         /// </summary>
         public const string REASON_UNBOUND_SIGNATURE = "UnboundSignature";
 

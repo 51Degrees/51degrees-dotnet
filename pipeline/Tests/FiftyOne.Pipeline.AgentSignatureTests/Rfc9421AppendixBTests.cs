@@ -77,7 +77,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
 
         /// <summary>
         /// The text of the signature parameters, being everything the
-        /// appendix prints on the '@signature-params' line after the colon
+        /// appendix prints on the '&#64;signature-params' line after the colon
         /// and the space.
         /// </summary>
         public string SignatureParams { get; set; }
@@ -112,7 +112,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
     {
         /// <summary>
         /// The component identifier with its parameters, written exactly as
-        /// the appendix writes it, for example '"@query-param";name="Pet"'.
+        /// the appendix writes it, for example '"&#64;query-param";name="Pet"'.
         /// </summary>
         public string Identifier { get; set; }
 
@@ -133,7 +133,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
     /// These are unit tests of the signature base builder and of the
     /// verifier, not of the flow element. Several of the examples cover
     /// components the element cannot rebuild from pipeline evidence, being
-    /// '@method', '@path', '@target-uri', '@query' and the '@status' of a
+    /// '&#64;method', '&#64;path', '&#64;target-uri', '&#64;query' and the '&#64;status' of a
     /// response, so a real request shaped like B.2.3 or B.2.6 would read
     /// Unverified with the ComponentUnavailable reason rather than
     /// verifying. The limitation is written up on
@@ -308,7 +308,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         /// <summary>
         /// The text of the signature parameters kept from the
         /// 'Signature-Input' header is the text the appendix prints on the
-        /// '@signature-params' line of its signature base. The two are
+        /// '&#64;signature-params' line of its signature base. The two are
         /// wrapped separately in the RFC, so agreeing on them is a check on
         /// the parser keeping the header text exactly as it was sent.
         /// </summary>

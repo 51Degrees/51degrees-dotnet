@@ -111,7 +111,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests.Helpers
         public string ExpiresText { get; set; }
 
         /// <summary>
-        /// True to cover '@authority', which every well behaved agent does.
+        /// True to cover '&#64;authority', which every well behaved agent does.
         /// A test sets this to false to send a signature that is tied to
         /// nothing about the request it arrived on.
         /// </summary>
@@ -163,10 +163,10 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests.Helpers
         public string SignatureAgentSignedParameters { get; set; }
 
         /// <summary>
-        /// Covered components to add beyond '@authority' and the signature
+        /// Covered components to add beyond '&#64;authority' and the signature
         /// agent, given as a component identifier and the value that
         /// belongs on its line of the signature base. For example
-        /// '"@target-uri"' and 'https://example.com/path'.
+        /// '"&#64;target-uri"' and 'https://example.com/path'.
         /// </summary>
         public IList<KeyValuePair<string, string>> ExtraComponents { get; } =
             new List<KeyValuePair<string, string>>();

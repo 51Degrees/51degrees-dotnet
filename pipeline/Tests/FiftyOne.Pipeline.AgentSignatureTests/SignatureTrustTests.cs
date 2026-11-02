@@ -154,7 +154,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         #region Signatures tied to nothing
 
         /// <summary>
-        /// A signature that covers neither '@authority' nor '@target-uri'
+        /// A signature that covers neither '&#64;authority' nor '&#64;target-uri'
         /// says nothing about the request it arrived on, so the same
         /// signature would check out against a request sent to any other
         /// site and one captured elsewhere could be replayed here. The
@@ -193,7 +193,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         }
 
         /// <summary>
-        /// A signature that covers '@authority', which is what a well
+        /// A signature that covers '&#64;authority', which is what a well
         /// behaved agent sends, verifies as it did before the check above
         /// was added, so the check does not fire on good traffic.
         /// </summary>
@@ -307,7 +307,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         /// Anyone can add a header to a request, so a 'Signature-Agent'
         /// header the signature does not cover says nothing about which
         /// agent sent the request. A request whose signature covers
-        /// '@authority' only, with a header bolted on naming an agent whose
+        /// '&#64;authority' only, with a header bolted on naming an agent whose
         /// directory would verify it, reads Unverified with the NoAgent
         /// reason and fetches nothing.
         /// </summary>
