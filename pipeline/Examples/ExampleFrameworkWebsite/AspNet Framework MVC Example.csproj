@@ -112,19 +112,19 @@
     <Content Include="Scripts\jquery-3.4.1.min.map" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.Pipeline.JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj">
+    <ProjectReference Include="..\..\JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj">
       <Project>{2C2AFF73-A5E5-45C0-98BE-A492BE85BEBB}</Project>
       <Name>FiftyOne.Pipeline.JavaScriptBuilder</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\FiftyOne.Pipeline.JsonBuilderElement\FiftyOne.Pipeline.JsonBuilder.csproj">
+    <ProjectReference Include="..\..\JsonBuilderElement\FiftyOne.Pipeline.JsonBuilder.csproj">
       <Project>{DE895B27-976B-47CA-B7FD-8BFFBE24C80D}</Project>
       <Name>FiftyOne.Pipeline.JsonBuilder</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\FiftyOne.Pipeline.Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj">
+    <ProjectReference Include="..\..\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj">
       <Project>{8087BE8A-67B7-4ECC-8EA6-109B3B741D5E}</Project>
       <Name>FiftyOne.Pipeline.Engines.FiftyOne</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\FiftyOne.Pipeline.Web.Framework\FiftyOne.Pipeline.Web.Framework.csproj">
+    <ProjectReference Include="..\..\Web.Framework\FiftyOne.Pipeline.Web.Framework.csproj">
       <Project>{67cdf235-dd65-4f3d-8187-fe0af6f4048b}</Project>
       <Name>FiftyOne.Pipeline.Web.Framework</Name>
     </ProjectReference>
@@ -134,7 +134,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\common\FiftyOne.Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
+    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\common\Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
     <PackageReference Include="Microsoft.AspNet.Mvc">
       <Version>5.2.9</Version>
     </PackageReference>

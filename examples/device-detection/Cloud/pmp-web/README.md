@@ -37,7 +37,7 @@ any ASP.NET Core application is started. Without it the demo listens on
 `http://localhost:5000`.
 
 A resource key can be created at
-https://configure.51degrees.com/YldpCKbW?utm_source=github&utm_medium=readme&utm_campaign=device-detection-dotnet-examples&utm_content=examples-cloud-pmp-web-readme.md&utm_term=running-it,
+https://configure.51degrees.com/YldpCKbW?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-readme.md&utm_term=running-it,
 which opens the Configurator with a list of properties already chosen.
 The key has to carry the 51Did properties, which is what makes the cloud
 include the part of the client script that asks the visitor how their data
@@ -213,9 +213,9 @@ as their `utm_campaign`, which a copy changes to its own repository's name.
 ## Find out more
 
 - The 51Did and the Preference Management Platform,
-  https://51degrees.com/documentation/_identifiers__index.html?utm_source=github&utm_medium=readme&utm_campaign=device-detection-dotnet-examples&utm_content=examples-cloud-pmp-web-readme.md&utm_term=find-out-more
+  https://51degrees.com/documentation/_identifiers__index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-readme.md&utm_term=find-out-more
 - Talk to 51Degrees about using them,
-  https://51degrees.com/contact-us?utm_source=github&utm_medium=readme&utm_campaign=device-detection-dotnet-examples&utm_content=examples-cloud-pmp-web-readme.md&utm_term=find-out-more
+  https://51degrees.com/contact-us?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-readme.md&utm_term=find-out-more
 - The source code for this demo and what it uses.
   - https://github.com/51Degrees/device-detection-dotnet-examples
   - https://github.com/51Degrees/pipeline-dotnet

@@ -5,39 +5,39 @@ VisualStudioVersion = 17.10.34916.146
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{C6116D6C-546D-44CE-ABA7-857ACF41096A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.JsonBuilder", "FiftyOne.Pipeline.JsonBuilderElement\FiftyOne.Pipeline.JsonBuilder.csproj", "{E333A1B1-FCBC-450E-887B-378C94A3B484}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.JsonBuilder", "JsonBuilderElement\FiftyOne.Pipeline.JsonBuilder.csproj", "{E333A1B1-FCBC-450E-887B-378C94A3B484}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.JavaScriptBuilder", "FiftyOne.Pipeline.JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj", "{C723B699-0BDD-4259-83B7-7967E89E3D66}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.JavaScriptBuilder", "JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj", "{C723B699-0BDD-4259-83B7-7967E89E3D66}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.JavaScriptBuilderElementTests", "Tests\FiftyOne.Pipeline.JavaScriptBuilderElementTests\FiftyOne.Pipeline.JavaScriptBuilderElementTests.csproj", "{56659845-AC20-4B60-B794-9B48D279A373}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.JavaScriptBuilderElementTests", "Tests\JavaScriptBuilderElementTests\FiftyOne.Pipeline.JavaScriptBuilderElementTests.csproj", "{56659845-AC20-4B60-B794-9B48D279A373}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.JsonBuilderElementTests", "Tests\FiftyOne.Pipeline.JsonBuilderElementTests\FiftyOne.Pipeline.JsonBuilderElementTests.csproj", "{E20990A4-8FD2-485A-AEC0-15C17754D597}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.JsonBuilderElementTests", "Tests\JsonBuilderElementTests\FiftyOne.Pipeline.JsonBuilderElementTests.csproj", "{E20990A4-8FD2-485A-AEC0-15C17754D597}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Elements", "Elements", "{90EC0711-1AB5-4A16-B6AC-0395E75D3D2B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines", "FiftyOne.Pipeline.Engines\FiftyOne.Pipeline.Engines.csproj", "{BE991E28-F6EF-43C2-95E2-63B18F4AAA94}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines", "Engines\FiftyOne.Pipeline.Engines.csproj", "{BE991E28-F6EF-43C2-95E2-63B18F4AAA94}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Core", "FiftyOne.Pipeline.Core\FiftyOne.Pipeline.Core.csproj", "{4F8BCC3B-D156-47DC-BB4D-BCB00A8F02A9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Core", "Core\FiftyOne.Pipeline.Core.csproj", "{4F8BCC3B-D156-47DC-BB4D-BCB00A8F02A9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Web.Shared", "FiftyOne.Pipeline.Web.Shared\FiftyOne.Pipeline.Web.Shared.csproj", "{89C19891-7B2B-41F2-86F1-F450257586CD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Web.Shared", "Web.Shared\FiftyOne.Pipeline.Web.Shared.csproj", "{89C19891-7B2B-41F2-86F1-F450257586CD}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.FiftyOne", "FiftyOne.Pipeline.Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj", "{3033F2CA-AA45-43FE-86A3-D7D9C2353C34}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.FiftyOne", "Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj", "{3033F2CA-AA45-43FE-86A3-D7D9C2353C34}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.TestHelpers", "FiftyOne.Pipeline.Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj", "{C2430882-077E-49A7-A943-16052E42D20E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Engines.TestHelpers", "Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj", "{C2430882-077E-49A7-A943-16052E42D20E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Translation", "FiftyOne.Pipeline.Translation\FiftyOne.Pipeline.Translation.csproj", "{E5769C07-9ECE-4831-84BA-A8E5AC54101E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.Translation", "Translation\FiftyOne.Pipeline.Translation.csproj", "{E5769C07-9ECE-4831-84BA-A8E5AC54101E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.TranslationTests", "Tests\FiftyOne.Pipeline.Translation.Tests\FiftyOne.Pipeline.TranslationTests.csproj", "{EC33BDCE-D147-4899-A18C-9FAD556E3CFB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.TranslationTests", "Tests\Translation.Tests\FiftyOne.Pipeline.TranslationTests.csproj", "{EC33BDCE-D147-4899-A18C-9FAD556E3CFB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.AgentSignature", "FiftyOne.Pipeline.AgentSignature\FiftyOne.Pipeline.AgentSignature.csproj", "{0909A279-8B9A-43D4-82D8-0ECC114FC4B2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.AgentSignature", "AgentSignature\FiftyOne.Pipeline.AgentSignature.csproj", "{0909A279-8B9A-43D4-82D8-0ECC114FC4B2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.AgentSignatureTests", "Tests\FiftyOne.Pipeline.AgentSignatureTests\FiftyOne.Pipeline.AgentSignatureTests.csproj", "{DEFCBE89-0837-4519-BC38-6CD395E64EAA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.AgentSignatureTests", "Tests\AgentSignatureTests\FiftyOne.Pipeline.AgentSignatureTests.csproj", "{DEFCBE89-0837-4519-BC38-6CD395E64EAA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.AgentSignatureStandardTests", "Tests\FiftyOne.Pipeline.AgentSignatureStandardTests\FiftyOne.Pipeline.AgentSignatureStandardTests.csproj", "{C4019835-9E2A-43D3-BC79-E32248199CCC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.AgentSignatureStandardTests", "Tests\AgentSignatureStandardTests\FiftyOne.Pipeline.AgentSignatureStandardTests.csproj", "{C4019835-9E2A-43D3-BC79-E32248199CCC}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.DerivedProperty", "FiftyOne.Pipeline.DerivedProperty\FiftyOne.Pipeline.DerivedProperty.csproj", "{7E725BB5-C698-4301-8B5E-727CCFC42A33}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.DerivedProperty", "DerivedProperty\FiftyOne.Pipeline.DerivedProperty.csproj", "{7E725BB5-C698-4301-8B5E-727CCFC42A33}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.DerivedPropertyTests", "Tests\FiftyOne.Pipeline.DerivedProperty.Tests\FiftyOne.Pipeline.DerivedPropertyTests.csproj", "{29E1B841-5FC4-469E-9BF0-9BF6DEB2FD7F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.Pipeline.DerivedPropertyTests", "Tests\DerivedProperty.Tests\FiftyOne.Pipeline.DerivedPropertyTests.csproj", "{29E1B841-5FC4-469E-9BF0-9BF6DEB2FD7F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

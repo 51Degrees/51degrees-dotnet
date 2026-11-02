@@ -15,13 +15,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.DeviceDetection" ProjectPath="..\..\..\..\..\device-detection\FiftyOne.DeviceDetection\FiftyOne.DeviceDetection.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection" ProjectPath="..\..\..\..\..\device-detection\DeviceDetection\FiftyOne.DeviceDetection.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\FiftyOne.IpIntelligence.Examples.OnPremise\FiftyOne.IpIntelligence.Examples.OnPremise.csproj" />
+    <ProjectReference Include="..\..\..\Examples.OnPremise\FiftyOne.IpIntelligence.Examples.OnPremise.csproj" />
   </ItemGroup>
 
 </Project>

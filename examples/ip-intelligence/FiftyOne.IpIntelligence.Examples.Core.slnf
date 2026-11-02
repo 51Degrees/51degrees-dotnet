@@ -8,9 +8,9 @@
       "Cloud\\Metadata-Console\\Metadata-Console.csproj",
       "Cloud\\Mixed\\GettingStarted-Console\\GettingStarted-Console.csproj",
       "Cloud\\Mixed\\GettingStarted-Web\\GettingStarted-Web.csproj",
-      "FiftyOne.IpIntelligence.Examples.Cloud\\FiftyOne.IpIntelligence.Examples.Cloud.csproj",
-      "FiftyOne.IpIntelligence.Examples.OnPremise\\FiftyOne.IpIntelligence.Examples.OnPremise.csproj",
-      "FiftyOne.IpIntelligence.Examples\\FiftyOne.IpIntelligence.Examples.csproj",
+      "Examples.Cloud\\FiftyOne.IpIntelligence.Examples.Cloud.csproj",
+      "Examples.OnPremise\\FiftyOne.IpIntelligence.Examples.OnPremise.csproj",
+      "Examples\\FiftyOne.IpIntelligence.Examples.csproj",
       "OnPremise\\Areas\\Areas.csproj",
       "OnPremise\\Compare-Console\\Compare-Console.csproj",
       "OnPremise\\GettingStarted-Console\\GettingStarted-Console.csproj",
@@ -25,9 +25,9 @@
       "OnPremise\\Performance-Console\\Performance-Console.csproj",
       "OnPremise\\Suspicious-Console\\Suspicious-Console.csproj",
       "OnPremise\\UpdateDataFile-Console\\UpdateDataFile-Console.csproj",
-      "Tests\\FiftyOne.IpIntelligence.Example.Tests.Cloud\\FiftyOne.IpIntelligence.Example.Tests.Cloud.csproj",
-      "Tests\\FiftyOne.IpIntelligence.Example.Tests.OnPremise\\FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj",
-      "Tests\\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests\\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj"
+      "Tests\\Example.Tests.Cloud\\FiftyOne.IpIntelligence.Example.Tests.Cloud.csproj",
+      "Tests\\Example.Tests.OnPremise\\FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj",
+      "Tests\\Examples.OnPremise.GettingStartedAPI.Tests\\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj"
     ]
   }
 }

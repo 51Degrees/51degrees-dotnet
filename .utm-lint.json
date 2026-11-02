@@ -1,0 +1,10 @@
+{
+  "allowUntagged": [
+    "^device-detection/RobotsTxt/Constants\\.cs$",
+    "^device-detection/RobotsTxt/Services/GeneratorService\\.cs$"
+  ],
+  "exclude": [
+    "^ip-intelligence/[^/]+/FiftyOne\\.IpIntelligence[^/]*\\.xml$",
+    "^location/[^/]+/FiftyOne\\.GeoLocation[^/]*\\.xml$"
+  ]
+}

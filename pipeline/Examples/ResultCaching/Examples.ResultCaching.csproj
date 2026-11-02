@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.Pipeline.Engines\FiftyOne.Pipeline.Engines.csproj" />
-    <ProjectReference Include="..\..\FiftyOne.Pipeline.Examples.Shared\FiftyOne.Pipeline.Examples.Shared.csproj" />
+    <ProjectReference Include="..\..\Engines\FiftyOne.Pipeline.Engines.csproj" />
+    <ProjectReference Include="..\..\Examples.Shared\FiftyOne.Pipeline.Examples.Shared.csproj" />
   </ItemGroup>
 
 </Project>

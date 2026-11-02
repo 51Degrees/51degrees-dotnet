@@ -46,7 +46,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Suspicious;
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Suspicious-Console/Program.cs). 
 /// 
 /// This example requires an enterprise IP Intelligence data file (.ipi). 
-/// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-onpremise-suspicious-console-program.cs&amp;utm_term=program).
+/// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-suspicious-console-program.cs&amp;utm_term=program).
 /// 
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
@@ -59,7 +59,7 @@ public class Program
         {
             // In this example, we use the IpiPipelineBuilder and configure it
             // in code. For more information about builders in general see the documentation at
-            // https://51degrees.com/documentation/_concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
+            // https://51degrees.com/documentation/_concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
 
             // Note that we wrap the creation of a pipeline in a using to control its life cycle
             using (var pipeline = new IpiPipelineBuilder()
@@ -68,8 +68,8 @@ public class Program
                 // data file is paged from disk rather than loaded entirely into RAM.
                 // See the documentation for more detail on this and other
                 // configuration options.
-                // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
-                // https://51degrees.com/documentation/_features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
+                // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
+                // https://51degrees.com/documentation/_features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
                 .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                 // inhibit sharing usage for this example, usually this should be set to "true"
                 .SetShareUsage(false)
@@ -169,7 +169,7 @@ public class Program
         // In this example, by default, the 51degrees IP Intelligence data file needs to be somewhere in the
         // project space, or you may specify another file as a command line parameter.
         //
-        // For testing, contact us to obtain an enterprise data file: https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=main
+        // For testing, contact us to obtain an enterprise data file: https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=main
         Examples.ExampleUtils.FindDataFile(Constants.ENTERPRISE_IPI_DATA_FILE_NAME);
 
         File.WriteAllText("Metadata_DataFileName.txt", dataFile);

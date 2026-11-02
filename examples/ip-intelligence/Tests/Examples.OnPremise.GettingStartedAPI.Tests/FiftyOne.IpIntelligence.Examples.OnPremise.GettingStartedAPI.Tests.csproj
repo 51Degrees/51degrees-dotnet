@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Platforms>AnyCPU;x64;ARM64</Platforms>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Nullable>enable</Nullable>
+
+    <!-- Bounded test/session timeouts (see Tests/test.runsettings). -->
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory)..\test.runsettings</RunSettingsFilePath>
+
+    <!-- Force the project runtimeconfig.json to exist on disk so the post-build
+         target below can seed testhost.runtimeconfig.json from it. See that
+         target for the full explanation. -->
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonVersion)" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection.Hash.Engine.OnPremise" ProjectPath="..\..\..\..\device-detection\Hash.Engine.OnPremise\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.TestHelpers" ProjectPath="..\..\..\..\pipeline\Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="4.1.0" />
+    <PackageReference Include="MSTest.TestFramework" Version="4.1.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\OnPremise\Mixed\GettingStarted-API\GettingStarted-API.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!--
+    Seed testhost.runtimeconfig.json next to the built test assembly.
+
+    Under the nightly-publish job the suite is run as
+    `vstest.console.exe <assembly>.dll` (BuildMethod=msbuild, see
+    common-ci/dotnet/run-unit-tests.ps1). vstest launches the packaged
+    testhost.exe and normally writes testhost.runtimeconfig.json alongside it,
+    derived from this project's own <assembly>.runtimeconfig.json.
+
+    For this project that runtimeconfig lists TWO frameworks
+    (Microsoft.NETCore.App AND Microsoft.AspNetCore.App), because the test
+    references the ASP.NET Core GettingStarted-API app. The vstest.console
+    shipped on the CI image (18.9.0) fails to emit testhost.runtimeconfig.json
+    for that multi-framework shape, so testhost.exe starts as a self-contained
+    app, cannot find hostpolicy.dll, and the run aborts. The single-framework
+    sibling test projects are unaffected, which is why only this one fails.
+
+    Rather than rely on the runner's vstest version, we generate the file at
+    build time by copying the project runtimeconfig (which is exactly what
+    vstest would have produced). Both frameworks resolve against the shared
+    runtime installed on the runner, so the copy is framework-dependent and
+    launches correctly.
+  -->
+  <Target Name="SeedTestHostRuntimeConfig" AfterTargets="Build;GenerateBuildRuntimeConfigurationFiles" Condition="'$(OS)' == 'Windows_NT'">
+    <Copy SourceFiles="$(OutDir)$(AssemblyName).runtimeconfig.json" DestinationFiles="$(OutDir)testhost.runtimeconfig.json" Condition="Exists('$(OutDir)$(AssemblyName).runtimeconfig.json')" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

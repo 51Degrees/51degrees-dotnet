@@ -1,0 +1,88 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+    <Platforms>AnyCPU</Platforms>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DocumentationFile>FiftyOne.Pipeline.Engines.xml</DocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+
+	  <!-- NuGet package properties -->
+	  <PackageId>FiftyOne.Pipeline.Engines</PackageId>
+	  <Title>Shared base classes for implementing engines for the 51Degrees Pipeline API</Title>
+	  <PackageDescription>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains base classes that implement the shared features available to engines - a specialized type of flow element.</PackageDescription>
+	  <Authors>51Degrees Engineering</Authors>
+    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
+    <PackageIconUrl>https://51degrees.com/portals/0/Logos/Square%20Logo.png?width=64</PackageIconUrl>
+	  <Copyright>51Degrees Mobile Experts Limited</Copyright>
+	  <PackageTags>51degrees,pipeline,data service</PackageTags>
+	  <RepositoryUrl>https://github.com/51Degrees/pipeline-dotnet</RepositoryUrl>
+	  <Description>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains base classes that implement the shared features available to engines - a specialized type of flow element.</Description>
+	  <PackageIcon>51d-logo.png</PackageIcon>
+	  <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-fiftyone.pipeline.engines.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+	  <RepositoryType>git</RepositoryType>
+	  <NeutralLanguage>en</NeutralLanguage>
+	  <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\caching\Caching\FiftyOne.Caching.csproj" Version="$(FiftyOneCachingVersion)" />
+    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\common\Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
+  </ItemGroup>
+
+  <!-- JsonLoader uses System.Text.Json on net8.0 but Newtonsoft.Json on
+       netstandard2.0. System.Text.Json does not load reliably on .NET Framework
+       consumers of the netstandard2.0 build without binding redirects, so the
+       JSON library is selected per target framework (see JsonLoader.cs). -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="SharpZipLib" Version="1.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\FiftyOne.Pipeline.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Messages.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Messages.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Messages.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Messages.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\Images\51d-logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>

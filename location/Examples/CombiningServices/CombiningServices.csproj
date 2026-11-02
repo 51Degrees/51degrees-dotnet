@@ -8,10 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.GeoLocation\FiftyOne.GeoLocation.csproj" />
+    <ProjectReference Include="..\..\GeoLocation\FiftyOne.GeoLocation.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.DeviceDetection" ProjectPath="..\..\..\device-detection\FiftyOne.DeviceDetection\FiftyOne.DeviceDetection.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection" ProjectPath="..\..\..\device-detection\DeviceDetection\FiftyOne.DeviceDetection.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
   </ItemGroup>
 </Project>

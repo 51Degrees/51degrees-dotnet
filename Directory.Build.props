@@ -20,7 +20,7 @@
     repository builds. The project declares the dependency once, as
 
       <FiftyOneReference Include="FiftyOne.Pipeline.Engines"
-                         ProjectPath="..\..\pipeline\FiftyOne.Pipeline.Engines\FiftyOne.Pipeline.Engines.csproj"
+                         ProjectPath="..\..\pipeline\Engines\FiftyOne.Pipeline.Engines.csproj"
                          Version="$(FiftyOnePipelineVersion)" />
 
     and Directory.Build.targets turns it into one of:
@@ -47,7 +47,7 @@
     IsPackable itself.
   -->
   <PropertyGroup>
-    <IsPackable Condition="$(MSBuildProjectDirectory.Contains('Tests')) or $(MSBuildProjectDirectory.Contains('Examples')) or $(MSBuildProjectDirectory.Contains('examples')) or $(MSBuildProjectDirectory.Contains('performance-tests')) or $(MSBuildProjectDirectory.Contains('Tools')) or $(MSBuildProjectDirectory.EndsWith('.Test'))">false</IsPackable>
+    <IsPackable Condition="$(MSBuildProjectDirectory.Contains('Tests')) or $(MSBuildProjectDirectory.Contains('Examples')) or $(MSBuildProjectDirectory.Contains('examples')) or $(MSBuildProjectDirectory.Contains('performance-tests')) or $(MSBuildProjectDirectory.Contains('Tools')) or $(MSBuildProjectName.EndsWith('.Test'))">false</IsPackable>
   </PropertyGroup>
 
   <!--

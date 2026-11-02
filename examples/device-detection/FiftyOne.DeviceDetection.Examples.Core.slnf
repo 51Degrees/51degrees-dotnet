@@ -19,12 +19,12 @@
       "OnPremise\\OfflineProcessing-Console\\OfflineProcessing-Console.csproj",
       "OnPremise\\Performance-Console\\Performance-Console.csproj",
       "OnPremise\\UpdateDataFile-Console\\UpdateDataFile-Console.csproj",
-      "Tests\\FiftyOne.DeviceDetection.Example.Tests.Cloud\\FiftyOne.DeviceDetection.Example.Tests.Cloud.csproj",
-      "Tests\\FiftyOne.DeviceDetection.Example.Tests.OnPremise\\FiftyOne.DeviceDetection.Example.Tests.OnPremise.csproj",
-      "Tests\\FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.ClientOnly\\FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.ClientOnly.csproj",
-      "Tests\\FiftyOne.DeviceDetection.Example.Tests.Web.Cloud\\FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.csproj",
-      "Tests\\FiftyOne.DeviceDetection.Example.Tests.Web.OnPremise\\FiftyOne.DeviceDetection.Example.Tests.Web.OnPremise.csproj",
-      "Tests\\FiftyOne.DeviceDetection.Example.Tests.Web\\FiftyOne.DeviceDetection.Example.Tests.Web.csproj"
+      "Tests\\Example.Tests.Cloud\\FiftyOne.DeviceDetection.Example.Tests.Cloud.csproj",
+      "Tests\\Example.Tests.OnPremise\\FiftyOne.DeviceDetection.Example.Tests.OnPremise.csproj",
+      "Tests\\Example.Tests.Web.Cloud.ClientOnly\\FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.ClientOnly.csproj",
+      "Tests\\Example.Tests.Web.Cloud\\FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.csproj",
+      "Tests\\Example.Tests.Web.OnPremise\\FiftyOne.DeviceDetection.Example.Tests.Web.OnPremise.csproj",
+      "Tests\\Example.Tests.Web\\FiftyOne.DeviceDetection.Example.Tests.Web.csproj"
     ]
   }
 }

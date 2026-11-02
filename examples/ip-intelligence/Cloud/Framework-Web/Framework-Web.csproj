@@ -80,8 +80,8 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.JavaScriptBuilder" ProjectPath="..\..\..\..\pipeline\FiftyOne.Pipeline.JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj" Version="$(FiftyOnePipelineVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\FiftyOne.Pipeline.Web.Framework\FiftyOne.Pipeline.Web.Framework.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.JavaScriptBuilder" ProjectPath="..\..\..\..\pipeline\JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\Web.Framework\FiftyOne.Pipeline.Web.Framework.csproj" Version="$(FiftyOnePipelineVersion)" />
     <PackageReference Include="Microsoft.Extensions.Configuration">
       <Version>8.0.0</Version>
     </PackageReference>
@@ -110,7 +110,7 @@
     <PackageReference Include="System.Text.Json" Version="8.0.6" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.IpIntelligence.Examples.Cloud\FiftyOne.IpIntelligence.Examples.Cloud.csproj">
+    <ProjectReference Include="..\..\Examples.Cloud\FiftyOne.IpIntelligence.Examples.Cloud.csproj">
       <Project>{92baf1e2-9a11-1eb1-0983-21dc7d2938bd}</Project>
       <Name>FiftyOne.IpIntelligence.Examples.Cloud</Name>
     </ProjectReference>
