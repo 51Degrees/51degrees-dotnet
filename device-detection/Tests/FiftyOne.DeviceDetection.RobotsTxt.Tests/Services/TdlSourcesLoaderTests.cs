@@ -58,7 +58,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests.Services
 
             Assert.IsTrue(result.ContainsKey("MOW-SOCW"));
             var entry = result["MOW-SOCW"];
-            Assert.AreEqual("movementforanopenweb/terms-documents", entry.Repository);
+            Assert.AreEqual("movement-for-an-open-web/terms-documents", entry.Repository);
             Assert.AreEqual("socw", entry.Directory);
             Assert.AreEqual("https://m4ow.uk/socw/{name}", entry.UrlTemplate);
         }

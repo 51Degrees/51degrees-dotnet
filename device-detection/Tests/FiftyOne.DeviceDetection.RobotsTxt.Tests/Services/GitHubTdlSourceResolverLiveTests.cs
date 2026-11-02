@@ -64,7 +64,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests.Services
                 ["MOW-SOCW"] = new TdlSource
                 {
                     Id = "MOW-SOCW",
-                    Repository = "movementforanopenweb/terms-documents",
+                    Repository = "movement-for-an-open-web/terms-documents",
                     Directory = "socw",
                     FilePattern = @"^(?<n>\d+)\.txt$",
                     UrlTemplate = "https://m4ow.uk/socw/{name}",
