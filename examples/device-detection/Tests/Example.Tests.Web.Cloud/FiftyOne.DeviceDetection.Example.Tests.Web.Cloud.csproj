@@ -1,0 +1,52 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+
+    <IsPackable>false</IsPackable>
+
+    <Configurations>Debug;Release</Configurations>
+
+    <Platforms>AnyCPU;x64;x86;ARM64</Platforms>
+
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.6.4" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.6.4" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Cloud\GettingStarted-Web\GettingStarted-Web.csproj">
+      <EnableStaticWebAssets>false</EnableStaticWebAssets>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Legacy Web\Cloud-UACH-manual\Cloud - Client-Hints Not Integrated.csproj">
+      <EnableStaticWebAssets>false</EnableStaticWebAssets>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Legacy Web\Cloud-UACH\Cloud - Client-Hints.csproj">
+      <EnableStaticWebAssets>false</EnableStaticWebAssets>
+    </ProjectReference>
+    <ProjectReference Include="..\Example.Tests.Web\FiftyOne.DeviceDetection.Example.Tests.Web.csproj" />
+  </ItemGroup>
+
+  <!--
+    The discovery guard is shared source rather than a shared project so
+    that every test assembly checks itself. A class MSTest cannot discover
+    is dropped silently, so the check has to live inside the assembly it
+    is checking.
+  -->
+  <ItemGroup>
+    <Compile Include="..\Shared\TestDiscoveryGuard.cs"
+             Link="TestDiscoveryGuard.cs" />
+    <Compile Include="..\Shared\SeleniumProcessCleanup.cs"
+             Link="SeleniumProcessCleanup.cs" />
+  </ItemGroup>
+
+</Project>

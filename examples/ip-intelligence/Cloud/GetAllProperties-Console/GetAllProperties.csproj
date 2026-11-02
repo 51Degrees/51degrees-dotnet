@@ -74,7 +74,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FiftyOne.IpIntelligence.Examples\FiftyOne.IpIntelligence.Examples.csproj" />
+    <ProjectReference Include="..\..\Examples\FiftyOne.IpIntelligence.Examples.csproj" />
   </ItemGroup>
 
 

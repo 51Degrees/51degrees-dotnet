@@ -2,14 +2,14 @@
 	path = cxx
 	url = ../51degrees-cxx
 [submodule "pipeline/FiftyOne.Pipeline.Core/Configuration/Validation"]
-	path = pipeline/FiftyOne.Pipeline.Core/Configuration/Validation
+	path = pipeline/Core/Configuration/Validation
 	url = ../configuration-validation
 [submodule "pipeline/FiftyOne.Pipeline.JavaScriptBuilderElement/Templates"]
-	path = pipeline/FiftyOne.Pipeline.JavaScriptBuilderElement/Templates
+	path = pipeline/JavaScriptBuilderElement/Templates
 	url = ../javascript-templates
 [submodule "pipeline/owid-dotnet"]
 	path = pipeline/owid-dotnet
 	url = https://github.com/SWAN-community/owid-dotnet.git
 [submodule "pipeline/FiftyOne.Pipeline.DerivedProperty/Scripts"]
-	path = pipeline/FiftyOne.Pipeline.DerivedProperty/Scripts
+	path = pipeline/DerivedProperty/Scripts
 	url = ../derived-properties

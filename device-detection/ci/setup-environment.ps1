@@ -24,7 +24,7 @@ if ($IsLinux) {
     ./environments/setup-multilib.ps1
 }
 
-$env:_51DEGREES_DD_PATH = "$PWD/$RepoName/FiftyOne.DeviceDetection.Hash.Engine.OnPremise/device-detection-cxx/device-detection-data/TAC-HashV41.hash"
+$env:_51DEGREES_DD_PATH = "$PWD/$RepoName/Hash.Engine.OnPremise/device-detection-cxx/device-detection-data/TAC-HashV41.hash"
 $env:_51DEGREES_RESOURCE_KEY = $Keys.TestResourceKey
 $env:ACCEPTCH_BROWSER_KEY = $Keys.AcceptCHBrowserKey
 $env:ACCEPTCH_HARDWARE_KEY = $Keys.AcceptCHHardwareKey

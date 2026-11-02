@@ -27,11 +27,11 @@ if ($TestResourceKey -and -not $skipSeleniumOnArm) {
     $exampleBase = "$seleniumExamples/Examples/ExampleBase/FiftyOne.DeviceDetection.Examples.csproj"
     (Get-Content $exampleBase) -replace `
         '<PackageReference Include="FiftyOne.DeviceDetection" Version="[^"]*" />', `
-        "<ProjectReference Include=`"../../../$RepoName/FiftyOne.DeviceDetection/FiftyOne.DeviceDetection.csproj`" />" |
+        "<ProjectReference Include=`"../../../$RepoName/DeviceDetection/FiftyOne.DeviceDetection.csproj`" />" |
         Set-Content $exampleBase
 
     # Match the examples' Pipeline.Web version to the library.
-    $cloudCsproj = "$RepoName/FiftyOne.DeviceDetection.Cloud/FiftyOne.DeviceDetection.Cloud.csproj"
+    $cloudCsproj = "$RepoName/Cloud/FiftyOne.DeviceDetection.Cloud.csproj"
     $pipeMatch = Select-String -Path $cloudCsproj -Pattern 'FiftyOne\.Pipeline\.CloudRequestEngine" Version="([0-9.]+)"'
     $pipever = if ($pipeMatch) { $pipeMatch.Matches[0].Groups[1].Value } else { "4.5.46" }
     $cloudProject = "$seleniumExamples/Examples/Cloud/GettingStarted-Web"
@@ -115,7 +115,7 @@ if ($TestResourceKey -and -not $skipSeleniumOnArm) {
     # overrides the Contract tests need. The example is built for the job's
     # platform so that the native engine built by build-project.ps1 is
     # copied next to it, which also means it needs the job's configuration.
-    $tacFile = "$PWD/$RepoName/FiftyOne.DeviceDetection.Hash.Engine.OnPremise/device-detection-cxx/device-detection-data/TAC-HashV41.hash"
+    $tacFile = "$PWD/$RepoName/Hash.Engine.OnPremise/device-detection-cxx/device-detection-data/TAC-HashV41.hash"
     if ($Arch -eq 'x86') {
         Write-Host "::warning title=Selenium on-premise skipped::The native engine on this job is built for x86 only, so the example would have to run as an x86 process, which this script does not set up. The on-premise Contract tests run on the x64 and arm64 jobs."
     } elseif (-not (Test-Path $tacFile)) {
@@ -158,7 +158,7 @@ $ExamplesRepo = "ex"
 Write-Host "Moving TAC and evidence files for examples..."
 foreach ($_ in "20000 User Agents.csv", "20000 Evidence Records.yml", "51Degrees-LiteV4.1.hash", "TAC-HashV41.hash") {
     Write-Host "Linking $_"
-    New-Item -ItemType SymbolicLink -Force -Target "$PWD/$RepoName/FiftyOne.DeviceDetection.Hash.Engine.OnPremise/device-detection-cxx/device-detection-data/$_" -Path "$ExamplesRepo/device-detection-data/$_"
+    New-Item -ItemType SymbolicLink -Force -Target "$PWD/$RepoName/Hash.Engine.OnPremise/device-detection-cxx/device-detection-data/$_" -Path "$ExamplesRepo/device-detection-data/$_"
 }
 
 # Install the nuget packages to the local feed. The packages in the 'package'
@@ -241,7 +241,7 @@ Copy-Item $ExamplesRepo/test-results $RepoName -Recurse
 Write-Host "Running package consumption validation..."
 
 $Fixture  = "$PWD/$RepoName/Tests/PackageConsumption"
-$DataFile = (Resolve-Path "$PWD/$RepoName/FiftyOne.DeviceDetection.Hash.Engine.OnPremise/device-detection-cxx/device-detection-data/51Degrees-LiteV4.1.hash").Path
+$DataFile = (Resolve-Path "$PWD/$RepoName/Hash.Engine.OnPremise/device-detection-cxx/device-detection-data/51Degrees-LiteV4.1.hash").Path
 
 # --use-current-runtime triggers the same flatten behaviour as an explicit
 # --runtime <rid> (collapses runtimes/<rid>/native/ into the output root),

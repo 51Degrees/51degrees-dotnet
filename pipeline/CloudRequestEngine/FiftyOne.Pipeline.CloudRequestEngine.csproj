@@ -1,0 +1,74 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Platforms>AnyCPU</Platforms>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <DocumentationFile>FiftyOne.Pipeline.CloudRequestEngine.xml</DocumentationFile>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+	
+	  <!-- NuGet package properties -->
+	  <PackageId>FiftyOne.Pipeline.CloudRequestEngine</PackageId>
+	  <Title>Cloud request engine for the 51Degrees Pipeline API</Title>
+	  <PackageDescription>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains a shared engine that is used to make requests to the 51Degrees cloud service on behalf of other data services such as device detection or location.</PackageDescription>
+	  <Authors>51Degrees Engineering</Authors>
+    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
+    <PackageIconUrl>https://51degrees.com/portals/0/Logos/Square%20Logo.png?width=64</PackageIconUrl>
+	  <Copyright>51Degrees Mobile Experts Limited</Copyright>
+	  <PackageTags>51degrees,pipeline,data service,cloud</PackageTags>
+	  <RepositoryUrl>https://github.com/51Degrees/pipeline-dotnet</RepositoryUrl>
+	  <Description>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains a shared engine that is used to make requests to the 51Degrees cloud service on behalf of other data services such as device detection or location.</Description>
+	  <PackageIcon>51d-logo.png</PackageIcon>
+	  <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=pipeline-dotnet&amp;utm_content=fiftyone.pipeline.cloudrequestengine-fiftyone.pipeline.cloudrequestengine.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+	  <RepositoryType>git</RepositoryType>
+	  <NeutralLanguage>en</NeutralLanguage>
+	  <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Engines\FiftyOne.Pipeline.Engines.csproj" />
+  </ItemGroup>
+
+  <!-- This engine uses Newtonsoft.Json directly (CloudJsonConverter is part of the
+       cross-package public contract). Declare it explicitly so it is available to
+       net8.0 consumers too: Engines only ships Newtonsoft on its netstandard2.0
+       build (net8.0 uses System.Text.Json), so the transitive path does not reach
+       net8.0 callers. -->
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\Images\51d-logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Messages.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Messages.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Messages.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Messages.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

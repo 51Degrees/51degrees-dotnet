@@ -44,7 +44,7 @@ Write-Host "Fetching examples..."
 #
 # The short name alone stopped being enough once the runner image moved to
 # MSBuild 18.11 (win25-vs2026/20261018.275): it writes
-#   ex\Tests\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests\obj\x64\Release\net10.0\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.gentestingplatformentrypointinputcache.cache
+#   ex\Tests\Examples.OnPremise.GettingStartedAPI.Tests\obj\x64\Release\net10.0\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.gentestingplatformentrypointinputcache.cache
 # through .NET Framework's legacy path handling, ignoring LongPathsEnabled,
 # and at 262 chars that fails with PathTooLongException (MSB4018). So also
 # move the checkout one directory up, out of the workspace (which repeats the
@@ -159,8 +159,8 @@ try {
         "Examples/OnPremise/GettingStarted-Console/GettingStarted-Console.csproj",
         "Examples/OnPremise/OfflineProcessing-Console/OfflineProcessing-Console.csproj",
         "Examples/OnPremise/GettingStarted-Web/GettingStarted-Web.csproj",
-        "Tests/FiftyOne.IpIntelligence.Example.Tests.Cloud/FiftyOne.IpIntelligence.Example.Tests.Cloud.csproj",
-        "Tests/FiftyOne.IpIntelligence.Example.Tests.OnPremise/FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj"
+        "Tests/Example.Tests.Cloud/FiftyOne.IpIntelligence.Example.Tests.Cloud.csproj",
+        "Tests/Example.Tests.OnPremise/FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj"
     ) + (Get-ChildItem -Recurse -File -Filter '*.csproj' | Select-Object -ExpandProperty FullName)
     $nextRound = $CsprojPaths
 

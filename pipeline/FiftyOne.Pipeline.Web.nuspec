@@ -36,9 +36,9 @@
     </metadata>
 	<files>
 		<file src="images\51d-logo.png" target="images\" />
-    <file src="FiftyOne.Pipeline.Web\bin\$config$\net8.0\FiftyOne.Pipeline.Web.dll" target="lib\net8.0" />
-		<file src="FiftyOne.Pipeline.Web.Framework\bin\$config$\FiftyOne.Pipeline.Web.Framework.dll" target="lib\net462" />
-		<file src="FiftyOne.Pipeline.Web.Framework\Web.config.transform" target="content/net462/Web.config.transform" />
-		<file src="FiftyOne.Pipeline.Web.Framework\51Degrees.json" target="content/net462/App_Data/51Degrees.json" />
+    <file src="Web\bin\$config$\net8.0\FiftyOne.Pipeline.Web.dll" target="lib\net8.0" />
+		<file src="Web.Framework\bin\$config$\FiftyOne.Pipeline.Web.Framework.dll" target="lib\net462" />
+		<file src="Web.Framework\Web.config.transform" target="content/net462/Web.config.transform" />
+		<file src="Web.Framework\51Degrees.json" target="content/net462/App_Data/51Degrees.json" />
 	</files>
 </package>

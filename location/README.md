@@ -37,7 +37,7 @@ Install-Package FiftyOne.GeoLocation
 
 ## Examples
 
-Examples can be found in the `FiftyOne.GeoLocation/Examples/` folder. See below for a list of examples.
+Examples can be found in the `GeoLocation/Examples/` folder. See below for a list of examples.
 
 |Example|Description|
 |-------|-----------|

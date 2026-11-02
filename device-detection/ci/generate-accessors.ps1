@@ -7,5 +7,5 @@ $ErrorActionPreference = "Stop"
 
 ./tools/ci/generate-accessors.ps1 -RepoName:$RepoName -MetaDataPath:$MetaDataPath -DataType:$DataType
 
-Copy-Item "tools/CSharp/IDeviceData.cs" "device-detection-dotnet/FiftyOne.DeviceDetection.Shared/Data/"
-Copy-Item "tools/CSharp/DeviceDataBase.cs" "device-detection-dotnet/FiftyOne.DeviceDetection.Shared/"
+Copy-Item "tools/CSharp/IDeviceData.cs" "device-detection-dotnet/Shared/Data/"
+Copy-Item "tools/CSharp/DeviceDataBase.cs" "device-detection-dotnet/Shared/"

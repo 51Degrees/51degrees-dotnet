@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\FiftyOne.Pipeline.Web\FiftyOne.Pipeline.Web.csproj" />
+    <ProjectReference Include="..\..\..\..\Web\FiftyOne.Pipeline.Web.csproj" />
     <ProjectReference Include="..\ClientSideEvidence.Shared\Examples.ClientSideEvidence.Shared.csproj" />
   </ItemGroup>
 

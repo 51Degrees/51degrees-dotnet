@@ -5,7 +5,7 @@ VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{1D4011D4-6726-43F6-83B1-5AF22757F1CB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples", "FiftyOne.IpIntelligence.Examples\FiftyOne.IpIntelligence.Examples.csproj", "{6E062311-B25D-42F3-978F-6868CED67942}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples", "Examples\FiftyOne.IpIntelligence.Examples.csproj", "{6E062311-B25D-42F3-978F-6868CED67942}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "OnPremise", "OnPremise", "{C21687C0-CBEF-43B0-A950-2D0BF31F5B92}"
 EndProject
@@ -31,9 +31,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Framework-Web", "OnPremise\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Example.Tests.OnPremise", "Tests\FiftyOne.IpIntelligence.Example.Tests.OnPremise\FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj", "{27129FB9-A9C0-43BD-6414-6D55B970C872}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Example.Tests.OnPremise", "Tests\Example.Tests.OnPremise\FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj", "{27129FB9-A9C0-43BD-6414-6D55B970C872}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Example.Tests.Cloud", "Tests\FiftyOne.IpIntelligence.Example.Tests.Cloud\FiftyOne.IpIntelligence.Example.Tests.Cloud.csproj", "{A7B8C9D2-E3F4-5A6B-7C8D-9E0F1A2B3C4D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Example.Tests.Cloud", "Tests\Example.Tests.Cloud\FiftyOne.IpIntelligence.Example.Tests.Cloud.csproj", "{A7B8C9D2-E3F4-5A6B-7C8D-9E0F1A2B3C4D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Cloud", "Cloud", "{CA60EA6E-1E38-462D-A4A9-02DD86E92784}"
 EndProject
@@ -47,9 +47,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-Web", "Cloud
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Metadata-Console", "Cloud\Metadata-Console\Metadata-Console.csproj", "{C89D3693-76BF-F318-AF28-E4206912FD74}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples.OnPremise", "FiftyOne.IpIntelligence.Examples.OnPremise\FiftyOne.IpIntelligence.Examples.OnPremise.csproj", "{ED6B5C33-946E-2D4C-A7C2-0F606F1F9887}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples.OnPremise", "Examples.OnPremise\FiftyOne.IpIntelligence.Examples.OnPremise.csproj", "{ED6B5C33-946E-2D4C-A7C2-0F606F1F9887}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples.Cloud", "FiftyOne.IpIntelligence.Examples.Cloud\FiftyOne.IpIntelligence.Examples.Cloud.csproj", "{92BAF1E2-9A11-1EB1-0983-21DC7D2938BD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FiftyOne.IpIntelligence.Examples.Cloud", "Examples.Cloud\FiftyOne.IpIntelligence.Examples.Cloud.csproj", "{92BAF1E2-9A11-1EB1-0983-21DC7D2938BD}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GettingStarted-API", "OnPremise\Mixed\GettingStarted-API\GettingStarted-API.csproj", "{78E299B6-162A-1418-8981-81F537EA66C7}"
 EndProject
@@ -69,7 +69,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Suspicious-Console", "OnPre
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LocationAnalysis-Console", "OnPremise\LocationAnalysis-Console\LocationAnalysis-Console.csproj", "{B7C2A4E9-6D15-4F8A-9C3B-E5A18D2F7640}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests", "Tests\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj", "{8F4C44DC-5690-4CAF-BEFE-E9E8ADBB1205}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests", "Tests\Examples.OnPremise.GettingStartedAPI.Tests\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj", "{8F4C44DC-5690-4CAF-BEFE-E9E8ADBB1205}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

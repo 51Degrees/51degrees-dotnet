@@ -1,0 +1,47 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Platforms>AnyCPU;x64</Platforms>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DocumentationFile>FiftyOne.IpIntelligence.Cloud.xml</DocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Authors>51Degrees Engineering</Authors>
+    <Copyright>51Degrees Mobile Experts Limited</Copyright>
+    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
+    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=ip-intelligence-dotnet&amp;utm_content=fiftyone.ipintelligence.cloud-fiftyone.ipintelligence.cloud.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageIcon>51d-logo.png</PackageIcon>
+    <RepositoryUrl>https://github.com/51Degrees/ip-intelligence-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>51degrees;pipeline;pipeline-api;ip-intelligence;ip;ip-address;ip-geolocation;geolocation;geoip;cloud;hosted;saas;api</PackageTags>
+	<Title>51Degrees IP Intelligence Cloud Service for the Pipeline API</Title>
+    <Description>This package provides the Cloud implementation of 51Degrees IP Intelligence for the Pipeline API. It uses a hosted 51Degrees service to enrich incoming requests with IP address information, including geographic location and Autonomous System Number (ASN). Use this package when you want IP Intelligence without running a local on-premise engine, as an alternative to legacy IP Intelligence services such as MaxMind or IPinfo.</Description>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\FiftyOne.IpIntelligence.Shared.csproj" />
+    <ProjectReference Include="..\Translation\FiftyOne.IpIntelligence.Translation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Images\51d-logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+	
+</Project>

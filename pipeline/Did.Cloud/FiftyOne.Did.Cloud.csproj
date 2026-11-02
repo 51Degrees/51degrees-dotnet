@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>FiftyOne.Did.Cloud</AssemblyName>
+    <Platforms>AnyCPU</Platforms>
+    <DocumentationFile>FiftyOne.Did.Cloud.xml</DocumentationFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    
+    <!-- NuGet package properties -->
+    <PackageId>FiftyOne.Did.Cloud</PackageId>
+    <Title>51Degrees Identifier (51Did) cloud engine</Title>
+    <PackageDescription>Returns the 51Degrees Identifier (51Did) from the 51Degrees Cloud service through the 51Degrees Pipeline API. This engine maps the cloud response into the six 51Did properties, being probabilistic, random and hashed-email, each of which is either global across all callers or scoped to the caller's licence key. The outbound call itself is made by CloudRequestEngine from FiftyOne.Pipeline.CloudRequestEngine, so register both builders in the pipeline. A 51Degrees resource key is required.</PackageDescription>
+    <Authors>51Degrees Engineering</Authors>
+    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
+    <PackageIconUrl>https://51degrees.com/portals/0/Logos/Square%20Logo.png?width=64</PackageIconUrl>
+    <Copyright>51Degrees Mobile Experts Limited</Copyright>
+    <PackageTags>51degrees,51did,fodid,identifier,pipeline,cloud,owid</PackageTags>
+    <RepositoryUrl>https://github.com/51Degrees/pipeline-dotnet</RepositoryUrl>
+    <PackageIcon>51d-logo.png</PackageIcon>
+    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=pipeline-dotnet&amp;utm_content=fiftyone.did.cloud-fiftyone.did.cloud.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <Description>Returns the 51Degrees Identifier (51Did) from the 51Degrees Cloud service through the 51Degrees Pipeline API.</Description>
+    <RepositoryType>git</RepositoryType>
+    <NeutralLanguage>en</NeutralLanguage>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\Images\51d-logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" />
+    <ProjectReference Include="..\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" />
+    <ProjectReference Include="..\Did.Core\FiftyOne.Did.Core.csproj" />
+  </ItemGroup>
+
+</Project>

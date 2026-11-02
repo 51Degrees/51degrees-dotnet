@@ -38,11 +38,11 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'FiftyOne.Did/**'
-      - 'FiftyOne.Did.Cloud/**'
-      - 'FiftyOne.Did.Core/**'
-      - 'Tests/FiftyOne.Did.Tests/**'
-      - 'Tests/FiftyOne.Did.Cloud.Tests/**'
+      - 'Did/**'
+      - 'Did.Cloud/**'
+      - 'Did.Core/**'
+      - 'Tests/Did.Tests/**'
+      - 'Tests/Did.Cloud.Tests/**'
       - 'owid-dotnet/**'
       - '.github/workflows/cloud-51did.yml'
 
@@ -67,9 +67,9 @@ jobs:
           _51DEGREES_LICENSE_KEY_51DID: ${{ secrets._51DEGREES_LICENSE_KEY_51DID }}
         run: |
           $runs = @(
-            @{ Project = 'Tests/FiftyOne.Did.Tests/FiftyOne.Did.Tests.csproj'
+            @{ Project = 'Tests/Did.Tests/FiftyOne.Did.Tests.csproj'
                Filter  = 'FullyQualifiedName~CloudFodIdTests|FullyQualifiedName~CloudDidClientTests' },
-            @{ Project = 'Tests/FiftyOne.Did.Cloud.Tests/FiftyOne.Did.Cloud.Tests.csproj'
+            @{ Project = 'Tests/Did.Cloud.Tests/FiftyOne.Did.Cloud.Tests.csproj'
                Filter  = 'FullyQualifiedName~DidCloudEngineLiveEntitlementTests' }
           )
           $keys = Get-ChildItem env: |

@@ -3,7 +3,7 @@ param (
 )
 $ErrorActionPreference = "Stop"
 
-$ipIntelligenceData = "$PSScriptRoot/../FiftyOne.IpIntelligence.Engine.OnPremise/ip-intelligence-cxx/ip-intelligence-data"
+$ipIntelligenceData = "$PSScriptRoot/../Engine.OnPremise/ip-intelligence-cxx/ip-intelligence-data"
 
 # TODO: fix DeviceDetectionUrl containing IpIntelligenceUrl
 ./steps/fetch-assets.ps1 -IpIntelligenceUrl:$IpIntelligenceUrl -Assets '51Degrees-EnterpriseIpiV41.ipi', '20000 User Agents.csv'

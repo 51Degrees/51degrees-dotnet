@@ -1,34 +1,34 @@
 <Solution>
   <Folder Name="/caching/">
-    <Project Path="caching/FiftyOne.Caching.Tests/FiftyOne.Caching.Tests.csproj" />
-    <Project Path="caching/FiftyOne.Caching/FiftyOne.Caching.csproj" />
+    <Project Path="caching/Tests/FiftyOne.Caching.Tests.csproj" />
+    <Project Path="caching/Caching/FiftyOne.Caching.csproj" />
   </Folder>
   <Folder Name="/common/">
-    <Project Path="common/FiftyOne.Common.Test/FiftyOne.Common.Tests.csproj" />
-    <Project Path="common/FiftyOne.Common.TestHelpers/FiftyOne.Common.TestHelpers.csproj" />
-    <Project Path="common/FiftyOne.Common/FiftyOne.Common.csproj" />
+    <Project Path="common/Test/FiftyOne.Common.Tests.csproj" />
+    <Project Path="common/TestHelpers/FiftyOne.Common.TestHelpers.csproj" />
+    <Project Path="common/Common/FiftyOne.Common.csproj" />
   </Folder>
   <Folder Name="/device-detection/">
-    <Project Path="device-detection/FiftyOne.DeviceDetection.Cloud/FiftyOne.DeviceDetection.Cloud.csproj" />
-    <Project Path="device-detection/FiftyOne.DeviceDetection.Hash.Engine.OnPremise/FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj">
+    <Project Path="device-detection/Cloud/FiftyOne.DeviceDetection.Cloud.csproj" />
+    <Project Path="device-detection/Hash.Engine.OnPremise/FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj">
       <Platform Project="x64" />
     </Project>
-    <Project Path="device-detection/FiftyOne.DeviceDetection.PropertyKeyed/FiftyOne.DeviceDetection.PropertyKeyed.csproj" />
-    <Project Path="device-detection/FiftyOne.DeviceDetection.RobotsTxt.Cloud/FiftyOne.DeviceDetection.RobotsTxt.Cloud.csproj" />
-    <Project Path="device-detection/FiftyOne.DeviceDetection.RobotsTxt/FiftyOne.DeviceDetection.RobotsTxt.csproj" />
-    <Project Path="device-detection/FiftyOne.DeviceDetection.Shared/FiftyOne.DeviceDetection.Shared.csproj" />
-    <Project Path="device-detection/FiftyOne.DeviceDetection/FiftyOne.DeviceDetection.csproj" />
+    <Project Path="device-detection/PropertyKeyed/FiftyOne.DeviceDetection.PropertyKeyed.csproj" />
+    <Project Path="device-detection/RobotsTxt.Cloud/FiftyOne.DeviceDetection.RobotsTxt.Cloud.csproj" />
+    <Project Path="device-detection/RobotsTxt/FiftyOne.DeviceDetection.RobotsTxt.csproj" />
+    <Project Path="device-detection/Shared/FiftyOne.DeviceDetection.Shared.csproj" />
+    <Project Path="device-detection/DeviceDetection/FiftyOne.DeviceDetection.csproj" />
     <Project Path="device-detection/performance-tests/performance-tests.csproj" />
-    <Project Path="device-detection/Tests/FiftyOne.DeviceDetection.TestHelpers/FiftyOne.DeviceDetection.TestHelpers.csproj" />
+    <Project Path="device-detection/Tests/TestHelpers/FiftyOne.DeviceDetection.TestHelpers.csproj" />
   </Folder>
   <Folder Name="/device-detection/Tests/">
-    <Project Path="device-detection/Tests/FiftyOne.DeviceDetection.Cloud.Tests/FiftyOne.DeviceDetection.Cloud.Tests.csproj" />
-    <Project Path="device-detection/Tests/FiftyOne.DeviceDetection.Hash.Tests/FiftyOne.DeviceDetection.Hash.Tests.csproj" />
-    <Project Path="device-detection/Tests/FiftyOne.DeviceDetection.PropertyKeyed.Tests/FiftyOne.DeviceDetection.PropertyKeyed.Tests.csproj" />
-    <Project Path="device-detection/Tests/FiftyOne.DeviceDetection.RobotsTxt.Cloud.Tests/FiftyOne.DeviceDetection.RobotsTxt.Cloud.Tests.csproj" />
-    <Project Path="device-detection/Tests/FiftyOne.DeviceDetection.RobotsTxt.Tests/FiftyOne.DeviceDetection.RobotsTxt.Tests.csproj" />
-    <Project Path="device-detection/Tests/FiftyOne.DeviceDetection.Tests.Core/FiftyOne.DeviceDetection.Tests.Core.csproj" />
-    <Project Path="device-detection/Tests/FiftyOne.DeviceDetection.Tests.Framework/FiftyOne.DeviceDetection.Tests.Framework.csproj" />
+    <Project Path="device-detection/Tests/Cloud.Tests/FiftyOne.DeviceDetection.Cloud.Tests.csproj" />
+    <Project Path="device-detection/Tests/Hash.Tests/FiftyOne.DeviceDetection.Hash.Tests.csproj" />
+    <Project Path="device-detection/Tests/PropertyKeyed.Tests/FiftyOne.DeviceDetection.PropertyKeyed.Tests.csproj" />
+    <Project Path="device-detection/Tests/RobotsTxt.Cloud.Tests/FiftyOne.DeviceDetection.RobotsTxt.Cloud.Tests.csproj" />
+    <Project Path="device-detection/Tests/RobotsTxt.Tests/FiftyOne.DeviceDetection.RobotsTxt.Tests.csproj" />
+    <Project Path="device-detection/Tests/Tests.Core/FiftyOne.DeviceDetection.Tests.Core.csproj" />
+    <Project Path="device-detection/Tests/Tests.Framework/FiftyOne.DeviceDetection.Tests.Framework.csproj" />
     <Project Path="device-detection/Tests/PackageConsumption/PackageConsumption.csproj" />
   </Folder>
   <Folder Name="/device-detection/Tools/">
@@ -69,17 +69,17 @@
     <Project Path="examples/device-detection/OnPremise/UpdateDataFile-Console/UpdateDataFile-Console.csproj" />
   </Folder>
   <Folder Name="/examples/device-detection/Tests/">
-    <Project Path="examples/device-detection/Tests/FiftyOne.DeviceDetection.Example.Tests.Cloud/FiftyOne.DeviceDetection.Example.Tests.Cloud.csproj" />
-    <Project Path="examples/device-detection/Tests/FiftyOne.DeviceDetection.Example.Tests.OnPremise/FiftyOne.DeviceDetection.Example.Tests.OnPremise.csproj" />
-    <Project Path="examples/device-detection/Tests/FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.ClientOnly/FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.ClientOnly.csproj" />
-    <Project Path="examples/device-detection/Tests/FiftyOne.DeviceDetection.Example.Tests.Web.Cloud/FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.csproj" />
-    <Project Path="examples/device-detection/Tests/FiftyOne.DeviceDetection.Example.Tests.Web.OnPremise/FiftyOne.DeviceDetection.Example.Tests.Web.OnPremise.csproj" />
-    <Project Path="examples/device-detection/Tests/FiftyOne.DeviceDetection.Example.Tests.Web/FiftyOne.DeviceDetection.Example.Tests.Web.csproj" />
+    <Project Path="examples/device-detection/Tests/Example.Tests.Cloud/FiftyOne.DeviceDetection.Example.Tests.Cloud.csproj" />
+    <Project Path="examples/device-detection/Tests/Example.Tests.OnPremise/FiftyOne.DeviceDetection.Example.Tests.OnPremise.csproj" />
+    <Project Path="examples/device-detection/Tests/Example.Tests.Web.Cloud.ClientOnly/FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.ClientOnly.csproj" />
+    <Project Path="examples/device-detection/Tests/Example.Tests.Web.Cloud/FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.csproj" />
+    <Project Path="examples/device-detection/Tests/Example.Tests.Web.OnPremise/FiftyOne.DeviceDetection.Example.Tests.Web.OnPremise.csproj" />
+    <Project Path="examples/device-detection/Tests/Example.Tests.Web/FiftyOne.DeviceDetection.Example.Tests.Web.csproj" />
   </Folder>
   <Folder Name="/examples/ip-intelligence/">
-    <Project Path="examples/ip-intelligence/FiftyOne.IpIntelligence.Examples.Cloud/FiftyOne.IpIntelligence.Examples.Cloud.csproj" />
-    <Project Path="examples/ip-intelligence/FiftyOne.IpIntelligence.Examples.OnPremise/FiftyOne.IpIntelligence.Examples.OnPremise.csproj" />
-    <Project Path="examples/ip-intelligence/FiftyOne.IpIntelligence.Examples/FiftyOne.IpIntelligence.Examples.csproj" />
+    <Project Path="examples/ip-intelligence/Examples.Cloud/FiftyOne.IpIntelligence.Examples.Cloud.csproj" />
+    <Project Path="examples/ip-intelligence/Examples.OnPremise/FiftyOne.IpIntelligence.Examples.OnPremise.csproj" />
+    <Project Path="examples/ip-intelligence/Examples/FiftyOne.IpIntelligence.Examples.csproj" />
   </Folder>
   <Folder Name="/examples/ip-intelligence/Cloud/">
     <Project Path="examples/ip-intelligence/Cloud/Framework-Web/Framework-Web.csproj" />
@@ -112,33 +112,33 @@
     <Project Path="examples/ip-intelligence/OnPremise/Mixed/GettingStarted-Web/GettingStarted-Web.csproj" />
   </Folder>
   <Folder Name="/examples/ip-intelligence/Tests/">
-    <Project Path="examples/ip-intelligence/Tests/FiftyOne.IpIntelligence.Example.Tests.Cloud/FiftyOne.IpIntelligence.Example.Tests.Cloud.csproj" />
-    <Project Path="examples/ip-intelligence/Tests/FiftyOne.IpIntelligence.Example.Tests.OnPremise/FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj" />
-    <Project Path="examples/ip-intelligence/Tests/FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests/FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj" />
+    <Project Path="examples/ip-intelligence/Tests/Example.Tests.Cloud/FiftyOne.IpIntelligence.Example.Tests.Cloud.csproj" />
+    <Project Path="examples/ip-intelligence/Tests/Example.Tests.OnPremise/FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj" />
+    <Project Path="examples/ip-intelligence/Tests/Examples.OnPremise.GettingStartedAPI.Tests/FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj" />
   </Folder>
   <Folder Name="/ip-intelligence/">
-    <Project Path="ip-intelligence/FiftyOne.IpIntelligence.Cloud/FiftyOne.IpIntelligence.Cloud.csproj" />
-    <Project Path="ip-intelligence/FiftyOne.IpIntelligence.Engine.OnPremise/FiftyOne.IpIntelligence.Engine.OnPremise.csproj">
+    <Project Path="ip-intelligence/Cloud/FiftyOne.IpIntelligence.Cloud.csproj" />
+    <Project Path="ip-intelligence/Engine.OnPremise/FiftyOne.IpIntelligence.Engine.OnPremise.csproj">
       <Platform Project="x64" />
     </Project>
-    <Project Path="ip-intelligence/FiftyOne.IpIntelligence.Shared/FiftyOne.IpIntelligence.Shared.csproj" />
-    <Project Path="ip-intelligence/FiftyOne.IpIntelligence.Translation/FiftyOne.IpIntelligence.Translation.csproj" />
-    <Project Path="ip-intelligence/FiftyOne.IpIntelligence/FiftyOne.IpIntelligence.csproj" />
+    <Project Path="ip-intelligence/Shared/FiftyOne.IpIntelligence.Shared.csproj" />
+    <Project Path="ip-intelligence/Translation/FiftyOne.IpIntelligence.Translation.csproj" />
+    <Project Path="ip-intelligence/IpIntelligence/FiftyOne.IpIntelligence.csproj" />
     <Project Path="ip-intelligence/performance-tests/performance-tests.csproj">
       <Platform Project="x64" />
     </Project>
-    <Project Path="ip-intelligence/Tests/FiftyOne.IpIntelligence.TestHelpers/FiftyOne.IpIntelligence.TestHelpers.csproj" />
+    <Project Path="ip-intelligence/Tests/TestHelpers/FiftyOne.IpIntelligence.TestHelpers.csproj" />
   </Folder>
   <Folder Name="/ip-intelligence/Tests/">
-    <Project Path="ip-intelligence/Tests/FiftyOne.IpIntelligence.CloudTests/FiftyOne.IpIntelligence.CloudTests.csproj" />
-    <Project Path="ip-intelligence/Tests/FiftyOne.IpIntelligence.OnPremise.Tests/FiftyOne.IpIntelligence.OnPremise.Tests.csproj" />
-    <Project Path="ip-intelligence/Tests/FiftyOne.IpIntelligence.Tests.Core/FiftyOne.IpIntelligence.Tests.Core.csproj" />
-    <Project Path="ip-intelligence/Tests/FiftyOne.IpIntelligence.Translation.Tests/FiftyOne.IpIntelligence.Translation.Tests.csproj" />
+    <Project Path="ip-intelligence/Tests/CloudTests/FiftyOne.IpIntelligence.CloudTests.csproj" />
+    <Project Path="ip-intelligence/Tests/OnPremise.Tests/FiftyOne.IpIntelligence.OnPremise.Tests.csproj" />
+    <Project Path="ip-intelligence/Tests/Tests.Core/FiftyOne.IpIntelligence.Tests.Core.csproj" />
+    <Project Path="ip-intelligence/Tests/Translation.Tests/FiftyOne.IpIntelligence.Translation.Tests.csproj" />
   </Folder>
   <Folder Name="/location/">
-    <Project Path="location/FiftyOne.GeoLocation.Cloud/FiftyOne.GeoLocation.Cloud.csproj" />
-    <Project Path="location/FiftyOne.GeoLocation.Core/FiftyOne.GeoLocation.Core.csproj" />
-    <Project Path="location/FiftyOne.GeoLocation/FiftyOne.GeoLocation.csproj" />
+    <Project Path="location/Cloud/FiftyOne.GeoLocation.Cloud.csproj" />
+    <Project Path="location/Core/FiftyOne.GeoLocation.Core.csproj" />
+    <Project Path="location/GeoLocation/FiftyOne.GeoLocation.csproj" />
   </Folder>
   <Folder Name="/location/Examples/">
     <Project Path="location/Examples/CombiningServices/CombiningServices.csproj" />
@@ -148,28 +148,28 @@
     <Project Path="location/Examples/Cloud/GettingStarted/Getting Started.csproj" />
   </Folder>
   <Folder Name="/location/Tests/">
-    <Project Path="location/Tests/FiftyOne.GeoLocation.Example.Tests/FiftyOne.GeoLocation.Example.Tests.csproj" />
-    <Project Path="location/Tests/FiftyOne.GeoLocation.Tests/FiftyOne.GeoLocation.Tests.csproj" />
+    <Project Path="location/Tests/Example.Tests/FiftyOne.GeoLocation.Example.Tests.csproj" />
+    <Project Path="location/Tests/GeoLocation.Tests/FiftyOne.GeoLocation.Tests.csproj" />
   </Folder>
   <Folder Name="/pipeline/">
     <Project Path="pipeline/Examples/Math/FiftyOne.Pipeline.Math.csproj" />
-    <Project Path="pipeline/FiftyOne.Did.Cloud/FiftyOne.Did.Cloud.csproj" />
-    <Project Path="pipeline/FiftyOne.Did.Core/FiftyOne.Did.Core.csproj" />
-    <Project Path="pipeline/FiftyOne.Did/FiftyOne.Did.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.AgentSignature/FiftyOne.Pipeline.AgentSignature.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.CloudRequestEngine/FiftyOne.Pipeline.CloudRequestEngine.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.Core/FiftyOne.Pipeline.Core.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.DerivedProperty/FiftyOne.Pipeline.DerivedProperty.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.Engines.FiftyOne/FiftyOne.Pipeline.Engines.FiftyOne.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.Engines.TestHelpers/FiftyOne.Pipeline.Engines.TestHelpers.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.Engines/FiftyOne.Pipeline.Engines.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.Examples.Shared/FiftyOne.Pipeline.Examples.Shared.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.JavaScriptBuilderElement/FiftyOne.Pipeline.JavaScriptBuilder.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.JsonBuilderElement/FiftyOne.Pipeline.JsonBuilder.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.Translation/FiftyOne.Pipeline.Translation.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.Web.Framework/FiftyOne.Pipeline.Web.Framework.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.Web.Shared/FiftyOne.Pipeline.Web.Shared.csproj" />
-    <Project Path="pipeline/FiftyOne.Pipeline.Web/FiftyOne.Pipeline.Web.csproj" />
+    <Project Path="pipeline/Did.Cloud/FiftyOne.Did.Cloud.csproj" />
+    <Project Path="pipeline/Did.Core/FiftyOne.Did.Core.csproj" />
+    <Project Path="pipeline/Did/FiftyOne.Did.csproj" />
+    <Project Path="pipeline/AgentSignature/FiftyOne.Pipeline.AgentSignature.csproj" />
+    <Project Path="pipeline/CloudRequestEngine/FiftyOne.Pipeline.CloudRequestEngine.csproj" />
+    <Project Path="pipeline/Core/FiftyOne.Pipeline.Core.csproj" />
+    <Project Path="pipeline/DerivedProperty/FiftyOne.Pipeline.DerivedProperty.csproj" />
+    <Project Path="pipeline/Engines.FiftyOne/FiftyOne.Pipeline.Engines.FiftyOne.csproj" />
+    <Project Path="pipeline/Engines.TestHelpers/FiftyOne.Pipeline.Engines.TestHelpers.csproj" />
+    <Project Path="pipeline/Engines/FiftyOne.Pipeline.Engines.csproj" />
+    <Project Path="pipeline/Examples.Shared/FiftyOne.Pipeline.Examples.Shared.csproj" />
+    <Project Path="pipeline/JavaScriptBuilderElement/FiftyOne.Pipeline.JavaScriptBuilder.csproj" />
+    <Project Path="pipeline/JsonBuilderElement/FiftyOne.Pipeline.JsonBuilder.csproj" />
+    <Project Path="pipeline/Translation/FiftyOne.Pipeline.Translation.csproj" />
+    <Project Path="pipeline/Web.Framework/FiftyOne.Pipeline.Web.Framework.csproj" />
+    <Project Path="pipeline/Web.Shared/FiftyOne.Pipeline.Web.Shared.csproj" />
+    <Project Path="pipeline/Web/FiftyOne.Pipeline.Web.csproj" />
     <Project Path="pipeline/performance-tests/performance-tests.csproj" />
   </Folder>
   <Folder Name="/pipeline/Examples/">
@@ -197,24 +197,24 @@
     <Project Path="pipeline/Examples/Did/CreatorContextWeb/Examples.Did.CreatorContextWeb.csproj" />
   </Folder>
   <Folder Name="/pipeline/Tests/">
-    <Project Path="pipeline/Tests/FiftyOne.Did.Cloud.Tests/FiftyOne.Did.Cloud.Tests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Did.Examples.Tests/FiftyOne.Did.Examples.Tests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Did.Tests/FiftyOne.Did.Tests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.AgentSignatureStandardTests/FiftyOne.Pipeline.AgentSignatureStandardTests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.AgentSignatureTests/FiftyOne.Pipeline.AgentSignatureTests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.Benchmarks/FiftyOne.Pipeline.Benchmarks.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.CloudRequestEngine.Examples.Tests/FiftyOne.Pipeline.CloudRequestEngine.Examples.Tests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.CloudRequestEngine.Tests/FiftyOne.Pipeline.CloudRequestEngine.Tests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.Core.Tests/FiftyOne.Pipeline.Core.Tests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.DerivedProperty.Tests/FiftyOne.Pipeline.DerivedPropertyTests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.Engines.FiftyOne.Tests/FiftyOne.Pipeline.Engines.FiftyOne.Tests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.Engines.Tests/FiftyOne.Pipeline.Engines.Tests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.Examples.Tests/FiftyOne.Pipeline.Examples.Tests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.JavaScriptBuilderElementTests/FiftyOne.Pipeline.JavaScriptBuilderElementTests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.JsonBuilderElementTests/FiftyOne.Pipeline.JsonBuilderElementTests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.Translation.Tests/FiftyOne.Pipeline.TranslationTests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.Web.Framework.Tests/FiftyOne.Pipeline.Web.Framework.Tests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.Web.Shared.Tests/FiftyOne.Pipeline.Web.Shared.Tests.csproj" />
-    <Project Path="pipeline/Tests/FiftyOne.Pipeline.Web.Tests/FiftyOne.Pipeline.Web.Tests.csproj" />
+    <Project Path="pipeline/Tests/Did.Cloud.Tests/FiftyOne.Did.Cloud.Tests.csproj" />
+    <Project Path="pipeline/Tests/Did.Examples.Tests/FiftyOne.Did.Examples.Tests.csproj" />
+    <Project Path="pipeline/Tests/Did.Tests/FiftyOne.Did.Tests.csproj" />
+    <Project Path="pipeline/Tests/AgentSignatureStandardTests/FiftyOne.Pipeline.AgentSignatureStandardTests.csproj" />
+    <Project Path="pipeline/Tests/AgentSignatureTests/FiftyOne.Pipeline.AgentSignatureTests.csproj" />
+    <Project Path="pipeline/Tests/Benchmarks/FiftyOne.Pipeline.Benchmarks.csproj" />
+    <Project Path="pipeline/Tests/CloudRequestEngine.Examples.Tests/FiftyOne.Pipeline.CloudRequestEngine.Examples.Tests.csproj" />
+    <Project Path="pipeline/Tests/CloudRequestEngine.Tests/FiftyOne.Pipeline.CloudRequestEngine.Tests.csproj" />
+    <Project Path="pipeline/Tests/Core.Tests/FiftyOne.Pipeline.Core.Tests.csproj" />
+    <Project Path="pipeline/Tests/DerivedProperty.Tests/FiftyOne.Pipeline.DerivedPropertyTests.csproj" />
+    <Project Path="pipeline/Tests/Engines.FiftyOne.Tests/FiftyOne.Pipeline.Engines.FiftyOne.Tests.csproj" />
+    <Project Path="pipeline/Tests/Engines.Tests/FiftyOne.Pipeline.Engines.Tests.csproj" />
+    <Project Path="pipeline/Tests/Examples.Tests/FiftyOne.Pipeline.Examples.Tests.csproj" />
+    <Project Path="pipeline/Tests/JavaScriptBuilderElementTests/FiftyOne.Pipeline.JavaScriptBuilderElementTests.csproj" />
+    <Project Path="pipeline/Tests/JsonBuilderElementTests/FiftyOne.Pipeline.JsonBuilderElementTests.csproj" />
+    <Project Path="pipeline/Tests/Translation.Tests/FiftyOne.Pipeline.TranslationTests.csproj" />
+    <Project Path="pipeline/Tests/Web.Framework.Tests/FiftyOne.Pipeline.Web.Framework.Tests.csproj" />
+    <Project Path="pipeline/Tests/Web.Shared.Tests/FiftyOne.Pipeline.Web.Shared.Tests.csproj" />
+    <Project Path="pipeline/Tests/Web.Tests/FiftyOne.Pipeline.Web.Tests.csproj" />
   </Folder>
 </Solution>

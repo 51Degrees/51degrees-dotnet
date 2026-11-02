@@ -42,7 +42,11 @@ same folders.
 
 Every package project sits directly under its product folder, with that
 folder's tests in `Tests` and examples in `Examples`, as the node repository
-does. The two example repositories became `examples/device-detection` and
+does. The folder is the package id without the `FiftyOne.<Product>.` prefix
+(`pipeline/Core`, `device-detection/Cloud`), and the project file inside keeps
+the full name, which sets the assembly and package id. A new project follows
+the same rule. The submodules under `pipeline` keep their old names in
+`.gitmodules`, because the name is only an identifier. The two example repositories became `examples/device-detection` and
 `examples/ip-intelligence`, with their `Cloud`, `OnPremise` and `Tests` folders
 at the top. `git log --follow -m` traces a file back through the import.
 

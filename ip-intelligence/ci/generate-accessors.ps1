@@ -7,5 +7,5 @@ $ErrorActionPreference = "Stop"
 
 ./tools/ci/generate-accessors.ps1 -RepoName:$RepoName -MetaDataPath:$MetaDataPath -DataType:$DataType
 
-Copy-Item "tools/CSharp/IIpIntelligenceData.cs" "ip-intelligence-dotnet/FiftyOne.IpIntelligence.Shared/Data/"
-Copy-Item "tools/CSharp/IpIntelligenceDataBase.cs" "ip-intelligence-dotnet/FiftyOne.IpIntelligence.Shared/"
+Copy-Item "tools/CSharp/IIpIntelligenceData.cs" "ip-intelligence-dotnet/Shared/Data/"
+Copy-Item "tools/CSharp/IpIntelligenceDataBase.cs" "ip-intelligence-dotnet/Shared/"
