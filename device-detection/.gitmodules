@@ -1,3 +1,0 @@
-[submodule "FiftyOne.DeviceDetection.Hash.Engine.OnPremise/device-detection-cxx"]
-	path = FiftyOne.DeviceDetection.Hash.Engine.OnPremise/device-detection-cxx
-	url = ../device-detection-cxx
