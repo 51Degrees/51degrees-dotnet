@@ -24,6 +24,13 @@ $Filter = "^FiftyOne\.(?!DeviceDetection\.Example\.Tests\.Web\.dll$).*Examples?\
 if ($env:FIFTYONE_TEST_FILTER) {
     $Filter = $env:FIFTYONE_TEST_FILTER
 }
+# The shared step gives vstest the architecture, /Platform:x86 say, only when
+# the filter does not contain the text "dll", so on the Windows jobs the
+# extension is spelt without it. An x86 build needs an x86 test host, and the
+# example test assemblies are Any CPU, which would otherwise run as x64.
+if ($BuildMethod -eq "msbuild") {
+    $Filter = $Filter.Replace('.dll$', '.d[l]l$')
+}
 # The shared integration step allows five minutes without output before it
 # treats a test as hung. The IP Intelligence examples load the 6 GB
 # Enterprise file and can take longer than that, so they get the 20 minutes
