@@ -481,28 +481,43 @@
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.AccuracyRadiusMax">
             <summary>
-            Radius in kilometers of the circle centred around the most probable location that encompasses the entire area. Where multiple areas are returned, this will only cover the area the most probable location is in. See Areas property. This will likely be a very large distance. It is recommend to use the AccuracyRadiusMin property.
+            Radius in kilometers of the circle centred around the most probable location that encompasses the entire area, measured against the trimmed area. Where multiple areas are returned, this will only cover the area the most probable location is in. See Areas property. This will likely be a very large distance. It is recommended to use the AccuracyRadiusMin property.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.AccuracyRadiusMin">
             <summary>
-            Radius in kilometers of the largest circle centred around the most probable location that fits within the area. Where multiple areas are returned, only the area that the most probable location falls within is considered. See Areas property.
+            Radius in kilometers of the largest circle centred around the most probable location that fits within the area, measured against the trimmed area. Where multiple areas are returned, only the area that the most probable location falls within is considered. See Areas property.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Areas">
             <summary>
-            Any shapes associated with the location. Usually this is the area which the IP range covers. This is returned as a WKT String stored as a reduced format of WKB.
+            The area the IP range is likely to be in, trimmed to the land of the country the location is in, so it does not reach into neighbouring countries or over the sea. Returned as a WKT string stored as a reduced format of WKB.
             </summary>
+            <remarks>
+            <para>
+            See <see href="https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry">https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry</see> for more information.
+            </para>
+            </remarks>
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Asn">
             <summary>
             Autonomous System Number associated with the IP address.
             </summary>
+            <remarks>
+            <para>
+            See <see href="https://en.wikipedia.org/wiki/Autonomous_system_(Internet)">https://en.wikipedia.org/wiki/Autonomous_system_(Internet)</see> for more information.
+            </para>
+            </remarks>
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.AsnName">
             <summary>
             The name registered to the Asn associated with the IP address.
             </summary>
+            <remarks>
+            <para>
+            See <see href="https://en.wikipedia.org/wiki/Autonomous_system_(Internet)">https://en.wikipedia.org/wiki/Autonomous_system_(Internet)</see> for more information.
+            </para>
+            </remarks>
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.BrowserDiversity">
             <summary>
@@ -516,7 +531,12 @@
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.ContinentCode2">
             <summary>
-            The 3-character ISO 3166-1 continent code for the supplied location.
+            The 2-character ISO 3166-1 continent code for the supplied location.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.ContinentGeoNameId">
+            <summary>
+            The GeoNames identifier of the continent associated with the supplied location.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.ContinentName">
@@ -549,9 +569,19 @@
             A list of countries in ISO 3166-1 alpha-2 country code format that overlap with the area likely associated with the provided evidence, weighted and ordered by each country's proportion of the total population within the area. Administrative areas that cannot be cleanly resolved to the country level will not contribute to the resulting data.
             </summary>
         </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.CountryGeoNameId">
+            <summary>
+            The GeoNames identifier of the country associated with the supplied location.
+            </summary>
+        </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.County">
             <summary>
             The name of the county that the supplied location is in. In this case, a county is defined as an administrative sub-section of a country or state.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.CountyGeoNameId">
+            <summary>
+            The GeoNames identifier of the county, a second-level administrative subdivision (admin2) associated with the supplied location. Unknown where the nearest subdivision lies in a different country from the location.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.CurrencyCode">
@@ -666,8 +696,19 @@
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.LocationConfidence">
             <summary>
-            The confidence in the town and country provided.
+            The confidence in the town and country provided. Returns one of High, Medium, Low, or Unknown. The confidence must be checked before using the returned location values.
             </summary>
+            <remarks>
+            <para>
+            Possible values:
+            </para>
+            <code>
+            High      High confidence results can be relied upon and considered useful for all practical purposes.
+            Medium    Medium confidence results might be useful where the use case can tolerate a degree of inaccuracy.
+            Low       Low confidence results should be discarded when the results might be used to make consequential decisions.
+            Unknown   Unknown confidence results should be treated in the same way as Low and discarded when the results might be used to m...
+            </code>
+            </remarks>
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Longitude">
             <summary>
@@ -694,6 +735,11 @@
             Country code of the registered range.
             </summary>
         </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.RegisteredCountryGeoNameId">
+            <summary>
+            The GeoNames identifier of the country in which the IP address range is registered.
+            </summary>
+        </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.RegisteredName">
             <summary>
             Name of the IP range. This is usually the owner.
@@ -709,6 +755,16 @@
             The name of the state that the supplied location is in.
             </summary>
         </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.StateGeoNameId">
+            <summary>
+            The GeoNames database identifier for the state (first-level administrative subdivision, admin1) that the supplied location is in. Unknown where the nearest subdivision lies in a different country from the location.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.StateGeoNameIdsGeographical">
+            <summary>
+            GeoNames identifiers of the first-level administrative subdivisions (admin1) of the location's country that overlap the area associated with the supplied evidence, weighted and ordered by each subdivision's share of that area. Subdivisions covering less than 1% of the area are omitted, at most the 20 largest are returned, and the weights of those returned are scaled to sum to 100%.
+            </summary>
+        </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Suburb">
             <summary>
             The name of the suburb that the supplied location is in.
@@ -721,12 +777,17 @@
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.TimeZoneOffset">
             <summary>
-            The offset from UTC in minutes in the supplied location, at the time that the value is produced.
+            The offset from UTC in minutes in the supplied location, at the time that the value is produced. A value of -1 means the offset is unknown and is only returned when no location can be determined for the IP address. Real offsets are whole multiples of 15 minutes, so -1 never collides with a genuine value.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Town">
             <summary>
             The name of the town that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.TownGeoNameId">
+            <summary>
+            The GeoNames identifier of the town or populated place nearest to the supplied location. Unknown where the nearest populated place lies in a different country from the location.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.ZipCode">
@@ -882,28 +943,43 @@
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.AccuracyRadiusMax">
             <summary>
-            Radius in kilometers of the circle centred around the most probable location that encompasses the entire area. Where multiple areas are returned, this will only cover the area the most probable location is in. See Areas property. This will likely be a very large distance. It is recommend to use the AccuracyRadiusMin property.
+            Radius in kilometers of the circle centred around the most probable location that encompasses the entire area, measured against the trimmed area. Where multiple areas are returned, this will only cover the area the most probable location is in. See Areas property. This will likely be a very large distance. It is recommended to use the AccuracyRadiusMin property.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.AccuracyRadiusMin">
             <summary>
-            Radius in kilometers of the largest circle centred around the most probable location that fits within the area. Where multiple areas are returned, only the area that the most probable location falls within is considered. See Areas property.
+            Radius in kilometers of the largest circle centred around the most probable location that fits within the area, measured against the trimmed area. Where multiple areas are returned, only the area that the most probable location falls within is considered. See Areas property.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Areas">
             <summary>
-            Any shapes associated with the location. Usually this is the area which the IP range covers. This is returned as a WKT String stored as a reduced format of WKB.
+            The area the IP range is likely to be in, trimmed to the land of the country the location is in, so it does not reach into neighbouring countries or over the sea. Returned as a WKT string stored as a reduced format of WKB.
             </summary>
+            <remarks>
+            <para>
+            See <see href="https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry">https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry</see> for more information.
+            </para>
+            </remarks>
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Asn">
             <summary>
             Autonomous System Number associated with the IP address.
             </summary>
+            <remarks>
+            <para>
+            See <see href="https://en.wikipedia.org/wiki/Autonomous_system_(Internet)">https://en.wikipedia.org/wiki/Autonomous_system_(Internet)</see> for more information.
+            </para>
+            </remarks>
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.AsnName">
             <summary>
             The name registered to the Asn associated with the IP address.
             </summary>
+            <remarks>
+            <para>
+            See <see href="https://en.wikipedia.org/wiki/Autonomous_system_(Internet)">https://en.wikipedia.org/wiki/Autonomous_system_(Internet)</see> for more information.
+            </para>
+            </remarks>
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.BrowserDiversity">
             <summary>
@@ -917,7 +993,12 @@
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.ContinentCode2">
             <summary>
-            The 3-character ISO 3166-1 continent code for the supplied location.
+            The 2-character ISO 3166-1 continent code for the supplied location.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.ContinentGeoNameId">
+            <summary>
+            The GeoNames identifier of the continent associated with the supplied location.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.ContinentName">
@@ -950,9 +1031,19 @@
             A list of countries in ISO 3166-1 alpha-2 country code format that overlap with the area likely associated with the provided evidence, weighted and ordered by each country's proportion of the total population within the area. Administrative areas that cannot be cleanly resolved to the country level will not contribute to the resulting data.
             </summary>
         </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.CountryGeoNameId">
+            <summary>
+            The GeoNames identifier of the country associated with the supplied location.
+            </summary>
+        </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.County">
             <summary>
             The name of the county that the supplied location is in. In this case, a county is defined as an administrative sub-section of a country or state.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.CountyGeoNameId">
+            <summary>
+            The GeoNames identifier of the county, a second-level administrative subdivision (admin2) associated with the supplied location. Unknown where the nearest subdivision lies in a different country from the location.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.CurrencyCode">
@@ -1067,8 +1158,19 @@
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.LocationConfidence">
             <summary>
-            The confidence in the town and country provided.
+            The confidence in the town and country provided. Returns one of High, Medium, Low, or Unknown. The confidence must be checked before using the returned location values.
             </summary>
+            <remarks>
+            <para>
+            Possible values:
+            </para>
+            <code>
+            High      High confidence results can be relied upon and considered useful for all practical purposes.
+            Medium    Medium confidence results might be useful where the use case can tolerate a degree of inaccuracy.
+            Low       Low confidence results should be discarded when the results might be used to make consequential decisions.
+            Unknown   Unknown confidence results should be treated in the same way as Low and discarded when the results might be used to m...
+            </code>
+            </remarks>
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Longitude">
             <summary>
@@ -1095,6 +1197,11 @@
             Country code of the registered range.
             </summary>
         </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.RegisteredCountryGeoNameId">
+            <summary>
+            The GeoNames identifier of the country in which the IP address range is registered.
+            </summary>
+        </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.RegisteredName">
             <summary>
             Name of the IP range. This is usually the owner.
@@ -1110,6 +1217,16 @@
             The name of the state that the supplied location is in.
             </summary>
         </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.StateGeoNameId">
+            <summary>
+            The GeoNames database identifier for the state (first-level administrative subdivision, admin1) that the supplied location is in. Unknown where the nearest subdivision lies in a different country from the location.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.StateGeoNameIdsGeographical">
+            <summary>
+            GeoNames identifiers of the first-level administrative subdivisions (admin1) of the location's country that overlap the area associated with the supplied evidence, weighted and ordered by each subdivision's share of that area. Subdivisions covering less than 1% of the area are omitted, at most the 20 largest are returned, and the weights of those returned are scaled to sum to 100%.
+            </summary>
+        </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Suburb">
             <summary>
             The name of the suburb that the supplied location is in.
@@ -1122,12 +1239,17 @@
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.TimeZoneOffset">
             <summary>
-            The offset from UTC in minutes in the supplied location, at the time that the value is produced.
+            The offset from UTC in minutes in the supplied location, at the time that the value is produced. A value of -1 means the offset is unknown and is only returned when no location can be determined for the IP address. Real offsets are whole multiples of 15 minutes, so -1 never collides with a genuine value.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Town">
             <summary>
             The name of the town that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.TownGeoNameId">
+            <summary>
+            The GeoNames identifier of the town or populated place nearest to the supplied location. Unknown where the nearest populated place lies in a different country from the location.
             </summary>
         </member>
         <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.ZipCode">
