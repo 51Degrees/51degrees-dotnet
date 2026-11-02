@@ -1,0 +1,136 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FiftyOne.GeoLocation</name>
+    </assembly>
+    <members>
+        <member name="T:FiftyOne.GeoLocation.GeoLocationCloudPipelineBuilder">
+            <summary>
+            Fluent builder used to create a <see cref="T:FiftyOne.Pipeline.Core.FlowElements.IPipeline"/>
+            that includes a location engine that is backed by
+            the 51Degrees cloud service.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.GeoLocationCloudPipelineBuilder.#ctor(Microsoft.Extensions.Logging.ILoggerFactory,System.Net.Http.HttpClient,FiftyOne.GeoLocation.Core.GeoLocationProvider)">
+            <summary>
+            Internal Constructor.
+            This builder should only be created through the 
+            <see cref="T:FiftyOne.GeoLocation.GeoLocationPipelineBuilder"/> 
+            </summary>
+            <param name="loggerFactory">
+            The factory to use when creating logger instances.
+            </param>
+            <param name="httpClient">
+            The <see cref="T:System.Net.Http.HttpClient"/> to use when sending HTTP requests.
+            </param>
+            <param name="provider">
+            The location services provider.
+            </param>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.GeoLocationCloudPipelineBuilder.Build">
+            <summary>
+            Build and return a new pipeline instance with the configured 
+            settings.
+            </summary>
+            <returns>
+            A new <see cref="T:FiftyOne.Pipeline.Core.FlowElements.IPipeline"/>.
+            </returns>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.GeoLocationPipelineBuilder">
+            <summary>
+            Fluent builder used to create a <see cref="T:FiftyOne.Pipeline.Core.FlowElements.IPipeline"/> that 
+            includes a reverse geocoding engine.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.GeoLocationPipelineBuilder.LoggerFactory">
+            <summary>
+            The factory to use when building loggers.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.GeoLocationPipelineBuilder.HttpClient">
+            <summary>
+            The HttpClient to use when making HTTP requests.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.GeoLocationPipelineBuilder.#ctor">
+            <summary>
+            Constructor
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.GeoLocationPipelineBuilder.#ctor(Microsoft.Extensions.Logging.ILoggerFactory)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="loggerFactory">
+            The factory to use for creating loggers within the pipeline.
+            </param>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.GeoLocationPipelineBuilder.#ctor(Microsoft.Extensions.Logging.ILoggerFactory,System.Net.Http.HttpClient)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="loggerFactory">
+            The factory to use for creating loggers within the pipeline.
+            </param>
+            <param name="httpClient">
+            The HTTP client to use within the pipeline.
+            </param>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.GeoLocationPipelineBuilder.UseCloud(System.String,FiftyOne.GeoLocation.Core.GeoLocationProvider)">
+            <summary>
+            Use the 51Degrees cloud service to perform Geo Location.
+            </summary>
+            <param name="resourceKey">
+            The resource key to use when querying the cloud service. 
+            Obtain one from https://configure.51degrees.com
+            </param>
+            <param name="provider">
+            The Geo Location provider to use.
+            </param>
+            <returns>
+            A builder that can be used to configure and build a pipeline
+            that will use the cloud Geo Location engine.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.GeoLocationPipelineBuilder.UseCloud(System.String,System.String,FiftyOne.GeoLocation.Core.GeoLocationProvider)">
+            <summary>
+            Use the 51Degrees cloud service to perform Geo Location.
+            </summary>
+            <param name="resourceKey">
+            The resource key to use when querying the cloud service. 
+            Obtain one from https://configure.51degrees.com
+            </param>
+            <param name="endpoint">
+            The 51Degrees cloud URL.
+            </param>
+            <param name="provider">
+            The Geo Location provider to use.
+            </param>
+            <returns>
+            A builder that can be used to configure and build a pipeline
+            that will use the cloud Geo Location engine.
+            </returns>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Messages">
+            <summary>
+              A strongly-typed resource class, for looking up localized strings, etc.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Messages.ResourceManager">
+            <summary>
+              Returns the cached ResourceManager instance used by this class.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Messages.Culture">
+            <summary>
+              Overrides the current thread's CurrentUICulture property for all
+              resource lookups using this strongly typed resource class.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Messages.ExceptionNoUrlConfigured">
+            <summary>
+              Looks up a localized string similar to A URL must be supplied for the service to call. Use the &apos;SetUrl&apos; method to configure this..
+            </summary>
+        </member>
+    </members>
+</doc>

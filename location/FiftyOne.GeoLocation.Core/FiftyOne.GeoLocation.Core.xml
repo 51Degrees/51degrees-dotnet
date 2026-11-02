@@ -1,0 +1,638 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FiftyOne.GeoLocation.Core</name>
+    </assembly>
+    <members>
+        <member name="T:FiftyOne.GeoLocation.Constants">
+            <summary>
+            Static class containing various constants that are used by this 
+            package and/or are helpful to callers. 
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Constants.EVIDENCE_GEO_LAT_KEY">
+            <summary>
+            Complete evidence key for latitude that is supplied
+            from off-line location information.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Constants.EVIDENCE_GEO_LON_KEY">
+            <summary>
+            Complete evidence key for longitude that is supplied
+            from off-line location information.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Constants.EVIDENCE_GEO_LAT">
+            <summary>
+            The name for the cookie / form parameter used to pass latitude
+            from the client.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Constants.EVIDENCE_GEO_LON">
+            <summary>
+            The name for the cookie / form parameter used to pass longitude
+            from the client.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Constants.EVIDENCE_GEO_LAT_COOKIE_KEY">
+            <summary>
+            The complete evidence key for latitude obtained from a
+            cookie passed in the request.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Constants.EVIDENCE_GEO_LON_COOKIE_KEY">
+            <summary>
+            The complete evidence key for longitude obtained from a
+            cookie passed in the request.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Constants.EVIDENCE_GEO_LAT_PARAM_KEY">
+            <summary>
+            The complete evidence key for latitude passed in the query
+            string, as a form parameter or from some other mechanism.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Constants.EVIDENCE_GEO_LON_PARAM_KEY">
+            <summary>
+            The complete evidence key for longitude passed in the query
+            string, as a form parameter or from some other mechanism.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Constants.DefaultGeoEvidenceKeyFilter">
+            <summary>
+            The default evidence filter for geolocation engines.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Constants.NO_EVIDENCE_MESSAGE">
+            <summary>
+            The message to be sent to the user when the JavaScript that
+            gathers lat/lon data has not yet been run.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Constants.NO_JAVASCRIPT_MESSAGE">
+            <summary>
+            The message to be sent to the user when the JavaScript that
+            gathers lat/lon data is not required. This is the case if location
+            evidence has been provided.
+            </summary>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Core.Data.GeoData">
+            <summary>
+            Data class that contains postal address information
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Data.GeoData.#ctor(Microsoft.Extensions.Logging.ILogger{FiftyOne.GeoLocation.Core.Data.GeoData},FiftyOne.Pipeline.Core.FlowElements.IPipeline,FiftyOne.Pipeline.Engines.FlowElements.IAspectEngine,FiftyOne.Pipeline.Engines.Services.IMissingPropertyService)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="logger">
+            The logger for this instance to use.
+            </param>
+            <param name="pipeline">
+            The Pipeline that created this instance
+            </param>
+            <param name="engine">
+            The engine that created this instance
+            </param>
+            <param name="missingPropertyService">
+            The <see cref="T:FiftyOne.Pipeline.Engines.Services.IMissingPropertyService"/> to use when the
+            requested property does not exist in the base data store.
+            </param>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.JavaScript">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.Building">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.StreetNumber">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.Road">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.Town">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.Suburb">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.County">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.Region">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.State">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.ZipCode">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.Country">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.CountryCode">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.CountryCode3">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.TimeZoneOffset">
+            <inheritdoc/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoData.Address">
+            <inheritdoc/>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Core.Data.GeoData.PropertyTypes">
+            <summary>
+            Dictionary of property types.
+            </summary>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Core.Data.GeoEvidence">
+            <summary>
+            Data class containing evidence that can be used when determining 
+            location data.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoEvidence.Latitude">
+            <summary>
+            The latitude coordinate in floating point format and 
+            represented as a string.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoEvidence.Longitude">
+            <summary>
+            The longitude coordinate in floating point format and 
+            represented as a string.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoEvidence.IpAddress">
+            <summary>
+            The IP address of the client.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.GeoEvidence.Zoom">
+            <summary>
+            The level of detail required by the caller.
+            For example, if only 'country' is needed, the zoom level can
+            be set to 3, decreasing the amount of time that the query takes.
+            For more detail on zoom levels, see the 'setZoom' method in
+            the <a href="https://github.com/osm-search/Nominatim/blob/master/lib-php/ReverseGeocode.php">Nominatim API</a> 
+            </summary>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Core.Data.IGeoData">
+            <summary>
+            Represents an object that contains postal address information
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.JavaScript">
+            <summary>
+            A JavaScript snippet that, when run on the client, will 
+            retrieve latitude and longitude data to be used by a 
+            reverse geocoding engine in order to determine postal
+            address information.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Building">
+            <summary>
+            The name of the building that is closest to this location.
+            Part of the postal address.
+            </summary>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.StreetNumber"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Road"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Town"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Suburb"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.County"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Region"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.State"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Country"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.ZipCode"/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.StreetNumber">
+            <summary>
+            The number of the building that is closest to this location.
+            Part of the postal address.
+            </summary>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Building"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Road"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Town"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Suburb"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.County"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Region"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.State"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Country"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.ZipCode"/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Road">
+            <summary>
+            The name of the road that this location is on.
+            Part of the postal address.
+            </summary>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Building"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.StreetNumber"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Town"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Suburb"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.County"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Region"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.State"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Country"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.ZipCode"/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Town">
+            <summary>
+            The name of the town that this location is in.
+            Part of the postal address.
+            </summary>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Building"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.StreetNumber"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Road"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Suburb"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.County"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Region"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.State"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Country"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.ZipCode"/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Suburb">
+            <summary>
+            The name of the suburb that this location is in.
+            Part of the postal address.
+            </summary>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Building"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.StreetNumber"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Road"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Town"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.County"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Region"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.State"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Country"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.ZipCode"/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.County">
+            <summary>
+            The name of the county that this location is in.
+            Part of the postal address.
+            </summary>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Building"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.StreetNumber"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Road"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Town"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Suburb"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Region"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.State"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Country"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.ZipCode"/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Region">
+            <summary>
+            The name of the region that this location is in.
+            Part of the postal address.
+            </summary>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Building"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.StreetNumber"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Road"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Town"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Suburb"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.County"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.State"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Country"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.ZipCode"/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.State">
+            <summary>
+            The name of the state that this location is in.
+            Part of the postal address.
+            </summary>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Building"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.StreetNumber"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Road"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Town"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Suburb"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.County"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Region"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Country"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.ZipCode"/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.ZipCode">
+            <summary>
+            The zip code closest to this location.
+            Part of the postal address.
+            </summary>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Building"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.StreetNumber"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Road"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Town"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Suburb"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.County"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.State"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Region"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Country"/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Country">
+            <summary>
+            The name of the country that this location is in.
+            Part of the postal address.
+            </summary>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Building"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.StreetNumber"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Road"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Town"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Suburb"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.County"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.State"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Region"/>
+            <seealso cref="P:FiftyOne.GeoLocation.Core.Data.IGeoData.ZipCode"/>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.CountryCode">
+            <summary>
+            The country code for the country that this location is in.
+            </summary>
+            <remarks>
+            Different location providers may provide differently formatted
+            country codes.
+            </remarks>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.CountryCode3">
+            <summary>
+            The 3 character country code for the country that this location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.TimeZoneOffset">
+            <summary>
+            The offset from UTC in minutes for the location at the date processed.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Data.IGeoData.Address">
+            <summary>
+            The complete address for this location.
+            </summary>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Core.GeoLocationProvider">
+            <summary>
+            This enumeration defines the reverse geocoding service providers that
+            are supported by the engines in this package.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.GeoLocation.Core.GeoLocationProvider.FiftyOneDegrees">
+            <summary>
+            A FiftyOne degrees hosted solution that is powered by the
+            <a href="https://wiki.openstreetmap.org/wiki/Nominatim">Nominatim</a> 
+            API using data from 
+            <a href="https://www.openstreetmap.org/">OpenStreetMap</a>.
+            </summary>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Core.FlowElements.ILocationEngineBuilder">
+            <summary>
+            A fluent builder that can create a location engine
+            </summary>
+            <seealso cref="T:FiftyOne.GeoLocation.Core.FlowElements.ILocationEngineBuilder`1"/>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.FlowElements.ILocationEngineBuilder.SetUrl(System.String)">
+            <summary>
+            Set the base URL for the remote location service.
+            </summary>
+            <param name="url">
+            The base URL for the location service.
+            </param>
+            <returns>
+            This builder.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.FlowElements.ILocationEngineBuilder.SetLazyLoading(FiftyOne.Pipeline.Engines.Configuration.LazyLoadingConfiguration)">
+            <summary>
+            Set the lazy loading configuration for the engine.
+            </summary>
+            <param name="lazyLoadingConfig">
+            The lazy loading configuration to use.
+            </param>
+            <returns>
+            This builder.
+            </returns>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Core.FlowElements.ILocationEngineBuilder`1">
+            <summary>
+            A fluent builder that can create a location engine
+            </summary>
+            <typeparam name="TBuilder">
+            The type of the builder.
+            This is used so that methods on the base class will return the 
+            correct builder type, allowing derived builders to add their own
+            methods without compromising user-experience.
+            </typeparam>
+            <seealso cref="T:FiftyOne.GeoLocation.Core.FlowElements.ILocationEngineBuilder"/>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.FlowElements.ILocationEngineBuilder`1.SetUrl(System.String)">
+            <inheritdoc/>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.FlowElements.ILocationEngineBuilder`1.SetLazyLoading(FiftyOne.Pipeline.Engines.Configuration.LazyLoadingConfiguration)">
+            <inheritdoc/>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Core.GeoEngineHelper">
+            <summary>
+            Helper class that contains shared functionality required
+            by geolocation engines.
+            </summary>
+            <remarks>
+            This functionality is here rather than a geo engine base 
+            class because different geolocation engines require
+            different engine base class functionality.
+            </remarks>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.GeoEngineHelper.TryAddCoordinates(System.Collections.Generic.IReadOnlyDictionary{System.String,System.Object},FiftyOne.GeoLocation.Core.Data.GeoEvidence,System.String,System.String)">
+            <summary>
+            Try getting the specified coordinate keys from evidence 
+            and adding them to a <see cref="T:FiftyOne.GeoLocation.Core.Data.GeoEvidence"/> instance.
+            </summary>
+            <param name="evidence">
+            evidence collection to get the coordinates from
+            </param>
+            <param name="geoEvidence">
+            <see cref="T:FiftyOne.GeoLocation.Core.Data.GeoEvidence"/> to add the coordinates to
+            </param>
+            <param name="latitudeKey">
+            The name of the key for the latitude value in the evidence
+            </param>
+            <param name="longitudeKey">
+            The name of the key for the longitude value in the evidence
+            </param>
+            <returns>
+            True if both values were found in the evidence. False if not.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.GeoEngineHelper.PerformGeoLookup(FiftyOne.Pipeline.Core.Data.IFlowData,System.Net.Http.HttpClient,System.Action{System.Collections.Generic.IReadOnlyDictionary{System.String,System.Object},FiftyOne.GeoLocation.Core.Data.GeoEvidence},System.Func{FiftyOne.GeoLocation.Core.Data.GeoEvidence,System.String})">
+            <summary>
+            Use evidence from the specified <see cref="T:FiftyOne.Pipeline.Core.Data.IFlowData"/> 
+            instance to construct a query 
+            </summary>
+            <param name="data">
+            The flow data to process
+            </param>
+            <param name="webClient">
+            The <see cref="T:System.Net.Http.HttpClient"/> to use when making a request
+            to the geolocation service.
+            </param>
+            <param name="addExtraParams">
+            A function that will set any additional fields in 
+            <see cref="T:FiftyOne.GeoLocation.Core.Data.GeoEvidence"/> that may be unique to the calling engine.
+            </param>
+            <param name="formatRequest">
+            A function that will create a URL that can be used to
+            query a web service based on the supplied 
+            <see cref="T:FiftyOne.GeoLocation.Core.Data.GeoEvidence"/>.
+            </param>
+            <returns>
+            A new <see cref="T:FiftyOne.GeoLocation.Core.GeoLookupResult"/> instance.
+            If the supplied <see cref="T:FiftyOne.Pipeline.Core.Data.IFlowData"/> contains the required 
+            evidence then this will contain the raw response from the web 
+            service.
+            If not, it will contain the JavaScript to run on the client
+            device in order to supply the required evidence.
+            </returns>
+            <exception cref="T:System.ArgumentNullException">
+            Thrown if a required parameter is null.
+            </exception>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Core.GeoLookupResult">
+            <summary>
+            Data class that contains responses from geolocation 
+            lookup services.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.GeoLookupResult.GeoServiceResponse">
+            <summary>
+            The raw string response from the geolocation web service.
+            If the <see cref="T:FiftyOne.Pipeline.Core.Data.IFlowData"/> does not contain the required
+            evidence then the ClientsideEvidenceJS property will be 
+            populated instead.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.GeoLookupResult.ClientsideEvidenceJS">
+            <summary>
+            A <see cref="T:FiftyOne.Pipeline.Core.Data.Types.JavaScript"/> instance containing the JavaScript
+            to run on the client device in order to supply the evidence
+            required by the geolocation service.
+            This is only populated if the required evidence is not 
+            available in the <see cref="T:FiftyOne.Pipeline.Core.Data.IFlowData"/>.
+            </summary>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Core.Templates.JavaScriptResource">
+            <summary>
+            Class to produce the template output
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResource.TransformText">
+            <summary>
+            Create the template output
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResource.#ctor(System.String,System.String)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="latitudeKey">
+            The name of the cookie / form parameter to use when passing 
+            latitude data back from the client.
+            </param>
+            <param name="longitudeKey">
+            The name of the cookie / form parameter to use when passing 
+            longitude data back from the client.
+            </param>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase">
+            <summary>
+            Base class for this transformation
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.GenerationEnvironment">
+            <summary>
+            The string builder that generation-time code is using to assemble generated output
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.Errors">
+            <summary>
+            The error collection for the generation process
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.indentLengths">
+            <summary>
+            A list of the lengths of each indent that was added with PushIndent
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.CurrentIndent">
+            <summary>
+            Gets the current indent we use when adding lines to the output
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.Session">
+            <summary>
+            Current transformation session
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.Write(System.String)">
+            <summary>
+            Write text directly into the generated output
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.WriteLine(System.String)">
+            <summary>
+            Write text directly into the generated output
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.Write(System.String,System.Object[])">
+            <summary>
+            Write formatted text directly into the generated output
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.WriteLine(System.String,System.Object[])">
+            <summary>
+            Write formatted text directly into the generated output
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.Error(System.String)">
+            <summary>
+            Raise an error
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.Warning(System.String)">
+            <summary>
+            Raise a warning
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.PushIndent(System.String)">
+            <summary>
+            Increase the indent
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.PopIndent">
+            <summary>
+            Remove the last indent that was added with PushIndent
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.ClearIndent">
+            <summary>
+            Remove any indentation
+            </summary>
+        </member>
+        <member name="T:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.ToStringInstanceHelper">
+            <summary>
+            Utility class to produce culture-oriented representation of an object as a string.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.ToStringInstanceHelper.FormatProvider">
+            <summary>
+            Gets or sets format provider to be used by ToStringWithCulture method.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.ToStringInstanceHelper.ToStringWithCulture(System.Object)">
+            <summary>
+            This is called from the compile/run appdomain to convert objects within an expression block to a string
+            </summary>
+        </member>
+        <member name="P:FiftyOne.GeoLocation.Core.Templates.JavaScriptResourceBase.ToStringHelper">
+            <summary>
+            Helper to produce culture-oriented representation of an object as a string
+            </summary>
+        </member>
+    </members>
+</doc>

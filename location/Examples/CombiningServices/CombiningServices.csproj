@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Platforms>AnyCPU;x64</Platforms>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\FiftyOne.GeoLocation\FiftyOne.GeoLocation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FiftyOne.DeviceDetection" Version="4.5.179" />
+  </ItemGroup>
+</Project>
