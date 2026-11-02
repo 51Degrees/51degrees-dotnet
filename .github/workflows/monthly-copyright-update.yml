@@ -1,0 +1,24 @@
+name: Monthly Copyright Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        default: false
+        type: boolean
+        description: Dry Run
+  # Off until this repository takes over from the separate repositories
+  # it replaces. Their schedules are turned off then, so the same jobs never
+  # run in both.
+  # schedule:
+  #   - cron: '0 0 1 * *'
+
+jobs:
+  Monthly_Copyright_Update:
+    uses: 51Degrees/common-ci/.github/workflows/monthly-copyright-update.yml@main
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      dryrun: ${{ inputs.dryrun || false }}
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
