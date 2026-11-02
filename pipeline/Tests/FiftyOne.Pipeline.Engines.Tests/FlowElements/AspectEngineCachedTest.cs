@@ -20,9 +20,11 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.Caching;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.TypedMap;
 using FiftyOne.Pipeline.Engines.Caching;
+using FiftyOne.Pipeline.Engines.Configuration;
 using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -151,6 +153,84 @@ namespace FiftyOne.Pipeline.Engines.Tests.FlowElements
             _cache.Verify(c => c.Put(It.IsAny<IFlowData>(), It.IsAny<IElementData>()), Times.Never);
             // Verify the CacheHit flag is true.
             Assert.IsTrue(cachedData.CacheHit);
+        }
+
+        /// <summary>
+        /// Check that evidence values which differ only in case are
+        /// different cache entries, as evidence values are compared
+        /// case sensitively when the cache key is generated.
+        /// </summary>
+        [TestMethod]
+        public void FlowElementCached_Process_EvidenceValueCaseSensitive()
+        {
+            // Arrange
+            int processCount = 0;
+            _engine.OnProcessEngineEntered += () => processCount++;
+            _engine.SetCache(CreateRealCache());
+            using (var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(_engine)
+                .Build())
+            {
+                // Act
+                ProcessEvidence(pipeline, "test.value", "abc");
+                ProcessEvidence(pipeline, "test.value", "ABC");
+                ProcessEvidence(pipeline, "test.value", "abc");
+
+                // Assert
+                // The two values are processed separately by the engine
+                // and the repeated value is served from the cache.
+                Assert.AreEqual(2, processCount);
+            }
+        }
+
+        /// <summary>
+        /// Check that evidence keys which differ only in case are the same
+        /// cache entry, as evidence keys are compared case insensitively
+        /// when the cache key is generated.
+        /// </summary>
+        [TestMethod]
+        public void FlowElementCached_Process_EvidenceKeyCaseInsensitive()
+        {
+            // Arrange
+            int processCount = 0;
+            _engine.OnProcessEngineEntered += () => processCount++;
+            _engine.SetCache(CreateRealCache());
+            using (var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(_engine)
+                .Build())
+            {
+                // Act
+                ProcessEvidence(pipeline, "test.value", "abc");
+                ProcessEvidence(pipeline, "TEST.VALUE", "abc");
+
+                // Assert
+                // The second request is served from the cache.
+                Assert.AreEqual(1, processCount);
+            }
+        }
+
+        /// <summary>
+        /// Create a real cache so that the key generated from the evidence
+        /// decides whether a result is a hit or a miss.
+        /// </summary>
+        private static IFlowCache CreateRealCache()
+        {
+            return new DefaultFlowCache(new CacheConfiguration()
+            {
+                Builder = new LruPutCacheBuilder(),
+                Size = 100
+            });
+        }
+
+        /// <summary>
+        /// Process a single piece of evidence through the pipeline.
+        /// </summary>
+        private static void ProcessEvidence(IPipeline pipeline, string key, object value)
+        {
+            using (var flowData = pipeline.CreateFlowData())
+            {
+                flowData.AddEvidence(key, value).Process();
+            }
         }
     }
 }

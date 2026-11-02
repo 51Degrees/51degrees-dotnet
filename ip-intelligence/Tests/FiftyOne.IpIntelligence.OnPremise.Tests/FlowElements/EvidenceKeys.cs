@@ -52,5 +52,13 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
             TestInitialize(profile);
             EvidenceKeyTests.CaseInsensitiveKeys(Wrapper);
         }
+
+        [TestMethod]
+        [DynamicData(nameof(ProfilesToTest))]
+        public void EvidenceKeys_OnPremise_Core_SameAfterRefresh(PerformanceProfiles profile)
+        {
+            TestInitialize(profile);
+            EvidenceKeyTests.SameAfterRefresh(Wrapper);
+        }
     }
 }

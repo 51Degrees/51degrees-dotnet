@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Linq;
 
 namespace FiftyOne.IpIntelligence.TestHelpers.FlowElements
 {
@@ -32,6 +33,40 @@ namespace FiftyOne.IpIntelligence.TestHelpers.FlowElements
             Assert.IsTrue(wrapper.GetEngine().EvidenceKeyFilter.Include("query.true-client-ip-51d"));
             Assert.IsTrue(wrapper.GetEngine().EvidenceKeyFilter.Include("server.client-ip-51d"));
             Assert.IsTrue(wrapper.GetEngine().EvidenceKeyFilter.Include("server.true-client-ip-51d"));
+        }
+
+        /// <summary>
+        /// The accepted evidence comes from the data file, so it is read
+        /// again when the data is refreshed. After a refresh the engine
+        /// still accepts the client IP keys and still refuses a key that
+        /// is not evidence it uses.
+        /// </summary>
+        public static void SameAfterRefresh(IWrapper wrapper)
+        {
+            var keys = new[]
+            {
+                "query.client-ip-51d",
+                "query.true-client-ip-51d",
+                "server.client-ip-51d",
+                "server.true-client-ip-51d",
+                "header.x-forwarded-for",
+                "header.user-agent",
+                "query.not-evidence-the-engine-uses"
+            };
+            var before = keys.ToDictionary(
+                k => k,
+                k => wrapper.GetEngine().EvidenceKeyFilter.Include(k));
+            Assert.IsTrue(before["query.client-ip-51d"]);
+            Assert.IsFalse(before["query.not-evidence-the-engine-uses"]);
+
+            wrapper.GetEngine().RefreshData(null);
+
+            foreach (var key in keys)
+            {
+                Assert.AreEqual(before[key],
+                    wrapper.GetEngine().EvidenceKeyFilter.Include(key),
+                    $"The engine's answer for evidence key '{key}' changed after a refresh.");
+            }
         }
 
         public static void CaseInsensitiveKeys(IWrapper wrapper)

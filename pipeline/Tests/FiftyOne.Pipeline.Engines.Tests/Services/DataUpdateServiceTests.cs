@@ -31,6 +31,7 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using FiftyOne.Common.TestHelpers;
 using FiftyOne.Pipeline.Engines.Data;
 using System.Collections.Generic;
@@ -454,9 +455,15 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
                 // is complete.
                 ManualResetEventSlim completeFlag = new ManualResetEventSlim(false);
                 List<DataUpdateCompleteArgs> completeEventArgs = new List<DataUpdateCompleteArgs>();
+                // The watcher raises its events on its own thread, and often
+                // more than once for one copy, so the list is locked where it
+                // is written and where it is read.
                 _dataUpdate.CheckForUpdateComplete += (object sender, DataUpdateCompleteArgs e) =>
                 {
-                    completeEventArgs.Add(e);
+                    lock (completeEventArgs)
+                    {
+                        completeEventArgs.Add(e);
+                    }
                     completeFlag.Set();
                 };
 
@@ -490,7 +497,10 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
 
                 // FileSystemWatcher often fires multiple events for a single file.
                 // As long as the update was successful once, the test is passed.
-                Assert.IsTrue(completeEventArgs.Any(e => e.Status == AutoUpdateStatus.AUTO_UPDATE_SUCCESS));
+                lock (completeEventArgs)
+                {
+                    Assert.IsTrue(completeEventArgs.Any(e => e.Status == AutoUpdateStatus.AUTO_UPDATE_SUCCESS));
+                }
             }
             finally
             {
@@ -1637,6 +1647,284 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             Assert.AreEqual(47, dueTime.Seconds);
         }
 
+        /// <summary>
+        /// Check that a remote update answered with a 400 or a 500 status
+        /// code reports an HTTPS error, does not refresh the engine and
+        /// re-arms the polling timer so the update is attempted again later.
+        /// </summary>
+        [TestMethod]
+        [DataRow(System.Net.HttpStatusCode.BadRequest)]
+        [DataRow(System.Net.HttpStatusCode.InternalServerError)]
+        public void DataUpdateService_Register_TimerSetAfterHttpError(
+            System.Net.HttpStatusCode statusCode)
+        {
+            // Arrange
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            var config = new DataFileConfiguration()
+            {
+                AutomaticUpdatesEnabled = true,
+                PollingIntervalSeconds = 47,
+                MaxRandomisationSeconds = 0,
+                DataUpdateUrl = "https://test.com",
+                FileSystemWatcherEnabled = false
+            };
+            var file = new AspectEngineDataFile()
+            {
+                Engine = engine.Object,
+                Configuration = config,
+                UpdateAvailableTime = DateTime.UtcNow.AddDays(-1)
+            };
+            ConfigureFileNoUpdate(engine, file);
+            ConfigureHttpStatusCode(statusCode);
+            ConfigureTimerImmediateCallbackOnce();
+            // Configure a ManualResetEvent to be set when processing
+            // is complete.
+            ManualResetEventSlim completeFlag = new ManualResetEventSlim(false);
+            DataUpdateCompleteArgs completeEventArgs = null;
+            _dataUpdate.CheckForUpdateComplete += (object sender, DataUpdateCompleteArgs e) =>
+            {
+                completeEventArgs = e;
+                completeFlag.Set();
+            };
+
+            // Act
+            _dataUpdate.RegisterDataFile(file);
+            // Wait until processing is complete.
+            completeFlag.Wait(TEST_TIMEOUT_MS);
+
+            DumpLoggerLogs();
+
+            // Assert
+            Assert.IsTrue(completeFlag.IsSet, "The 'CheckForUpdateComplete' " +
+                "event was never fired");
+            // Ignore the error that is logged due to the failed request
+            _ignoreErrors = 1;
+            _httpHandler.Verify(h => h.Send(It.IsAny<HttpRequestMessage>()), Times.Once());
+            // Make sure engine was not refreshed
+            engine.Verify(e => e.RefreshData(config.Identifier), Times.Never());
+            Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR, completeEventArgs.Status);
+            // The timer factory is only called for the initial timer.
+            // After the failure, the same timer is re-armed with the
+            // configured polling interval.
+            _timerFactory.Verify(f => f(It.IsAny<TimerCallback>(),
+                It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Once());
+            Assert.IsNotNull(file.Timer);
+            Assert.AreEqual(47, GetTimerDueTime(file.Timer).Seconds);
+        }
+
+        /// <summary>
+        /// Check that a remote update request that times out is reported
+        /// as an HTTPS error, does not refresh the engine and re-arms the
+        /// polling timer so the update is attempted again later.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_Register_TimerSetAfterTimeout()
+        {
+            // Arrange
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            var config = new DataFileConfiguration()
+            {
+                AutomaticUpdatesEnabled = true,
+                PollingIntervalSeconds = 47,
+                MaxRandomisationSeconds = 0,
+                DataUpdateUrl = "https://test.com",
+                FileSystemWatcherEnabled = false
+            };
+            var file = new AspectEngineDataFile()
+            {
+                Engine = engine.Object,
+                Configuration = config,
+                UpdateAvailableTime = DateTime.UtcNow.AddDays(-1)
+            };
+            ConfigureFileNoUpdate(engine, file);
+            // Configure the mock HTTP handler to time out in the same way
+            // that HttpClient does when its request timeout expires.
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Throws(new TaskCanceledException("The request timed out"));
+            ConfigureTimerImmediateCallbackOnce();
+            // Configure a ManualResetEvent to be set when processing
+            // is complete.
+            ManualResetEventSlim completeFlag = new ManualResetEventSlim(false);
+            DataUpdateCompleteArgs completeEventArgs = null;
+            _dataUpdate.CheckForUpdateComplete += (object sender, DataUpdateCompleteArgs e) =>
+            {
+                completeEventArgs = e;
+                completeFlag.Set();
+            };
+
+            // Act
+            _dataUpdate.RegisterDataFile(file);
+            // Wait until processing is complete.
+            completeFlag.Wait(TEST_TIMEOUT_MS);
+
+            DumpLoggerLogs();
+
+            // Assert
+            Assert.IsTrue(completeFlag.IsSet, "The 'CheckForUpdateComplete' " +
+                "event was never fired");
+            // Ignore the error that is logged due to the timeout
+            _ignoreErrors = 1;
+            _httpHandler.Verify(h => h.Send(It.IsAny<HttpRequestMessage>()), Times.Once());
+            // Make sure engine was not refreshed
+            engine.Verify(e => e.RefreshData(config.Identifier), Times.Never());
+            Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR, completeEventArgs.Status);
+            // The timer factory is only called for the initial timer.
+            // After the failure, the same timer is re-armed with the
+            // configured polling interval.
+            _timerFactory.Verify(f => f(It.IsAny<TimerCallback>(),
+                It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Once());
+            Assert.IsNotNull(file.Timer);
+            Assert.AreEqual(47, GetTimerDueTime(file.Timer).Seconds);
+        }
+
+        /// <summary>
+        /// Check that the update request carries an If-Modified-Since header
+        /// equal to the publish date of the current data when the option
+        /// is enabled, and no such header when it is disabled.
+        /// </summary>
+        [TestMethod]
+        [DataRow(true)]
+        [DataRow(false)]
+        public void DataUpdateService_CheckForUpdate_IfModifiedSince(
+            bool verifyModifiedSince)
+        {
+            // Arrange
+            DateTime publishDate = new DateTime(2024, 3, 5, 10, 30, 0, DateTimeKind.Utc);
+            bool headerPresent = false;
+            DateTimeOffset? headerValue = null;
+            // Configure the mock HTTP handler to record the header and
+            // return a 'NotModified' status code.
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Callback((HttpRequestMessage request) =>
+                {
+                    headerPresent = request.Headers.Contains("If-Modified-Since");
+                    headerValue = request.Headers.IfModifiedSince;
+                })
+                .Returns(new HttpResponseMessage(System.Net.HttpStatusCode.NotModified)
+                {
+                    Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
+                });
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            string tempPath = Path.GetTempPath();
+            engine.Setup(e => e.TempDataDirPath).Returns(tempPath);
+            var config = new DataFileConfiguration()
+            {
+                DataUpdateUrl = @"http://www.test.com",
+                FileSystemWatcherEnabled = false,
+                AutomaticUpdatesEnabled = false,
+                VerifyModifiedSince = verifyModifiedSince
+            };
+            var file = new AspectEngineDataFile()
+            {
+                Engine = engine.Object,
+                Configuration = config,
+                DataPublishedDateTime = publishDate
+            };
+            engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+
+            // Act
+            var result = _dataUpdate.CheckForUpdate(engine.Object);
+
+            // Assert
+            _httpHandler.Verify(h => h.Send(It.IsAny<HttpRequestMessage>()), Times.Once());
+            Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, result);
+            Assert.AreEqual(verifyModifiedSince, headerPresent);
+            if (verifyModifiedSince)
+            {
+                Assert.IsNotNull(headerValue);
+                Assert.AreEqual(new DateTimeOffset(publishDate), headerValue.Value);
+            }
+            else
+            {
+                Assert.IsNull(headerValue);
+            }
+        }
+
+        /// <summary>
+        /// Check that a programmatic update still checks the remote server
+        /// and refreshes the engine when automatic updates are disabled.
+        /// No polling timer is created as automatic updates are off.
+        /// </summary>
+        /// <remarks>
+        /// This test writes to and reads from the file system temp path.
+        /// This is required in this case in order to fully test the
+        /// interaction between the various temp files that are required.
+        /// </remarks>
+        [TestMethod]
+        public void DataUpdateService_CheckForUpdate_AutoUpdateDisabled_UrlUpdateAvailable()
+        {
+            // Arrange
+            // For this test we want to use the real FileWrapper to allow
+            // the test to perform file system read/write operations.
+            IFileSystem fileSystem = ConfigureRealFileSystem();
+
+            // Configure the mock HTTP handler to return the test data file
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Callback((HttpRequestMessage request) =>
+                {
+                })
+                .Returns(() => {
+                    // MD5 for data was calculated and verified using
+                    // https://md5file.com/calculator
+                    // http://onlinemd5.com/
+                    string md5 = "08527dcbdd437e7fa6c084423d06dba6";
+
+                    var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StreamContent(File.OpenRead(@"Resources/file.gz")),
+                    };
+
+                    response.Content.Headers.Add("Content-MD5", md5);
+                    return response;
+                });
+
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            string tempPath = Path.GetTempPath();
+            string dataFile = Path.GetTempFileName();
+            if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            try
+            {
+                // Configure the engine to return the relevant paths.
+                engine.Setup(e => e.TempDataDirPath).Returns(tempPath);
+                var config = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = false,
+                    DataUpdateUrl = @"http://www.test.com",
+                    DataFilePath = dataFile,
+                    VerifyMd5 = true,
+                    DecompressContent = true,
+                    FileSystemWatcherEnabled = false,
+                    VerifyModifiedSince = false
+                };
+                var file = new AspectEngineDataFile()
+                {
+                    Engine = engine.Object,
+                    Configuration = config
+                };
+                engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+
+                // Act
+                var result = _dataUpdate.CheckForUpdate(engine.Object);
+
+                DumpLoggerLogs();
+
+                // Assert
+                _httpHandler.Verify(h => h.Send(It.IsAny<HttpRequestMessage>()), Times.Once());
+                // Make sure engine was refreshed
+                engine.Verify(e => e.RefreshData(config.Identifier), Times.Once());
+                // Verify that timer factory has not been called to
+                // set up a new timer.
+                _timerFactory.Verify(f => f(It.IsAny<TimerCallback>(),
+                    It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Never());
+                Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_SUCCESS, result);
+                Assert.IsTrue(File.Exists(file.DataFilePath), "Data file does not exist after test");
+            }
+            finally
+            {
+                if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            }
+        }
+
 #region Private methods
         private void ConfigureNoFileSystem()
         {
@@ -1782,6 +2070,47 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
                 {
                     Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
                 });
+        }
+
+        private void ConfigureHttpStatusCode(System.Net.HttpStatusCode statusCode)
+        {
+            // Configure the mock HTTP handler to return the specified
+            // status code.
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Callback((HttpRequestMessage request) =>
+                {
+                })
+                .Returns(new HttpResponseMessage(statusCode)
+                {
+                    Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
+                });
+        }
+
+        private static TimeSpan GetTimerDueTime(Timer timer)
+        {
+            // We use reflection to get the due time of the next check
+            // from the update timer.
+            // This is because we can only access the value through private
+            // fields.
+            // If this fails in future, it may be because the internal
+            // implementation of the timer has changed and the field names
+            // are different.
+            // At time of writing we're looking at an unsigned integer field:
+            //   timer._timer._timer._dueTime
+            // This is the number of milliseconds until the next update
+            // will fire.
+            string timerFieldName = "_timer";
+            string dueTimeFieldName = "_dueTime";
+            var privateFlags =
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Instance;
+            var field = timer.GetType().GetField(timerFieldName, privateFlags);
+            var fieldValue = field.GetValue(timer);
+            field = fieldValue.GetType().GetField(timerFieldName, privateFlags);
+            fieldValue = field.GetValue(fieldValue);
+            field = fieldValue.GetType().GetField(dueTimeFieldName, privateFlags);
+            fieldValue = field.GetValue(fieldValue);
+            return TimeSpan.FromMilliseconds((uint)fieldValue);
         }
 #endregion
     }

@@ -120,6 +120,9 @@
   <data name="ExceptionCannotFindProperty" xml:space="preserve">
     <value>Could not find property '{0}'.</value>
   </data>
+  <data name="ExceptionPipelineDisposed" xml:space="preserve">
+    <value>The pipeline has been disposed, so this flow data can no longer be processed. Create the flow data from a pipeline that is still in use.</value>
+  </data>
   <data name="ExceptionFlowDataAlreadyProcessed" xml:space="preserve">
     <value>FlowData has already been processed</value>
   </data>

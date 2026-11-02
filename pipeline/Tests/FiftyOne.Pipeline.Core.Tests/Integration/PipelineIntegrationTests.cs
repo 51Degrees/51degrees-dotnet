@@ -86,6 +86,33 @@ namespace FiftyOne.Pipeline.Core.Tests.Integration
         }
 
         /// <summary>
+        /// Check the results are as expected when the pipeline contains
+        /// three elements in sequence. Each reads the same evidence and
+        /// writes its own element data, so all three results are present.
+        /// </summary>
+        [TestMethod]
+        public void PipelineIntegration_ThreeElementsInSequence()
+        {
+            var fiveElement = new MultiplyByFiveElement();
+            var tenElement = new MultiplyByTenElement();
+            var threeElement = new MultiplyByElement(3);
+            var pipeline = new PipelineBuilder(new LoggerFactory())
+                .AddFlowElement(fiveElement)
+                .AddFlowElement(tenElement)
+                .AddFlowElement(threeElement)
+                .Build();
+            using (var flowData = pipeline.CreateFlowData())
+            {
+                flowData.AddEvidence(fiveElement.EvidenceKeys[0], 2);
+                flowData.Process();
+                Assert.AreEqual(10, flowData.GetFromElement(fiveElement).Result);
+                Assert.AreEqual(20, flowData.GetFromElement(tenElement).Result);
+                Assert.AreEqual(6, flowData.GetFromElement(threeElement).Result);
+                Assert.HasCount(3, flowData.ElementDataAsDictionary());
+            }
+        }
+
+        /// <summary>
         /// Check the results are as expected when the pipeline contains a
         /// multiple elements executing in parallel
         /// </summary>

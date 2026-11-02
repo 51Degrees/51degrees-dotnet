@@ -768,6 +768,105 @@ namespace FiftyOne.Pipeline.Core.Tests.FlowElements
         /// <returns>
         /// A new <see cref="Core.FlowElements.Pipeline"/>.
         /// </returns>
+        /// <summary>
+        /// An element that throws must not stop the elements after it. The
+        /// first element throws, the second must still be processed, and
+        /// the error is recorded against the first.
+        /// </summary>
+        [TestMethod]
+        public void Pipeline_ExceptionInFirstElement_LaterElementsStillRun()
+        {
+            var element1 = GetMockFlowElement();
+            var element2 = GetMockFlowElement();
+            var data = new Mock<IFlowData>();
+            element1.Setup(e => e.Process(It.IsAny<IFlowData>()))
+                .Throws(new Exception("TEST"));
+            var pipeline = CreatePipeline(
+                false,
+                true,
+                element1.Object,
+                element2.Object);
+
+            pipeline.Process(data.Object);
+
+            element2.Verify(e => e.Process(data.Object), Times.Once());
+            data.Verify(d => d.AddError(
+                It.Is<Exception>(ex => ex.Message == "TEST"),
+                element1.Object,
+                true,
+                false),
+                Times.Once());
+        }
+
+        /// <summary>
+        /// The same with exceptions not suppressed. The second element still
+        /// runs, and the exception is thrown once every element has run.
+        /// </summary>
+        [TestMethod]
+        public void Pipeline_ExceptionInFirstElement_NotSuppressed_LaterElementsStillRunThenThrows()
+        {
+            var loggerFactory = new TestLoggerFactory();
+            var element1 = GetMockFlowElement();
+            var element2 = GetMockFlowElement();
+            element1.Setup(e => e.Process(It.IsAny<IFlowData>()))
+                .Throws(new Exception("TEST"));
+            using (var pipeline = new PipelineBuilder(loggerFactory)
+                .AddFlowElement(element1.Object)
+                .AddFlowElement(element2.Object)
+                .SetSuppressProcessExceptions(false)
+                .Build())
+            using (var data = pipeline.CreateFlowData())
+            {
+                var thrown = Assert.ThrowsExactly<AggregateException>(
+                    () => data.Process());
+                Assert.AreEqual("TEST", thrown.InnerExceptions.Single().Message);
+                element2.Verify(e => e.Process(data), Times.Once());
+                Assert.HasCount(1, data.Errors);
+            }
+        }
+
+        /// <summary>
+        /// Processing through a pipeline that has been disposed fails with
+        /// an exception that says so, rather than failing inside an element.
+        /// </summary>
+        [TestMethod]
+        public void Pipeline_Process_AfterDispose_Throws()
+        {
+            var element = GetMockFlowElement();
+            var data = new Mock<IFlowData>();
+            var pipeline = CreatePipeline(false, true, element.Object);
+
+            pipeline.Dispose();
+
+            Assert.ThrowsExactly<ObjectDisposedException>(
+                () => pipeline.Process(data.Object));
+            element.Verify(e => e.Process(It.IsAny<IFlowData>()), Times.Never());
+        }
+
+        /// <summary>
+        /// A flow data created before the pipeline was disposed cannot be
+        /// processed afterwards. Flow data is not disposed with its pipeline,
+        /// so this is the case the specification's resource cleanup feature
+        /// describes.
+        /// </summary>
+        [TestMethod]
+        public void Pipeline_FlowDataProcess_AfterPipelineDisposed_Throws()
+        {
+            var loggerFactory = new TestLoggerFactory();
+            var element = GetMockFlowElement();
+            var pipeline = new PipelineBuilder(loggerFactory)
+                .AddFlowElement(element.Object)
+                .Build();
+            using (var data = pipeline.CreateFlowData())
+            {
+                pipeline.Dispose();
+
+                Assert.IsTrue(pipeline.IsDisposed);
+                Assert.ThrowsExactly<ObjectDisposedException>(
+                    () => data.Process());
+            }
+        }
+
         private Core.FlowElements.Pipeline CreatePipeline(
             bool autoDispose,
             bool suppressExceptions,

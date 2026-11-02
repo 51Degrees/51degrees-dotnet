@@ -408,6 +408,15 @@ namespace FiftyOne.Pipeline.Core.FlowElements
             {
                 throw new ArgumentNullException(nameof(data));
             }
+            // A flow data outlives the pipeline that created it, so it can
+            // be processed after the pipeline, and with it the elements, have
+            // been disposed. Say so rather than fail somewhere inside an
+            // element.
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(Pipeline),
+                    Messages.ExceptionPipelineDisposed);
+            }
             var log = _logger.IsEnabled(LogLevel.Debug);
             if (log)
             {

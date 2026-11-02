@@ -1251,6 +1251,115 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
         }
 
         /// <summary>
+        /// Test that an evidence value longer than the permitted maximum is
+        /// cut down to that maximum and marked as truncated in the XML.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_TruncatesLongValue()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            string longValue = new string('a', Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH + 100);
+            string expectedValue = "[TRUNCATED BY USAGE SHARING] " +
+                new string('a', Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH);
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                { Core.Constants.EVIDENCE_HTTPHEADER_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "user-agent", longValue },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that one and only one HTTP message was sent.
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+
+            // Validate that the XML is well formed by passing it through a reader
+            using (XmlReader xr = XmlReader.Create(new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+            // Check that the value was truncated and marked as such.
+            Assert.Contains($"<header Name=\"user-agent\"><![CDATA[{expectedValue}]]></header>", _xmlContent[0]);
+            Assert.DoesNotContain(longValue, _xmlContent[0]);
+        }
+
+        /// <summary>
+        /// Test that a usage sharing message never holds more than the
+        /// maximum number of entries, which is twice the configured minimum
+        /// entries per message, even when many more entries are queued.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_MaximumEntriesPerMessage()
+        {
+            // Arrange
+            int minimumEntries = 2;
+            int maximumEntries = minimumEntries * 2;
+            int sendCount = 0;
+            _httpHandler.SetupResponse(request =>
+            {
+                // Slow the first send so that the queue fills up while
+                // it is in flight.
+                if (Interlocked.Increment(ref sendCount) == 1)
+                {
+                    Thread.Sleep(300);
+                }
+                StoreRequestXml(request);
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
+                };
+            });
+
+            CreateShareUsage(
+                sharePercentage: 1,
+                minimumEntriesPerMessage: minimumEntries,
+                maximumQueueSize: 20,
+                interval: 1,
+                blockedHeaders: new List<string>(),
+                includedQueryStringParams: new List<string>(),
+                ignoreDataEvidenceFiler: new List<KeyValuePair<string, string>>());
+
+            // Act
+            // Queue three times the maximum so that both the first send and
+            // the final flush on dispose have more entries available than
+            // will fit in one message.
+            for (int i = 0; i < maximumEntries * 3; i++)
+            {
+                var evidenceData = new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, $"1.2.3.{i}" },
+                };
+                var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+                _shareUsageElement.Process(data.Object);
+            }
+            // Wait for the first send to finish, then dispose to flush
+            // one more message from the remaining entries.
+            WaitForSendDataTask();
+            _shareUsageElement.Dispose();
+            Thread.Sleep(200);
+
+            // Assert
+            Assert.IsGreaterThanOrEqualTo(2, _xmlContent.Count,
+                $"Expected at least 2 messages, but got {_xmlContent.Count}");
+            foreach (var xml in _xmlContent)
+            {
+                Assert.IsLessThanOrEqualTo(maximumEntries, CountDeviceNodes(xml),
+                    $"A message held more than {maximumEntries} entries");
+            }
+            // The final flush had more than the maximum queued, so it must
+            // have been capped at exactly the maximum.
+            Assert.AreEqual(maximumEntries, CountDeviceNodes(_xmlContent[_xmlContent.Count - 1]),
+                "The final message was not capped at the maximum entries");
+        }
+
+        /// <summary>
         /// Helper method used to extract the XML data from an
         /// HTTP request.
         /// </summary>
@@ -1269,6 +1378,25 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
             {
                 _xmlContent.Add(reader.ReadToEnd());
             }
+        }
+
+        /// <summary>
+        /// Helper method to count the 'Device' entries in a usage sharing
+        /// XML message.
+        /// </summary>
+        /// <param name="xml">
+        /// The XML content of a usage sharing message.
+        /// </param>
+        private static int CountDeviceNodes(string xml)
+        {
+            int count = 0;
+            int index = xml.IndexOf("<Device>", StringComparison.Ordinal);
+            while (index >= 0)
+            {
+                count++;
+                index = xml.IndexOf("<Device>", index + 1, StringComparison.Ordinal);
+            }
+            return count;
         }
 
         /// <summary>

@@ -112,6 +112,79 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         }
 
         /// <summary>
+        /// With no credentials at all the builder refuses to build, the
+        /// error says that a resource key is needed to reach the cloud
+        /// service, and no request is sent.
+        /// </summary>
+        [TestMethod]
+        public void BuildEngine_NoCredentials_ErrorExplainsResourceKeyNeeded()
+        {
+            var exception = Assert.ThrowsExactly<PipelineConfigurationException>(() =>
+            {
+                _ = new CloudRequestEngineBuilder(
+                        new LoggerFactory(),
+                        new HttpClient(_handlerMock.Object))
+                    .Build();
+            });
+
+            Assert.Contains("resource key", exception.Message,
+                "the error should say that a resource key is required.");
+            _handlerMock.Protected().Verify(
+               "SendAsync",
+               Times.Never(),
+               ItExpr.IsAny<HttpRequestMessage>(),
+               ItExpr.IsAny<CancellationToken>()
+            );
+        }
+
+        /// <summary>
+        /// A resource key that is null, empty or only whitespace counts as
+        /// absent, so the builder refuses it just as it refuses a missing one.
+        /// </summary>
+        [TestMethod]
+        [DataRow(null)]
+        [DataRow("")]
+        [DataRow("   ")]
+        public void BuildEngine_ResourceKey_BlankTreatedAsAbsent(string resourceKey)
+        {
+            Assert.ThrowsExactly<PipelineConfigurationException>(() =>
+            {
+                _ = new CloudRequestEngineBuilder(
+                        new LoggerFactory(),
+                        new HttpClient(_handlerMock.Object))
+                    .SetResourceKey(resourceKey)
+                    .Build();
+            });
+        }
+
+        /// <summary>
+        /// A resource key together with a license key is a valid combination,
+        /// so the builder returns an engine and each discovery endpoint is
+        /// called once during the build.
+        /// </summary>
+        [TestMethod]
+        public void BuildEngine_ResourceKeyAndLicenseKey_Builds()
+        {
+#pragma warning disable CS0618 // Type or member is obsolete
+            // SetLicenseKey is obsolete but the combination remains valid.
+            var engine = new CloudRequestEngineBuilder(
+                    new LoggerFactory(),
+                    new HttpClient(_handlerMock.Object))
+                .SetResourceKey("abcdefgh")
+                .SetLicenseKey("licensekey")
+#pragma warning restore CS0618 // Type or member is obsolete
+                .Build();
+
+            Assert.IsNotNull(engine);
+            _handlerMock.Protected().Verify(
+               "SendAsync",
+               Times.Exactly(2),
+               ItExpr.IsAny<HttpRequestMessage>(),
+               ItExpr.IsAny<CancellationToken>()
+            );
+        }
+
+        /// <summary>
         /// Test that the configured URL takes precedence over the environment
         /// variable.
         /// </summary>

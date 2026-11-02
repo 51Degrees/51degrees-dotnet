@@ -70,6 +70,15 @@ namespace FiftyOne.Pipeline.Core {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The pipeline has been disposed, so this flow data can no longer be processed. Create the flow data from a pipeline that is still in use..
+        /// </summary>
+        internal static string ExceptionPipelineDisposed {
+            get {
+                return ResourceManager.GetString("ExceptionPipelineDisposed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to FlowData has already been processed.
         /// </summary>
         internal static string ExceptionFlowDataAlreadyProcessed {

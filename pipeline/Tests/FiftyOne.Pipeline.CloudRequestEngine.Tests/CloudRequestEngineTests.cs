@@ -554,10 +554,109 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
 
 
         /// <summary>
-        /// Test cloud request engine handles errors from the cloud service 
+        /// Evidence is sent to the cloud service with its prefix removed,
+        /// so 'query.user-agent', 'header.user-agent' and 'cookie.user-agent'
+        /// all arrive as the 'user-agent' form field and the prefixed name
+        /// never appears in the request body.
+        /// </summary>
+        [TestMethod]
+        [DataRow("query.user-agent")]
+        [DataRow("header.user-agent")]
+        [DataRow("cookie.user-agent")]
+        public void Process_EvidencePrefixRemoved(string evidenceKey)
+        {
+            string userAgent = "iPhone";
+            string jsonContent = null;
+            _evidenceKeysResponse =
+                "['query.user-agent', 'header.user-agent', 'cookie.user-agent']";
+            ConfigureMockedClient(r =>
+            {
+                if (r.RequestUri.AbsolutePath.ToLower().EndsWith("json"))
+                {
+                    jsonContent = r.Content.ReadAsStringAsync(
+                        TestContext.CancellationToken).Result;
+                }
+                return true;
+            });
+
+            var engine = new CloudRequestEngineBuilder(
+                _loggerFactory,
+                _httpClient)
+                .SetResourceKey("resource_key")
+                .Build();
+
+            using (var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine)
+                .Build())
+            {
+                var data = pipeline.CreateFlowData();
+                data.AddEvidence(evidenceKey, userAgent);
+                data.Process();
+            }
+
+            Assert.IsNotNull(jsonContent,
+                "the engine must have sent a request to the json endpoint");
+            var fields = jsonContent
+                .Split('&')
+                .Select(p => p.Split('=')[0])
+                .ToList();
+            CollectionAssert.Contains(fields, "user-agent",
+                $"'{evidenceKey}' must be sent as the 'user-agent' form field");
+            CollectionAssert.DoesNotContain(fields, evidenceKey,
+                $"'{evidenceKey}' must not be sent with its prefix");
+        }
+
+        /// <summary>
+        /// Every entry in the 'warnings' array of a json response is logged
+        /// as a warning by the engine, and the request still succeeds with
+        /// the response returned in the element data.
+        /// </summary>
+        [TestMethod]
+        public void Process_ResponseWarnings_LoggedAsWarnings()
+        {
+            string resourceKey = "resource_key";
+            string warning1 = "first warning from the cloud service";
+            string warning2 = "second warning from the cloud service";
+            _jsonResponse = "{'device':{'value':'1'}," +
+                $"'warnings':['{warning1}','{warning2}']}}";
+            ConfigureMockedClient(r => true);
+
+            var loggerFactory = new TestLoggerFactory();
+
+            var engine = new CloudRequestEngineBuilder(
+                loggerFactory,
+                _httpClient)
+                .SetResourceKey(resourceKey)
+                .Build();
+
+            using (var pipeline = new PipelineBuilder(loggerFactory).AddFlowElement(engine).Build())
+            {
+                var data = pipeline.CreateFlowData();
+                data.AddEvidence("query.User-Agent", "iPhone");
+
+                data.Process();
+
+                Assert.AreEqual(
+                    _jsonResponse,
+                    data.GetFromElement(engine).JsonResponse,
+                    "warnings in the response must not fail the request.");
+            }
+
+            var logger = loggerFactory.Loggers
+                .Where(l => l.Category == typeof(FlowElements.CloudRequestEngine).FullName)
+                .First();
+            logger.AssertMaxErrors(0);
+            Assert.IsTrue(logger.WarningEntries.Contains(warning1),
+                $"'{warning1}' should have been logged as a warning.");
+            Assert.IsTrue(logger.WarningEntries.Contains(warning2),
+                $"'{warning2}' should have been logged as a warning.");
+        }
+
+        /// <summary>
+        /// Test cloud request engine handles errors from the cloud service
         /// as expected.
         /// A PipelineException should be thrown by the cloud request engine
-        /// and the pipeline is configured to throw any exceptions up 
+        /// and the pipeline is configured to throw any exceptions up
         /// the stack in an AggregateException.
         /// We also check that the exception message includes the content 
         /// from the JSON response.
@@ -1478,9 +1577,50 @@ cloudEx.Message, "Exception message did not contain the expected text.");
         }
 
         /// <summary>
-        /// Check that the cache key is built from a sorted projection of the 
+        /// Check that Evidence values are compared case-sensitively, so
+        /// 'iPhone' and 'IPHONE' under the same key must produce two cache
+        /// entries. Both requests should miss the cache and each should make
+        /// its own HTTP call.
+        /// </summary>
+        [TestMethod]
+        public void ValidateCacheKeyValueCaseSensitive()
+        {
+            string resourceKey = "resource_key";
+
+            _jsonResponse = @"{ ""device"": { ""ismobile"": true } }";
+            ConfigureMockedClient(r => true);
+
+            var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
+                .SetResourceKey(resourceKey)
+                .SetCacheSize(10)
+                .SetCacheHitOrMiss(true)
+                .Build();
+
+            using (var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build())
+            {
+                var data1 = pipeline.CreateFlowData();
+                data1.AddEvidence("query.User-Agent", "iPhone");
+                data1.Process();
+                Assert.IsFalse(
+                    data1.GetFromElement(engine).CacheHit,
+                    "first request should miss the cache.");
+
+                var data2 = pipeline.CreateFlowData();
+                // Same key, value differing only in case.
+                data2.AddEvidence("query.User-Agent", "IPHONE");
+                data2.Process();
+                Assert.IsFalse(data2.GetFromElement(engine).CacheHit,
+                    "evidence value differing only in case should miss the cache.");
+            }
+
+            VerifyJsonRequestCount(2);
+        }
+
+        /// <summary>
+        /// Check that the cache key is built from a sorted projection of the
         /// evidence (FlowData.GenerateKey orders by filter order, then key),
-        /// so the insertion order of evidence must not change the key. 
+        /// so the insertion order of evidence must not change the key.
         /// Submitting the same two evidence values in opposite order should 
         /// hit the cache.
         /// </summary>
