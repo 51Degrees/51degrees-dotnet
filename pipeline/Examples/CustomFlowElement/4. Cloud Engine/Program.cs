@@ -53,6 +53,9 @@ namespace Examples.CloudEngine
                 new CloudRequestEngineBuilder(_loggerFactory, new HttpClient())
                 .SetEndPoint("https://51degrees.com/starsign/api/")
                 .SetResourceKey("cloudexample")
+                // The default of 2 seconds is short for a first request from
+                // a machine that has not yet connected to the endpoint.
+                .SetTimeOutSeconds(10)
                 .Build();
             // Construct the example engine.
             var starSignEngine =
