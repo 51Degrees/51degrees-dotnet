@@ -78,7 +78,7 @@
       "examples\\ip-intelligence\\OnPremise\\UpdateDataFile-Console\\UpdateDataFile-Console.csproj",
       "examples\\ip-intelligence\\Tests\\Example.Tests.Cloud\\FiftyOne.IpIntelligence.Example.Tests.Cloud.csproj",
       "examples\\ip-intelligence\\Tests\\Example.Tests.OnPremise\\FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj",
-      "examples\\ip-intelligence\\Tests\\Examples.OnPremise.GettingStartedAPI.Tests\\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj",
+      "examples\\ip-intelligence\\Tests\\GettingStartedAPI.Tests\\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj",
       "ip-intelligence\\Cloud\\FiftyOne.IpIntelligence.Cloud.csproj",
       "ip-intelligence\\Engine.OnPremise\\FiftyOne.IpIntelligence.Engine.OnPremise.csproj",
       "ip-intelligence\\Shared\\FiftyOne.IpIntelligence.Shared.csproj",

@@ -27,7 +27,7 @@
       "OnPremise\\UpdateDataFile-Console\\UpdateDataFile-Console.csproj",
       "Tests\\Example.Tests.Cloud\\FiftyOne.IpIntelligence.Example.Tests.Cloud.csproj",
       "Tests\\Example.Tests.OnPremise\\FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj",
-      "Tests\\Examples.OnPremise.GettingStartedAPI.Tests\\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj"
+      "Tests\\GettingStartedAPI.Tests\\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj"
     ]
   }
 }

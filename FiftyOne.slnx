@@ -114,7 +114,7 @@
   <Folder Name="/examples/ip-intelligence/Tests/">
     <Project Path="examples/ip-intelligence/Tests/Example.Tests.Cloud/FiftyOne.IpIntelligence.Example.Tests.Cloud.csproj" />
     <Project Path="examples/ip-intelligence/Tests/Example.Tests.OnPremise/FiftyOne.IpIntelligence.Example.Tests.OnPremise.csproj" />
-    <Project Path="examples/ip-intelligence/Tests/Examples.OnPremise.GettingStartedAPI.Tests/FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj" />
+    <Project Path="examples/ip-intelligence/Tests/GettingStartedAPI.Tests/FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj" />
   </Folder>
   <Folder Name="/ip-intelligence/">
     <Project Path="ip-intelligence/Cloud/FiftyOne.IpIntelligence.Cloud.csproj" />

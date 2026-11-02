@@ -69,7 +69,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Suspicious-Console", "OnPre
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LocationAnalysis-Console", "OnPremise\LocationAnalysis-Console\LocationAnalysis-Console.csproj", "{B7C2A4E9-6D15-4F8A-9C3B-E5A18D2F7640}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests", "Tests\Examples.OnPremise.GettingStartedAPI.Tests\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj", "{8F4C44DC-5690-4CAF-BEFE-E9E8ADBB1205}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests", "Tests\GettingStartedAPI.Tests\FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.csproj", "{8F4C44DC-5690-4CAF-BEFE-E9E8ADBB1205}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
