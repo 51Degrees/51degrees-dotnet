@@ -56,7 +56,8 @@ namespace FiftyOne.DeviceDetection.TestHelpers
                 filename,
                 (f) =>
                 {
-                    var p = FindFile(filename, GetOnPremiseDirectory());
+                    var p = FindInDataFolders(filename) ??
+                        FindFile(filename, GetOnPremiseDirectory());
                     return p == null ? null : new FileInfo(p);
                 });
             if (fullPath == null || fullPath.Exists == false)
@@ -72,6 +73,34 @@ namespace FiftyOne.DeviceDetection.TestHelpers
         /// expected to be located.
         /// </summary>
         /// <returns></returns>
+        /// <summary>
+        /// The data folders the repository keeps, looked for by walking up
+        /// from the test assembly. This comes before the recursive search,
+        /// which can time out once native build output is present.
+        /// </summary>
+        private static string FindInDataFolders(string filename)
+        {
+            var folders = new[]
+            {
+                "device-detection-data",
+                Path.Combine("cxx", "device-detection-data")
+            };
+            var current = new DirectoryInfo(AppContext.BaseDirectory);
+            while (current != null)
+            {
+                foreach (var folder in folders)
+                {
+                    var candidate = Path.Combine(current.FullName, folder, filename);
+                    if (File.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+                current = current.Parent;
+            }
+            return null;
+        }
+
         private static DirectoryInfo GetOnPremiseDirectory()
         {
             var current = new DirectoryInfo(Environment.CurrentDirectory);

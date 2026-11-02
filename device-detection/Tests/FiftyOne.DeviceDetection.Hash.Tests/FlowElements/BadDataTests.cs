@@ -129,7 +129,7 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
             catch (Exception e)
             {
                 Assert.AreEqual(
-                    $"The data was not in the correct format. Check the data file '{BadHeaderDataFile}' is uncompressed.",
+                    $"The data was not in the correct format. Check the data file '{BadHeaderDataFile}' is complete and uncompressed.",
                     e.Message);
             }
         }
@@ -150,7 +150,7 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
             catch (Exception e)
             {
                 Assert.AreEqual(
-                    $"The data was not in the correct format. Check the data file '{SmallDataFile}' is uncompressed.",
+                    $"The data was not in the correct format. Check the data file '{SmallDataFile}' is complete and uncompressed.",
                     e.Message);
             }
         }
@@ -199,7 +199,7 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
             catch (Exception e)
             {
                 Assert.AreEqual(
-                    "The data was not in the correct format. Check the data file 'null' is uncompressed.",
+                    "The data was not in the correct format. Check the data file 'null' is complete and uncompressed.",
                     e.Message);
             }
         }
@@ -224,7 +224,7 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
             catch (Exception e)
             {
                 Assert.AreEqual(
-                    "The data was not in the correct format. Check the data file 'null' is uncompressed.",
+                    "The data was not in the correct format. Check the data file 'null' is complete and uncompressed.",
                     e.Message);
             }
         }

@@ -57,6 +57,20 @@
     <_DirectPackRuntimeIdentifier Condition="$([MSBuild]::IsOsPlatform('OSX')) AND '$(_DirectPackRuntimePlatform)' != ''">osx-$(_DirectPackRuntimePlatform)</_DirectPackRuntimeIdentifier>
   </PropertyGroup>
 
+  <!--
+    The platform the native library is built for. A platform named on the
+    command line or by a solution wins. A project built as AnyCPU, which is
+    what a project referenced from another solution gets, builds the library
+    for the machine it runs on, so the engine works from any solution in
+    this repository.
+  -->
+  <PropertyGroup>
+    <FiftyOneNativeArch Condition="'$(Platform)' != '' and '$(Platform)' != 'AnyCPU'">$(Platform)</FiftyOneNativeArch>
+    <FiftyOneNativeArch Condition="'$(FiftyOneNativeArch)' == '' and '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">ARM64</FiftyOneNativeArch>
+    <FiftyOneNativeArch Condition="'$(FiftyOneNativeArch)' == '' and '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X86'">x86</FiftyOneNativeArch>
+    <FiftyOneNativeArch Condition="'$(FiftyOneNativeArch)' == ''">x64</FiftyOneNativeArch>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Remove="build\**" />
     <EmbeddedResource Remove="build\**" />
@@ -64,13 +78,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="$(ProjectDir)\build\windows\$(Platform)\$(BuildType)\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('Windows')) AND '$(Platform)' != 'AnyCPU'" Link="FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll">
+    <None Include="$(ProjectDir)\build\windows\$(FiftyOneNativeArch)\$(BuildType)\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('Windows'))" Link="FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="$(ProjectDir)\build\linux\$(Platform)\$(BuildType)\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('Linux')) AND '$(Platform)' != 'AnyCPU'" Link="FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll">
+    <None Include="$(ProjectDir)\build\linux\$(FiftyOneNativeArch)\$(BuildType)\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('Linux'))" Link="FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="$(ProjectDir)\build\macos\$(Platform)\$(BuildType)\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('OSX')) AND '$(Platform)' != 'AnyCPU'" Link="FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll">
+    <None Include="$(ProjectDir)\build\macos\$(FiftyOneNativeArch)\$(BuildType)\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('OSX'))" Link="FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\README.md">
@@ -177,8 +191,8 @@
       <LastGenOutput>Messages.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(Platform)' != 'AnyCPU'">
-    <Exec Command="pwsh $(ProjectDir)PreBuild.ps1 -BuildType $(BuildType) -Arch $(Platform)" />
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="pwsh $(ProjectDir)PreBuild.ps1 -BuildType $(BuildType) -Arch $(FiftyOneNativeArch)" />
   </Target>
   
 </Project>

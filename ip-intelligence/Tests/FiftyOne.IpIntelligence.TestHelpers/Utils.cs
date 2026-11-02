@@ -49,7 +49,10 @@ namespace FiftyOne.IpIntelligence.TestHelpers
                 filename,
                 (f) =>
                 {
-                    return TestUtils.GetFilePath(filename, GetOnPremiseDirectory());
+                    var inDataFolder = FindInDataFolders(filename);
+                    return inDataFolder != null ?
+                        new FileInfo(inDataFolder) :
+                        TestUtils.GetFilePath(filename, GetOnPremiseDirectory());
                 });
         }
 
@@ -58,6 +61,34 @@ namespace FiftyOne.IpIntelligence.TestHelpers
         /// expected to be located.
         /// </summary>
         /// <returns></returns>
+        /// <summary>
+        /// The data folders the repository keeps, looked for by walking up
+        /// from the test assembly. This comes before the recursive search,
+        /// which can time out once native build output is present.
+        /// </summary>
+        private static string FindInDataFolders(string filename)
+        {
+            var folders = new[]
+            {
+                "ip-intelligence-data",
+                Path.Combine("cxx", "ip-intelligence-data")
+            };
+            var current = new DirectoryInfo(AppContext.BaseDirectory);
+            while (current != null)
+            {
+                foreach (var folder in folders)
+                {
+                    var candidate = Path.Combine(current.FullName, folder, filename);
+                    if (File.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+                current = current.Parent;
+            }
+            return null;
+        }
+
         private static DirectoryInfo GetOnPremiseDirectory()
         {
             var current = new DirectoryInfo(Environment.CurrentDirectory);
