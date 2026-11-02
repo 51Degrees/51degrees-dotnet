@@ -18,6 +18,10 @@ $common = @("-p:FiftyOneReferences=Project", "-p:BuiltOnCI=true", "-c", $Configu
 Push-Location $RepoName
 try {
     foreach ($family in $Families) {
+        if (-not (Test-BuiltFor $family $Arch)) {
+            Write-Host "$($family.Name) is not built for $Arch"
+            continue
+        }
         $platform = $family.Platform ? @("-p:Platform=$Arch") : @()
         foreach ($solution in $family.Solutions) {
             Write-Host "::group::Building $solution"
@@ -28,17 +32,21 @@ try {
         if ($BuildMethod -eq "msbuild" -and $family.Framework) {
             foreach ($solution in $family.Framework) {
                 Write-Host "::group::Building $solution with msbuild"
-                msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$Arch" "-p:FiftyOneReferences=Project" "-p:BuiltOnCI=true"
+                msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$(Get-SolutionPlatform $family $Arch)" "-p:FiftyOneReferences=Project" "-p:BuiltOnCI=true"
                 Write-Host "::endgroup::"
             }
         }
     }
     foreach ($examples in $ExampleSolutions) {
+        if (-not (Test-BuiltFor $examples $Arch)) {
+            Write-Host "$($examples.Path) is not built for $Arch"
+            continue
+        }
         $platform = $examples.Platform ? @("-p:Platform=$Arch") : @()
         $solution = ($BuildMethod -eq "msbuild") ? $examples.Framework : $examples.Path
         Write-Host "::group::Building $solution"
         if ($BuildMethod -eq "msbuild") {
-            msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$Arch" "-p:FiftyOneReferences=Project" "-p:BuiltOnCI=true"
+            msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$(Get-SolutionPlatform $examples $Arch)" "-p:FiftyOneReferences=Project" "-p:BuiltOnCI=true"
         } else {
             dotnet build $solution @common @platform
         }

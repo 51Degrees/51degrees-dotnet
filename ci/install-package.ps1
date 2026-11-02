@@ -33,11 +33,15 @@ $properties = Get-VersionProperties -Versions $versions
 Push-Location $RepoName
 try {
     foreach ($examples in $ExampleSolutions) {
+        if (-not (Test-BuiltFor $examples $Arch)) {
+            Write-Host "$($examples.Path) is not built for $Arch"
+            continue
+        }
         $platform = $examples.Platform ? @("-p:Platform=$Arch") : @()
         $solution = ($BuildMethod -eq "msbuild") ? $examples.Framework : $examples.Path
         Write-Host "::group::Building $solution against the packages"
         if ($BuildMethod -eq "msbuild") {
-            msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$Arch" "-p:FiftyOneReferences=Package" "-p:BuiltOnCI=true" @properties
+            msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$(Get-SolutionPlatform $examples $Arch)" "-p:FiftyOneReferences=Package" "-p:BuiltOnCI=true" @properties
         } else {
             dotnet build $solution -c $Configuration -p:FiftyOneReferences=Package -p:BuiltOnCI=true @properties @platform
         }

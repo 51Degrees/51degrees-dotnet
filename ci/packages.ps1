@@ -13,13 +13,16 @@
 #              its last tag, so a new version is published
 #   Solutions  what dotnet builds and packs for the family, in dependency order
 #   Framework  the .NET Framework solutions, which need msbuild on Windows
-#   Platform   whether the solutions take a Platform (the on-premise engines)
+#   Platform   whether the solutions take a Platform (the on-premise engines).
+#              The others build as Any CPU, which is all their solutions define.
+#   NotOn      the architectures the family is not built for. IP Intelligence
+#              ships no x86 library, as its own repository never did.
 $Families = @(
     @{ Name = 'common';           Property = 'FiftyOneCommonVersion';          Paths = @('common');                 Solutions = @('common/FiftyOne.Common.sln') }
     @{ Name = 'caching';          Property = 'FiftyOneCachingVersion';         Paths = @('caching');                Solutions = @('caching/FiftyOne.Caching.sln') }
     @{ Name = 'pipeline';         Property = 'FiftyOnePipelineVersion';        Paths = @('pipeline');               Solutions = @('pipeline/FiftyOne.Pipeline.sln', 'pipeline/FiftyOne.Pipeline.Elements.sln', 'pipeline/FiftyOne.CloudRequestEngine.sln'); Framework = @('pipeline/FiftyOne.Pipeline.Web.sln') }
     @{ Name = 'device-detection'; Property = 'FiftyOneDeviceDetectionVersion'; Paths = @('device-detection', 'cxx'); Solutions = @('device-detection/FiftyOne.DeviceDetection.Core.slnf'); Framework = @('device-detection/FiftyOne.DeviceDetection.sln'); Platform = $true }
-    @{ Name = 'ip-intelligence';  Property = 'FiftyOneIpIntelligenceVersion';  Paths = @('ip-intelligence', 'cxx');  Solutions = @('ip-intelligence/FiftyOne.IpIntelligence.sln'); Platform = $true }
+    @{ Name = 'ip-intelligence';  Property = 'FiftyOneIpIntelligenceVersion';  Paths = @('ip-intelligence', 'cxx');  Solutions = @('ip-intelligence/FiftyOne.IpIntelligence.sln'); Platform = $true; NotOn = @('x86') }
     @{ Name = 'location';         Property = 'FiftyOneGeoLocationVersion';     Paths = @('location');               Solutions = @('location/FiftyOne.GeoLocation.sln') }
 )
 
@@ -29,7 +32,7 @@ $RootPaths = @('Directory.Build.targets')
 # The example solutions, built and tested but never packed.
 $ExampleSolutions = @(
     @{ Path = 'examples/device-detection/FiftyOne.DeviceDetection.Examples.Core.slnf'; Framework = 'examples/device-detection/FiftyOne.DeviceDetection.Examples.sln'; Platform = $true }
-    @{ Path = 'examples/ip-intelligence/FiftyOne.IpIntelligence.Examples.Core.slnf';   Framework = 'examples/ip-intelligence/FiftyOne.IpIntelligence.Examples.sln';   Platform = $true }
+    @{ Path = 'examples/ip-intelligence/FiftyOne.IpIntelligence.Examples.Core.slnf';   Framework = 'examples/ip-intelligence/FiftyOne.IpIntelligence.Examples.sln';   Platform = $true; NotOn = @('x86') }
 )
 
 # The engines with a native library, built once per platform before packing.
@@ -84,4 +87,17 @@ function Get-FamilyVersions {
 function Get-VersionProperties {
     param ([Parameter(Mandatory)]$Versions)
     return @($Versions.Values | ForEach-Object { "-p:$($_.Property)=$($_.Next)" })
+}
+
+# Whether a family or example solution is built for an architecture.
+function Test-BuiltFor {
+    param ([Parameter(Mandatory)]$Item, [Parameter(Mandatory)][string]$Arch)
+    return -not ($Item.NotOn -and ($Item.NotOn -contains $Arch))
+}
+
+# The msbuild platform of a solution: the job's architecture for the engine
+# solutions, Any CPU for the rest.
+function Get-SolutionPlatform {
+    param ([Parameter(Mandatory)]$Item, [Parameter(Mandatory)][string]$Arch)
+    return $Item.Platform ? $Arch : "Any CPU"
 }
