@@ -1,0 +1,19 @@
+name: Publish IPI Miniservices Daily
+
+on:
+  schedule:
+    - cron: '0 10 * * *'
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Trigger Publish Minicloud
+        run: gh workflow run publish-minicloud.yml --repo '${{ github.repository }}' --ref minicloud
+      - name: Trigger Publish IpTester
+        run: gh workflow run publish-iptester.yml --repo '${{ github.repository }}' --ref ipitester
+

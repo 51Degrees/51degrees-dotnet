@@ -1,0 +1,47 @@
+@GettingStarted_API_HostAddress = http://localhost:5225
+
+###
+GET {{GettingStarted_API_HostAddress}}/download-ipi-gz
+###
+GET {{GettingStarted_API_HostAddress}}/accessibleproperties
+Accept: application/json
+###
+GET {{GettingStarted_API_HostAddress}}/accessibleproperties/KEY-PROPS
+Accept: application/json
+###
+GET {{GettingStarted_API_HostAddress}}/evidencekeys
+Accept: application/json
+###
+GET {{GettingStarted_API_HostAddress}}/evidencekeys/KEY-KEYS
+Accept: application/json
+###
+GET {{GettingStarted_API_HostAddress}}/json?client-ip=8.132.215.46
+Accept: application/json
+User-Agent: curl/8.14.1
+###
+GET {{GettingStarted_API_HostAddress}}/json?client-ip=8.132.215.46
+Accept: application/json
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+###
+GET {{GettingStarted_API_HostAddress}}/json
+Accept: application/json
+User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1
+###
+GET {{GettingStarted_API_HostAddress}}/json?client-ip=8.132.215.46&User-Agent=curl/8.14.1
+Accept: application/json
+###
+POST {{GettingStarted_API_HostAddress}}/json
+Accept: application/json
+Content-Type: application/x-www-form-urlencoded
+
+resource=KEY2&client-ip=16.52.73.94&User-Agent=curl/8.14.1
+###
+GET {{GettingStarted_API_HostAddress}}/KEY3.json?client-ip=18.132.215.46&User-Agent=curl/8.14.1
+Accept: application/json
+###
+POST {{GettingStarted_API_HostAddress}}/KEY4.json
+Accept: application/json
+Content-Type: application/x-www-form-urlencoded
+
+client-ip=116.52.73.94
+###

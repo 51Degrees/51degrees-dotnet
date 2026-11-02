@@ -1,0 +1,317 @@
+@* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* *@
+
+@using System.Collections.Generic
+@using FiftyOne.Pipeline.Core.Data
+@using FiftyOne.Pipeline.Engines.Data
+@model FiftyOne.IpIntelligence.Examples.Mixed.Cloud.GettingStartedWeb.Model.IndexModel
+@{
+    ViewData["Title"] = "Device Detection + IP Intelligence Example";
+}
+
+@functions {
+    // Safely render a scalar property. Returns "Unknown" if the property is not
+    // granted by the resource key (reading it throws PropertyMissingException)
+    // or has no value. An optional formatter controls how the value is rendered.
+    static string Show<T>(
+        System.Func<IAspectPropertyValue<T>> get,
+        System.Func<T, string> format = null)
+    {
+        try
+        {
+            var apv = get();
+            if (apv == null || apv.HasValue == false) { return "Unknown"; }
+            return format != null ? format(apv.Value) : apv.Value?.ToString() ?? "Unknown";
+        }
+        catch
+        {
+            return "Unknown";
+        }
+    }
+
+    // Safely render a list property as a comma-separated string.
+    static string ShowList(System.Func<IAspectPropertyValue<IReadOnlyList<string>>> get)
+    {
+        try
+        {
+            var apv = get();
+            if (apv == null || apv.HasValue == false) { return "Unknown"; }
+            return string.Join(", ", apv.Value);
+        }
+        catch
+        {
+            return "Unknown";
+        }
+    }
+}
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="~/css/examples-main.min.css" />
+
+<div class="c-eg-page">
+    <h2 class="c-eg-page__title">Combined device detection and IP intelligence example</h2>
+    <p class="c-eg-page__lead">
+        This example demonstrates the use of the Pipeline API to perform both device detection and
+        IP intelligence lookups within a single ASP.NET Core web project. It highlights device
+        detection using User-Agent and Client Hints, IP-based geolocation and network information,
+        client-side evidence collection for enhanced detection, and parallel processing of both
+        engines for optimal performance.
+    </p>
+
+    <noscript>
+        <div class="c-eg-alert">
+            WARNING: JavaScript is disabled in your browser. This means that client-side evidence
+            collection will not work and some device properties may not be accurately detected.
+        </div>
+    </noscript>
+
+    <div id="content">
+        <form method="get" asp-action="Index" class="c-eg-form">
+            <div class="c-eg-form__row">
+                <label class="b-label" for="client-ip">IP Address Lookup:</label>
+                <input class="b-input" type="text" id="client-ip" name="client-ip" value="@Model.UserInputIp"
+                       placeholder="e.g., 8.8.8.8">
+                <button class="b-btn" type="submit">Look Up</button>
+            </div>
+        </form>
+
+        <div class="c-eg-columns">
+            <div>
+                <h3 class="c-eg-page__heading">Device detection results</h3>
+                @if (!string.IsNullOrEmpty(Model.DeviceMessage))
+                {
+                    <p class="c-eg-page__lead">@Model.DeviceMessage</p>
+                }
+                <table class="c-eg-table">
+                    <thead class="c-eg-table__head">
+                        <tr class="c-eg-table__row">
+                            <th class="c-eg-table__cell">Property</th>
+                            <th class="c-eg-table__cell">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Vendor:</td><td class="c-eg-table__cell">@(Show(() => Model.Device.HardwareVendor))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Name:</td><td class="c-eg-table__cell">@(ShowList(() => Model.Device.HardwareName))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Device Type:</td><td class="c-eg-table__cell">@(Show(() => Model.Device.DeviceType))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Vendor:</td><td class="c-eg-table__cell">@(Show(() => Model.Device.PlatformVendor))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Name:</td><td class="c-eg-table__cell">@(Show(() => Model.Device.PlatformName))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Version:</td><td class="c-eg-table__cell">@(Show(() => Model.Device.PlatformVersion))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Vendor:</td><td class="c-eg-table__cell">@(Show(() => Model.Device.BrowserVendor))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Name:</td><td class="c-eg-table__cell">@(Show(() => Model.Device.BrowserName))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Version:</td><td class="c-eg-table__cell">@(Show(() => Model.Device.BrowserVersion))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Screen width (pixels):</td><td class="c-eg-table__cell">@(Show(() => Model.Device.ScreenPixelsWidth))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Screen height (pixels):</td><td class="c-eg-table__cell">@(Show(() => Model.Device.ScreenPixelsHeight))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Device Id:</td><td class="c-eg-table__cell">@(Show(() => Model.Device.DeviceId))</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div>
+                <h3 class="c-eg-page__heading">IP intelligence results</h3>
+
+                @if (!string.IsNullOrEmpty(Model.IpMessage))
+                {
+                    <p class="c-eg-page__lead">@Model.IpMessage</p>
+                }
+
+                <table class="c-eg-table">
+                    <thead class="c-eg-table__head">
+                        <tr class="c-eg-table__row">
+                            <th class="c-eg-table__cell">Property</th>
+                            <th class="c-eg-table__cell">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Name:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.RegisteredName))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Owner:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.RegisteredOwner))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Country:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.RegisteredCountry))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">IP Range Start:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.IpRangeStart))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">IP Range End:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.IpRangeEnd))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Country:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.Country))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Country Code:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.CountryCode))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Country Code 3:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.CountryCode3))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Region:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.Region))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">State:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.State))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Town:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.Town))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Latitude:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.Latitude, v => v.ToString("F4")))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Longitude:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.Longitude, v => v.ToString("F4")))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Areas:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.Areas))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Accuracy Radius:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.AccuracyRadiusMin))</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Time Zone Offset:</td><td class="c-eg-table__cell">@(Show(() => Model.IpData.TimeZoneOffset))</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt">
+                            <td class="c-eg-table__cell c-eg-table__cell--key">Country Codes Geographical:</td>
+                            <td class="c-eg-table__cell">
+                                @{
+                                    IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>> countryCodesGeographical = null;
+                                    try
+                                    {
+                                        countryCodesGeographical = Model.IpData?.CountryCodesGeographical;
+                                    }
+                                    catch
+                                    {
+                                        // nop
+                                    }
+                                    if (countryCodesGeographical != null)
+                                    {
+                                        if (countryCodesGeographical.HasValue)
+                                        {
+                                            <ul>
+                                                @foreach (var c in countryCodesGeographical.Value)
+                                                {
+                                                    <li>@c.Value (@(c.Weighting() * 100)%)</li>
+                                                }
+                                            </ul>
+                                        }
+                                        else
+                                        {
+                                            @(countryCodesGeographical.NoValueMessage ?? "(no value)")
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <p>(Property Not Found)</p>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                        <tr class="c-eg-table__row">
+                            <td class="c-eg-table__cell c-eg-table__cell--key">Country Codes Population:</td>
+                            <td class="c-eg-table__cell">
+                                @{
+                                    IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>> countryCodesPopulation = null;
+                                    try
+                                    {
+                                        countryCodesPopulation = Model.IpData?.CountryCodesPopulation;
+                                    }
+                                    catch
+                                    {
+                                        // nop
+                                    }
+                                    if (countryCodesPopulation != null)
+                                    {
+                                        if (countryCodesPopulation.HasValue)
+                                        {
+                                            <ul>
+                                                @foreach (var c in countryCodesPopulation.Value)
+                                                {
+                                                    <li>@c.Value (@(c.Weighting() * 100)%)</li>
+                                                }
+                                            </ul>
+                                        }
+                                        else
+                                        {
+                                            @(countryCodesPopulation.NoValueMessage ?? "(no value)")
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <p>(Property Not Found)</p>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt">
+                            <td class="c-eg-table__cell c-eg-table__cell--key">Countries (geographical):</td>
+                            <td class="c-eg-table__cell">
+                                @* Dropdown of all countries ordered by geographical
+                                   weighting. Each option's value is the country code
+                                   while its text is the translated country name - the
+                                   two All lists are index-aligned. The accessors are
+                                   wrapped because a resource key may not grant these
+                                   properties (which would throw PropertyMissingException). *@
+                                @{
+                                    IAspectPropertyValue<IReadOnlyList<string>> codesAll = null;
+                                    IAspectPropertyValue<IReadOnlyList<string>> namesAll = null;
+                                    try { codesAll = Model.Countries?.CountryCodesGeographicalAll; } catch { /* not granted */ }
+                                    try { namesAll = Model.Countries?.CountryNamesGeographicalAllTranslated; } catch { /* not granted */ }
+                                    if (codesAll != null && codesAll.HasValue
+                                        && namesAll != null && namesAll.HasValue
+                                        && codesAll.Value.Count == namesAll.Value.Count
+                                        && codesAll.Value.Count > 0)
+                                    {
+                                        <select>
+                                            @for (var i = 0; i < codesAll.Value.Count; i++)
+                                            {
+                                                <option value="@codesAll.Value[i]">@namesAll.Value[i]</option>
+                                            }
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <span>(no country list available)</span>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <details class="c-eg-details">
+            <summary>Evidence used</summary>
+            <p class="c-eg-page__lead">Evidence collected from the current request</p>
+            <table class="c-eg-table">
+                <thead class="c-eg-table__head">
+                    <tr class="c-eg-table__row">
+                        <th class="c-eg-table__cell">Key</th>
+                        <th class="c-eg-table__cell">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Evidence != null)
+                    {
+                        var index = 0;
+                        @foreach (var entry in Model.Evidence)
+                        {
+                            <tr class="c-eg-table__row @(index % 2 == 0 ? "c-eg-table__row--alt" : "")">
+                                <td class="c-eg-table__cell c-eg-table__cell--key">@entry.Key</td>
+                                <td class="c-eg-table__cell">@(entry.Value.Length > 100 ? entry.Value.Substring(0, 100) + "..." : entry.Value)</td>
+                            </tr>
+                            index++;
+                        }
+                    }
+                </tbody>
+            </table>
+        </details>
+    </div>
+
+    <div class="c-eg-message">
+        <p class="c-eg-message__text">Want to try on-premise? <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-cloud-mixed-gettingstarted-web-views-home-index.cshtml&amp;utm_term=try-on-premise">Contact us</a> to discuss requirements.</p>
+        <a class="b-btn c-eg-message__cta" href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-cloud-mixed-gettingstarted-web-views-home-index.cshtml&amp;utm_term=try-on-premise">Contact us</a>
+    </div>
+</div>
+
+@* Client-side JavaScript for evidence gathering and device detection callbacks.
+    This View Component is provided by the FiftyOne.Pipeline.Web package.
+    It generates the necessary JavaScript for client-side evidence collection
+    and handles callbacks for enhanced device detection. The shared examples.js
+    helper subscribes to the 'complete' event and appends a results table into
+    #content. *@
+@await Component.InvokeAsync("FiftyOneJS")
+<script src="~/js/examples.min.js"></script>
+
+<script>
+    window.onload = function () {
+        fodExamples.bindDeviceCallback({ targetId: "content" });
+    };
+</script>

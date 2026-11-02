@@ -1,0 +1,219 @@
+@* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* *@
+
+@using FiftyOne.IpIntelligence.Examples
+@model FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb.Model.IndexModel
+@{
+    ViewData["Title"] = "IP Intelligence Web Integration Example";
+}
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="~/css/examples-main.min.css" />
+
+<div class="c-eg-page">
+    @if (DateTime.UtcNow > Model.DataFile.DataPublishedDateTime.AddDays(ExampleUtils.DataFileAgeWarning))
+    {
+        <div class="c-eg-alert">
+            WARNING: This example is using a data file that is more than @ExampleUtils.DataFileAgeWarning
+            days old. A more recent data file may be needed to correctly perform detection. The latest
+            lite data file is available from the
+            <a href="https://github.com/51Degrees/ip-intelligence-data">ip-intelligence-data</a>
+            repository on GitHub. Find out about the Enterprise data file, which includes automatic
+            daily updates, on our <a href="https://51degrees.com/pricing?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-onpremise-gettingstarted-web-views-home-index.cshtml&amp;utm_term=ip-intelligence-web-integration-example">pricing page</a>.
+        </div>
+    }
+    <h2 class="c-eg-page__title">IP intelligence web integration example</h2>
+    <p class="c-eg-page__lead">
+        This example demonstrates the use of the Pipeline API to perform IP intelligence lookups
+        within a simple ASP.NET Core web project.
+    </p>
+
+    <noscript>
+        <div class="c-eg-alert">
+            WARNING: JavaScript is disabled in your browser.
+        </div>
+    </noscript>
+
+    <div id="content">
+        <h3 class="c-eg-page__heading">IP intelligence lookup</h3>
+        <form method="get" asp-action="Index" class="c-eg-form">
+            <div class="c-eg-form__row">
+                <label class="b-label" for="client-ip">Enter IP Address:</label>
+                <input class="b-input" type="text" id="client-ip" name="client-ip" value="@Model.InputIpAddress"
+                       placeholder="e.g., 13.95.93.152">
+                <button class="b-btn" type="submit">Look Up</button>
+            </div>
+        </form>
+
+        <h3 class="c-eg-page__heading">Detection results</h3>
+        <p class="c-eg-page__lead">
+            The following values are determined by IP intelligence analysis.
+        </p>
+        <table class="c-eg-table">
+            <thead class="c-eg-table__head">
+                <tr class="c-eg-table__row">
+                    <th class="c-eg-table__cell">Property</th>
+                    <th class="c-eg-table__cell">Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Name:</td><td class="c-eg-table__cell">@Model.Name</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Owner:</td><td class="c-eg-table__cell">@Model.RegisteredOwner</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Country:</td><td class="c-eg-table__cell">@Model.RegisteredCountry</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">IP Range Start:</td><td class="c-eg-table__cell">@Model.IpRangeStart</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">IP Range End:</td><td class="c-eg-table__cell">@Model.IpRangeEnd</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Country:</td><td class="c-eg-table__cell">@Model.Country</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Country Code:</td><td class="c-eg-table__cell">@Model.CountryCode</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Country Code 3:</td><td class="c-eg-table__cell">@Model.CountryCode3</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Region:</td><td class="c-eg-table__cell">@Model.Region</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">State:</td><td class="c-eg-table__cell">@Model.State</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Town:</td><td class="c-eg-table__cell">@Model.Town</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Latitude:</td><td class="c-eg-table__cell">@Model.Latitude</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Longitude:</td><td class="c-eg-table__cell">@Model.Longitude</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Areas:</td><td class="c-eg-table__cell">@Model.Areas</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Accuracy Radius:</td><td class="c-eg-table__cell">@Model.AccuracyRadius</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Time Zone Offset:</td><td class="c-eg-table__cell">@Model.TimeZoneOffset</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt">
+                    <td class="c-eg-table__cell c-eg-table__cell--key">Country Codes Geographical:</td>
+                    <td class="c-eg-table__cell">
+                        <ul>
+                            @foreach (var c in Model.CountryCodesGeographical)
+                            {
+                                <li>@c</li>
+                            }
+                        </ul>
+                    </td>
+                </tr>
+                <tr class="c-eg-table__row">
+                    <td class="c-eg-table__cell c-eg-table__cell--key">Country Codes Population:</td>
+                    <td class="c-eg-table__cell">
+                        <ul>
+                            @foreach (var c in Model.CountryCodesPopulation)
+                            {
+                                <li>@c</li>
+                            }
+                        </ul>
+                    </td>
+                </tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt">
+                    <td class="c-eg-table__cell c-eg-table__cell--key">Country Names Geographical All Translated:</td>
+                    <td class="c-eg-table__cell">
+                        <select id="CountryNamesGeographicalAllTranslated"
+                                name="CountryNamesGeographicalAllTranslated"
+                                class="form-control">
+                            @for (int i = 0; i < Model.CountryNamesGeographicalAllTranslated.Count; i++)
+                            {
+                                <option value="@Model.CountryCodesGeographicalAll[i]">@Model.CountryNamesGeographicalAllTranslated[i]</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr class="c-eg-table__row">
+                    <td class="c-eg-table__cell c-eg-table__cell--key">Country Names Population All Translated:</td>
+                    <td class="c-eg-table__cell">
+                        <select id="CountryNamesPopulationAllTranslated"
+                                name="CountryNamesPopulationAllTranslated"
+                                class="form-control">
+                            @for (int i = 0; i < Model.CountryNamesPopulationAllTranslated.Count; i++)
+                            {
+                                <option value="@Model.CountryCodesPopulationAll[i]">@Model.CountryNamesPopulationAllTranslated[i]</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="c-eg-page__heading">Evidence used</h3>
+        <p class="c-eg-legend">
+            Evidence was
+            <span class="c-eg-legend__swatch c-eg-legend__swatch--used">used</span>
+            /
+            <span class="c-eg-legend__swatch c-eg-legend__swatch--present">present</span>
+            for detection
+        </p>
+        <table class="c-eg-table">
+            <thead class="c-eg-table__head">
+                <tr class="c-eg-table__row">
+                    <th class="c-eg-table__cell">Key</th>
+                    <th class="c-eg-table__cell">Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model.Evidence)
+                {
+                    <tr class="c-eg-table__row @(entry.Used ? "c-eg-table__row--used" : "c-eg-table__row--present")">
+                        <td class="c-eg-table__cell c-eg-table__cell--key">@(entry.Key)</td>
+                        <td class="c-eg-table__cell">@(entry.Value)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <h3 class="c-eg-page__heading">Response headers</h3>
+        <table class="c-eg-table">
+            <thead class="c-eg-table__head">
+                <tr class="c-eg-table__row">
+                    <th class="c-eg-table__cell">Key</th>
+                    <th class="c-eg-table__cell">Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model.ResponseHeaders)
+                {
+                    <tr class="c-eg-table__row c-eg-table__row--present">
+                        <td class="c-eg-table__cell c-eg-table__cell--key">@(entry.Key)</td>
+                        <td class="c-eg-table__cell">@(entry.Value)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div id="map-section" class="c-eg-map" style="display: none;">
+            <h3 class="c-eg-map__title">Location Map</h3>
+            <div id="map" class="c-eg-map__canvas"></div>
+        </div>
+    </div>
+
+    @if (Model.Engine.DataSourceTier == "Lite")
+    {
+        <div class="c-eg-message">
+            <p class="c-eg-message__text">Need more on-premise properties and features? <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-onpremise-gettingstarted-web-views-home-index.cshtml&amp;utm_term=on-premise-properties">Contact us</a> to explore the options.</p>
+            <a class="b-btn c-eg-message__cta" href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-onpremise-gettingstarted-web-views-home-index.cshtml&amp;utm_term=on-premise-properties">Contact us</a>
+        </div>
+    }
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/wellknown@0.5.0/wellknown.js"></script>
+<script src="~/js/examples.min.js"></script>
+
+<script>
+    window.onload = function () {
+        fodExamples.initLocationMap({
+            areasWkt: '@Html.Raw(Model.Areas?.Replace("'", "\\'") ?? "")',
+            latitude: '@Model.Latitude',
+            longitude: '@Model.Longitude'
+        });
+    };
+</script>

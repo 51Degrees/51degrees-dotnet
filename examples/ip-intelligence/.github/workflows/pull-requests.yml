@@ -1,0 +1,32 @@
+name: Pull Requests
+
+on:
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        type: boolean
+        default: false
+      common-ci-ref:
+        type: string
+        description: "common-ci branch/tag/sha to use (default: main)"
+        default: ''
+
+jobs:
+  PullRequests:
+    name: Pull Requests
+    uses: 51Degrees/common-ci/.github/workflows/nightly-pull-requests.yml@main
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      dryrun: ${{ inputs.dryrun || false }}
+      cache-assets: true
+      common-ci-ref: ${{ inputs.common-ci-ref }}
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+      DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
+      IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
+      TestResourceKey: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
+      AcceptCHBrowserKey: ${{ secrets.ACCEPTCH_BROWSER_KEY}}
+      AcceptCHHardwareKey: ${{ secrets.ACCEPTCH_HARDWARE_KEY}}
+      AcceptCHPlatformKey: ${{ secrets.ACCEPTCH_PLATFORM_KEY}}
+      AcceptCHNoneKey: ${{ secrets.ACCEPTCH_NONE_KEY}}

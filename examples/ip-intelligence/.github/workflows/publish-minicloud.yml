@@ -1,0 +1,10 @@
+name: Publish Minicloud
+
+on: workflow_dispatch
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder
+        run: echo "Run from minicloud branch"; exit 1

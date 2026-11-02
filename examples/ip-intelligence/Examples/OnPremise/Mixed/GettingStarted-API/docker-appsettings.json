@@ -1,0 +1,40 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  },
+  "AllowedHosts": "*",
+  // For a sample configuration file demonstrating all available options, see 
+  // https://github.com/51Degrees/device-detection-dotnet-examples/blob/main/Examples/sample-configuration.json
+  "PipelineOptions": {
+    "Elements": [
+      {
+        // IP Intelligence element  
+        "BuilderName": "IpiOnPremiseEngineBuilder",
+        "BuildParameters": {
+          //Make sure this data file is in the ip-intelligence-data directory
+          "DataFile": "51Degrees-EnterpriseIpiV41.ipi",
+          "CreateTempDataCopy": true,
+          "AutoUpdate": true,
+          "PerformanceProfile": "LowMemory",
+          "DataFileSystemWatcher": false,
+          "DataUpdateOnStartUp": true,
+          "DataUpdateVerifyMD5": false,
+          "DataUpdateURL": "!!ENTER_YOUR_PROVIDER_URL_HERE!!",
+          // Properties for IP intelligence
+          "Properties": "RegisteredName,RegisteredOwner,RegisteredCountry,IpRangeStart,IpRangeEnd,Country,CountryCode,CountryCode3,Region,State,Town,Latitude,Longitude,Areas,AccuracyRadiusMin,TimeZoneOffset"
+        }
+      },
+      {
+        // Required to add Javascript and JSON end points for 51Degrees.core.js and 
+        "BuilderName": "JsonBuilderElement"
+      }
+    ],
+    // Disable client-side evidence to avoid JSON serialization issues with IPAddress
+    "ClientSideEvidenceEnabled": false,
+    "UseAsyncScript": false
+  }
+}

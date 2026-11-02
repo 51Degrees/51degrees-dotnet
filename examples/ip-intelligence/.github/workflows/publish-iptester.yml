@@ -1,0 +1,10 @@
+name: Publish IP Tester
+
+on: workflow_dispatch
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder
+        run: echo "Run from ipitester branch"; exit 1
