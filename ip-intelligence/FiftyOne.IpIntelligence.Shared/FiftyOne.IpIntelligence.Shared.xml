@@ -1,0 +1,1139 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FiftyOne.IpIntelligence.Shared</name>
+    </assembly>
+    <members>
+        <member name="T:FiftyOne.IpIntelligence.Shared.Constants">
+            <summary>
+            Class containing values for commonly used evidence keys
+            </summary>
+        </member>
+        <member name="F:FiftyOne.IpIntelligence.Shared.Constants.IPV4_LENGTH">
+            <summary>
+            The number of bytes in an IPv4
+            </summary>
+        </member>
+        <member name="F:FiftyOne.IpIntelligence.Shared.Constants.IPV6_LENGTH">
+            <summary>
+            The number of bytes in an IPv6
+            </summary>
+        </member>
+        <member name="T:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1">
+            <summary>
+            Base class used for all 51Degrees on-premise results classes.
+            </summary>
+        </member>
+        <member name="T:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager">
+            <summary>
+            This inner class manages the lifetime and access to the 
+            swig result sets.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager.ResultsList">
+            <summary>
+            Get the list of result objects.
+            After this property accessed, the <see cref="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager.AddResult(`0)"/> 
+            method will throw an error if it is called.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager.HasResults">
+            <summary>
+            Check if there are results objects available.
+            </summary>
+            <returns>
+            True if there are results objects available.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager.AddResult(`0)">
+            <summary>
+            Add the specified result object to the list of results.
+            </summary>
+            <param name="result">
+            The result object to add to the list.
+            </param>
+            <exception cref="T:FiftyOne.Pipeline.Core.Exceptions.PipelineException">
+            Thrown if the <see cref="P:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager.ResultsList"/> property for 
+            this instance has already been accessed.
+            </exception>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager.ResultsAccessed">
+            <summary>
+            True if the <see cref="P:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager.ResultsList"/> property for 
+            this instance has been accessed. False if not.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager.Dispose(System.Boolean)">
+            <summary>
+            Dispose
+            </summary>
+            <param name="disposing">
+            False if called from the finalizer
+            </param>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager.Finalize">
+            <summary>
+            Finalizer
+            </summary>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager.Dispose">
+            <summary>
+            Dispose
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.Results">
+            <summary>
+            A <see cref="T:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.ResultsManager"/> instance, which can be used
+            to add new results objects and access those that have been
+            added so far.
+            Once results are accessed, new ones cannot be added.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.#ctor(Microsoft.Extensions.Logging.ILogger{FiftyOne.Pipeline.Engines.Data.AspectDataBase},FiftyOne.Pipeline.Core.FlowElements.IPipeline,FiftyOne.Pipeline.Engines.FlowElements.IAspectEngine,FiftyOne.Pipeline.Engines.Services.IMissingPropertyService)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="logger">
+            The logger instance to use.
+            </param>
+            <param name="pipeline">
+            The Pipeline that created this data instance.
+            </param>
+            <param name="engine">
+            The engine that create this data instance.
+            </param>
+            <param name="missingPropertyService">
+            The <see cref="T:FiftyOne.Pipeline.Engines.Services.IMissingPropertyService"/> to use if a requested
+            property does not exist.
+            </param>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.PropertyIsAvailable(System.String)">
+            <summary>
+            Check if a specified property is available in the results.
+            </summary>
+            <param name="propertyName">
+            The name of the property to check.
+            </param>
+            <returns>
+            True if the property is available. False if not.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValues(System.String)">
+            <summary>
+            Get the values this instance has for the specified property.
+            </summary>
+            <param name="propertyName">
+            The name of the property to get values for.
+            </param>
+            <returns>
+            A list of <see cref="T:System.String"/> values wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValueAsString(System.String)">
+            <summary>
+            Get string value this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A <see cref="T:System.String"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValueAsWktString(System.String)">
+            <summary>
+            Get WKT string value this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A <see cref="T:FiftyOne.Pipeline.Core.Data.WktString"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValueAsInteger(System.String)">
+            <summary>
+            Get int value this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A <see cref="T:System.Int32"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValueAsFloat(System.String)">
+            <summary>
+            Get float value this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A <see cref="T:System.Single"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValueAsDouble(System.String)">
+            <summary>
+            Get double value this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A <see cref="T:System.Double"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValueAsBool(System.String)">
+            <summary>
+            Get bool value this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A <see cref="T:System.Boolean"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValueAsIp(System.String)">
+            <summary>
+            
+            </summary>
+            <param name="propertyName"></param>
+            <returns></returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValuesAsWeightedBoolList(System.String)">
+            <summary>
+            Get weighted bool values this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A list of <see cref="T:FiftyOne.Pipeline.Core.Data.WeightedValue`1"/> of
+            <see cref="T:System.Boolean"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValuesAsWeightedDoubleList(System.String)">
+            <summary>
+            Get weighted double values this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A list of <see cref="T:FiftyOne.Pipeline.Core.Data.WeightedValue`1"/> of
+            <see cref="T:System.Double"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValuesAsWeightedFloatList(System.String)">
+            <summary>
+            Get weighted double values this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A list of <see cref="T:FiftyOne.Pipeline.Core.Data.WeightedValue`1"/> of
+            <see cref="T:System.Single"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValuesAsWeightedIntegerList(System.String)">
+            <summary>
+            Get weighted integer values this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A list of <see cref="T:FiftyOne.Pipeline.Core.Data.WeightedValue`1"/> of
+            <see cref="T:System.Int32"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValuesAsWeightedStringList(System.String)">
+            <summary>
+            Get weighted string values this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A list of <see cref="T:FiftyOne.Pipeline.Core.Data.WeightedValue`1"/> of
+            <see cref="T:System.Int32"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValuesAsWeightedIPList(System.String)">
+            <summary>
+            Get weighted IP values this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <returns>
+            A list of <see cref="T:FiftyOne.Pipeline.Core.Data.WeightedValue`1"/> of
+            <see cref="T:System.Net.IPAddress"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetValuesAsWeightedWKTStringList(System.String,System.Byte)">
+            <summary>
+            Get weighted WKT string values this instance has for the specified property
+            </summary>
+            <param name="propertyName">
+            The name of the property to get value for.
+            </param>
+            <param name="decimalPlaces">
+            The number of decimal places for float formatting.
+            </param>
+            <returns>
+            A list of <see cref="T:FiftyOne.Pipeline.Core.Data.WeightedValue`1"/> of
+            <see cref="T:System.Int32"/> wrapped in a 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instance.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.AsDictionary">
+            <summary>
+            By default, the base dictionary will not be populated as 
+            doing so is a fairly expensive operation.
+            Instead, we override the AsDictionary method to populate
+            the dictionary on-demand.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.GetPropertyType(System.String)">
+            <summary>
+            Get the <see cref="T:System.Type"/> for the specified property
+            This is based on the meta-data that is supplied by the engine.
+            </summary>
+            <param name="propertyName">
+            The name of the property to get the type of.
+            </param>
+            <returns>
+            The <see cref="T:System.Type"/> instance for the requested property.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Data.IpDataBaseOnPremise`1.TryGetValue``1(System.String,``0@)">
+            <summary>
+            Try to get the value for the specified key.
+            This overrides the base implementation to get values using
+            the abstract methods on this class rather than using the
+            dictionary-based storage mechanism from the base-class.
+            </summary>
+            <typeparam name="T">
+            The expected type of the resulting value.
+            </typeparam>
+            <param name="key">
+            The key to use to retrieve the value.
+            </param>
+            <param name="value">
+            Out parameter that will be populated with the value.
+            </param>
+            <returns>
+            True if that value was retrieved successfully. False if not.
+            </returns>
+            <exception cref="T:FiftyOne.Pipeline.Core.Exceptions.PipelineException">
+            Thrown if the value was not of the expected type.
+            </exception>
+        </member>
+        <member name="T:FiftyOne.IpIntelligence.Shared.FlowElements.IOnPremiseIpiEngine">
+            <summary>
+            Interface for additional members that are unique to 
+            on-premise IP intelligence engines.
+            </summary>
+        </member>
+        <member name="E:FiftyOne.IpIntelligence.Shared.FlowElements.IOnPremiseIpiEngine.RefreshCompleted">
+            <summary>
+            This event is fired whenever the data that this engine makes use
+            of has been updated.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.FlowElements.IOnPremiseIpiEngine.Components">
+            <summary>
+            Get meta-data for all components that are populated by
+            this engine.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.FlowElements.IOnPremiseIpiEngine.Profiles">
+            <summary>
+            Get meta-data for all profiles that can the returned by
+            this engine.
+            </summary>
+        </member>
+        <member name="T:FiftyOne.IpIntelligence.Shared.FlowElements.OnPremiseIpiEngineBase`1">
+            <summary>
+            On-premise IP intelligence engine base class. 
+            </summary>
+            <typeparam name="T">
+            The specific type of IP intelligence data instances returned by this 
+            engine.
+            </typeparam>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.FlowElements.OnPremiseIpiEngineBase`1.#ctor(Microsoft.Extensions.Logging.ILogger{FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.FiftyOneOnPremiseAspectEngineBase{`0}},System.Func{FiftyOne.Pipeline.Core.FlowElements.IPipeline,FiftyOne.Pipeline.Core.FlowElements.FlowElementBase{`0,FiftyOne.Pipeline.Engines.FiftyOne.Data.IFiftyOneAspectPropertyMetaData},`0},System.String)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="logger">
+            Logger for this engine to use.
+            </param>
+            <param name="aspectDataFactory">
+            The factory method to use when creating a new aspect data instance.
+            </param>
+            <param name="tempDataFilePath">
+            The path to use for any temporary files the engine needs to create.
+            </param>
+        </member>
+        <member name="E:FiftyOne.IpIntelligence.Shared.FlowElements.OnPremiseIpiEngineBase`1.RefreshCompleted">
+            <summary>
+            This event is fired after IP intelligence data has been 
+            successfully refreshed.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.FlowElements.OnPremiseIpiEngineBase`1.ReadBytesFromStream(System.IO.Stream)">
+            <summary>
+            Get the bytes from the specified stream.
+            </summary>
+            <param name="stream"></param>
+            <returns></returns>
+            <exception cref="T:System.ArgumentNullException">
+            Thrown if a required parameter is null
+            </exception>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.FlowElements.OnPremiseIpiEngineBase`1.AddDataFile(FiftyOne.Pipeline.Engines.Data.IAspectEngineDataFile)">
+            <summary>
+            Add the specified data file to the engine
+            </summary>
+            <param name="dataFile"></param>
+            <exception cref="T:System.ArgumentNullException">
+            Thrown if a required parameter is null
+            </exception>
+        </member>
+        <member name="T:FiftyOne.IpIntelligence.Shared.FlowElements.OnPremiseIpiEngineBuilderBase`2">
+            <summary>
+            Fluent builder that is used to create an on-premise IP intelligence 
+            aspect engine.
+            </summary>
+            <typeparam name="TBuilder">
+            The type of engine builder for fluent methods to return.
+            </typeparam>
+            <typeparam name="TEngine">
+            The type of engine that will be built. 
+            </typeparam>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.FlowElements.OnPremiseIpiEngineBuilderBase`2.#ctor(FiftyOne.Pipeline.Engines.Services.IDataUpdateService)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="dataUpdateService">
+            The <see cref="T:FiftyOne.Pipeline.Engines.Services.IDataUpdateService"/> to use when registering
+            data files to check for for automatic updates.
+            </param>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.FlowElements.OnPremiseIpiEngineBuilderBase`2.SetConcurrency(System.UInt16)">
+            <summary>
+            Set the expected number of concurrent operations using the engine.
+            This sets the concurrency of the internal caches to mitigate
+            excessive contention.
+            </summary>
+            <param name="concurrency">Expected concurrent accesses</param>
+            <returns>This builder</returns>
+        </member>
+        <member name="T:FiftyOne.IpIntelligence.Shared.IpIntelligenceData">
+            <summary>
+            Abstract base class for properties relating to an IP.
+            This includes the network, and location.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.#ctor(Microsoft.Extensions.Logging.ILogger{FiftyOne.Pipeline.Engines.Data.AspectDataBase},FiftyOne.Pipeline.Core.FlowElements.IPipeline,FiftyOne.Pipeline.Engines.FlowElements.IAspectEngine,FiftyOne.Pipeline.Engines.Services.IMissingPropertyService)">
+            <summary>
+            Constructor.
+            </summary>
+            <param name="logger">
+            The logger for this instance to use.
+            </param>
+            <param name="pipeline">
+            The Pipeline this data instance has been created by.
+            </param>
+            <param name="engine">
+            The engine this data instance has been created by.
+            </param>
+            <param name="missingPropertyService">
+            The missing property service to use when a requested property
+            does not exist.
+            </param>
+        </member>
+        <member name="F:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.PropertyTypes">
+            <summary>
+            Dictionary of property value types, keyed on the string
+            name of the type.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.AccuracyRadiusMax">
+            <summary>
+            Radius in kilometers of the circle centred around the most probable location that encompasses the entire area. Where multiple areas are returned, this will only cover the area the most probable location is in. See Areas property. This will likely be a very large distance. It is recommend to use the AccuracyRadiusMin property.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.AccuracyRadiusMin">
+            <summary>
+            Radius in kilometers of the largest circle centred around the most probable location that fits within the area. Where multiple areas are returned, only the area that the most probable location falls within is considered. See Areas property.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Areas">
+            <summary>
+            Any shapes associated with the location. Usually this is the area which the IP range covers. This is returned as a WKT String stored as a reduced format of WKB.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Asn">
+            <summary>
+            Autonomous System Number associated with the IP address.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.AsnName">
+            <summary>
+            The name registered to the Asn associated with the IP address.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.BrowserDiversity">
+            <summary>
+            Refers to the diversity of browsers observed from the IP range. An integer between 1-10, a lower value indicates a low number of browsers seen per IP address, while a higher value indicates a high number of browsers seen per IP address. A 0 value indicates that the probability is unknown.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.ConnectionType">
+            <summary>
+            Indicates the type of connection being used. Returns either Broadband, Cellular, or Hosting and Anonymous.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.ContinentCode2">
+            <summary>
+            The 3-character ISO 3166-1 continent code for the supplied location.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.ContinentName">
+            <summary>
+            The name of the continent the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Country">
+            <summary>
+            The name of the country that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.CountryCode">
+            <summary>
+            The 2-character ISO 3166-1 code of the country that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.CountryCode3">
+            <summary>
+            The 3-character ISO 3166-1 alpha-3 code of the country that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.CountryCodesGeographical">
+            <summary>
+            A list of countries in ISO 3166-1 alpha-2 country code format that overlap with the area likely associated with the provided evidence, weighted and ordered by each country's proportion of the area. Administrative areas that cannot be cleanly resolved to the country level will not contribute to the resulting data.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.CountryCodesPopulation">
+            <summary>
+            A list of countries in ISO 3166-1 alpha-2 country code format that overlap with the area likely associated with the provided evidence, weighted and ordered by each country's proportion of the total population within the area. Administrative areas that cannot be cleanly resolved to the country level will not contribute to the resulting data.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.County">
+            <summary>
+            The name of the county that the supplied location is in. In this case, a county is defined as an administrative sub-section of a country or state.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.CurrencyCode">
+            <summary>
+            The Alpha-3 ISO 4217 code of the currency associated with the supplied location.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.DialCode">
+            <summary>
+            ITU international telephone numbering plan code for the country.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.HardwareDiversity">
+            <summary>
+            Refers to the diversity of hardware devices observed from the IP range. An integer between 1-10, a lower value indicates a low number of devices seen per IP address, while a higher value indicates a high number of devices seen per IP address. A 0 value indicates that the probability is unknown.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.HumanProbability">
+            <summary>
+            The confidence that the IP address is a human user versus associated with hosting. A 0-10 value where; 0-3: Low confidence the user is human, 4-6: Medium confidence, 7-10: High confidence. A -1 value indicates that the probability is unknown.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Ip">
+            <summary>
+            The IPv4 address of the request.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.IpRangeEnd">
+            <summary>
+            End of the IP range to which the evidence IP belongs.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.IpRangeStart">
+            <summary>
+            Start of the IP range to which the evidence IP belongs.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.IpV6">
+            <summary>
+            The IPv6 address of the request.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.IsBroadband">
+            <summary>
+            Indicates whether the IP address is associated with a broadband connection. Includes DSL, Cable, Fibre, and Satellite connections.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.IsCellular">
+            <summary>
+            Indicates whether the IP address is associated with a cellular network.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.IsEu">
+            <summary>
+            Indicates whether the country of the supplied location is within the European Union.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.IsHosted">
+            <summary>
+            Indicates whether the IP address is associated with hosting. Includes both hosting and anonymised connections such as hosting networks, hosting ASNs, VPNs, proxies, TOR networks, and unreachable IP addresses.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Iso31662Lvl4">
+            <summary>
+            The ISO 3166-2 code for the supplied location. This is using the 'ISO3166-2-lvl4' property from OpenStreetMap.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Iso31662Lvl4SubdivisionOnly">
+            <summary>
+            The alphanumeric code representing the subdivision from the ISO 3166-2 code of the supplied location. This is using the 'ISO3166-2-lvl4' property from OpenStreetMap.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Iso31662Lvl8">
+            <summary>
+            The ISO 3166-2 code for the supplied location. This is using the 'ISO3166-2-lvl8' property from OpenStreetMap.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Iso31662Lvl8SubdivisionOnly">
+            <summary>
+            The alphanumeric code representing the subdivision from the ISO 3166-2 code of the supplied location. This is using the 'ISO3166-2-lvl8' property from OpenStreetMap.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.IsProxy">
+            <summary>
+            Indicates whether the IP address is associated with a Proxy server.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.IsPublicRouter">
+            <summary>
+            Indicates whether the IP address is associated with a public router.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.IsTor">
+            <summary>
+            Indicates whether the IP address is associated with a TOR server.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.IsVPN">
+            <summary>
+            Indicates whether the IP address is associated with a VPN server.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.LanguageCode">
+            <summary>
+            The Alpha-2 ISO 639 Language code associated with the supplied location.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Latitude">
+            <summary>
+            Average latitude of the IP. For privacy, this is randomized within around 1 kilometer of the result. Randomized result will change only once per day.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.LocationConfidence">
+            <summary>
+            The confidence in the town and country provided.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Longitude">
+            <summary>
+            Average longitude of the IP. For privacy, this is randomized within around 1 kilometer of the result. Randomized result will change only once per day.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Mcc">
+            <summary>
+            The mobile country code of the network the device is connected to.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.PlatformDiversity">
+            <summary>
+            Refers to the diversity of software observed from the IP range. An integer between 1-10, a lower value indicates a low number of software seen per IP address, while a higher value indicates a high number of software seen per IP address. A 0 value indicates that the probability is unknown.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Region">
+            <summary>
+            The name of the geographical region that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.RegisteredCountry">
+            <summary>
+            Country code of the registered range.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.RegisteredName">
+            <summary>
+            Name of the IP range. This is usually the owner.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.RegisteredOwner">
+            <summary>
+            Registered owner of the range.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.State">
+            <summary>
+            The name of the state that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Suburb">
+            <summary>
+            The name of the suburb that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.TimeZoneIana">
+            <summary>
+            The time zone at the supplied location in the IANA Time Zone format.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.TimeZoneOffset">
+            <summary>
+            The offset from UTC in minutes in the supplied location, at the time that the value is produced.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.Town">
+            <summary>
+            The name of the town that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.IpIntelligenceData.ZipCode">
+            <summary>
+            The zip or postal code that the supplied location falls under.
+            </summary>
+        </member>
+        <member name="T:FiftyOne.IpIntelligence.Shared.Messages">
+            <summary>
+              A strongly-typed resource class, for looking up localized strings, etc.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.Messages.ResourceManager">
+            <summary>
+              Returns the cached ResourceManager instance used by this class.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.Messages.Culture">
+            <summary>
+              Overrides the current thread's CurrentUICulture property for all
+              resource lookups using this strongly typed resource class.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.Shared.Messages.ExceptionCannotUpdateResults">
+            <summary>
+              Looks up a localized string similar to The results collection for this data object has already been accessed and must not be updated..
+            </summary>
+        </member>
+        <member name="T:FiftyOne.IpIntelligence.Shared.Services.CloudDataHelper">
+            <summary>
+            Static helper for converting cloud data values to AspectPropertyValue 
+            types and creating APV dictionaries.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.IpIntelligence.Shared.Services.CloudDataHelper.IpTypeConverter">
+            <summary>
+            Default type converter that handles IPAddress and WktString types.
+            Used by IpiCloudEngine for IP intelligence data.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Services.CloudDataHelper.ToValueForAPV(System.Object,System.Type,System.Func{System.Object,System.Type,System.Object})">
+            <summary>
+            Convert value returned by cloud in json (weakly typed)
+            to a value expected by AspectPropertyValue (strongly typed).
+            </summary>
+            <param name="rawValue">The raw value from JSON</param>
+            <param name="valueType">The target type</param>
+            <param name="typeConverter">
+            Optional type-specific converter for handling special types like 
+            IPAddress. Called first to give type-specific converters priority 
+            over generic handling.
+            </param>
+            <returns>The converted value</returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Services.CloudDataHelper.ToValueForAPVSimple(System.Object,System.Type)">
+            <summary>
+            Base conversion for simple types like JavaScript and Dictionary.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Services.CloudDataHelper.CreateAPVDictionary(System.Collections.Generic.Dictionary{System.String,System.Object},System.Collections.Generic.IReadOnlyList{FiftyOne.Pipeline.Core.Data.IElementPropertyMetaData},System.Func{System.Object,System.Type,System.Object},Microsoft.Extensions.Logging.ILogger,System.String)">
+            <summary>
+            Use the supplied cloud data to create a dictionary of 
+            <see cref="T:FiftyOne.Pipeline.Engines.Data.IAspectPropertyValue"/> instances.
+            </summary>
+            <param name="cloudData">The cloud data to be processed</param>
+            <param name="propertyMetaData">The meta-data for the properties</param>
+            <param name="typeConverter">
+            Optional type-specific converter for handling special types.
+            </param>
+            <param name="logger">Optional logger for warnings</param>
+            <param name="engineTypeName">Engine type name for logging</param>
+            <returns>A dictionary with values converted to AspectPropertyValue 
+            where needed</returns>
+        </member>
+        <member name="T:FiftyOne.IpIntelligence.Shared.Services.IMetaDataService">
+            <summary>
+            Helper service for working with IP intelligence meta-data.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Services.IMetaDataService.DefaultProfileIdForComponent(System.Byte)">
+            <summary>
+            Get the default profile Id for the specified component
+            </summary>
+            <param name="componentId">
+            The component Id to get the default for
+            </param>
+            <returns>
+            The default profile Id for the specified component
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Services.IMetaDataService.DefaultProfilesIds">
+            <summary>
+            Get all default profile Ids
+            </summary>
+            <returns>
+            A dictionary with key of component Id and value of profile Id.
+            </returns>
+        </member>
+        <member name="T:FiftyOne.IpIntelligence.Shared.Services.MetaDataService">
+            <summary>
+            Helper service that removes some of the complexity of dealing with 
+            meta-data from multiple engines.
+            Also mitigates some of the performance penalties that come from 
+            repeatedly querying certain meta-data collections via the SWIG 
+            wrappers.
+            </summary>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Services.MetaDataService.#ctor(FiftyOne.IpIntelligence.Shared.FlowElements.IOnPremiseIpiEngine[])">
+            <summary>
+            Constructor
+            </summary>
+            <param name="engines">
+            An array of engines that are involved in populating IP intelligence 
+            data properties.
+            For example, this could be one engine that populates autonomous system number
+            properties and another that populates internet service provider properties.
+            </param>
+            <exception cref="T:System.ArgumentNullException">
+            Thrown if a required parameter is null
+            </exception>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Services.MetaDataService.DefaultProfileIdForComponent(System.Byte)">
+            <summary>
+            Get the default profile Id for the specified component
+            </summary>
+            <param name="componentId">
+            The component Id to get the default for
+            </param>
+            <returns>
+            The default profile Id for the specified component
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Services.MetaDataService.DefaultProfilesIds">
+            <summary>
+            Get all default profile Ids
+            </summary>
+            <returns>
+            A dictionary with key of component Id and value of profile Id.
+            </returns>
+        </member>
+        <member name="M:FiftyOne.IpIntelligence.Shared.Services.MetaDataService.Engine_RefreshCompleted(System.Object,System.EventArgs)">
+            <summary>
+            Called when the engine is refreshed with new data.
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
+        </member>
+        <member name="T:FiftyOne.IpIntelligence.IIpIntelligenceData">
+            <summary>
+            Represents a data object containing values relating to an IP.
+            This includes the network, and location.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.AccuracyRadiusMax">
+            <summary>
+            Radius in kilometers of the circle centred around the most probable location that encompasses the entire area. Where multiple areas are returned, this will only cover the area the most probable location is in. See Areas property. This will likely be a very large distance. It is recommend to use the AccuracyRadiusMin property.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.AccuracyRadiusMin">
+            <summary>
+            Radius in kilometers of the largest circle centred around the most probable location that fits within the area. Where multiple areas are returned, only the area that the most probable location falls within is considered. See Areas property.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Areas">
+            <summary>
+            Any shapes associated with the location. Usually this is the area which the IP range covers. This is returned as a WKT String stored as a reduced format of WKB.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Asn">
+            <summary>
+            Autonomous System Number associated with the IP address.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.AsnName">
+            <summary>
+            The name registered to the Asn associated with the IP address.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.BrowserDiversity">
+            <summary>
+            Refers to the diversity of browsers observed from the IP range. An integer between 1-10, a lower value indicates a low number of browsers seen per IP address, while a higher value indicates a high number of browsers seen per IP address. A 0 value indicates that the probability is unknown.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.ConnectionType">
+            <summary>
+            Indicates the type of connection being used. Returns either Broadband, Cellular, or Hosting and Anonymous.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.ContinentCode2">
+            <summary>
+            The 3-character ISO 3166-1 continent code for the supplied location.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.ContinentName">
+            <summary>
+            The name of the continent the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Country">
+            <summary>
+            The name of the country that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.CountryCode">
+            <summary>
+            The 2-character ISO 3166-1 code of the country that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.CountryCode3">
+            <summary>
+            The 3-character ISO 3166-1 alpha-3 code of the country that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.CountryCodesGeographical">
+            <summary>
+            A list of countries in ISO 3166-1 alpha-2 country code format that overlap with the area likely associated with the provided evidence, weighted and ordered by each country's proportion of the area. Administrative areas that cannot be cleanly resolved to the country level will not contribute to the resulting data.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.CountryCodesPopulation">
+            <summary>
+            A list of countries in ISO 3166-1 alpha-2 country code format that overlap with the area likely associated with the provided evidence, weighted and ordered by each country's proportion of the total population within the area. Administrative areas that cannot be cleanly resolved to the country level will not contribute to the resulting data.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.County">
+            <summary>
+            The name of the county that the supplied location is in. In this case, a county is defined as an administrative sub-section of a country or state.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.CurrencyCode">
+            <summary>
+            The Alpha-3 ISO 4217 code of the currency associated with the supplied location.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.DialCode">
+            <summary>
+            ITU international telephone numbering plan code for the country.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.HardwareDiversity">
+            <summary>
+            Refers to the diversity of hardware devices observed from the IP range. An integer between 1-10, a lower value indicates a low number of devices seen per IP address, while a higher value indicates a high number of devices seen per IP address. A 0 value indicates that the probability is unknown.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.HumanProbability">
+            <summary>
+            The confidence that the IP address is a human user versus associated with hosting. A 0-10 value where; 0-3: Low confidence the user is human, 4-6: Medium confidence, 7-10: High confidence. A -1 value indicates that the probability is unknown.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Ip">
+            <summary>
+            The IPv4 address of the request.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.IpRangeEnd">
+            <summary>
+            End of the IP range to which the evidence IP belongs.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.IpRangeStart">
+            <summary>
+            Start of the IP range to which the evidence IP belongs.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.IpV6">
+            <summary>
+            The IPv6 address of the request.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.IsBroadband">
+            <summary>
+            Indicates whether the IP address is associated with a broadband connection. Includes DSL, Cable, Fibre, and Satellite connections.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.IsCellular">
+            <summary>
+            Indicates whether the IP address is associated with a cellular network.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.IsEu">
+            <summary>
+            Indicates whether the country of the supplied location is within the European Union.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.IsHosted">
+            <summary>
+            Indicates whether the IP address is associated with hosting. Includes both hosting and anonymised connections such as hosting networks, hosting ASNs, VPNs, proxies, TOR networks, and unreachable IP addresses.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Iso31662Lvl4">
+            <summary>
+            The ISO 3166-2 code for the supplied location. This is using the 'ISO3166-2-lvl4' property from OpenStreetMap.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Iso31662Lvl4SubdivisionOnly">
+            <summary>
+            The alphanumeric code representing the subdivision from the ISO 3166-2 code of the supplied location. This is using the 'ISO3166-2-lvl4' property from OpenStreetMap.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Iso31662Lvl8">
+            <summary>
+            The ISO 3166-2 code for the supplied location. This is using the 'ISO3166-2-lvl8' property from OpenStreetMap.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Iso31662Lvl8SubdivisionOnly">
+            <summary>
+            The alphanumeric code representing the subdivision from the ISO 3166-2 code of the supplied location. This is using the 'ISO3166-2-lvl8' property from OpenStreetMap.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.IsProxy">
+            <summary>
+            Indicates whether the IP address is associated with a Proxy server.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.IsPublicRouter">
+            <summary>
+            Indicates whether the IP address is associated with a public router.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.IsTor">
+            <summary>
+            Indicates whether the IP address is associated with a TOR server.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.IsVPN">
+            <summary>
+            Indicates whether the IP address is associated with a VPN server.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.LanguageCode">
+            <summary>
+            The Alpha-2 ISO 639 Language code associated with the supplied location.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Latitude">
+            <summary>
+            Average latitude of the IP. For privacy, this is randomized within around 1 kilometer of the result. Randomized result will change only once per day.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.LocationConfidence">
+            <summary>
+            The confidence in the town and country provided.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Longitude">
+            <summary>
+            Average longitude of the IP. For privacy, this is randomized within around 1 kilometer of the result. Randomized result will change only once per day.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Mcc">
+            <summary>
+            The mobile country code of the network the device is connected to.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.PlatformDiversity">
+            <summary>
+            Refers to the diversity of software observed from the IP range. An integer between 1-10, a lower value indicates a low number of software seen per IP address, while a higher value indicates a high number of software seen per IP address. A 0 value indicates that the probability is unknown.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Region">
+            <summary>
+            The name of the geographical region that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.RegisteredCountry">
+            <summary>
+            Country code of the registered range.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.RegisteredName">
+            <summary>
+            Name of the IP range. This is usually the owner.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.RegisteredOwner">
+            <summary>
+            Registered owner of the range.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.State">
+            <summary>
+            The name of the state that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Suburb">
+            <summary>
+            The name of the suburb that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.TimeZoneIana">
+            <summary>
+            The time zone at the supplied location in the IANA Time Zone format.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.TimeZoneOffset">
+            <summary>
+            The offset from UTC in minutes in the supplied location, at the time that the value is produced.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.Town">
+            <summary>
+            The name of the town that the supplied location is in.
+            </summary>
+        </member>
+        <member name="P:FiftyOne.IpIntelligence.IIpIntelligenceData.ZipCode">
+            <summary>
+            The zip or postal code that the supplied location falls under.
+            </summary>
+        </member>
+    </members>
+</doc>

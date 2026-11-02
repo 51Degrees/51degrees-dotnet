@@ -1,0 +1,1159 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+using FiftyOne.IpIntelligence.Translation.Data;
+using FiftyOne.IpIntelligence.Translation.FlowElements;
+using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines;
+using FiftyOne.Pipeline.Engines.Data;
+using Microsoft.Extensions.Logging;
+using Moq;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+
+namespace FiftyOne.IpIntelligence.Translation.Tests
+{
+    [TestClass]
+    public class TranslationTests
+    {
+        private ILoggerFactory _loggerFactory;
+
+        [TestInitialize]
+        public void TestInit()
+        {
+            _loggerFactory = LoggerFactory.Create(b => { });
+        }
+
+        /// <summary>
+        /// Test that a list of countries can be translated from country codes
+        /// to country names. This tests the CountryCodeTranslationEngine end
+        /// to end.
+        /// </summary>
+        [TestMethod]
+        public void CountryNamesFromCodes()
+        {
+            // Use a mock IP element to provide the country codes as evidence.
+            // This allow the engine to be tested in isolation.
+            var ipElement = MockIpElement(
+                new[] { "GB", "FR" },
+                new[] { "GB", "FR" });
+
+            // Build the pipeline.
+            var translationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(translationElement)
+                .Build();
+
+            // Process the data
+            using var flowData = pipeline.CreateFlowData();
+            flowData.Process();
+
+
+            // Assert
+            var result = flowData.Get<ICountryCodeTranslationData>();
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.CountryNamesGeographical);
+            Assert.IsNotNull(result.CountryNamesPopulation);
+            Assert.IsTrue(result.CountryNamesGeographical.HasValue);
+            Assert.IsTrue(result.CountryNamesPopulation.HasValue);
+            Assert.HasCount(2, result.CountryNamesGeographical.Value);
+            Assert.HasCount(2, result.CountryNamesPopulation.Value);
+            Assert.AreEqual(
+                "United Kingdom",
+                result.CountryNamesGeographical.Value[0].Value);
+            Assert.AreEqual(
+                "France",
+                result.CountryNamesGeographical.Value[1].Value);
+            Assert.AreEqual(
+                "United Kingdom",
+                result.CountryNamesPopulation.Value[0].Value);
+            Assert.AreEqual(
+                "France",
+                result.CountryNamesPopulation.Value[1].Value);
+        }
+
+        /// <summary>
+        /// Test that a list of countries can be translated to a target
+        /// language defined in the evidence. This tests the
+        /// CountryCodeTranslationEngine and CountriesTranslationEngine end
+        /// to end.
+        /// </summary>
+        [TestMethod]
+        public void TranslatedCountry()
+        {
+            // Use a mock IP element to provide the country codes as evidence.
+            // This allow the engine to be tested in isolation.
+            var ipElement = MockIpElement(
+                new[] { "GB", "FR" },
+                new[] { "GB", "FR" });
+            // Build the pipeline.
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            // Process the data, adding the language as evidence.
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "fr_FR");
+            flowData.Process();
+
+            // Assert
+            var result = flowData.Get<ICountriesTranslationData>();
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.CountryNamesGeographicalTranslated.HasValue);
+            Assert.IsTrue(result.CountryNamesPopulationTranslated.HasValue);
+            Assert.HasCount(2,
+                result.CountryNamesGeographicalTranslated.Value);
+            Assert.HasCount(2,
+                result.CountryNamesPopulationTranslated.Value);
+            Assert.AreEqual(
+                "Royaume-Uni",
+                result.CountryNamesGeographicalTranslated.Value[0].Value);
+            Assert.AreEqual(
+                "France",
+                result.CountryNamesGeographicalTranslated.Value[1].Value);
+        }
+
+
+        /// <summary>
+        /// Test that the "All" lists are produced correctly, with weighted
+        /// countries first and remaining countries sorted alphabetically
+        /// by translated name.
+        /// </summary>
+        [TestMethod]
+        public void AllListsProducedCorrectlySorted()
+        {
+            var ipElement = MockIpElementWeighted(
+                [new(30000, "FR"), new(35535, "GB")],
+                [new(30000, "FR"), new(35535, "GB")]);
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "fr_FR");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            // Check "All" lists exist and have values.
+            Assert.IsTrue(
+                result.CountryNamesGeographicalAllTranslated.HasValue);
+            Assert.IsTrue(
+                result.CountryNamesPopulationAllTranslated.HasValue);
+            Assert.IsTrue(result.CountryCodesGeographicalAll.HasValue);
+            Assert.IsTrue(result.CountryCodesPopulationAll.HasValue);
+
+            var namesAll =
+                result.CountryNamesGeographicalAllTranslated.Value;
+            var codesAll = result.CountryCodesGeographicalAll.Value;
+
+            // Same number of names and codes.
+            Assert.HasCount(namesAll.Count, codesAll);
+
+            // The weighted countries should be first (GB and FR).
+            Assert.AreEqual("Royaume-Uni", namesAll[0]);
+            Assert.AreEqual("GB", codesAll[0]);
+            Assert.AreEqual("France", namesAll[1]);
+            Assert.AreEqual("FR", codesAll[1]);
+
+            // All known countries should be present.
+            Assert.IsGreaterThan(200, namesAll.Count);
+
+            // GB and FR should not appear again after the first 2 positions.
+            Assert.IsFalse(codesAll.Skip(2).Contains("GB"));
+            Assert.IsFalse(codesAll.Skip(2).Contains("FR"));
+
+            // Remaining countries should be sorted alphabetically by
+            // translated name.
+            var remaining = namesAll.Skip(2).ToList();
+            var comparer = GetComparer(flowData, out var cultureUsed);
+            for (int i = 1; i < remaining.Count; i++)
+            {
+                Assert.IsLessThanOrEqualTo(
+0,
+                    comparer.Compare(remaining[i - 1], remaining[i]), $"Expected '{remaining[i - 1]}' (at {i - 1}) <= '{remaining[i]}' (at {i}) -- using '{cultureUsed}'");
+            }
+        }
+
+
+        /// <summary>
+        /// Test that the "All" lists are produced correctly, with weighted
+        /// countries first and remaining countries sorted alphabetically
+        /// by translated name.
+        /// </summary>
+        [TestMethod]
+        public void AllListsProducedCorrectly()
+        {
+            var ipElement = MockIpElement(
+                new[] { "GB", "FR" },
+                new[] { "GB", "FR" });
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "fr_FR");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            // Check "All" lists exist and have values.
+            Assert.IsTrue(
+                result.CountryNamesGeographicalAllTranslated.HasValue);
+            Assert.IsTrue(
+                result.CountryNamesPopulationAllTranslated.HasValue);
+            Assert.IsTrue(result.CountryCodesGeographicalAll.HasValue);
+            Assert.IsTrue(result.CountryCodesPopulationAll.HasValue);
+
+            var namesAll =
+                result.CountryNamesGeographicalAllTranslated.Value;
+            var codesAll = result.CountryCodesGeographicalAll.Value;
+
+            // Same number of names and codes.
+            Assert.HasCount(namesAll.Count, codesAll);
+
+            // The weighted countries should be first (GB and FR).
+            Assert.AreEqual("Royaume-Uni", namesAll[0]);
+            Assert.AreEqual("GB", codesAll[0]);
+            Assert.AreEqual("France", namesAll[1]);
+            Assert.AreEqual("FR", codesAll[1]);
+
+            // All known countries should be present.
+            Assert.IsGreaterThan(200, namesAll.Count);
+
+            // GB and FR should not appear again after the first 2 positions.
+            Assert.IsFalse(codesAll.Skip(2).Contains("GB"));
+            Assert.IsFalse(codesAll.Skip(2).Contains("FR"));
+
+            // Remaining countries should be sorted alphabetically by
+            // translated name.
+            var remaining = namesAll.Skip(2).ToList();
+            var comparer = GetComparer(flowData, out var cultureUsed);
+            for (int i = 1; i < remaining.Count; i++)
+            {
+                Assert.IsLessThanOrEqualTo(
+0,
+                    comparer.Compare(remaining[i - 1], remaining[i]), $"Expected '{remaining[i - 1]}' (at {i - 1}) <= '{remaining[i]}' (at {i}) -- using '{cultureUsed}'");
+            }
+        }
+
+        private static StringComparer GetComparer(IFlowData data, out string cultureUsed)
+        {
+            cultureUsed = ((CountriesTranslationData)data.Get<ICountriesTranslationData>()).SortingCultureUsed;
+            var culture = string.IsNullOrWhiteSpace(cultureUsed)
+                ? CultureInfo.InvariantCulture
+                : CultureInfo.GetCultureInfo(cultureUsed);
+            return StringComparer.Create(culture, ignoreCase: false);
+        }
+
+        /// <summary>
+        /// Test that "All" lists work correctly without a translation
+        /// language specified (falls back to English names).
+        /// </summary>
+        [TestMethod]
+        public void AllListsWithoutLanguage()
+        {
+            var ipElement = MockIpElement(
+                new[] { "GB" },
+                new[] { "GB" });
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            Assert.IsTrue(
+                result.CountryNamesGeographicalAllTranslated.HasValue);
+            Assert.IsTrue(result.CountryCodesGeographicalAll.HasValue);
+
+            var namesAll =
+                result.CountryNamesGeographicalAllTranslated.Value;
+            var codesAll = result.CountryCodesGeographicalAll.Value;
+
+            // GB (United Kingdom) should be first.
+            Assert.AreEqual("United Kingdom", namesAll[0]);
+            Assert.AreEqual("GB", codesAll[0]);
+
+            // All known countries should be present.
+            Assert.IsGreaterThan(200, namesAll.Count);
+
+            // Remaining should be sorted alphabetically by English name.
+            var remaining = namesAll.Skip(1).ToList();
+            for (int i = 1; i < remaining.Count; i++)
+            {
+                Assert.IsLessThanOrEqualTo(0,
+                    string.Compare(remaining[i - 1], remaining[i],
+                        StringComparison.CurrentCulture), $"Expected '{remaining[i - 1]}' <= '{remaining[i]}'");
+            }
+        }
+
+        /// <summary>
+        /// Test that "All" lists contain all countries when no IP data
+        /// is present (no weighted codes), and are sorted alphabetically.
+        /// </summary>
+        [TestMethod]
+        public void AllListsWithNoIpData()
+        {
+            // Create a pipeline with translation engines but no IP element.
+            var emptyIpElement = MockIpElement(
+                Array.Empty<string>(),
+                Array.Empty<string>());
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(emptyIpElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "de_DE");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            Assert.IsTrue(
+                result.CountryNamesGeographicalAllTranslated.HasValue);
+            Assert.IsTrue(result.CountryCodesGeographicalAll.HasValue);
+
+            var namesAll =
+                result.CountryNamesGeographicalAllTranslated.Value;
+            var codesAll = result.CountryCodesGeographicalAll.Value;
+
+            // All known countries should be present, all sorted
+            // alphabetically.
+            Assert.IsGreaterThan(200, namesAll.Count);
+            for (int i = 1; i < namesAll.Count; i++)
+            {
+                Assert.IsLessThanOrEqualTo(
+0,
+                    string.Compare(namesAll[i - 1], namesAll[i],
+                        StringComparison.CurrentCulture), $"Expected '{namesAll[i - 1]}' <= '{namesAll[i]}'");
+            }
+        }
+
+        /// <summary>
+        /// When the resource key does not grant the country code properties,
+        /// or the cloud request failed, reading them from the IP data throws
+        /// PropertyMissingException. The engine must treat that the same as
+        /// no value: no exception escapes and the "All" lists still contain
+        /// every known country.
+        /// </summary>
+        [TestMethod]
+        public void AllListsWhenIpPropertyAccessThrowsPropertyMissing()
+        {
+            var ipData = new Mock<IIpIntelligenceData>();
+            ipData.Setup(i => i["CountryCodesGeographical"])
+                .Returns(null);
+            ipData.Setup(i => i["CountryCodesPopulation"])
+                .Returns(null);
+            ipData.Setup(i => i.CountryCodesGeographical)
+                .Throws(new PropertyMissingException(
+                    "Property 'CountryCodesGeographical' not found in data " +
+                    "for element 'ip'."));
+            ipData.Setup(i => i.CountryCodesPopulation)
+                .Throws(new PropertyMissingException(
+                    "Property 'CountryCodesPopulation' not found in data " +
+                    "for element 'ip'."));
+
+            var element = new Mock<IFlowElement>();
+            element.SetupGet(i => i.Properties)
+                .Returns(new List<IElementPropertyMetaData>());
+            element.SetupGet(i => i.ElementDataKey).Returns("ip");
+            element.Setup(i => i.Process(It.IsAny<IFlowData>()))
+                .Callback<IFlowData>(data =>
+                {
+                    data.GetOrAdd(element.Object.ElementDataKey, p => ipData.Object);
+                });
+
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(element.Object)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "de_DE");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            Assert.IsTrue(
+                result.CountryNamesGeographicalAllTranslated.HasValue);
+            Assert.IsTrue(result.CountryCodesGeographicalAll.HasValue);
+            Assert.IsTrue(
+                result.CountryNamesGeographicalAllTranslated.Value.Count > 200);
+            Assert.IsTrue(
+                result.CountryCodesGeographicalAll.Value.Count > 200);
+        }
+
+        /// <summary>
+        /// When the IP lookup yields no real country (e.g. localhost / private
+        /// IP), the engine receives a sentinel "Unknown" code. "Unknown" must
+        /// never appear in any "All" list; with no real codes the lists should
+        /// be exactly all known countries ordered alphabetically, with codes
+        /// and names index-aligned.
+        /// </summary>
+        [TestMethod]
+        public void AllListsExcludeUnknownWhenNoRealCodes()
+        {
+            var ipElement = MockIpElement(
+                new[] { "Unknown" },
+                new[] { "Unknown" });
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "de_DE");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+            var comparer = GetComparer(flowData, out var cultureUsed);
+
+            // Establish the baseline of all known countries from a list that
+            // never had any weighted codes injected.
+            var expectedCount = result.CountryCodesGeographicalAll.Value.Count;
+            Assert.IsTrue(expectedCount > 200);
+
+            AssertAllCountriesAlphabetical(
+                result.CountryCodesGeographicalAll.Value,
+                result.CountryNamesGeographicalAllTranslated.Value,
+                expectedCount, comparer, cultureUsed);
+            AssertAllCountriesAlphabetical(
+                result.CountryCodesPopulationAll.Value,
+                result.CountryNamesPopulationAllTranslated.Value,
+                expectedCount, comparer, cultureUsed);
+        }
+
+        /// <summary>
+        /// With a mix of a real code and the "Unknown" sentinel, the real
+        /// country leads and "Unknown" is dropped entirely; the remainder is
+        /// alphabetical.
+        /// </summary>
+        [TestMethod]
+        public void AllListsExcludeUnknownWhenMixedWithRealCode()
+        {
+            var ipElement = MockIpElement(
+                new[] { "DE", "Unknown" },
+                new[] { "DE", "Unknown" });
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "de_DE");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+            var comparer = GetComparer(flowData, out var cultureUsed);
+
+            var namesAll = result.CountryNamesGeographicalAllTranslated.Value;
+            var codesAll = result.CountryCodesGeographicalAll.Value;
+
+            // Real country leads.
+            Assert.AreEqual("DE", codesAll[0]);
+            Assert.AreEqual("Deutschland", namesAll[0]);
+
+            // "Unknown" must not appear in either list.
+            Assert.IsFalse(codesAll.Contains("Unknown"));
+            Assert.IsFalse(namesAll.Contains("Unknown"));
+
+            Assert.AreEqual(namesAll.Count, codesAll.Count);
+
+            // Remainder (after the single real code) is alphabetical by name.
+            var remaining = namesAll.Skip(1).ToList();
+            for (int i = 1; i < remaining.Count; i++)
+            {
+                Assert.IsTrue(
+                    comparer.Compare(remaining[i - 1], remaining[i]) <= 0,
+                    $"Expected '{remaining[i - 1]}' <= '{remaining[i]}' -- using '{cultureUsed}'");
+            }
+        }
+
+        private static void AssertAllCountriesAlphabetical(
+            IReadOnlyList<string> codes,
+            IReadOnlyList<string> names,
+            int expectedCount,
+            StringComparer comparer,
+            string cultureUsed)
+        {
+            Assert.AreEqual(expectedCount, codes.Count);
+            Assert.AreEqual(expectedCount, names.Count);
+            Assert.IsFalse(codes.Contains("Unknown"));
+            Assert.IsFalse(names.Contains("Unknown"));
+            for (int i = 1; i < names.Count; i++)
+            {
+                Assert.IsTrue(
+                    comparer.Compare(names[i - 1], names[i]) <= 0,
+                    $"Expected '{names[i - 1]}' <= '{names[i]}' -- using '{cultureUsed}'");
+            }
+        }
+
+        /// <summary>
+        /// Test that the population "All" lists work independently from
+        /// geographical "All" lists.
+        /// </summary>
+        [TestMethod]
+        public void PopulationAndGeographicalAreIndependent()
+        {
+            var ipElement = MockIpElement(
+                geographicCodes: new[] { "DE" },
+                populationCodes: new[] { "US", "CN" });
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            var geoCodes = result.CountryCodesGeographicalAll.Value;
+            var popCodes = result.CountryCodesPopulationAll.Value;
+
+            // Geographical should start with DE.
+            Assert.AreEqual("DE", geoCodes[0]);
+
+            // Population should start with US, CN.
+            Assert.AreEqual("US", popCodes[0]);
+            Assert.AreEqual("CN", popCodes[1]);
+
+            // DE should not be at position 0 in the population list
+            // (unless it happens to be sorted first, which it won't).
+            Assert.AreNotEqual("DE", popCodes[0]);
+        }
+
+        /// <summary>
+        /// Test that German translation produces correct translated names
+        /// in the "All" lists.
+        /// </summary>
+        [TestMethod]
+        public void GermanTranslation()
+        {
+            var ipElement = MockIpElement(
+                new[] { "DE" },
+                new[] { "DE" });
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "de_DE");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            // Weighted translation check.
+            Assert.AreEqual("Deutschland",
+                result.CountryNamesGeographicalTranslated.Value[0].Value);
+
+            // "All" list should have Deutschland first.
+            Assert.AreEqual("Deutschland",
+                result.CountryNamesGeographicalAllTranslated.Value[0]);
+            Assert.AreEqual("DE",
+                result.CountryCodesGeographicalAll.Value[0]);
+        }
+
+        /// <summary>
+        /// Test that Accept-Language header with dash format (e.g. fr-FR)
+        /// is correctly parsed.
+        /// </summary>
+        [TestMethod]
+        public void AcceptLanguageWithDash()
+        {
+            var ipElement = MockIpElement(
+                new[] { "GB" },
+                new[] { "GB" });
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "fr-FR");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            Assert.AreEqual("Royaume-Uni",
+                result.CountryNamesGeographicalTranslated.Value[0].Value);
+        }
+
+        /// <summary>
+        /// Test that English Accept-Language produces no translation
+        /// (English names are returned as-is).
+        /// </summary>
+        [TestMethod]
+        public void EnglishLanguageNoTranslation()
+        {
+            var ipElement = MockIpElement(
+                new[] { "FR", "DE" },
+                new[] { "FR", "DE" });
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "en-US,en;q=0.9");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            // Weighted names should remain in English.
+            Assert.AreEqual("France",
+                result.CountryNamesGeographicalTranslated.Value[0].Value);
+            Assert.AreEqual("Germany",
+                result.CountryNamesGeographicalTranslated.Value[1].Value);
+
+            // "All" list names should be English.
+            Assert.AreEqual("France",
+                result.CountryNamesGeographicalAllTranslated.Value[0]);
+            Assert.AreEqual("Germany",
+                result.CountryNamesGeographicalAllTranslated.Value[1]);
+        }
+
+        /// <summary>
+        /// Test that English is picked even when followed by other languages
+        /// that have translation files (e.g. en-US,de-DE;q=0.5).
+        /// English should win and no German translation should occur.
+        /// </summary>
+        [TestMethod]
+        public void EnglishPreferredOverOtherLanguages()
+        {
+            var ipElement = MockIpElement(
+                new[] { "DE" },
+                new[] { "DE" });
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language",
+                "en-US,en;q=0.9,de-DE;q=0.5,fr;q=0.3");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            // Should be English "Germany", NOT German "Deutschland".
+            Assert.AreEqual("Germany",
+                result.CountryNamesGeographicalTranslated.Value[0].Value);
+        }
+
+        /// <summary>
+        /// Test that when the preferred language (e.g. "es") has no exact
+        /// locale match but a translation file exists (es_ES), it is found
+        /// before falling through to a lower-priority language.
+        /// </summary>
+        [TestMethod]
+        public void PreferredLanguageMatchedBeforeLowerPriority()
+        {
+            var ipElement = MockIpElement(
+                new[] { "DE" },
+                new[] { "DE" });
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language",
+                "es,de-DE;q=0.8,fr;q=0.5");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            // Should be Spanish "Alemania", NOT German "Deutschland".
+            Assert.AreEqual("Alemania",
+                result.CountryNamesGeographicalTranslated.Value[0].Value);
+        }
+
+        // ----------------------------------------------------------------
+        // Additional coverage for behaviour the cases above do not exercise:
+        // the query.translation evidence key and its precedence, weight
+        // preservation through translation, the equal-weight tie-break, the
+        // unknown-locale fallback, code/name alignment across the whole list,
+        // SortingCultureUsed as an output, and translated population names.
+        //
+        // The per-value "missing translation stays original" path is not
+        // exercised here. The shipped data covers every country, so the public
+        // builder cannot produce a partial map; that path needs a base-library
+        // fixture with a deliberately incomplete resource set.
+        // ----------------------------------------------------------------
+
+        /// <summary>
+        /// The bare query.translation evidence key, not only the
+        /// Accept-Language header, selects the language.
+        /// </summary>
+        [TestMethod]
+        public void QueryTranslationEvidenceUsed()
+        {
+            var ipElement = MockIpElement(new[] { "GB" }, new[] { "GB" });
+            using var pipeline = BuildTranslationPipeline(ipElement);
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("query.translation", "fr_FR");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+            Assert.AreEqual("Royaume-Uni",
+                result.CountryNamesGeographicalTranslated.Value[0].Value);
+        }
+
+        /// <summary>
+        /// query.translation takes precedence over the Accept-Language header.
+        /// </summary>
+        [TestMethod]
+        public void QueryTranslationOverridesAcceptLanguageHeader()
+        {
+            var ipElement = MockIpElement(new[] { "GB" }, new[] { "GB" });
+            using var pipeline = BuildTranslationPipeline(ipElement);
+
+            using var flowData = pipeline.CreateFlowData();
+            // Header asks for German, query.translation asks for French.
+            flowData.AddEvidence("header.Accept-Language", "de_DE");
+            flowData.AddEvidence("query.translation", "fr_FR");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+            // French wins (higher-precedence key), so not "Vereinigtes
+            // Königreich".
+            Assert.AreEqual("Royaume-Uni",
+                result.CountryNamesGeographicalTranslated.Value[0].Value);
+        }
+
+        /// <summary>
+        /// Translation preserves each value's raw weighting and changes only
+        /// the name. Every other test reads the name only, so a port that
+        /// dropped or zeroed weights would still pass them.
+        /// </summary>
+        [TestMethod]
+        public void WeightsPreservedThroughTranslation()
+        {
+            var ipElement = MockIpElementWeighted(
+                [new(30000, "FR"), new(35535, "GB")],
+                [new(30000, "FR"), new(35535, "GB")]);
+            using var pipeline = BuildTranslationPipeline(ipElement);
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "fr_FR");
+            flowData.Process();
+
+            var translated = flowData.Get<ICountriesTranslationData>()
+                .CountryNamesGeographicalTranslated.Value;
+
+            // Input order (FR, GB) is preserved; only the name is translated,
+            // and the raw weight rides along unchanged.
+            Assert.AreEqual("France", translated[0].Value);
+            Assert.AreEqual((ushort)30000, translated[0].RawWeighting);
+            Assert.AreEqual("Royaume-Uni", translated[1].Value);
+            Assert.AreEqual((ushort)35535, translated[1].RawWeighting);
+        }
+
+        /// <summary>
+        /// When two countries share a weight, the All list orders them by
+        /// translated name (the secondary sort), not by input order.
+        /// </summary>
+        [TestMethod]
+        public void EqualWeightsBreakTieByTranslatedName()
+        {
+            // Equal weights, input order FR then DE. In French, Allemagne (DE)
+            // sorts before France (FR), so DE must come first despite being
+            // second in the input.
+            var ipElement = MockIpElementWeighted(
+                [new(30000, "FR"), new(30000, "DE")],
+                [new(30000, "FR"), new(30000, "DE")]);
+            using var pipeline = BuildTranslationPipeline(ipElement);
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "fr_FR");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+            var codesAll = result.CountryCodesGeographicalAll.Value;
+            var namesAll = result.CountryNamesGeographicalAllTranslated.Value;
+
+            Assert.AreEqual("DE", codesAll[0]);
+            Assert.AreEqual("Allemagne", namesAll[0]);
+            Assert.AreEqual("FR", codesAll[1]);
+            Assert.AreEqual("France", namesAll[1]);
+        }
+
+        /// <summary>
+        /// An unrecognised locale with no translation file falls back to
+        /// English names, with every property still populated. It must not
+        /// throw or leave the properties without a value.
+        /// </summary>
+        [TestMethod]
+        public void UnknownLanguageFallsBackToEnglish()
+        {
+            var ipElement = MockIpElement(
+                new[] { "FR", "DE" },
+                new[] { "FR", "DE" });
+            using var pipeline = BuildTranslationPipeline(ipElement);
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "zz-ZZ");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            Assert.IsTrue(result.CountryNamesGeographicalTranslated.HasValue);
+            Assert.AreEqual("France",
+                result.CountryNamesGeographicalTranslated.Value[0].Value);
+            Assert.AreEqual("Germany",
+                result.CountryNamesGeographicalTranslated.Value[1].Value);
+
+            Assert.IsTrue(result.CountryNamesGeographicalAllTranslated.HasValue);
+            Assert.IsTrue(result.CountryCodesGeographicalAll.HasValue);
+            Assert.IsGreaterThan(200,
+                result.CountryNamesGeographicalAllTranslated.Value.Count);
+        }
+
+        /// <summary>
+        /// The code list and the translated name list stay aligned across the
+        /// whole list, not only the first entries. A port that sorts the two
+        /// lists independently would desync the tail and still pass a
+        /// count-only check.
+        /// </summary>
+        [TestMethod]
+        public void CodesAndNamesAlignedAcrossWholeList()
+        {
+            var ipElement = MockIpElement(new[] { "GB" }, new[] { "GB" });
+            using var pipeline = BuildTranslationPipeline(ipElement);
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "fr_FR");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+            var codesAll = result.CountryCodesGeographicalAll.Value.ToList();
+            var namesAll =
+                result.CountryNamesGeographicalAllTranslated.Value.ToList();
+
+            Assert.HasCount(namesAll.Count, codesAll);
+            // Codes are unique (each country appears once). Names are NOT
+            // asserted unique: different territories can share one localized
+            // name, so the translated list legitimately contains duplicates.
+            Assert.AreEqual(codesAll.Count, codesAll.Distinct().Count());
+
+            // Verified code -> French-name pairs must line up at the same
+            // index wherever they land in the sorted tail.
+            var expected = new Dictionary<string, string>
+            {
+                ["AO"] = "Angola",
+                ["AW"] = "Aruba",
+                ["AU"] = "Australie",
+            };
+            foreach (var pair in expected)
+            {
+                var idx = codesAll.IndexOf(pair.Key);
+                Assert.IsGreaterThanOrEqualTo(0, idx,
+                    $"Code '{pair.Key}' missing from list");
+                Assert.AreEqual(pair.Value, namesAll[idx],
+                    $"Name at '{pair.Key}' (index {idx}) is misaligned");
+            }
+        }
+
+        /// <summary>
+        /// SortingCultureUsed reports the culture actually used to sort, so it
+        /// can be asserted as an output rather than only consumed as a test
+        /// helper.
+        /// </summary>
+        [TestMethod]
+        public void SortingCultureUsedReflectsResolvedCulture()
+        {
+            using (var pipeline = BuildTranslationPipeline(
+                MockIpElement(new[] { "GB" }, new[] { "GB" })))
+            using (var flowData = pipeline.CreateFlowData())
+            {
+                flowData.AddEvidence("header.Accept-Language", "fr_FR");
+                flowData.Process();
+                var data = (CountriesTranslationData)
+                    flowData.Get<ICountriesTranslationData>();
+                Assert.AreEqual("fr-FR", data.SortingCultureUsed);
+            }
+
+            using (var pipeline = BuildTranslationPipeline(
+                MockIpElement(new[] { "GB" }, new[] { "GB" })))
+            using (var flowData = pipeline.CreateFlowData())
+            {
+                // No language resolves, so the invariant culture is used and
+                // the reported culture string is empty.
+                flowData.Process();
+                var data = (CountriesTranslationData)
+                    flowData.Get<ICountriesTranslationData>();
+                Assert.AreEqual(string.Empty, data.SortingCultureUsed);
+            }
+        }
+
+        /// <summary>
+        /// The population All list carries translated names, not just codes,
+        /// and is independent of the geographical list.
+        /// </summary>
+        [TestMethod]
+        public void PopulationAllListNamesAreTranslated()
+        {
+            var ipElement = MockIpElement(
+                geographicCodes: new[] { "GB" },
+                populationCodes: new[] { "DE" });
+            using var pipeline = BuildTranslationPipeline(ipElement);
+
+            using var flowData = pipeline.CreateFlowData();
+            flowData.AddEvidence("header.Accept-Language", "fr_FR");
+            flowData.Process();
+
+            var result = flowData.Get<ICountriesTranslationData>();
+
+            // Geographical is GB -> Royaume-Uni, population is DE -> Allemagne.
+            Assert.AreEqual("Royaume-Uni",
+                result.CountryNamesGeographicalAllTranslated.Value[0]);
+            Assert.AreEqual("GB",
+                result.CountryCodesGeographicalAll.Value[0]);
+            Assert.AreEqual("Allemagne",
+                result.CountryNamesPopulationAllTranslated.Value[0]);
+            Assert.AreEqual("DE",
+                result.CountryCodesPopulationAll.Value[0]);
+        }
+
+        /// <summary>
+        /// Build a pipeline of a (mocked) IP element followed by the two
+        /// country translation engines.
+        /// </summary>
+        private IPipeline BuildTranslationPipeline(IFlowElement ipElement)
+        {
+            var codeTranslationElement =
+                new CountryCodeTranslationEngineBuilder(_loggerFactory).Build();
+            var nameTranslationElement =
+                new CountriesTranslationEngineBuilder(_loggerFactory).Build();
+            return new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(ipElement)
+                .AddFlowElement(codeTranslationElement)
+                .AddFlowElement(nameTranslationElement)
+                .Build();
+        }
+
+        /// <summary>
+        /// Create a mocked IP element that adds the country code properties
+        /// provided to a new ElementData. The Element key, and properties are
+        /// initialized just to make the Pipeline work.
+        /// </summary>
+        private IFlowElement MockIpElementWeighted(
+            IReadOnlyList<WeightedValue<string>> geographicCodes,
+            IReadOnlyList<WeightedValue<string>> populationCodes)
+        {
+            return MockIpElement(
+                new AspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>(
+                    geographicCodes),
+                new AspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>(
+                    populationCodes));
+        }
+
+        /// <summary>
+        /// Create a mocked IP element that adds the country code properties
+        /// provided to a new ElementData. The Element key, and properties are
+        /// initialized just to make the Pipeline work.
+        /// </summary>
+        private IFlowElement MockIpElement(
+            IReadOnlyList<string> geographicCodes,
+            IReadOnlyList<string> populationCodes)
+        {
+            return MockIpElement(
+                new AspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>(
+                    Weightify(geographicCodes)),
+                new AspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>(
+                    Weightify(populationCodes)));
+        }
+
+        private static IReadOnlyList<WeightedValue<string>> Weightify(
+            IReadOnlyList<string> countryCodes)
+        {
+            if (countryCodes.Count == 0)
+            {
+                return [];
+            }
+            ushort weightLeft = ushort.MaxValue;
+            ushort[] buckets = new ushort[countryCodes.Count];
+            for (ushort i = 0; i < countryCodes.Count; i++) {
+                buckets[i] = (ushort)(((ushort)countryCodes.Count) - i);
+                weightLeft -= buckets[i];
+            }
+            ushort additional = (ushort)(weightLeft / countryCodes.Count);
+            weightLeft -= (ushort)(additional * countryCodes.Count);
+            for (ushort i = 0; i < countryCodes.Count; i++)
+            {
+                buckets[i] += additional;
+            }
+            buckets[0] += weightLeft;
+            return countryCodes
+                .Select((c, i) => new WeightedValue<string>(buckets[i], c))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Create a mocked IP element that adds the country code properties
+        /// provided to a new ElementData. The Element key, and properties are
+        /// initialized just to make the Pipeline work.
+        /// </summary>
+        /// <param name="countriesGeographic"></param>
+        /// <param name="countriesPopulation"></param>
+        /// <returns></returns>
+        private IFlowElement MockIpElement(
+            IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>> countriesGeographic,
+            IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>> countriesPopulation)
+        {
+            var ipData = new Mock<IIpIntelligenceData>();
+            ipData.Setup(i => i["CountryCodesGeographical"])
+                .Returns(countriesGeographic);
+            ipData.Setup(i => i["CountryCodesPopulation"])
+                .Returns(countriesPopulation);
+            ipData.Setup(i => i.CountryCodesGeographical)
+                .Returns(countriesGeographic);
+            ipData.Setup(i => i.CountryCodesPopulation)
+                .Returns(countriesPopulation);
+
+            var element = new Mock<IFlowElement>();
+            element.SetupGet(i => i.Properties)
+                .Returns(new List<IElementPropertyMetaData>());
+            element.SetupGet(i => i.ElementDataKey).Returns("ip");
+            element.Setup(i => i.Process(It.IsAny<IFlowData>()))
+                .Callback<IFlowData>(data =>
+                {
+                    data.GetOrAdd(element.Object.ElementDataKey, p => ipData.Object);
+                });
+            return element.Object;
+        }
+    }
+}
