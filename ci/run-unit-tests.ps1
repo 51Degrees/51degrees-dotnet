@@ -6,20 +6,21 @@ param (
     [string]$BuildMethod = "dotnet"
 )
 
+# The two old-style .NET Framework test projects. Their binding redirects are
+# only honoured by vstest, so they run with it, on Windows, where msbuild
+# built them. Every other test project is SDK-style and runs with dotnet
+# test, whose host also honours the redirects an SDK project generates for
+# its net462 build, which the x64 vstest host does not.
+$OldStyle = "^FiftyOne\.(Pipeline\.Web\.Framework\.Tests|DeviceDetection\.Tests\.Framework)\.dll$"
+
 # The library test assemblies. The example tests are integration tests, and
-# the test helper packages are not tests.
-$Filter = "^FiftyOne\.(?!.*Examples?\.Tests)(?!.*TestHelpers).*Tests?(\.Core|\.Framework)?\.dll$"
+# the test helper packages are not tests. A native library is loaded by a
+# host of the assembly's own platform, which the engine test projects set.
+$Filter = "^FiftyOne\.(?!Pipeline\.Web\.Framework\.Tests\.dll$)(?!DeviceDetection\.Tests\.Framework\.dll$)(?!.*Examples?\.Tests)(?!.*TestHelpers).*Tests?(\.Core|\.Framework)?\.dll$"
 # A run can be narrowed to some assemblies by setting FIFTYONE_TEST_FILTER,
 # which the probe workflow does.
 if ($env:FIFTYONE_TEST_FILTER) {
     $Filter = $env:FIFTYONE_TEST_FILTER
-}
-# The shared step gives vstest the architecture, /Platform:x86 say, only when
-# the filter does not contain the text "dll", so on the Windows jobs the
-# extension is spelt without it. An x86 build needs an x86 test host, and the
-# example test assemblies are Any CPU, which would otherwise run as x64.
-if ($BuildMethod -eq "msbuild") {
-    $Filter = $Filter.Replace('.dll$', '.d[l]l$')
 }
 
 ./dotnet/run-unit-tests.ps1 `
@@ -27,7 +28,21 @@ if ($BuildMethod -eq "msbuild") {
     -Name $Name `
     -Configuration $Configuration `
     -Arch $Arch `
-    -BuildMethod $BuildMethod `
+    -BuildMethod "dotnet" `
     -BlameHangTimeout "20m" `
     -Filter $Filter
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
+if ($BuildMethod -eq "msbuild" -and -not $env:FIFTYONE_TEST_FILTER) {
+    ./dotnet/run-unit-tests.ps1 `
+        -RepoName $RepoName `
+        -Name $Name `
+        -Configuration $Configuration `
+        -Arch $Arch `
+        -BuildMethod "msbuild" `
+        -BlameHangTimeout "20m" `
+        -Filter $OldStyle
+}
 exit $LASTEXITCODE
