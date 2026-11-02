@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+	
+	<!-- NuGet package properties -->
+	<PackageId>FiftyOne.Caching</PackageId>
+	<Title>Shared library containing caching functionality used by 51Degrees products</Title>
+	<PackageDescription>The 51Degrees caching library contains shared functionality and interfaces for various caching implementations.</PackageDescription>
+	<Authors>51Degrees Engineering</Authors>
+	<PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
+	<PackageIconUrl>https://51degrees.com/portals/0/Logos/Square%20Logo.png?width=64</PackageIconUrl>
+	<Copyright>51Degrees Mobile Experts Limited</Copyright>
+	<PackageTags>51degrees,cache,caching,lru</PackageTags>
+	<RepositoryUrl>https://github.com/51Degrees/caching-dotnet</RepositoryUrl>
+	<PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=caching-dotnet&amp;utm_content=fiftyone.caching-fiftyone.caching.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+	<PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.4" />
+  </ItemGroup>
+
+</Project>
