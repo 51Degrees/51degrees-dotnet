@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Platforms>AnyCPU;x64;x86;ARM64</Platforms>
+    <RootNamespace>Client_Hints_Not_Integrated_NetCore_31</RootNamespace>
+    <AssemblyName>Client_Hints_Not_Integrated_NetCore_31</AssemblyName>
+    <Configurations>Debug;Release;CoreRelease;CoreDebug</Configurations>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<ProjectReference Include="..\..\ExampleBase\FiftyOne.DeviceDetection.Examples.csproj" />
+	<PackageReference Include="FiftyOne.Pipeline.Web" Version="4.5.128" />
+	<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.33" />
+  </ItemGroup>
+  
+</Project>

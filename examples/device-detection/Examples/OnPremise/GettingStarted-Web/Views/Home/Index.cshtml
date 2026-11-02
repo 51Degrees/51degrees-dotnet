@@ -1,0 +1,192 @@
+@* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* *@
+
+@using FiftyOne.DeviceDetection.Examples
+@model FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedWeb.Model.IndexModel
+@{
+    ViewData["Title"] = "Web Integration Example";
+}
+
+<link rel="stylesheet" href="~/css/examples-main.min.css" />
+
+<div class="c-eg-page">
+    @if (DateTime.UtcNow > Model.DataFile.DataPublishedDateTime.AddDays(ExampleUtils.DataFileAgeWarning))
+    {
+        <div class="c-eg-alert">
+            WARNING: This example is using a data file that is more than @ExampleUtils.DataFileAgeWarning
+            days old. A more recent data file may be needed to correctly detect the latest devices,
+            browsers, etc. The latest lite data file is available from the
+            <a href="https://github.com/51Degrees/device-detection-data">device-detection-data</a>
+            repository on GitHub. Find out about the Enterprise data file, which includes automatic
+            daily updates, on our <a href="https://51degrees.com/pricing?utm_source=code&amp;utm_medium=example&amp;utm_campaign=device-detection-dotnet-examples&amp;utm_content=examples-onpremise-gettingstarted-web-views-home-index.cshtml&amp;utm_term=data-file-age-warning">pricing page</a>.
+        </div>
+    }
+    <h2 class="c-eg-page__title">Web Integration Example OnPremise</h2>
+    <p class="c-eg-page__lead">
+        This example demonstrates the use of the Pipeline API to perform device detection within a
+        simple ASP.NET Core web project. It highlights automatic handling of the Accept-CH header,
+        used to request User-Agent Client Hints from the browser, and client-side evidence collection
+        to identify Apple device models and properties such as screen size.
+    </p>
+
+    <noscript>
+        <div class="c-eg-alert">
+            WARNING: JavaScript is disabled in your browser. This means that the callback discussed
+            further down this page will not fire and UACH headers will not be sent.
+        </div>
+    </noscript>
+
+    <div id="content">
+        <h3 class="c-eg-page__heading">Detection results</h3>
+        <p class="c-eg-page__lead">
+            The following values are determined by server-side device detection on the first request.
+        </p>
+        <table class="c-eg-table">
+            <thead class="c-eg-table__head">
+                <tr class="c-eg-table__row">
+                    <th class="c-eg-table__cell">Key</th>
+                    <th class="c-eg-table__cell">Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Vendor:</td><td class="c-eg-table__cell">@Model.HardwareVendor</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Name:</td><td class="c-eg-table__cell">@Model.HardwareName</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Device Type:</td><td class="c-eg-table__cell">@Model.DeviceType</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Vendor:</td><td class="c-eg-table__cell">@Model.PlatformVendor</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Name:</td><td class="c-eg-table__cell">@Model.PlatformName</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Version:</td><td class="c-eg-table__cell">@Model.PlatformVersion</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Vendor:</td><td class="c-eg-table__cell">@Model.BrowserVendor</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Name:</td><td class="c-eg-table__cell">@Model.BrowserName</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Version:</td><td class="c-eg-table__cell">@Model.BrowserVersion</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Screen width (pixels):</td><td class="c-eg-table__cell">@Model.ScreenWidth</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Screen height (pixels):</td><td class="c-eg-table__cell">@Model.ScreenHeight</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Device Id:</td><td class="c-eg-table__cell">@Model.DeviceId</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Price Band:</td><td class="c-eg-table__cell">@Model.PriceBand</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Headless browser:</td><td class="c-eg-table__cell" id="IsHeadless">@Model.IsHeadless</td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Has web driver:</td><td class="c-eg-table__cell" id="HasWebDriver">@Model.HasWebDriver</td></tr>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Window visible:</td><td class="c-eg-table__cell" id="IsVisible">@Model.IsVisible</td></tr>
+            </tbody>
+        </table>
+
+        <h3 class="c-eg-page__heading">Evidence used</h3>
+        <p class="c-eg-legend">
+            Evidence was
+            <span class="c-eg-legend__swatch c-eg-legend__swatch--used">used</span>
+            /
+            <span class="c-eg-legend__swatch c-eg-legend__swatch--present">present</span>
+            for detection
+        </p>
+        <table class="c-eg-table">
+            <thead class="c-eg-table__head">
+                <tr class="c-eg-table__row">
+                    <th class="c-eg-table__cell">Key</th>
+                    <th class="c-eg-table__cell">Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model.Evidence)
+                {
+                    <tr class="c-eg-table__row @(entry.Used ? "c-eg-table__row--used" : "c-eg-table__row--present")">
+                        <td class="c-eg-table__cell c-eg-table__cell--key">@(entry.Key)</td>
+                        <td class="c-eg-table__cell">@(entry.Value)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <h3 class="c-eg-page__heading">Response headers</h3>
+        <table class="c-eg-table">
+            <thead class="c-eg-table__head">
+                <tr class="c-eg-table__row">
+                    <th class="c-eg-table__cell">Key</th>
+                    <th class="c-eg-table__cell">Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model.ResponseHeaders)
+                {
+                    <tr class="c-eg-table__row c-eg-table__row--present">
+                        <td class="c-eg-table__cell c-eg-table__cell--key">@(entry.Key)</td>
+                        <td class="c-eg-table__cell">@(entry.Value)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.ResponseHeaders.ContainsKey("Accept-CH") == false)
+        {
+            <div class="c-eg-alert">
+                WARNING: There is no Accept-CH header in the response. This may indicate that your
+                browser does not support User-Agent Client Hints. This is not necessarily a problem,
+                but if you want to try detection using User-Agent Client Hints, make sure your browser
+                <a href="https://developer.mozilla.org/en-US/docs/Web/API/User-Agent_Client_Hints_API#browser_compatibility">supports them</a>.
+            </div>
+        }
+
+        <h3 class="c-eg-page__heading">Client-side evidence and Apple models</h3>
+        <p class="c-eg-page__lead">
+            The information below is determined after a callback to the server with additional evidence
+            gathered by JavaScript on the client. The callback also includes any additional client hints
+            headers that have been requested. For Apple devices the server cannot tell the exact model,
+            so the callback shows a smaller set of possible models than the first request.
+        </p>
+    </div>
+
+    @if (Model.Engine.DataSourceTier == "Lite")
+    {
+        <div class="c-eg-message">
+          <p class="c-eg-message__text">The paid data file adds daily automatic updates, non-human identification and IP intelligence. <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=device-detection-dotnet-examples&amp;utm_content=examples-onpremise-gettingstarted-web-views-home-index.cshtml&amp;utm_term=paid-data-file">Contact us</a> to explore the options.</p>
+          <a class="b-btn c-eg-message__cta" href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=device-detection-dotnet-examples&amp;utm_content=examples-onpremise-gettingstarted-web-views-home-index.cshtml&amp;utm_term=paid-data-file">Contact us</a>
+        </div>
+    }
+
+    @* Kept outside #content, which the client-side results are appended to,
+        so this section stays at the end of the page. *@
+    <div class="c-eg-section" id="find-out-more">
+        <hr />
+        <h3 class="c-eg-page__heading">Find out more</h3>
+        <ul>
+            <li><a href="https://51degrees.com/documentation/_device_detection__overview.html?utm_source=code&amp;utm_medium=example&amp;utm_campaign=device-detection-dotnet-examples&amp;utm_content=examples-onpremise-gettingstarted-web-views-home-index.cshtml&amp;utm_term=find-out-more">How device detection works</a></li>
+            <li><a href="https://51degrees.com/pricing?utm_source=code&amp;utm_medium=example&amp;utm_campaign=device-detection-dotnet-examples&amp;utm_content=examples-onpremise-gettingstarted-web-views-home-index.cshtml&amp;utm_term=find-out-more">Data files and prices</a></li>
+            <li><a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=device-detection-dotnet-examples&amp;utm_content=examples-onpremise-gettingstarted-web-views-home-index.cshtml&amp;utm_term=find-out-more">Talk to 51Degrees about using it</a></li>
+        </ul>
+        <p class="c-eg-page__lead">The source code for this demo and what it uses.</p>
+        <ul>
+            <li><a href="https://github.com/51Degrees/device-detection-dotnet-examples">https://github.com/51Degrees/device-detection-dotnet-examples</a></li>
+            <li><a href="https://github.com/51Degrees/device-detection-dotnet">https://github.com/51Degrees/device-detection-dotnet</a></li>
+            <li><a href="https://github.com/51Degrees/51degrees-cxx">https://github.com/51Degrees/51degrees-cxx</a></li>
+            <li><a href="https://github.com/51Degrees/pipeline-dotnet">https://github.com/51Degrees/pipeline-dotnet</a></li>
+        </ul>
+    </div>
+</div>
+
+@* The FiftyOneJS view component (from the FiftyOne.Pipeline.Web package) injects
+    51Degrees.core.js. That script sends client-side evidence back to the server and
+    raises the 'complete' event with the refined flow data. The shared examples.js
+    helper subscribes to it and appends a results table into #content. *@
+@await Component.InvokeAsync("FiftyOneJS")
+<script src="~/js/examples.min.js"></script>
+<script>
+    window.onload = function () {
+        fodExamples.bindDeviceCallback({ targetId: "content" });
+    };
+</script>

@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Examples.OnPremise.OfflineProcessing</AssemblyName>
+    <RootNamespace>Examples.OnPremise.OfflineProcessing</RootNamespace>
+    <Platforms>AnyCPU;x64;x86;ARM64</Platforms>
+    <Configurations>Debug;Release;CoreRelease</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ExampleBase\FiftyOne.DeviceDetection.Examples.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,30 @@
+{
+  "solution": {
+    "path": "FiftyOne.DeviceDetection.Examples.sln",
+    "projects": [
+      "Examples\\Cloud\\Configurator-Console\\Configurator-Console.csproj",
+      "Examples\\Cloud\\GetAllProperties-Console\\GetAllProperties.csproj",
+      "Examples\\Cloud\\GettingStarted-Console\\GettingStarted-Console.csproj",
+      "Examples\\Cloud\\GettingStarted-Web-ClientOnly\\GettingStarted-Web-ClientOnly.csproj",
+      "Examples\\Cloud\\GettingStarted-Web\\GettingStarted-Web.csproj",
+      "Examples\\Cloud\\Metadata-Console\\Metadata-Console.csproj",
+      "Examples\\Cloud\\NativeModel-Console\\NativeModelLookup-Console.csproj",
+      "Examples\\Cloud\\pmp-web\\pmp-web.csproj",
+      "Examples\\Cloud\\TAC-Console\\TacLookup-Console.csproj",
+      "Examples\\ExampleBase\\FiftyOne.DeviceDetection.Examples.csproj",
+      "Examples\\OnPremise\\GettingStarted-Console\\GettingStarted-Console.csproj",
+      "Examples\\OnPremise\\GettingStarted-Web\\GettingStarted-Web.csproj",
+      "Examples\\OnPremise\\MatchMetrics-Console\\MatchMetrics-Console.csproj",
+      "Examples\\OnPremise\\Metadata-Console\\Metadata-Console.csproj",
+      "Examples\\OnPremise\\OfflineProcessing-Console\\OfflineProcessing-Console.csproj",
+      "Examples\\OnPremise\\Performance-Console\\Performance-Console.csproj",
+      "Examples\\OnPremise\\UpdateDataFile-Console\\UpdateDataFile-Console.csproj",
+      "Tests\\FiftyOne.DeviceDetection.Example.Tests.Cloud\\FiftyOne.DeviceDetection.Example.Tests.Cloud.csproj",
+      "Tests\\FiftyOne.DeviceDetection.Example.Tests.OnPremise\\FiftyOne.DeviceDetection.Example.Tests.OnPremise.csproj",
+      "Tests\\FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.ClientOnly\\FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.ClientOnly.csproj",
+      "Tests\\FiftyOne.DeviceDetection.Example.Tests.Web.Cloud\\FiftyOne.DeviceDetection.Example.Tests.Web.Cloud.csproj",
+      "Tests\\FiftyOne.DeviceDetection.Example.Tests.Web.OnPremise\\FiftyOne.DeviceDetection.Example.Tests.Web.OnPremise.csproj",
+      "Tests\\FiftyOne.DeviceDetection.Example.Tests.Web\\FiftyOne.DeviceDetection.Example.Tests.Web.csproj"
+    ]
+  }
+}

@@ -1,0 +1,62 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+
+    <IsPackable>false</IsPackable>
+
+    <Platforms>AnyCPU;x64;x86;ARM64</Platforms>
+
+    <Configurations>Debug;Release</Configurations>
+	
+	<DefineConstants>TRACE;NETCORE</DefineConstants>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RunSettingsFilePath>$(MSBuildProjectDirectory)\..\test.runsettings</RunSettingsFilePath>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.6.4" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.6.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Examples\Cloud\Configurator-Console\Configurator-Console.csproj" />
+    <ProjectReference Include="..\..\Examples\Cloud\GetAllProperties-Console\GetAllProperties.csproj" />
+    <ProjectReference Include="..\..\Examples\Cloud\GettingStarted-Console\GettingStarted-Console.csproj" />
+    <ProjectReference Include="..\..\Examples\Cloud\Metadata-Console\Metadata-Console.csproj" />
+    <ProjectReference Include="..\..\Examples\Cloud\NativeModel-Console\NativeModelLookup-Console.csproj" />
+    <ProjectReference Include="..\..\Examples\Cloud\TAC-Console\TacLookup-Console.csproj" />
+    <ProjectReference Include="..\..\Examples\Cloud\pmp-web\pmp-web.csproj" />
+  </ItemGroup>
+
+  <!-- PmpWebTemplateTests fills the demo's real templates, so the test
+       reads the same files the demo serves rather than a copy that can
+       drift away from them. -->
+  <ItemGroup>
+    <Content Include="..\..\Examples\Cloud\pmp-web\wwwroot\templates\**\*.html">
+      <Link>templates\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!--
+    The discovery guard is shared source rather than a shared project so
+    that every test assembly checks itself. A class MSTest cannot discover
+    is dropped silently, so the check has to live inside the assembly it
+    is checking.
+  -->
+  <ItemGroup>
+    <Compile Include="..\Shared\TestDiscoveryGuard.cs"
+             Link="TestDiscoveryGuard.cs" />
+  </ItemGroup>
+
+</Project>
