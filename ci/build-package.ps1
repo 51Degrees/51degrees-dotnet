@@ -86,16 +86,21 @@ if (-not $packages) {
 # its own integrity check and NuGet drops it during validation.
 Write-Host "Installing NuGetKeyVaultSignTool"
 dotnet tool install -g NuGetKeyVaultSignTool
-Write-Host "Signing $($packages.Count) packages"
-NuGetKeyVaultSignTool sign -f "$PackagesFolder/*.nupkg" `
-    --file-digest sha256 `
-    --timestamp-digest sha256 `
-    --timestamp-rfc3161 http://rfc3161timestamp.globalsign.com/advanced `
-    --azure-key-vault-url $Keys.CodeSigningKeyVaultUrl `
-    --azure-key-vault-client-id $Keys.CodeSigningKeyVaultClientId `
-    --azure-key-vault-tenant-id $Keys.CodeSigningKeyVaultTenantId `
-    --azure-key-vault-client-secret $Keys.CodeSigningKeyVaultClientSecret `
-    --azure-key-vault-certificate $Keys.CodeSigningKeyVaultCertificateName
+# Each package is signed by its full path. Given a wildcard the tool signs
+# whatever it matches, which on the Windows runner was nothing, and still
+# succeeds, so an unsigned package reached the verify step below.
+foreach ($package in $packages) {
+    Write-Host "Signing $($package.Name)"
+    NuGetKeyVaultSignTool sign $package.FullName `
+        --file-digest sha256 `
+        --timestamp-digest sha256 `
+        --timestamp-rfc3161 http://rfc3161timestamp.globalsign.com/advanced `
+        --azure-key-vault-url $Keys.CodeSigningKeyVaultUrl `
+        --azure-key-vault-client-id $Keys.CodeSigningKeyVaultClientId `
+        --azure-key-vault-tenant-id $Keys.CodeSigningKeyVaultTenantId `
+        --azure-key-vault-client-secret $Keys.CodeSigningKeyVaultClientSecret `
+        --azure-key-vault-certificate $Keys.CodeSigningKeyVaultCertificateName
+}
 foreach ($package in $packages) {
     dotnet nuget verify $package.FullName
 }

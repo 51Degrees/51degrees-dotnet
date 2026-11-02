@@ -47,7 +47,8 @@
     IsPackable itself.
   -->
   <PropertyGroup>
-    <IsPackable Condition="$(MSBuildProjectDirectory.Contains('Tests')) or $(MSBuildProjectDirectory.Contains('Examples')) or $(MSBuildProjectDirectory.Contains('examples')) or $(MSBuildProjectDirectory.Contains('performance-tests')) or $(MSBuildProjectDirectory.Contains('Tools')) or $(MSBuildProjectName.EndsWith('.Test'))">false</IsPackable>
+    <_FiftyOnePackPath>$([System.String]::Copy('$(MSBuildProjectDirectory)').Replace('\', '/'))/</_FiftyOnePackPath>
+    <IsPackable Condition="$(_FiftyOnePackPath.Contains('/Tests/')) or $(_FiftyOnePackPath.Contains('/Examples/')) or $(_FiftyOnePackPath.Contains('/examples/')) or $(_FiftyOnePackPath.Contains('/performance-tests/')) or $(_FiftyOnePackPath.Contains('/Tools/')) or $(MSBuildProjectName.EndsWith('.Test')) or $(MSBuildProjectName.EndsWith('.Tests'))">false</IsPackable>
   </PropertyGroup>
 
   <!--

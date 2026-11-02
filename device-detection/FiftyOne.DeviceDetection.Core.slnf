@@ -3,19 +3,21 @@
     "path": "FiftyOne.DeviceDetection.sln",
     "projects": [
       "Cloud\\FiftyOne.DeviceDetection.Cloud.csproj",
-      "Shared\\FiftyOne.DeviceDetection.Shared.csproj",
-      "Hash.Engine.OnPremise\\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj",
-      "PropertyKeyed\\FiftyOne.DeviceDetection.PropertyKeyed.csproj",
-      "RobotsTxt\\FiftyOne.DeviceDetection.RobotsTxt.csproj",
       "DeviceDetection\\FiftyOne.DeviceDetection.csproj",
+      "Hash.Engine.OnPremise\\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj",
+      "performance-tests\\performance-tests.csproj",
+      "PropertyKeyed\\FiftyOne.DeviceDetection.PropertyKeyed.csproj",
+      "RobotsTxt.Cloud\\FiftyOne.DeviceDetection.RobotsTxt.Cloud.csproj",
+      "RobotsTxt\\FiftyOne.DeviceDetection.RobotsTxt.csproj",
+      "Shared\\FiftyOne.DeviceDetection.Shared.csproj",
       "Tests\\Cloud.Tests\\FiftyOne.DeviceDetection.Cloud.Tests.csproj",
       "Tests\\Hash.Tests\\FiftyOne.DeviceDetection.Hash.Tests.csproj",
       "Tests\\PropertyKeyed.Tests\\FiftyOne.DeviceDetection.PropertyKeyed.Tests.csproj",
+      "Tests\\RobotsTxt.Cloud.Tests\\FiftyOne.DeviceDetection.RobotsTxt.Cloud.Tests.csproj",
       "Tests\\RobotsTxt.Tests\\FiftyOne.DeviceDetection.RobotsTxt.Tests.csproj",
       "Tests\\TestHelpers\\FiftyOne.DeviceDetection.TestHelpers.csproj",
       "Tests\\Tests.Core\\FiftyOne.DeviceDetection.Tests.Core.csproj",
-      "Tools\\GenerateConfig\\GenerateConfig.csproj",
-      "performance-tests\\performance-tests.csproj"
+      "Tools\\GenerateConfig\\GenerateConfig.csproj"
     ]
   }
 }
