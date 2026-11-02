@@ -46,6 +46,10 @@ on:
         description: 'Run id whose package artifact the examples are built against (publish test probe)'
         type: string
         default: ''
+      upload-path:
+        description: 'A folder of the repository to upload as an artifact afterwards, for inspection'
+        type: string
+        default: ''
 
 defaults:
   run:
@@ -121,6 +125,15 @@ jobs:
             }
             Write-Host "::endgroup::"
           }
+
+      - name: Upload the folder asked for
+        if: ${{ !cancelled() && inputs.upload-path != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: folder-${{ inputs.image }}-${{ inputs.arch }}-${{ inputs.configuration }}
+          path: ${{ github.event.repository.name }}/${{ inputs.upload-path }}
+          if-no-files-found: warn
+          include-hidden-files: true
 
       - name: Upload test results
         if: ${{ !cancelled() }}
