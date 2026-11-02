@@ -76,6 +76,25 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
             return driver;
         }
 
+        /// <summary>
+        /// Marks the test inconclusive when it runs where no ChromeDriver can
+        /// be installed, which is Linux on Arm64: Selenium Manager has no
+        /// build for it, so there is nothing for the test to be missing.
+        /// Anywhere else the caller fails the test, because a driver that
+        /// could be installed and was not is a broken environment.
+        /// </summary>
+        public static void InconclusiveWhereNoDriverExists(WebDriverException ex)
+        {
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+                    System.Runtime.InteropServices.OSPlatform.Linux) &&
+                System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture ==
+                    System.Runtime.InteropServices.Architecture.Arm64)
+            {
+                Assert.Inconclusive("No ChromeDriver exists for Linux on " +
+                    $"Arm64, so the browser tests cannot run here: {ex.Message}");
+            }
+        }
+
         private static void CreateDriver()
         {
             try

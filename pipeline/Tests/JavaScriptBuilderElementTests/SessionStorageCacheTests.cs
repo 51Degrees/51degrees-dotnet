@@ -1872,7 +1872,9 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
             catch (WebDriverException ex)
             {
                 // Not Inconclusive: skipping here reports green for a run in
-                // which none of these tests executed at all.
+                // which none of these tests executed at all. The one
+                // exception is a platform with no driver to install.
+                JavaScriptBuilderElementTestsBase.InconclusiveWhereNoDriverExists(ex);
                 Assert.Fail("Could not create a ChromeDriver, check that the " +
                     $"Chromium driver is installed: {ex.Message}");
                 return null;
