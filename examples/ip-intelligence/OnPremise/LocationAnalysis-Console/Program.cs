@@ -76,7 +76,7 @@ using System.Threading;
 /// obtained via the [ip-intelligence-data repository](https://github.com/51Degrees/ip-intelligence-data),
 /// although the Lite file contains fewer properties and less precise data
 /// than the enterprise data file. To obtain an enterprise data file for
-/// testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-onpremise-locationanalysis-console-program.cs&amp;utm_term=header).
+/// testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-locationanalysis-console-program.cs&amp;utm_term=header).
 ///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
@@ -237,7 +237,7 @@ public class Program
             // LowMemory profile so the large data file is paged from disk,
             // not loaded into RAM. See the documentation for more detail on
             // this and other configuration options.
-            // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-onpremise-locationanalysis-console-program.cs&utm_term=run
+            // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-locationanalysis-console-program.cs&utm_term=run
             using var ipiEngine = new IpiOnPremiseEngineBuilder(loggerFactory)
                 .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                 // Inhibit auto-update of the data file for this example.
@@ -815,7 +815,7 @@ public class Program
             // may specify another file as a command line parameter.
             //
             // For testing, contact us to obtain an enterprise data file:
-            // https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-onpremise-locationanalysis-console-program.cs&utm_term=main
+            // https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-locationanalysis-console-program.cs&utm_term=main
             Examples.ExampleUtils.FindDataFile(
                 Constants.ENTERPRISE_IPI_DATA_FILE_NAME);
 

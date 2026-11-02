@@ -119,8 +119,8 @@
 
         <% if (engine.DataSourceTier == "Lite") { %>
             <div class="c-eg-message">
-              <p class="c-eg-message__text">Need more on-premise properties and features? <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-onpremise-framework-web-default.aspx&amp;utm_term=on-premise-properties">Contact us</a> to explore the options.</p>
-              <a class="b-btn c-eg-message__cta" href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=ip-intelligence-dotnet-examples&amp;utm_content=examples-onpremise-framework-web-default.aspx&amp;utm_term=on-premise-properties">Contact us</a>
+              <p class="c-eg-message__text">Need more on-premise properties and features? <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx&amp;utm_term=on-premise-properties">Contact us</a> to explore the options.</p>
+              <a class="b-btn c-eg-message__cta" href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx&amp;utm_term=on-premise-properties">Contact us</a>
             </div>
         <% } %>
     </div>

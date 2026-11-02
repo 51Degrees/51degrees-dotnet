@@ -330,7 +330,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Performance
                     //
                     // Note that the Lite data file contains a more limited set of properties than the
                     // Enterprise data file. Find out about the Enterprise data file on our pricing page:
-                    // https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=device-detection-dotnet-examples&utm_content=examples-onpremise-performance-console-program.cs&utm_term=main
+                    // https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-performance-console-program.cs&utm_term=main
                     ExampleUtils.FindDataFile(Constants.LITE_HASH_DATA_FILE_NAME);
                 // Do the same for the yaml evidence file.
                 var evidenceFile = options.EvidenceFile != null ? options.EvidenceFile :

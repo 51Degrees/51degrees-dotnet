@@ -347,7 +347,7 @@ namespace Examples.AgentSignature
             Console.WriteLine(
                 "    https://51degrees.com/documentation" +
                 "?utm_source=code&utm_medium=example" +
-                "&utm_campaign=pipeline-dotnet" +
+                "&utm_campaign=51degrees-dotnet" +
                 "&utm_content=examples-agentsignature-program.cs" +
                 "&utm_term=find-out-more");
             Console.WriteLine(
@@ -355,7 +355,7 @@ namespace Examples.AgentSignature
             Console.WriteLine(
                 "    https://51degrees.com" +
                 "?utm_source=code&utm_medium=example" +
-                "&utm_campaign=pipeline-dotnet" +
+                "&utm_campaign=51degrees-dotnet" +
                 "&utm_content=examples-agentsignature-program.cs" +
                 "&utm_term=about-51degrees");
         }

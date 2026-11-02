@@ -284,14 +284,14 @@ namespace FiftyOne.IpIntelligence.Examples
                         $"data file is available from the ip-intelligence-data repository on " +
                         $"GitHub https://github.com/51Degrees/ip-intelligence-data. Find out " +
                         $"about the Enterprise data file, which includes automatic daily " +
-                        $"updates, on our pricing page: https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-fiftyone.ipintelligence.examples-exampleutils.cs&utm_term=data-file-age-warning");
+                        $"updates, on our pricing page: https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-fiftyone.ipintelligence.examples-exampleutils.cs&utm_term=data-file-age-warning");
                 }
                 if (info.Tier == "Lite")
                 {
                     logger.LogWarning($"This example is using the 'Lite' data file. This is " +
                         $"used for illustration, and has limited accuracy and capabilities. " +
                         $"Find out about the Enterprise data file on our pricing page: " +
-                        $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=ip-intelligence-dotnet-examples&utm_content=examples-fiftyone.ipintelligence.examples-exampleutils.cs&utm_term=lite-data-file");
+                        $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-fiftyone.ipintelligence.examples-exampleutils.cs&utm_term=lite-data-file");
                 }
             }
         }
