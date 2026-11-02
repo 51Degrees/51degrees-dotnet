@@ -73,13 +73,27 @@ jobs:
         if: inputs.package-run-id != ''
         run: gh run download '${{ inputs.package-run-id }}' -R '${{ github.repository }}' -n package -D package
 
+      # The secrets are named one by one. A workflow that hands every secret
+      # to a step with toJSON(secrets) is held for manual approval and never
+      # runs.
       - name: Run the steps
         env:
-          SECRETS: ${{ toJSON(secrets) }}
           FIFTYONE_TEST_FILTER: ${{ inputs.filter }}
+          KEY_TestResourceKey: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
+          KEY_StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
+          KEY_DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
+          KEY_DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}
+          KEY_IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
+          KEY_AcceptCHBrowserKey: ${{ secrets.ACCEPTCH_BROWSER_KEY }}
+          KEY_AcceptCHHardwareKey: ${{ secrets.ACCEPTCH_HARDWARE_KEY }}
+          KEY_AcceptCHPlatformKey: ${{ secrets.ACCEPTCH_PLATFORM_KEY }}
+          KEY_AcceptCHNoneKey: ${{ secrets.ACCEPTCH_NONE_KEY }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $keys = ConvertFrom-Json -AsHashtable $env:SECRETS
+          $keys = @{}
+          foreach ($entry in Get-ChildItem env:KEY_*) {
+            if ($entry.Value) { $keys[$entry.Name.Substring(4)] = $entry.Value }
+          }
           $options = @{
             RepoName = '${{ github.event.repository.name }}'
             OrgName = '${{ github.repository_owner }}'
