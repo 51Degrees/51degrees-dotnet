@@ -54,7 +54,12 @@ try {
         Write-Host "::endgroup::"
     }
 
-    # The nuspec packages. Only on Windows, where the .NET Framework half builds.
+    # The nuspec packages. Only on Windows, where the .NET Framework half
+    # builds, with msbuild, which the shared step puts on the path.
+    if ($NuspecPackages) {
+        Pop-Location
+        try { ./environments/setup-msbuild.ps1 } finally { Push-Location $RepoPath }
+    }
     foreach ($package in $NuspecPackages) {
         $v = $versions[$package.Family]
         if (-not $v.Changed) { continue }
