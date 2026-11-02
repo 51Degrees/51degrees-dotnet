@@ -159,6 +159,26 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
+  <!--
+    The FiftyOne packages that reach this project only through the projects
+    it references. An old-style project does not see those, so in Project
+    mode each is declared here as well.
+  -->
+  <ItemGroup>
+    <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\..\..\caching\Caching\FiftyOne.Caching.csproj" Version="$(FiftyOneCachingVersion)" />
+    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\..\common\Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection" ProjectPath="..\..\..\..\device-detection\DeviceDetection\FiftyOne.DeviceDetection.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection.Cloud" ProjectPath="..\..\..\..\device-detection\Cloud\FiftyOne.DeviceDetection.Cloud.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection.Hash.Engine.OnPremise" ProjectPath="..\..\..\..\device-detection\Hash.Engine.OnPremise\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection.Shared" ProjectPath="..\..\..\..\device-detection\Shared\FiftyOne.DeviceDetection.Shared.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Core" ProjectPath="..\..\..\..\pipeline\Core\FiftyOne.Pipeline.Core.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines" ProjectPath="..\..\..\..\pipeline\Engines\FiftyOne.Pipeline.Engines.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.JavaScriptBuilder" ProjectPath="..\..\..\..\pipeline\JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.JsonBuilder" ProjectPath="..\..\..\..\pipeline\JsonBuilderElement\FiftyOne.Pipeline.JsonBuilder.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Web.Shared" ProjectPath="..\..\..\..\pipeline\Web.Shared\FiftyOne.Pipeline.Web.Shared.csproj" Version="$(FiftyOnePipelineVersion)" />
+  </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" Condition="false" />
   <ProjectExtensions>

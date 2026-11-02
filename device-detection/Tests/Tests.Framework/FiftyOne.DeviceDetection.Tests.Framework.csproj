@@ -112,5 +112,20 @@
     </Content>
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
+  <!--
+    The FiftyOne packages that reach this project only through the projects
+    it references. An old-style project does not see those, so in Project
+    mode each is declared here as well.
+  -->
+  <ItemGroup>
+    <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\..\caching\Caching\FiftyOne.Caching.csproj" Version="$(FiftyOneCachingVersion)" />
+    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\common\Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
+    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonVersion)" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection.Cloud" ProjectPath="..\..\Cloud\FiftyOne.DeviceDetection.Cloud.csproj" Version="$(FiftyOneDeviceDetectionVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Core" ProjectPath="..\..\..\pipeline\Core\FiftyOne.Pipeline.Core.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines" ProjectPath="..\..\..\pipeline\Engines\FiftyOne.Pipeline.Engines.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineVersion)" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
