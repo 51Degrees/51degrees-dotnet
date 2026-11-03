@@ -780,7 +780,10 @@ namespace FiftyOne.Caching.Tests
             // Arrange
 
             var value = "testvalue";
-            var millis = 5000;
+            // The second get waits for the load to finish, so this is time
+            // the test spends. A second still outlasts the cancel, which
+            // happens as the load starts.
+            var millis = 1000;
             var loader = new ReturnKeyLoader<string>(millis);
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
             Exception exception = null;
@@ -852,7 +855,9 @@ namespace FiftyOne.Caching.Tests
             // Arrange
 
             var value = "testvalue";
-            var millis = 5000;
+            // As in LoadingDictionary_GetCanceledIsReused, the second call
+            // waits for the load, and a second outlasts the cancel.
+            var millis = 1000;
             var loader = new ReturnKeyLoader<string>(millis);
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
 
