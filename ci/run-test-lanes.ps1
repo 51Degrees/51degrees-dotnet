@@ -8,22 +8,34 @@ param (
 )
 $ErrorActionPreference = "Stop"
 
-# Runs the test assemblies matching $Filter in parallel, in three lanes, where
-# the shared common-ci step ran them one after another. Each assembly still
-# gets its own 'dotnet test', with the same arguments and results folder as
-# the shared step, so the steps that publish the results are unchanged.
+# Runs the test assemblies matching $Filter in parallel, where the shared
+# common-ci step ran them one after another. Each assembly still gets its own
+# 'dotnet test', with the same arguments and results folder as the shared
+# step, so the steps that publish the results are unchanged.
 #
-#   ports    the web example tests, which bind the fixed ports 5001, 5002,
-#            5101 and 5225, so only one of them can run at a time.
-#   memory   the IP Intelligence tests that load the 6 GB Enterprise file.
-#            Two at once would exhaust a 16 GB runner.
-#   pool     everything else, as many at once as the runner has cores.
+# First, one at a time with nothing else running:
 #
-# The lanes run alongside each other. Each assembly's output is printed in
-# one piece when it finishes, so the log reads as it did before.
+#   exclusive  assemblies that need the runner to themselves. Some assert on
+#              timings, such as the share usage and pipeline overhead budgets
+#              and the loading dictionary, and fail when they share the CPU.
+#              The IP Intelligence engine tests load the 6 GB Enterprise file
+#              in profiles that hold it in memory, and could not allocate
+#              their collections on a 16 GB runner with other tests alongside.
+#
+# Then three lanes alongside each other:
+#
+#   ports      the web example tests, which bind the fixed ports 5001, 5002,
+#              5101 and 5225, so only one of them can run at a time.
+#   memory     the IP Intelligence example tests, which also load the
+#              Enterprise file, one at a time.
+#   pool       everything else, one fewer at once than the runner has cores.
+#
+# Each assembly's output is printed in one piece when it finishes, so the log
+# reads as it did before.
 
+$ExclusivePattern = '^FiftyOne\.(Caching\.Tests|Pipeline\.Engines\.Tests|Pipeline\.Engines\.FiftyOne\.Tests|IpIntelligence\.OnPremise\.Tests|IpIntelligence\.Tests\.Core)\.dll$'
 $PortsLane = 'Example\.Tests\.Web|IpIntelligence\.Example\.Tests\.Cloud|GettingStartedAPI\.Tests'
-$MemoryLane = '^FiftyOne\.IpIntelligence\.(OnPremise\.Tests|Tests\.Core|Example\.Tests\.OnPremise)\.dll$'
+$MemoryLane = '^FiftyOne\.IpIntelligence\.Example\.Tests\.OnPremise\.dll$'
 
 $RepoPath = [IO.Path]::Combine($pwd, $RepoName)
 $ResultPath = [IO.Path]::Combine($RepoPath, "test-results", $OutputFolder, $Name)
@@ -44,13 +56,16 @@ if ($assemblies.Count -eq 0) {
     exit 0
 }
 
+$exclusive = @()
 $lanes = [ordered]@{ ports = @(); memory = @(); pool = @() }
 foreach ($assembly in $assemblies) {
-    if ($assembly.Name -match $PortsLane) { $lanes.ports += $assembly.FullName }
+    if ($assembly.Name -match $ExclusivePattern) { $exclusive += $assembly.FullName }
+    elseif ($assembly.Name -match $PortsLane) { $lanes.ports += $assembly.FullName }
     elseif ($assembly.Name -match $MemoryLane) { $lanes.memory += $assembly.FullName }
     else { $lanes.pool += $assembly.FullName }
 }
 $poolSize = [Math]::Max(1, [Environment]::ProcessorCount - 1)
+Write-Host "Exclusive: $($exclusive.Count) assemblies, one at a time first"
 foreach ($lane in $lanes.Keys) {
     Write-Host "Lane '$lane': $($lanes[$lane].Count) assemblies"
 }
@@ -77,6 +92,20 @@ $runOne = {
     [pscustomobject]@{ Assembly = $Assembly; ExitCode = $code; Seconds = [int]$sw.Elapsed.TotalSeconds; Log = $log }
 }
 
+$results = @()
+function Write-Result($Result, $Lane) {
+    $status = $Result.ExitCode -eq 0 ? "passed" : "FAILED (exit $($Result.ExitCode))"
+    Write-Host "::group::$([IO.Path]::GetFileName($Result.Assembly)) $status in $($Result.Seconds)s ($Lane)"
+    Get-Content $Result.Log | Write-Host
+    Write-Host "::endgroup::"
+}
+
+foreach ($assembly in $exclusive) {
+    $result = & $runOne $assembly $Configuration $ResultPath $LogPath $BlameHangTimeout
+    $results += $result
+    Write-Result $result "exclusive"
+}
+
 $jobs = @()
 foreach ($lane in $lanes.Keys) {
     $items = $lanes[$lane]
@@ -92,21 +121,19 @@ foreach ($lane in $lanes.Keys) {
 }
 
 # Print each assembly's output as it finishes.
-$results = @()
-$printed = @{}
-while ($true) {
+while ($jobs.Count -gt 0) {
     foreach ($job in $jobs) {
         foreach ($result in @(Receive-Job $job)) {
             $results += $result
-            $status = $result.ExitCode -eq 0 ? "passed" : "FAILED (exit $($result.ExitCode))"
-            Write-Host "::group::$([IO.Path]::GetFileName($result.Assembly)) $status in $($result.Seconds)s ($($job.Name) lane)"
-            Get-Content $result.Log | Write-Host
-            Write-Host "::endgroup::"
+            Write-Result $result "$($job.Name) lane"
         }
     }
     if (@($jobs | Where-Object { $_.State -in 'NotStarted', 'Running' }).Count -eq 0) {
         foreach ($job in $jobs) {
-            foreach ($result in @(Receive-Job $job)) { $results += $result }
+            foreach ($result in @(Receive-Job $job)) {
+                $results += $result
+                Write-Result $result "$($job.Name) lane"
+            }
             if ($job.State -eq 'Failed') { throw "The $($job.Name) lane failed: $($job.ChildJobs[0].JobStateInfo.Reason)" }
         }
         break
