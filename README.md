@@ -1,10 +1,27 @@
-# 51Degrees .NET
+# 51Degrees Device Detection and IP Intelligence for .NET and C#
 
-![51Degrees](https://51degrees.com/img/logo.png?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=51degrees-dotnet "Data rewards the curious") **.NET packages for the Pipeline API, Device Detection, IP Intelligence and Location**
+<img src=".github/images/logo.png" alt="51Degrees" title="Data rewards the curious" width="160">
 
-This repository holds the 51Degrees .NET packages: the Pipeline API, Device
-Detection, IP Intelligence and Location, with the common and caching libraries
-they build on. Each package is still published to NuGet under its own id.
+**.NET packages for the Pipeline API, Device Detection, IP Intelligence and Location**
+
+Our User-Agent parser for .NET and C# supports Device Detection, browser detection, mobile detection, and crawler detection on-premise or in the cloud. IP Intelligence adds IP geolocation, including IP to country data.
+
+It reads User-Agent and User-Agent Client Hints, HTTP request headers that carry browser and device information. For cloud bot detection, Human Confidence reports confidence that a person is viewing the page.
+
+## Install
+
+Each product is a separate NuGet package. For Device Detection and IP Intelligence, cloud or on-premise:
+
+```
+dotnet add package FiftyOne.DeviceDetection
+dotnet add package FiftyOne.IpIntelligence
+```
+
+The product guides below list the other packages. To build from source, see [Getting the code](#getting-the-code).
+
+Try the [User-Agent tester](https://51degrees.com/developers/user-agent-tester?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install) and [IP tester](https://51degrees.com/developers/ip-tester?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install). For cloud use, [create a Resource Key](https://configure.51degrees.com/?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install).
+
+Created from `pipeline-dotnet`, `device-detection-dotnet`, `ip-intelligence-dotnet`, `location-dotnet`, `common-dotnet`, `caching-dotnet`, `device-detection-dotnet-examples`, and `ip-intelligence-dotnet-examples`, this repository continues their work.
 
 | Product | Read first | Documentation |
 | --- | --- | --- |
@@ -125,8 +142,8 @@ dotnet test device-detection/FiftyOne.DeviceDetection.Core.slnf -p:Platform=x64
 The on-premise tests find the free data files in `cxx` by searching upward
 from the test assembly. Point them at other files, such as the Enterprise
 files, with `_51DEGREES_DD_PATH` and `_51DEGREES_IPI_PATH`. The tests that use
-the cloud read a resource key from `_51DEGREES_RESOURCE_KEY`, and the 51Did
-tests a license key from `_51DEGREES_LICENSE_KEY`. See each folder's README
+the cloud read a Resource Key from `_51DEGREES_RESOURCE_KEY`, and the 51Did
+tests a License Key from `_51DEGREES_LICENSE_KEY`. See each folder's README
 for the keys and data files its tests use.
 
 ## Regenerating the SWIG wrappers
@@ -137,6 +154,18 @@ The wrappers in each on-premise engine folder are generated from
 later on the path to generate them again.
 
 ## History
+
+| Earlier repository | What it held |
+| --- | --- |
+| [pipeline-dotnet](https://github.com/51Degrees/pipeline-dotnet) | The Pipeline API |
+| [device-detection-dotnet](https://github.com/51Degrees/device-detection-dotnet) | Device Detection |
+| [ip-intelligence-dotnet](https://github.com/51Degrees/ip-intelligence-dotnet) | IP Intelligence |
+| [location-dotnet](https://github.com/51Degrees/location-dotnet) | Location |
+| [common-dotnet](https://github.com/51Degrees/common-dotnet) | Shared code |
+| [caching-dotnet](https://github.com/51Degrees/caching-dotnet) | Caching |
+| [device-detection-dotnet-examples](https://github.com/51Degrees/device-detection-dotnet-examples) | Device Detection examples |
+| [ip-intelligence-dotnet-examples](https://github.com/51Degrees/ip-intelligence-dotnet-examples) | IP Intelligence examples |
+
 
 The repositories `common-dotnet`, `caching-dotnet`, `pipeline-dotnet`,
 `device-detection-dotnet`, `ip-intelligence-dotnet`, `location-dotnet`,
@@ -149,6 +178,14 @@ back through the import ask git to follow renames through merges:
 git log --follow -m -- pipeline/README.md
 ```
 
-## Licence
+## License
 
 [European Union Public Licence v1.2](LICENSE)
+
+## Find out more
+
+- [Device Detection](https://51degrees.com/device-detection?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=find-out-more)
+- [IP Intelligence](https://51degrees.com/ip-intelligence?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=find-out-more)
+- [Bots and humans](https://51degrees.com/bots-and-humans?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=find-out-more)
+- [Documentation](https://51degrees.com/documentation/index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=find-out-more)
+- https://github.com/51Degrees/51degrees-cxx
