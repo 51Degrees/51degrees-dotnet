@@ -72,6 +72,25 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         /// <returns>
         /// The subscription, which lives for as long as the BiDi session.
         /// </returns>
+        /// <summary>
+        /// Deletes every cookie the browser holds, for every site, which the
+        /// WebDriver classic call cannot do because it only reaches the
+        /// cookies of the page that is open.
+        /// </summary>
+        public Task DeleteAllCookiesAsync()
+        {
+            return _bidi.Storage.DeleteCookiesAsync();
+        }
+
+        /// <summary>
+        /// Makes the browser fetch every resource again rather than use its
+        /// HTTP cache, for every tab.
+        /// </summary>
+        public Task BypassCacheAsync()
+        {
+            return _bidi.Network.SetCacheBehaviorAsync(CacheBehavior.Bypass);
+        }
+
         public Task<ISubscription> OnResponseCompletedAsync(
             Action<BiDiResponse> handler)
         {

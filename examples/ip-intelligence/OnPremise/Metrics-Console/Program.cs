@@ -35,6 +35,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -786,54 +787,38 @@ public class Program
         public static readonly string[] Properties = ["Areas"];
 
         /// <summary>
-        /// Dictionary that takes WKT value and returns the geographic area
-        /// in square kms and the number polygons that form the area.
+        /// The geographic area in square kms, and the number of polygons
+        /// that form it, for each WKT value looked up so far. An area is
+        /// worked out the first time its WKT is seen rather than for every
+        /// value in the data file up front, so a run that samples a fraction
+        /// of the ranges only pays for the areas it meets.
         /// </summary>
-        public IReadOnlyDictionary<string, Result> WktAreas;
+        private readonly ConcurrentDictionary<string, Lazy<Result>> _areas =
+            new ConcurrentDictionary<string, Lazy<Result>>();
 
         public AreaIndex(
             IFiftyOneAspectPropertyMetaData property,
             ILogger logger,
             CancellationToken stoppingToken)
         {
-            WktAreas = BuildWktAreas(property, logger, stoppingToken);
         }
 
-        private static IReadOnlyDictionary<string, Result> BuildWktAreas(
-            IFiftyOneAspectPropertyMetaData property,
-            ILogger logger,
-            CancellationToken stoppingToken)
+        /// <summary>
+        /// The number of areas worked out so far.
+        /// </summary>
+        public int Count => _areas.Count;
+
+        /// <summary>
+        /// Gets the area for the WKT value, working it out the first time it
+        /// is asked for.
+        /// </summary>
+        public bool TryGetValue(string wkt, out Result value)
         {
-            var wktAreas = new Dictionary<string, Result>();
-            var nextLog = DateTime.UtcNow.Add(_logBuild);
-            Parallel.ForEach(
-                property.GetValues(),
-                new ParallelOptions() { CancellationToken = stoppingToken },
-                () => new Dictionary<string, Result>(),
-                (wkt, state, local) =>
-                {
-                    local.Add(wkt.Name, Calculations.GetAreas(wkt.Name, 0, 0));
-                    wkt.Dispose();
-                    return local;
-                },
-                local =>
-                {
-                    lock (wktAreas)
-                    {
-                        foreach (var pair in local)
-                        {
-                            wktAreas.Add(pair.Key, pair.Value);
-                        }
-                        if (DateTime.UtcNow >= nextLog)
-                        {
-                            logger.LogInformation(
-                                "Mapped '{0}' areas",
-                                wktAreas.Count);
-                            nextLog = DateTime.UtcNow.Add(_logBuild);
-                        }
-                    }
-                });
-            return wktAreas;
+            value = _areas.GetOrAdd(
+                wkt,
+                w => new Lazy<Result>(() => Calculations.GetAreas(w, 0, 0)))
+                .Value;
+            return true;
         }
     }
 
@@ -1035,8 +1020,8 @@ public class Program
                 logger,
                 stoppingToken);
             logger.LogInformation(
-                "Created index for '{0}' areas",
-                areaIndex.WktAreas.Count);
+                "Created area index, which works out each area when it is " +
+                "first met");
 
             // Perform IP lookup for all the IP addresses in the ranges
             // and record the results.
@@ -1384,7 +1369,7 @@ public class Program
             // Increase the total area and number of areas for the metric only
             // where a non zero area is available.
             if (data.Areas.HasValue && 
-                dataSet.WktAreas.TryGetValue(
+                dataSet.TryGetValue(
                     data.Areas.Value.Value,
                     out var value) && 
                 value != null)
