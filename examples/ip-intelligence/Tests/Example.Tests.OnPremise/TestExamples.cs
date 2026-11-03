@@ -394,16 +394,15 @@ public class TestExamples
         var tempfile = Path.GetTempFileName();
         // This budget is always spent in full - the example never runs out of
         // ranges first - so the test's runtime is this value plus the cost of
-        // unwinding. It has to stay clear of the CI blame hang timeout, which is
-        // the only ceiling above it that applies on CI and which used to be set
-        // to this same 5 minutes; see ci/run-unit-tests.ps1 before changing it.
+        // unwinding. The example works out each area when it first meets it,
+        // so ranges are processed from the start. Reading the Enterprise file
+        // over a network share, the slowest case tried, gave metrics within
+        // 30 seconds, so a minute leaves room for a slow runner.
         //
-        // Note that a runner slow enough to still be building the area index
-        // when this fires reports Inconclusive below rather than asserting on
-        // any metrics, which leaves CI green. Shortening this budget makes that
-        // outcome more likely.
+        // A runner that has processed no ranges when this fires reports
+        // Inconclusive below rather than asserting on any metrics.
         using var cancellation = new CancellationTokenSource(
-            TimeSpan.FromMinutes(5));
+            TimeSpan.FromMinutes(1));
         try
         {
             using (var writer = new StreamWriter(File.Create(tempfile)))
