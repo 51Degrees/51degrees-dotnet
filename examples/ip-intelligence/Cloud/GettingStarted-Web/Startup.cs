@@ -87,10 +87,10 @@ using System.Threading.Tasks;
 /// @include Cloud/GettingStarted-Web/appsettings.json
 /// 
 /// ## Controller
-/// @include Controllers/HomeController.cs
+/// @include Cloud/GettingStarted-Web/Controllers/HomeController.cs
 /// 
 /// ## View
-/// @include Views/Home/Index.cshtml
+/// @include Cloud/GettingStarted-Web/Views/Home/Index.cshtml
 /// 
 /// ## Startup
 namespace FiftyOne.IpIntelligence.Examples.Cloud.GettingStartedWeb

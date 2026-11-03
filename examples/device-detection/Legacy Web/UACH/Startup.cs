@@ -128,10 +128,10 @@ using Microsoft.Extensions.DependencyInjection;
 /// ```
 /// 
 /// ## Controller
-/// @include Controllers/HomeController.cs
+/// @include UACH/Controllers/HomeController.cs
 /// 
 /// ## View
-/// @include Views/Home/Index.cshtml
+/// @include UACH/Views/Home/Index.cshtml
 /// 
 /// ## Startup
 

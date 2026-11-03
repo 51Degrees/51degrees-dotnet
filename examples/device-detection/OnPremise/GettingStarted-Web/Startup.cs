@@ -80,10 +80,10 @@ using System.Threading.Tasks;
 /// @include OnPremise/GettingStarted-Web/appsettings.json
 /// 
 /// ## Controller
-/// @include Controllers/HomeController.cs
+/// @include OnPremise/GettingStarted-Web/Controllers/HomeController.cs
 /// 
 /// ## View
-/// @include Views/Home/Index.cshtml
+/// @include OnPremise/GettingStarted-Web/Views/Home/Index.cshtml
 /// 
 /// ## Startup
 namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedWeb
