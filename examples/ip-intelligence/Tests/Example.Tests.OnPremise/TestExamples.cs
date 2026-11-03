@@ -301,34 +301,56 @@ public class TestExamples
     }
 
     /// <summary>
+    /// The number of truth records the Compare example test reads.
+    /// </summary>
+    /// <remarks>
+    /// The full evidence file has 50,000 uniform records and took four
+    /// minutes. Both address families appear within the first dozen, and the
+    /// records the example rejects are covered by
+    /// <see cref="TestCompareBadTruths"/>, so the rest add time and no paths.
+    /// </remarks>
+    private const int CompareTruthRecords = 1000;
+
+    /// <summary>
     /// Test the Comparison Example.
-    /// Asserts the comparison wrote a non-empty report for the GeoIP truth
-    /// evidence rather than just completing.
+    /// Runs the example over the first records of the GeoIP truth evidence
+    /// and asserts the report has the comparison columns and at least one
+    /// compared record.
     /// </summary>
     [TestMethod]
     public void Example_OnPremise_CompareConsole()
     {
         VerifyDataFileAvailable();
 
+        var truthFile = Path.GetTempFileName();
         var tempfile = Path.GetTempFileName();
         try
         {
+            File.WriteAllLines(
+                truthFile,
+                File.ReadLines(GeoIpTruthEvidenceFile)
+                    .Take(CompareTruthRecords + 1));
             using (var writer = new StreamWriter(File.Create(tempfile)))
             {
                 RunResilient(() =>
                     Examples.OnPremise.Compare.Program.Example.Run(
                         DataFile,
-                        GeoIpTruthEvidenceFile,
+                        truthFile,
                         writer,
                         new LoggerFactory(),
                         CancellationToken.None).Wait());
             }
 
-            Assert.IsGreaterThan(0, new FileInfo(tempfile).Length,
-                "Comparison example should write a non-empty comparison report.");
+            var lines = File.ReadAllLines(tempfile);
+            Assert.IsGreaterThan(1, lines.Length,
+                "Comparison example should write a header and at least one " +
+                "compared record.");
+            Assert.Contains("DistanceKms", lines[0],
+                "The report header should contain the DistanceKms column.");
         }
         finally
         {
+            File.Delete(truthFile);
             File.Delete(tempfile);
         }
     }
@@ -397,12 +419,12 @@ public class TestExamples
         // unwinding. The example works out each area when it first meets it,
         // so ranges are processed from the start. Reading the Enterprise file
         // over a network share, the slowest case tried, gave metrics within
-        // 30 seconds, so a minute leaves room for a slow runner.
+        // 15 seconds, so half a minute leaves room for a slow runner.
         //
         // A runner that has processed no ranges when this fires reports
         // Inconclusive below rather than asserting on any metrics.
         using var cancellation = new CancellationTokenSource(
-            TimeSpan.FromMinutes(1));
+            TimeSpan.FromSeconds(30));
         try
         {
             using (var writer = new StreamWriter(File.Create(tempfile)))
