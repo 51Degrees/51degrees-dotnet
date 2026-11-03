@@ -1,0 +1,172 @@
+name: Temporary IP Intelligence test memory measurement
+
+on:
+  push:
+    branches:
+      - tmp/ipi-memory
+
+env:
+  S_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+  S_SNK: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
+  S_DD: ${{ secrets.DEVICE_DETECTION_KEY }}
+  S_DDURL: ${{ secrets.DEVICE_DETECTION_URL }}
+  S_IPIURL: ${{ secrets.IPI_DATA_FILE_URL }}
+  S_TRK: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
+  S_ACHB: ${{ secrets.ACCEPTCH_BROWSER_KEY }}
+  S_ACHH: ${{ secrets.ACCEPTCH_HARDWARE_KEY }}
+  S_ACHP: ${{ secrets.ACCEPTCH_PLATFORM_KEY }}
+  S_ACHN: ${{ secrets.ACCEPTCH_NONE_KEY }}
+
+jobs:
+  Prefetch:
+    runs-on: ubuntu-latest
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: 51Degrees/common-ci
+          ref: main
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          path: 51degrees-dotnet
+      # The same key the shared prefetch action works out from the secrets
+      # pull-requests.yml passes, so today's cache is reused when it matches.
+      - name: Work out the asset cache key
+        id: key
+        shell: pwsh
+        run: |
+          $values = @($env:S_TOKEN, $env:S_SNK, $env:S_DD, $env:S_DDURL, $env:S_IPIURL, $env:S_TRK, $env:S_ACHB, $env:S_ACHH, $env:S_ACHP, $env:S_ACHN)
+          $key = $values | Sort-Object | Join-String -Separator "`n"
+          $key += "`n" + (Get-Content -Raw "51degrees-dotnet/ci/fetch-assets.ps1")
+          $sha1 = [Security.Cryptography.SHA1Managed]::new()
+          $hash = [Convert]::ToHexString($sha1.ComputeHash([Text.Encoding]::Utf8.GetBytes($key)))
+          "key=$(Get-Date -Format FileDate)-$hash" >> $env:GITHUB_OUTPUT
+      - name: Check if cached
+        id: check
+        uses: actions/cache/restore@v5
+        with:
+          key: ${{ steps.key.outputs.key }}
+          path: assets
+          lookup-only: true
+      - name: Fetch assets
+        if: ${{ !steps.check.outputs.cache-hit }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./51degrees-dotnet/ci/fetch-assets.ps1 -DeviceDetection $env:S_DD -DeviceDetectionUrl $env:S_DDURL -IpIntelligenceUrl $env:S_IPIURL
+      - name: Cache assets
+        if: ${{ !steps.check.outputs.cache-hit }}
+        uses: actions/cache/save@v5
+        with:
+          key: ${{ steps.key.outputs.key }}
+          path: assets
+          enableCrossOsArchive: true
+
+  Measure:
+    needs: Prefetch
+    runs-on: windows-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: '4.5.100 Release', ref: main, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '0' }
+          - { label: '4.5.100 Release forced GC', ref: main, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '1' }
+          - { label: '4.5.101 Release', ref: fix/cxx-4.5.101, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '0' }
+          - { label: '4.5.101 Release forced GC', ref: fix/cxx-4.5.101, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '1' }
+          - { label: '4.5.101 Debug', ref: fix/cxx-4.5.101, name: Windows_x64_Debug, configuration: Debug, build: dotnet, gc: '0' }
+          - { label: '4.5.101 Debug forced GC', ref: fix/cxx-4.5.101, name: Windows_x64_Debug, configuration: Debug, build: dotnet, gc: '1' }
+    name: ${{ matrix.label }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: 51Degrees/common-ci
+          ref: main
+      - uses: actions/cache/restore@v5
+        with:
+          key: ${{ needs.Prefetch.outputs.key }}
+          path: assets
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+      - name: Build, then run the IP Intelligence core tests with memory logged
+        shell: pwsh
+        env:
+          IPI_FORCE_GC: ${{ matrix.gc }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./steps/configure-git.ps1 -GitHubToken $env:S_TOKEN
+          ./steps/clone-repo.ps1 -RepoName 51degrees-dotnet -OrgName 51Degrees -Branch '${{ matrix.ref }}'
+          git -C 51degrees-dotnet log -1 --format='%H %s'
+          git -C 51degrees-dotnet/cxx log -1 --format='cxx %H %s'
+
+          # Log memory around every case, and force a collection after each
+          # one when IPI_FORCE_GC is 1.
+          $test = '51degrees-dotnet/ip-intelligence/Tests/Tests.Core/IpiTests.cs'
+          $t = (Get-Content -Raw $test) -replace "`r`n", "`n"
+          $begin = 'var datafile = TestHelpers.Utils.GetFilePath(datafileName);'
+          $cleanup = "        public void Cleanup()`n        {"
+          foreach ($m in @($begin, $cleanup)) { if (-not $t.Contains($m)) { throw "Marker not found: $m" } }
+          $t = $t.Replace($begin, "MemoryLog.Write(`$`"begin {performanceProfile} lazy={useLazyLoading} multi={multiThreaded}`");`n            " + $begin)
+          $t = $t.Replace($cleanup, $cleanup + "`n            MemoryLog.Write(`"cleanup`");`n            if (Environment.GetEnvironmentVariable(`"IPI_FORCE_GC`") == `"1`") { GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(); MemoryLog.Write(`"after forced GC`"); }")
+          $log = @'
+              internal static class MemoryLog
+              {
+                  [StructLayout(LayoutKind.Sequential)]
+                  private struct MEMORYSTATUSEX
+                  {
+                      public uint dwLength; public uint dwMemoryLoad;
+                      public ulong ullTotalPhys; public ulong ullAvailPhys;
+                      public ulong ullTotalPageFile; public ulong ullAvailPageFile;
+                      public ulong ullTotalVirtual; public ulong ullAvailVirtual;
+                      public ulong ullAvailExtendedVirtual;
+                  }
+                  [DllImport("kernel32.dll", SetLastError = true)]
+                  private static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX buffer);
+                  private static readonly string LogPath = System.IO.Path.Combine(
+                      Environment.GetEnvironmentVariable("RUNNER_TEMP") ?? System.IO.Path.GetTempPath(), "ipi-memory.log");
+                  public static void Write(string label)
+                  {
+                      var p = System.Diagnostics.Process.GetCurrentProcess();
+                      p.Refresh();
+                      var s = new MEMORYSTATUSEX { dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>() };
+                      var sys = GlobalMemoryStatusEx(ref s)
+                          ? $"system commit {(s.ullTotalPageFile - s.ullAvailPageFile) >> 20} of {s.ullTotalPageFile >> 20} MB, physical free {s.ullAvailPhys >> 20} MB"
+                          : "system commit unknown";
+                      System.IO.File.AppendAllText(LogPath,
+                          $"{DateTime.UtcNow:HH:mm:ss} {label}: process private {p.PrivateMemorySize64 >> 20} MB, working set {p.WorkingSet64 >> 20} MB, managed {GC.GetTotalMemory(false) >> 20} MB, gen2 collections {GC.CollectionCount(2)}, {sys}{Environment.NewLine}");
+                  }
+              }
+          }
+          '@
+          $lastBrace = $t.LastIndexOf('}')
+          $t = $t.Substring(0, $lastBrace) + $log
+          Set-Content -Path $test -Value $t -NoNewline
+          git -C 51degrees-dotnet diff --stat
+
+          $keys = @{ token = $env:S_TOKEN; StrongNameKeyBase64 = $env:S_SNK; DeviceDetection = $env:S_DD; DeviceDetectionUrl = $env:S_DDURL; IpIntelligenceUrl = $env:S_IPIURL; TestResourceKey = $env:S_TRK; AcceptCHBrowserKey = $env:S_ACHB; AcceptCHHardwareKey = $env:S_ACHH; AcceptCHPlatformKey = $env:S_ACHP; AcceptCHNoneKey = $env:S_ACHN }
+          $Options = @{ RepoName = '51degrees-dotnet'; Name = '${{ matrix.name }}'; Configuration = '${{ matrix.configuration }}'; Arch = 'x64'; BuildMethod = '${{ matrix.build }}'; Keys = $keys }
+          $Options += $keys
+          ./steps/run-script.ps1 ./51degrees-dotnet/ci/fetch-assets.ps1 $Options
+          ./steps/run-script.ps1 ./51degrees-dotnet/ci/setup-environment.ps1 $Options
+          ./steps/run-script.ps1 ./51degrees-dotnet/ci/build-project.ps1 $Options
+          $env:FIFTYONE_TEST_FILTER = '^FiftyOne\.IpIntelligence\.Tests\.Core\.dll$'
+          $failed = $false
+          try { ./steps/run-script.ps1 ./51degrees-dotnet/ci/run-unit-tests.ps1 $Options } catch { $failed = $true; Write-Host "Tests failed: $_" }
+          Write-Host "::group::Memory log"
+          Get-Content (Join-Path $env:RUNNER_TEMP 'ipi-memory.log')
+          Write-Host "::endgroup::"
+          if ($failed) { exit 1 }
+
+      - name: Keep the memory log, test results and any crash dump
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipi-memory-${{ strategy.job-index }}
+          path: |
+            ${{ runner.temp }}/ipi-memory.log
+            51degrees-dotnet/test-results/**
+            51degrees-dotnet/**/*.dmp
+          if-no-files-found: ignore
+          retention-days: 7
