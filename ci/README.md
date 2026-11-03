@@ -16,8 +16,7 @@ publish, a pull request records the published versions in the root
 
 The scripts only ever move the patch number. A major or minor version moves
 only by a tag pushed by hand, such as `pipeline/4.6.0`, after which the patch
-numbers follow it. The shared version bump check reads plain `x.y.z` tags, so
-it does not see the family tags, which is why the rule is kept here.
+numbers follow it.
 
 ## What runs where
 
