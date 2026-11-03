@@ -1,23 +1,14 @@
 name: Nightly Pipeline
 
 # Package and submodule updates, then every open pull request, then a
-# publish. A scheduled run publishes as a dry run until this repository takes
-# over from the separate repositories, so nothing reaches NuGet from here
-# before then.
+# publish of every package family that changed since its last tag.
 
 on:
   workflow_dispatch:
     inputs:
       dryrun:
         type: boolean
-        default: true
-      prs:
-        description: 'Comma separated pull request numbers to build, all open ones when empty'
-        type: string
-        default: ''
-      common-ci-ref:
-        type: string
-        default: ''
+        default: false
   # Off until this repository takes over from the separate repositories it
   # replaces. Their schedules are turned off then, so the same jobs never run
   # in both.
@@ -32,7 +23,6 @@ jobs:
       repo-name: ${{ github.event.repository.name }}
       org-name: ${{ github.event.repository.owner.login }}
       dryrun: ${{ inputs.dryrun || false }}
-      common-ci-ref: ${{ inputs.common-ci-ref || '' }}
     secrets:
       token: ${{ secrets.ACCESS_TOKEN }}
 
@@ -43,7 +33,6 @@ jobs:
       repo-name: ${{ github.event.repository.name }}
       org-name: ${{ github.event.repository.owner.login }}
       dryrun: ${{ inputs.dryrun || false }}
-      common-ci-ref: ${{ inputs.common-ci-ref || '' }}
     secrets:
       token: ${{ secrets.ACCESS_TOKEN }}
 
@@ -55,13 +44,8 @@ jobs:
     with:
       repo-name: ${{ github.event.repository.name }}
       org-name: ${{ github.event.repository.owner.login }}
-      # A run that is not a dry run merges each pull request that passes and
-      # is approved.
-      dryrun: ${{ github.event_name == 'schedule' || inputs.dryrun }}
-      prs: ${{ inputs.prs || '' }}
-      branch: main
+      dryrun: ${{ inputs.dryrun || false }}
       cache-assets: true
-      common-ci-ref: ${{ inputs.common-ci-ref || '' }}
     secrets:
       token: ${{ secrets.ACCESS_TOKEN }}
       StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
@@ -82,12 +66,9 @@ jobs:
     with:
       repo-name: ${{ github.event.repository.name }}
       org-name: ${{ github.event.repository.owner.login }}
-      # A scheduled run has no inputs, so it is a dry run until this line
-      # changes at the switch-over.
-      dryrun: ${{ github.event_name == 'schedule' || inputs.dryrun }}
+      dryrun: ${{ inputs.dryrun || false }}
       build-platform: windows-latest
       cache-assets: true
-      common-ci-ref: ${{ inputs.common-ci-ref || '' }}
     secrets:
       token: ${{ secrets.ACCESS_TOKEN }}
       StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}

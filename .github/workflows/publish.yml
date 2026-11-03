@@ -2,22 +2,14 @@ name: Publish
 
 # Builds, tests and packs every package family that changed since its last
 # '<family>/<version>' tag, then pushes to NuGet and tags each family. A dry
-# run, the default, does everything except push, tag and open the versions
-# pull request, so the packages can be checked in the run's artifacts first.
+# run does everything except push, tag and open the versions pull request.
 
 on:
   workflow_dispatch:
     inputs:
       dryrun:
         type: boolean
-        default: true
-      allow-version-bump:
-        description: 'Publish even though a version moves the major or minor place'
-        type: boolean
         default: false
-      common-ci-ref:
-        type: string
-        default: ''
 
 jobs:
   Publish:
@@ -26,11 +18,9 @@ jobs:
     with:
       repo-name: ${{ github.event.repository.name }}
       org-name: ${{ github.event.repository.owner.login }}
-      dryrun: ${{ inputs.dryrun }}
-      allow-version-bump: ${{ inputs.allow-version-bump }}
+      dryrun: ${{ inputs.dryrun || false }}
       build-platform: windows-latest
       cache-assets: true
-      common-ci-ref: ${{ inputs.common-ci-ref || '' }}
     secrets:
       token: ${{ secrets.ACCESS_TOKEN }}
       StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
