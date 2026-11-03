@@ -35,7 +35,7 @@ using System.Text;
 /// 
 /// @include{doc} example-getting-started-onpremise.txt
 /// 
-/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/device-detection/4.5/Examples/OnPremise/GettingStarted-Console/Program.cs). 
+/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/device-detection/OnPremise/GettingStarted-Console/Program.cs). 
 /// 
 /// @include{doc} example-require-datafile.txt
 /// 

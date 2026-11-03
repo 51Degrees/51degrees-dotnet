@@ -32,7 +32,7 @@ using System.Threading.Tasks;
 /// 
 /// @include{doc} example-getting-started-web.txt
 /// 
-/// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection/4.5/Examples/OnPremise/GettingStarted-Web). 
+/// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection/OnPremise/GettingStarted-Web). 
 /// 
 /// @include{doc} example-require-datafile.txt
 /// 
