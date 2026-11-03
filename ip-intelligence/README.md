@@ -151,9 +151,9 @@ related CI scripts:
   - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-core.ps1]
   - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-package-nuget.ps1]
   - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-framework.ps1]
-  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ip-intelligence/ci/run-performance-tests-console.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/run-performance-tests.ps1]
 - Copying native binaries:
-  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ip-intelligence/ci/build-package.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]
 
 #### Strong naming
 
