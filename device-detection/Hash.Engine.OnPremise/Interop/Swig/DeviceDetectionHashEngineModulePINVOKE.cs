@@ -451,6 +451,24 @@ class DeviceDetectionHashEngineModulePINVOKE {
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsDouble__SWIG_1___")]
   public static extern global::System.IntPtr ResultsBaseSwig_getValueAsDouble__SWIG_1(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
 
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictBool__SWIG_0___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictBool__SWIG_0(global::System.Runtime.InteropServices.HandleRef jarg1, string jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictBool__SWIG_1___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictBool__SWIG_1(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictInteger__SWIG_0___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictInteger__SWIG_0(global::System.Runtime.InteropServices.HandleRef jarg1, string jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictInteger__SWIG_1___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictInteger__SWIG_1(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictDouble__SWIG_0___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictDouble__SWIG_0(global::System.Runtime.InteropServices.HandleRef jarg1, string jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictDouble__SWIG_1___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictDouble__SWIG_1(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
+
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_Date_getYear___")]
   public static extern int Date_getYear(global::System.Runtime.InteropServices.HandleRef jarg1);
 
@@ -982,6 +1000,12 @@ class DeviceDetectionHashEngineModulePINVOKE {
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ConfigHashSwig_setTraceRoute___")]
   public static extern void ConfigHashSwig_setTraceRoute(global::System.Runtime.InteropServices.HandleRef jarg1, bool jarg2);
 
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ConfigHashSwig_setPropertyValueIndex___")]
+  public static extern void ConfigHashSwig_setPropertyValueIndex(global::System.Runtime.InteropServices.HandleRef jarg1, bool jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ConfigHashSwig_setIndexedProperties___")]
+  public static extern void ConfigHashSwig_setIndexedProperties(global::System.Runtime.InteropServices.HandleRef jarg1, global::System.Runtime.InteropServices.HandleRef jarg2);
+
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ConfigHashSwig_getStrings___")]
   public static extern global::System.IntPtr ConfigHashSwig_getStrings(global::System.Runtime.InteropServices.HandleRef jarg1);
 
@@ -1018,8 +1042,95 @@ class DeviceDetectionHashEngineModulePINVOKE {
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ConfigHashSwig_getTraceRoute___")]
   public static extern bool ConfigHashSwig_getTraceRoute(global::System.Runtime.InteropServices.HandleRef jarg1);
 
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ConfigHashSwig_getPropertyValueIndex___")]
+  public static extern bool ConfigHashSwig_getPropertyValueIndex(global::System.Runtime.InteropServices.HandleRef jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_ConfigHashSwig_getIndexedProperties___")]
+  public static extern global::System.IntPtr ConfigHashSwig_getIndexedProperties(global::System.Runtime.InteropServices.HandleRef jarg1);
+
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_delete_ConfigHashSwig___")]
   public static extern void delete_ConfigHashSwig(global::System.Runtime.InteropServices.HandleRef jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_new_VectorUInt32Swig__SWIG_0___")]
+  public static extern global::System.IntPtr new_VectorUInt32Swig__SWIG_0();
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_new_VectorUInt32Swig__SWIG_1___")]
+  public static extern global::System.IntPtr new_VectorUInt32Swig__SWIG_1(global::System.Runtime.InteropServices.HandleRef jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_Clear___")]
+  public static extern void VectorUInt32Swig_Clear(global::System.Runtime.InteropServices.HandleRef jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_Add___")]
+  public static extern void VectorUInt32Swig_Add(global::System.Runtime.InteropServices.HandleRef jarg1, uint jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_size___")]
+  public static extern uint VectorUInt32Swig_size(global::System.Runtime.InteropServices.HandleRef jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_empty___")]
+  public static extern bool VectorUInt32Swig_empty(global::System.Runtime.InteropServices.HandleRef jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_capacity___")]
+  public static extern uint VectorUInt32Swig_capacity(global::System.Runtime.InteropServices.HandleRef jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_reserve___")]
+  public static extern void VectorUInt32Swig_reserve(global::System.Runtime.InteropServices.HandleRef jarg1, uint jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_new_VectorUInt32Swig__SWIG_2___")]
+  public static extern global::System.IntPtr new_VectorUInt32Swig__SWIG_2(int jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_getitemcopy___")]
+  public static extern uint VectorUInt32Swig_getitemcopy(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_getitem___")]
+  public static extern uint VectorUInt32Swig_getitem(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_setitem___")]
+  public static extern void VectorUInt32Swig_setitem(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, uint jarg3);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_AddRange___")]
+  public static extern void VectorUInt32Swig_AddRange(global::System.Runtime.InteropServices.HandleRef jarg1, global::System.Runtime.InteropServices.HandleRef jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_GetRange___")]
+  public static extern global::System.IntPtr VectorUInt32Swig_GetRange(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, int jarg3);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_Insert___")]
+  public static extern void VectorUInt32Swig_Insert(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, uint jarg3);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_InsertRange___")]
+  public static extern void VectorUInt32Swig_InsertRange(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, global::System.Runtime.InteropServices.HandleRef jarg3);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_RemoveAt___")]
+  public static extern void VectorUInt32Swig_RemoveAt(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_RemoveRange___")]
+  public static extern void VectorUInt32Swig_RemoveRange(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, int jarg3);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_Repeat___")]
+  public static extern global::System.IntPtr VectorUInt32Swig_Repeat(uint jarg1, int jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_Reverse__SWIG_0___")]
+  public static extern void VectorUInt32Swig_Reverse__SWIG_0(global::System.Runtime.InteropServices.HandleRef jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_Reverse__SWIG_1___")]
+  public static extern void VectorUInt32Swig_Reverse__SWIG_1(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, int jarg3);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_SetRange___")]
+  public static extern void VectorUInt32Swig_SetRange(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, global::System.Runtime.InteropServices.HandleRef jarg3);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_Contains___")]
+  public static extern bool VectorUInt32Swig_Contains(global::System.Runtime.InteropServices.HandleRef jarg1, uint jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_IndexOf___")]
+  public static extern int VectorUInt32Swig_IndexOf(global::System.Runtime.InteropServices.HandleRef jarg1, uint jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_LastIndexOf___")]
+  public static extern int VectorUInt32Swig_LastIndexOf(global::System.Runtime.InteropServices.HandleRef jarg1, uint jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_VectorUInt32Swig_Remove___")]
+  public static extern bool VectorUInt32Swig_Remove(global::System.Runtime.InteropServices.HandleRef jarg1, uint jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_delete_VectorUInt32Swig___")]
+  public static extern void delete_VectorUInt32Swig(global::System.Runtime.InteropServices.HandleRef jarg1);
 
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_new_EngineHashSwig__SWIG_0___")]
   public static extern global::System.IntPtr new_EngineHashSwig__SWIG_0(string jarg1, global::System.Runtime.InteropServices.HandleRef jarg2, global::System.Runtime.InteropServices.HandleRef jarg3);
@@ -1054,11 +1165,8 @@ class DeviceDetectionHashEngineModulePINVOKE {
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_EngineHashSwig_process__SWIG_1___")]
   public static extern global::System.IntPtr EngineHashSwig_process__SWIG_1(global::System.Runtime.InteropServices.HandleRef jarg1, string jarg2);
 
-  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_EngineHashSwig_process__SWIG_2___")]
-  public static extern global::System.IntPtr EngineHashSwig_process__SWIG_2(global::System.Runtime.InteropServices.HandleRef jarg1, global::System.Runtime.InteropServices.HandleRef jarg2, [global::System.Runtime.InteropServices.In, global::System.Runtime.InteropServices.MarshalAs(global::System.Runtime.InteropServices.UnmanagedType.LPArray)]int[] jarg3, int jarg4);
-
-  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_EngineHashSwig_process__SWIG_3___")]
-  public static extern global::System.IntPtr EngineHashSwig_process__SWIG_3(global::System.Runtime.InteropServices.HandleRef jarg1, string jarg2, [global::System.Runtime.InteropServices.In, global::System.Runtime.InteropServices.MarshalAs(global::System.Runtime.InteropServices.UnmanagedType.LPArray)]int[] jarg3, int jarg4);
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_EngineHashSwig_getProfileIdsForPropertyValue___")]
+  public static extern global::System.IntPtr EngineHashSwig_getProfileIdsForPropertyValue(global::System.Runtime.InteropServices.HandleRef jarg1, string jarg2, string jarg3);
 
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_EngineHashSwig_processBase___")]
   public static extern global::System.IntPtr EngineHashSwig_processBase(global::System.Runtime.InteropServices.HandleRef jarg1, global::System.Runtime.InteropServices.HandleRef jarg2);
