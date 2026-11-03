@@ -63,6 +63,18 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             // Act
             Driver.Navigate().GoToUrl(url + STATIC_HTML_PATH);
 
+            // Firefox has no navigator.userAgentData, so there are no high
+            // entropy values and no cookie to wait for. Asking once here
+            // skips at once instead of after the full timeout below.
+            if ((bool)((IJavaScriptExecutor)Driver).ExecuteScript(
+                "return !!navigator.userAgentData") == false)
+            {
+                Assert.Inconclusive(
+                    "Browser does not provide high entropy values " +
+                    "(navigator.userAgentData is not supported), so there is " +
+                    "no 51D_GetHighEntropyValues cookie to verify.");
+            }
+
             // The page sets 'ghe' asynchronously from
             // navigator.userAgentData.getHighEntropyValues, so waiting for the
             // document to load is not enough; we must wait for that promise to
@@ -117,6 +129,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             // elements".
             IReadOnlyList<BiDiCookie> cookies = null;
             BiDiCookie fod_cookie = null;
+            var noScript = false;
             try
             {
                 new WebDriverWait(Driver, TEST_TIMEOUT).Until(driver =>
@@ -124,12 +137,29 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
                     cookies = Network.GetAllCookiesAsync().Result;
                     fod_cookie = cookies.FirstOrDefault(c =>
                         c.Name == "51D_GetHighEntropyValues");
-                    return fod_cookie != null;
+                    if (fod_cookie != null)
+                    {
+                        return true;
+                    }
+                    // The data file decides whether a browser gets the
+                    // script that writes the cookie. It gives none to some,
+                    // such as headless Edge, and then no cookie will come.
+                    // The result the script cached says so as soon as it
+                    // arrives, so stop waiting then.
+                    noScript = HasHighEntropyScript(driver) == false;
+                    return noScript;
                 });
             }
             catch (WebDriverTimeoutException e)
             {
                 Assert.Inconclusive(e.ToString());
+            }
+            if (noScript)
+            {
+                Assert.Inconclusive(
+                    "The data file gives this browser no " +
+                    "JavascriptGetHighEntropyValues script, so there is no " +
+                    "51D_GetHighEntropyValues cookie to verify.");
             }
 
             Console.WriteLine("Enumerating cookie names:");
@@ -217,6 +247,27 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             Assert.IsTrue(
                 headerValuePairs[KEY].Equals(url) ||
                 headerValuePairs[KEY].Equals("*"));
+        }
+
+        /// <summary>
+        /// Reads whether the result 51Degrees.core.js cached for this page
+        /// includes a JavascriptGetHighEntropyValues script.
+        /// </summary>
+        /// <returns>
+        /// True or false once the result is cached, or null before then.
+        /// </returns>
+        private static bool? HasHighEntropyScript(IWebDriver driver)
+        {
+            var result = ((IJavaScriptExecutor)driver).ExecuteScript(@"
+                var cached = sessionStorage.getItem('fod');
+                if (!cached) { return null; }
+                try {
+                    var device = JSON.parse(cached).device;
+                    return !!(device && device.javascriptgethighentropyvalues);
+                } catch (e) {
+                    return null;
+                }");
+            return result as bool?;
         }
 
         /// <summary>
@@ -333,12 +384,16 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
                         // is 'complete' to indiciate that the complete event
                         // fired.
                         var js = (IJavaScriptExecutor)driver;
-                        var test = js.ExecuteScript("return test");
+                        // Null until the page has defined the variable, so the
+                        // wait polls again rather than failing on a page that
+                        // is still loading.
+                        var test = js.ExecuteScript(
+                            "return typeof test === 'undefined' ? null : test");
 
                         // Get the browser name and version from device detection
                         // as returned in the complete event.
-                        Console.WriteLine("[test] = '" + test.ToString() + "'");
-                        if (test.Equals("complete"))
+                        Console.WriteLine("[test] = '" + test + "'");
+                        if ("complete".Equals(test))
                         {
                             userAgent = (string)js.ExecuteScript(
                                 "return navigator.userAgent");

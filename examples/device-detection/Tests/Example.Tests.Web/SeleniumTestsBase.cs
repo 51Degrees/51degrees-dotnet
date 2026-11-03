@@ -122,6 +122,38 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         public void TestServerInitialize()
         {
             ServerTask = StartServerFunc(StopSource.Token);
+            ResetBrowserState();
+        }
+
+        /// <summary>
+        /// Gives each test the browser as a new visitor would find it. The
+        /// driver lives for the whole class, and 51Degrees.core.js keeps the
+        /// JSON it fetched in session storage and its evidence in cookies.
+        /// Without this a test that follows another on the same page finds
+        /// the cached result, the script makes no request, and a test that
+        /// waits for that request times out. A new tab has empty session
+        /// storage, and the cookies are deleted for every site.
+        /// </summary>
+        private static void ResetBrowserState()
+        {
+            if (Driver == null)
+            {
+                return;
+            }
+            var previous = Driver.CurrentWindowHandle;
+            Driver.SwitchTo().NewWindow(WindowType.Tab);
+            var fresh = Driver.CurrentWindowHandle;
+            Driver.SwitchTo().Window(previous);
+            Driver.Close();
+            Driver.SwitchTo().Window(fresh);
+            if (Network != null)
+            {
+                Network.DeleteAllCookiesAsync().Wait();
+            }
+            else
+            {
+                Driver.Manage().Cookies.DeleteAllCookies();
+            }
         }
 
         /// <summary>
@@ -342,7 +374,14 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             try
             {
                 var bidi = await driver.AsBiDiAsync();
-                return new BiDiNetworkAdapter(bidi);
+                var network = new BiDiNetworkAdapter(bidi);
+                // 51Degrees.core.js is built from the evidence in the request,
+                // cookies included, and served with max-age=1800 and no
+                // Vary on Cookie. A browser that cached it while the evidence
+                // was complete serves it again to the next test, which then
+                // has nothing to fetch, so every test bypasses the cache.
+                await network.BypassCacheAsync();
+                return network;
             }
             catch (Exception)
             {
