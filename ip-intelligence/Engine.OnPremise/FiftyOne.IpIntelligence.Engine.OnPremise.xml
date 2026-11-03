@@ -850,12 +850,6 @@
             reads them. See <see cref="M:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine.OrderEvidenceKeysAsNativeEngine(System.Collections.Generic.IReadOnlyCollection{System.String})"/>.
             </summary>
         </member>
-        <member name="F:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine._requiredPropertyIndexes">
-            <summary>
-            Required property index for each property name, rebuilt whenever
-            data is loaded.
-            </summary>
-        </member>
         <member name="P:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine.Config">
             <summary>
             Wrapper to pass general configuration from managed code to unmanaged 
@@ -895,18 +889,6 @@
             The key to use for this element's data in a 
             <see cref="T:FiftyOne.Pipeline.Core.Data.IFlowData"/> instance.
             </summary>
-        </member>
-        <member name="P:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine.RequiredPropertyIndexes">
-            <summary>
-            Required property index for each property name, compared ignoring
-            case. Pass the indexes of the properties a request will read to
-            <see cref="M:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine.ProcessEngine(FiftyOne.Pipeline.Core.Data.IFlowData,FiftyOne.IpIntelligence.Engine.OnPremise.Data.IIpDataOnPremise,System.Int32[])"/>.
-            </summary>
-            <remarks>
-            Indexes come from the loaded data file, so a refresh can change
-            them. The map is replaced before <see cref="E:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine.RefreshCompleted"/> is
-            raised.
-            </remarks>
         </member>
         <member name="M:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine.SetCache(FiftyOne.Pipeline.Engines.Caching.IFlowCache)">
             <summary>
@@ -999,29 +981,6 @@
             Thrown if a required parameter is null
             </exception>
         </member>
-        <member name="M:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine.ProcessEngine(FiftyOne.Pipeline.Core.Data.IFlowData,FiftyOne.IpIntelligence.Engine.OnPremise.Data.IIpDataOnPremise,System.Int32[])">
-            <summary>
-            Processes the request, evaluating only the graphs that the given
-            required properties need. For subclasses that know which
-            properties each request reads.
-            </summary>
-            <remarks>
-            A property whose graph was skipped has no value and reports a null
-            profile, unless it is mandatory with a default value, which it then
-            reads as. Only the first 32 components can be skipped.
-            </remarks>
-            <param name="data">The flow data for the request.</param>
-            <param name="ipData">The IP data to populate.</param>
-            <param name="requiredPropertyIndexes">
-            Indexes from <see cref="P:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine.RequiredPropertyIndexes"/> for the
-            properties that will be read. Null evaluates every graph and an
-            empty array none. Indexes that are not required properties are
-            ignored.
-            </param>
-            <exception cref="T:System.ArgumentNullException">
-            Thrown if a required parameter is null.
-            </exception>
-        </member>
         <member name="M:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine.UnmanagedResourcesCleanup">
             <summary>
             Dispose of any unmanaged resources.
@@ -1053,13 +1012,6 @@
             no known prefix is left out: the native lookup never reads such
             evidence, so it must neither reach the lookup nor drive the echo.
             </returns>
-        </member>
-        <member name="M:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine.ConstructRequiredPropertyIndexes">
-            <summary>
-            One native call returns the required property names in index
-            order, so the position of each name is its index. A wrapper that
-            supplies no list, such as a test double, leaves the map empty.
-            </summary>
         </member>
         <member name="M:FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements.IpiOnPremiseEngine.GetDataDownloadType(System.String)">
             <summary>
@@ -1310,13 +1262,6 @@
         <member name="P:FiftyOne.IpIntelligence.Engine.OnPremise.Messages.ExceptionSetCache">
             <summary>
               Looks up a localized string similar to A results cache cannot be configured in the IP Intelligence engine. Its results refer to native memory, which is not safe to share between requests..
-            </summary>
-        </member>
-        <member name="M:FiftyOne.IpIntelligence.Engine.OnPremise.Wrappers.IEngineSwigWrapper.process(FiftyOne.IpIntelligence.Engine.OnPremise.Interop.EvidenceIpiSwig,System.Int32[])">
-            <summary>
-            Process the evidence evaluating only the graphs needed by the
-            required property indexes. Null evaluates every graph, an empty
-            array evaluates none.
             </summary>
         </member>
         <member name="M:FiftyOne.IpIntelligence.Engine.OnPremise.Wrappers.IEngineSwigWrapper.getRequiredProperties">

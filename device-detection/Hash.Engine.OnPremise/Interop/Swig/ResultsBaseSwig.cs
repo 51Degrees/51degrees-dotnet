@@ -141,6 +141,42 @@ public class ResultsBaseSwig : global::System.IDisposable {
     return ret;
   }
 
+  public BoolValueSwig getValueAsStrictBool(string propertyName) {
+    BoolValueSwig ret = new BoolValueSwig(DeviceDetectionHashEngineModulePINVOKE.ResultsBaseSwig_getValueAsStrictBool__SWIG_0(swigCPtr, propertyName), true);
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
+  public BoolValueSwig getValueAsStrictBool(int requiredPropertyIndex) {
+    BoolValueSwig ret = new BoolValueSwig(DeviceDetectionHashEngineModulePINVOKE.ResultsBaseSwig_getValueAsStrictBool__SWIG_1(swigCPtr, requiredPropertyIndex), true);
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
+  public IntegerValueSwig getValueAsStrictInteger(string propertyName) {
+    IntegerValueSwig ret = new IntegerValueSwig(DeviceDetectionHashEngineModulePINVOKE.ResultsBaseSwig_getValueAsStrictInteger__SWIG_0(swigCPtr, propertyName), true);
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
+  public IntegerValueSwig getValueAsStrictInteger(int requiredPropertyIndex) {
+    IntegerValueSwig ret = new IntegerValueSwig(DeviceDetectionHashEngineModulePINVOKE.ResultsBaseSwig_getValueAsStrictInteger__SWIG_1(swigCPtr, requiredPropertyIndex), true);
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
+  public DoubleValueSwig getValueAsStrictDouble(string propertyName) {
+    DoubleValueSwig ret = new DoubleValueSwig(DeviceDetectionHashEngineModulePINVOKE.ResultsBaseSwig_getValueAsStrictDouble__SWIG_0(swigCPtr, propertyName), true);
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
+  public DoubleValueSwig getValueAsStrictDouble(int requiredPropertyIndex) {
+    DoubleValueSwig ret = new DoubleValueSwig(DeviceDetectionHashEngineModulePINVOKE.ResultsBaseSwig_getValueAsStrictDouble__SWIG_1(swigCPtr, requiredPropertyIndex), true);
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
 }
 
 }

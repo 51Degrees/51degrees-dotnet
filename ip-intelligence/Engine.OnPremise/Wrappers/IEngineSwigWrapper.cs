@@ -40,15 +40,6 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Wrappers
         ResultsIpiSwig process(EvidenceIpiSwig evidence);
 
         /// <summary>
-        /// Process the evidence evaluating only the graphs needed by the
-        /// required property indexes. Null evaluates every graph, an empty
-        /// array evaluates none.
-        /// </summary>
-        ResultsIpiSwig process(
-            EvidenceIpiSwig evidence,
-            int[] requiredPropertyIndexes);
-
-        /// <summary>
         /// Required property names in required property index order.
         /// </summary>
         VectorStringSwig getRequiredProperties();

@@ -108,16 +108,8 @@ internal class EngineHashSwig : EngineDeviceDetectionSwig {
     return ret;
   }
 
-  public ResultsHashSwig process(EvidenceDeviceDetectionSwig evidence, int[] requiredPropertyIndexes, int requiredPropertyIndexesCount) {
-    global::System.IntPtr cPtr = DeviceDetectionHashEngineModulePINVOKE.EngineHashSwig_process__SWIG_2(swigCPtr, EvidenceDeviceDetectionSwig.getCPtr(evidence), requiredPropertyIndexes, requiredPropertyIndexesCount);
-    ResultsHashSwig ret = (cPtr == global::System.IntPtr.Zero) ? null : new ResultsHashSwig(cPtr, true);
-    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
-    return ret;
-  }
-
-  public ResultsHashSwig process(string userAgent, int[] requiredPropertyIndexes, int requiredPropertyIndexesCount) {
-    global::System.IntPtr cPtr = DeviceDetectionHashEngineModulePINVOKE.EngineHashSwig_process__SWIG_3(swigCPtr, userAgent, requiredPropertyIndexes, requiredPropertyIndexesCount);
-    ResultsHashSwig ret = (cPtr == global::System.IntPtr.Zero) ? null : new ResultsHashSwig(cPtr, true);
+  public VectorUInt32Swig getProfileIdsForPropertyValue(string propertyName, string valueName) {
+    VectorUInt32Swig ret = new VectorUInt32Swig(DeviceDetectionHashEngineModulePINVOKE.EngineHashSwig_getProfileIdsForPropertyValue(swigCPtr, propertyName, valueName), true);
     if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
     return ret;
   }

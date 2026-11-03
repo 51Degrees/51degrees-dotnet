@@ -106,6 +106,16 @@ internal class ConfigHashSwig : ConfigDeviceDetectionSwig {
     if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
   }
 
+  public void setPropertyValueIndex(bool index) {
+    DeviceDetectionHashEngineModulePINVOKE.ConfigHashSwig_setPropertyValueIndex(swigCPtr, index);
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+  }
+
+  public void setIndexedProperties(VectorStringSwig names) {
+    DeviceDetectionHashEngineModulePINVOKE.ConfigHashSwig_setIndexedProperties(swigCPtr, VectorStringSwig.getCPtr(names));
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+  }
+
   public CollectionConfigSwig getStrings() {
     CollectionConfigSwig ret = new CollectionConfigSwig(DeviceDetectionHashEngineModulePINVOKE.ConfigHashSwig_getStrings(swigCPtr), true);
     if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
@@ -174,6 +184,18 @@ internal class ConfigHashSwig : ConfigDeviceDetectionSwig {
 
   public bool getTraceRoute() {
     bool ret = DeviceDetectionHashEngineModulePINVOKE.ConfigHashSwig_getTraceRoute(swigCPtr);
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
+  public bool getPropertyValueIndex() {
+    bool ret = DeviceDetectionHashEngineModulePINVOKE.ConfigHashSwig_getPropertyValueIndex(swigCPtr);
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
+  public VectorStringSwig getIndexedProperties() {
+    VectorStringSwig ret = new VectorStringSwig(DeviceDetectionHashEngineModulePINVOKE.ConfigHashSwig_getIndexedProperties(swigCPtr), true);
     if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
     return ret;
   }

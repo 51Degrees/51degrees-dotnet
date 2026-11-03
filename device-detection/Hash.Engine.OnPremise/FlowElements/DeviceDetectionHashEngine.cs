@@ -86,13 +86,6 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         private IList<IComponentMetaData> _components;
 
         /// <summary>
-        /// Required property index for each property name, rebuilt whenever
-        /// data is loaded.
-        /// </summary>
-        private IReadOnlyDictionary<string, int> _requiredPropertyIndexes =
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-
-        /// <summary>
         /// Factory used to create a new <see cref="IEngineSwigWrapper"/> when
         /// <see cref="RefreshData(string)"/> or 
         /// <see cref="RefreshData(string, Stream)"/> is called.
@@ -170,19 +163,6 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         /// <see cref="IFlowData"/> instance.
         /// </summary>
         public override string ElementDataKey => "device";
-
-        /// <summary>
-        /// Required property index for each property name, compared ignoring
-        /// case. Pass the indexes of the properties a request will read to
-        /// <see cref="ProcessEngine(IFlowData, IDeviceDataHash, int[])"/>.
-        /// </summary>
-        /// <remarks>
-        /// Indexes come from the loaded data file, so a refresh can change
-        /// them. The map is replaced before <see cref="RefreshCompleted"/> is
-        /// raised.
-        /// </remarks>
-        public IReadOnlyDictionary<string, int> RequiredPropertyIndexes =>
-            _requiredPropertyIndexes;
 
         /// <summary>
         /// Not supported. Results refer to native memory, which is not safe
@@ -358,35 +338,6 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         /// </exception>
         protected override void ProcessEngine(IFlowData data, IDeviceDataHash deviceData)
         {
-            ProcessEngine(data, deviceData, null);
-        }
-
-        /// <summary>
-        /// Processes the request, walking only the graphs that the given
-        /// required properties need. For subclasses that know which
-        /// properties each request reads.
-        /// </summary>
-        /// <remarks>
-        /// A property whose graph was skipped has no value and reports a null
-        /// profile. Metric properties such as DeviceId reflect only the
-        /// components walked, and the device id has 0 for each skipped
-        /// component. Only the first 32 components can be skipped.
-        /// </remarks>
-        /// <param name="data">The flow data for the request.</param>
-        /// <param name="deviceData">The device data to populate.</param>
-        /// <param name="requiredPropertyIndexes">
-        /// Indexes from <see cref="RequiredPropertyIndexes"/> for the
-        /// properties that will be read. Null walks every graph and an empty
-        /// array none. Indexes that are not required properties are ignored.
-        /// </param>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown if a required parameter is null.
-        /// </exception>
-        protected void ProcessEngine(
-            IFlowData data,
-            IDeviceDataHash deviceData,
-            int[] requiredPropertyIndexes)
-        {
             if (data == null) { throw new ArgumentNullException(nameof(data)); }
             if (deviceData == null) { throw new ArgumentNullException(nameof(deviceData)); }
 
@@ -406,7 +357,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
                 // DeviceDataHash object.
 #pragma warning disable CA2000 // Dispose objects before losing scope
                 (deviceData as DeviceDataHash).SetResults(new ResultsSwigWrapper(
-                    _engine.process(relevantEvidence, requiredPropertyIndexes)));
+                    _engine.process(relevantEvidence)));
 #pragma warning restore CA2000 // Dispose objects before losing scope
             }
         }
@@ -424,26 +375,6 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
             {
                 _engine.Dispose();
             }
-        }
-
-        /// <summary>
-        /// One native call returns the required property names in index
-        /// order, so the position of each name is its index.
-        /// </summary>
-        private IReadOnlyDictionary<string, int> ConstructRequiredPropertyIndexes()
-        {
-            var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            using (var names = _engine.getRequiredProperties())
-            {
-                // A wrapper that supplies no list, such as a test double,
-                // leaves the map empty rather than failing engine init.
-                int count = names == null ? 0 : names.Count;
-                for (int i = 0; i < count; i++)
-                {
-                    result[names[i]] = i;
-                }
-            }
-            return result;
         }
 
         /// <summary>
@@ -498,8 +429,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
             
             _properties = ConstructProperties();
             _components = ConstructComponents();
-            _requiredPropertyIndexes = ConstructRequiredPropertyIndexes();
-            
+
             // Populate these data file properties from the native engine.
             var dataFileMetaData = GetDataFileMetaData() as IFiftyOneDataFile;
             if (dataFileMetaData != null)
