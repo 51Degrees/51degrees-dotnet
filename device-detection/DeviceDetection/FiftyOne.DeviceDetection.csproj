@@ -12,12 +12,12 @@
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.DeviceDetection</PackageId>
 	  <Title>Device detection service for the 51Degrees Pipeline API</Title>
-    <Description>Device Detection and User-Agent parser for .NET and C#. Detects the device, browser, operating system, and crawlers from the User-Agent and User-Agent Client Hints, on-premise with a data file or in the cloud. This package holds the builders that set up an on-premise or cloud pipeline with the 51Degrees Pipeline API.</Description>
+    <Description>Device Detection and User-Agent parser for .NET and C#. Detects the device, browser, operating system, and crawlers from the User-Agent and User-Agent Client Hints, on-premise with a data file or in the cloud. This package holds the builders that set up an on-premise or cloud pipeline with the 51Degrees Pipeline API. An alternative to UAParser, DeviceAtlas and WURFL.</Description>
 	  <Authors>51Degrees Engineering</Authors>
 	  <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
     <PackageIconUrl>https://51degrees.com/Nuget-FiftyOne.DeviceDetection/Square%20Logo.png</PackageIconUrl>
 	  <Copyright>51Degrees Mobile Experts Limited</Copyright>
-	  <PackageTags>51degrees;device-detection;user-agent;user-agent-parser;client-hints;browser-detection;mobile-detection;crawler-detection;pipeline;data;device;detection;parse;detection-library;bots;crawler;desktop;tablet;mobile;tv</PackageTags>
+	  <PackageTags>51degrees;device-detection;user-agent;user-agent-parser;client-hints;browser-detection;mobile-detection;crawler-detection;pipeline;data;device;detection;parse;detection-library;bots;crawler;desktop;tablet;mobile;tv;wurfl;deviceatlas;uaparser</PackageTags>
 	  <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
     <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection-fiftyone.devicedetection.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
