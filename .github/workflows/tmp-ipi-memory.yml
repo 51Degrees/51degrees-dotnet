@@ -74,9 +74,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { label: '4.5.100 Release, every assembly', ref: main, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '0' }
-          - { label: '4.5.101 Release, every assembly', ref: fix/cxx-4.5.101, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '0' }
-          - { label: '4.5.101 Debug, every assembly', ref: fix/cxx-4.5.101, name: Windows_x64_Debug, configuration: Debug, build: dotnet, gc: '0' }
+          - { label: '4.5.100 Release, counters', ref: main, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '0' }
+          - { label: '4.5.101 Release, counters', ref: fix/cxx-4.5.101, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '0' }
+          - { label: '4.5.101 Release, forced GC', ref: fix/cxx-4.5.101, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '1' }
     name: ${{ matrix.label }}
     steps:
       - uses: actions/checkout@v6
@@ -142,7 +142,7 @@ jobs:
                           System.IO.File.AppendAllText(LogPath, $"   largest processes: {string.Join(", ", top)}{Environment.NewLine}");
                       }
                       System.IO.File.AppendAllText(LogPath,
-                          $"{DateTime.UtcNow:HH:mm:ss} {label}: process private {p.PrivateMemorySize64 >> 20} MB, working set {p.WorkingSet64 >> 20} MB, managed {GC.GetTotalMemory(false) >> 20} MB, gen2 collections {GC.CollectionCount(2)}, {sys}{Environment.NewLine}");
+                          $"{DateTime.UtcNow:HH:mm:ss} {label}: process private {p.PrivateMemorySize64 >> 20} MB, working set {p.WorkingSet64 >> 20} MB, managed {GC.GetTotalMemory(false) >> 20} MB, allocated {GC.GetTotalAllocatedBytes(false) >> 20} MB, gen0 {GC.CollectionCount(0)}, gen1 {GC.CollectionCount(1)}, gen2 collections {GC.CollectionCount(2)}, {sys}{Environment.NewLine}");
                   }
               }
           }
