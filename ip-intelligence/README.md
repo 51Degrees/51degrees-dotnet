@@ -159,12 +159,12 @@ related CI scripts:
 
 We currently do not [strong name](https://learn.microsoft.com/en-us/dotnet/standard/library-guidance/strong-naming#create-strong-named-net-libraries) assemblies due to downsides for developers. The main of which is that .NET Framework on Windows enables strict loading of assemblies once an assembly is strong named. A strong-named assembly reference must exactly match the version of the loaded assembly, forcing developers to configure binding redirects when using the assembly.
 
-If it is absolutely critical for your use case to integrate a strong-named assembly - please create a feature request [issue](https://github.com/51Degrees/ip-intelligence-dotnet/issues/new).
+If it is absolutely critical for your use case to integrate a strong-named assembly - please create a feature request [issue](https://github.com/51Degrees/51degrees-dotnet/issues/new).
 
 ## Examples
 
 Examples can be found in
-[ip-intelligence-dotnet-examples](https://github.com/51Degrees/ip-intelligence-dotnet-examples)
+[ip-intelligence-dotnet-examples](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/ip-intelligence)
 repository.
 
 ## Tests

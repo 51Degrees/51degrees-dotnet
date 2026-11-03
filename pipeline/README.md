@@ -95,7 +95,7 @@ For example, Installing `FiftyOne.Pipeline.Engines.FiftyOne` will automatically 
 ### Pipeline Examples
 
 There are several examples available that demonstrate how to make use of the Pipeline API in isolation. These are described in the table below.
-If you want examples that demonstrate how to use 51Degrees products such as device detection, then these are available in the corresponding [repository](https://github.com/51Degrees/device-detection-dotnet) and on our [website](https://51degrees.com/documentation/_examples__device_detection__index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=pipeline-examples).
+If you want examples that demonstrate how to use 51Degrees products such as device detection, then these are available in the corresponding [repository](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection) and on our [website](https://51degrees.com/documentation/_examples__device_detection__index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=pipeline-examples).
 
 | Example                                   | Description |
 |-------------------------------------------|-------------|
