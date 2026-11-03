@@ -84,11 +84,19 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         private IList<IComponentMetaData> _components;
 
         /// <summary>
-        /// Required property index for each property name, rebuilt whenever
-        /// data is loaded.
+        /// Empty index map. Results tagged with it read properties by name.
         /// </summary>
-        private IReadOnlyDictionary<string, int> _requiredPropertyIndexes =
+        internal static readonly IReadOnlyDictionary<string, int> NoPropertyIndexes =
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Required property index for each property name, rebuilt whenever
+        /// data is loaded. Cleared before the native data is swapped so that
+        /// ProcessEngine can tell whether results came from the data set
+        /// this map describes.
+        /// </summary>
+        private volatile IReadOnlyDictionary<string, int> _requiredPropertyIndexes =
+            NoPropertyIndexes;
 
         /// <summary>
         /// Wrapper to pass general configuration from managed code to unmanaged 
@@ -265,6 +273,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
             }
             else
             {
+                _requiredPropertyIndexes = NoPropertyIndexes;
                 _engine.refreshData();
             }
             InitEngineMetaData();
@@ -295,6 +304,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
             }
             else
             {
+                _requiredPropertyIndexes = NoPropertyIndexes;
                 _engine.refreshData(data, data.Length);
             }
             InitEngineMetaData();
@@ -349,33 +359,39 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
             if (data == null) { throw new ArgumentNullException(nameof(data)); }
             if (ipData == null) { throw new ArgumentNullException(nameof(ipData)); }
 
+            // A refresh clears the map, swaps the native data and then
+            // publishes a new map. If the same map is published before and
+            // after processing, the results came from the data set it
+            // describes. Otherwise the results read properties by name.
+            var indexesBefore = _requiredPropertyIndexes;
+
             // Walk the client IP evidence keys in the order the native
             // lookup consults them - see OrderEvidenceKeysAsNativeEngine
-            // for how that order is derived - doing two things in the one
-            // pass:
+            // for how that order is derived - and stop at the first value
+            // that is a whole, valid address.
             //
-            // 1. Hand every readable value to the native engine. It raises
-            //    INCORRECT_IP_ADDRESS_FORMAT on a value it cannot parse,
-            //    which ends its processing before lower-priority evidence
-            //    is tried, so parse here instead: a value the tolerant
-            //    parser can read is passed on in canonical bare-address
-            //    form, and a value it cannot read is left out so the native
-            //    fall-through still happens. This is deliberately stricter
-            //    than the native parser, which stops at a '/' or ' ' and so
-            //    resolved "1.2.3.4/24" and "1.2.3.4 x" as 1.2.3.4; those
-            //    now yield no result. Requiring a whole, valid address is
-            //    what lets a malformed high-priority value fall through to
-            //    a valid lower-priority one (issue #319). The value goes
-            //    under the engine's own spelling of the key: the filter
-            //    admits any casing, but the native prefix match is
-            //    case-sensitive and would silently drop "Query.client-ip".
+            // Parsing here rather than natively is deliberate. The native
+            // engine raises INCORRECT_IP_ADDRESS_FORMAT on a value it
+            // cannot parse, which ends its processing before lower-priority
+            // evidence is tried, and it stops at a '/' or ' ' and so
+            // resolved "1.2.3.4/24" and "1.2.3.4 x" as 1.2.3.4. Requiring
+            // a whole, valid address is what lets a malformed high-priority
+            // value fall through to a valid lower-priority one (issue
+            // #319). Selection is by validity, not presence: an unreadable
+            // value lets the search continue.
             //
-            // 2. Capture the client IP to echo back as the synthetic Ip /
-            //    IpV6 properties. The first readable value in this order is
-            //    the one the native lookup resolves, so the echo names the
-            //    address the location properties beside it describe
-            //    (issue #333). Selection is by validity, not presence: an
-            //    unreadable value lets the search continue.
+            // The address chosen is handed to the native engine as bytes.
+            // That is the same address the native lookup would have chosen
+            // from the full evidence, because the order walked here is the
+            // order it consults, and it saves formatting the address back
+            // to text, copying it into native evidence and parsing it a
+            // second time natively. A caller that already holds the
+            // address as an IPAddress, such as a bulk reader of binary
+            // records, skips the text parse as well.
+            //
+            // The same address is echoed back as the synthetic Ip / IpV6
+            // properties, so the echo names the address the location
+            // properties beside it describe (issue #333).
             System.Net.IPAddress chosenAddress = null;
 
             // Whether the request offered a client IP at all, so that
@@ -386,39 +402,67 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
             // SetEchoIp.
             var clientIpSupplied = false;
 
-            using (var relevantEvidence = new EvidenceIpiSwig())
+            foreach (var evidenceKey in _orderedEvidenceKeys)
             {
-                foreach (var evidenceKey in _orderedEvidenceKeys)
+                if (data.TryGetEvidence(evidenceKey, out object rawValue) == false)
                 {
-                    if (data.TryGetEvidence(evidenceKey, out object rawValue) == false)
-                    {
-                        continue;
-                    }
-                    var rawText = rawValue?.ToString();
-                    // A blank value is nothing offered rather than
-                    // something unreadable, so it must not be reported as
-                    // invalid.
-                    if (string.IsNullOrWhiteSpace(rawText) == false)
-                    {
-                        clientIpSupplied = true;
-                    }
-                    if (ClientIpParser.TryParse(
-                        rawText,
-                        out var address,
-                        out var addressText))
-                    {
-                        relevantEvidence.Add(new KeyValuePair<string, string>(
-                            evidenceKey,
-                            addressText));
-                        if (chosenAddress == null)
-                        {
-                            chosenAddress = address;
-                        }
-                    }
+                    continue;
                 }
-                (ipData as IpDataOnPremise).SetResults(
-                    _engine.process(relevantEvidence, requiredPropertyIndexes));
+                if (rawValue is System.Net.IPAddress binaryAddress)
+                {
+                    clientIpSupplied = true;
+                    // A scope id names an interface on this host, which
+                    // means nothing to the data file, and the text parser
+                    // strips it too.
+                    chosenAddress = binaryAddress.AddressFamily ==
+                        System.Net.Sockets.AddressFamily.InterNetworkV6 &&
+                        binaryAddress.ScopeId != 0
+                        ? new System.Net.IPAddress(binaryAddress.GetAddressBytes())
+                        : binaryAddress;
+                    break;
+                }
+                var rawText = rawValue?.ToString();
+                // A blank value is nothing offered rather than something
+                // unreadable, so it must not be reported as invalid.
+                if (string.IsNullOrWhiteSpace(rawText) == false)
+                {
+                    clientIpSupplied = true;
+                }
+                if (ClientIpParser.TryParse(rawText, out var address))
+                {
+                    chosenAddress = address;
+                    break;
+                }
             }
+
+            ResultsIpiSwig results;
+            if (chosenAddress == null)
+            {
+                // Nothing readable was offered. The native engine is still
+                // asked, with no evidence, so the result reports the same
+                // no value reasons it always has.
+                using (var emptyEvidence = new EvidenceIpiSwig())
+                {
+                    results = _engine.process(emptyEvidence, requiredPropertyIndexes);
+                }
+            }
+            else
+            {
+                var addressBytes = chosenAddress.GetAddressBytes();
+                results = _engine.process(
+                    addressBytes,
+                    addressBytes.Length,
+                    chosenAddress.AddressFamily ==
+                        System.Net.Sockets.AddressFamily.InterNetwork
+                        ? IpTypeSwig.FIFTYONE_DEGREES_IP_TYPE_IPV4
+                        : IpTypeSwig.FIFTYONE_DEGREES_IP_TYPE_IPV6,
+                    requiredPropertyIndexes);
+            }
+            (ipData as IpDataOnPremise).SetResults(
+                results,
+                ReferenceEquals(indexesBefore, _requiredPropertyIndexes)
+                    ? indexesBefore
+                    : NoPropertyIndexes);
 
             (ipData as IpDataOnPremise).SetEchoIp(
                 chosenAddress?.AddressFamily ==
