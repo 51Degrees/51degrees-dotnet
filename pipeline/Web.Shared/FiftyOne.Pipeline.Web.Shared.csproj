@@ -17,7 +17,7 @@
     <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.web.shared-fiftyone.pipeline.web.shared.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <PackageIcon>51d-logo.png</PackageIcon>
     <PackageIconUrl>https://51degrees.com/portals/0/Logos/Square%20Logo.png?width=64</PackageIconUrl>
-    <RepositoryUrl>https://github.com/51Degrees/pipeline-dotnet</RepositoryUrl>
+    <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>51degrees,pipeline,data service,web</PackageTags>
     <NeutralLanguage>en</NeutralLanguage>
