@@ -32,7 +32,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-/// @example UACH-manual/Startup.cs
+/// @example Cloud-UACH-manual/Startup.cs
 /// 
 /// @include{doc} example-web-integration-client-hints.txt
 /// 
@@ -149,10 +149,10 @@ using Microsoft.Extensions.DependencyInjection;
 /// ```
 /// 
 /// ## Controller
-/// @include Controllers/HomeController.cs
+/// @include Cloud-UACH-manual/Controllers/HomeController.cs
 /// 
 /// ## View
-/// @include Views/Home/Index.cshtml
+/// @include Cloud-UACH-manual/Views/Home/Index.cshtml
 /// 
 /// ## Startup
 

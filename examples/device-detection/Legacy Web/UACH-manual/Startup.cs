@@ -138,10 +138,10 @@ using Microsoft.Extensions.DependencyInjection;
 /// ```
 /// 
 /// ## Controller
-/// @include Controllers/HomeController.cs
+/// @include UACH-manual/Controllers/HomeController.cs
 /// 
 /// ## View
-/// @include Views/Home/Index.cshtml
+/// @include UACH-manual/Views/Home/Index.cshtml
 /// 
 /// ## Startup
 

@@ -141,10 +141,10 @@ using Microsoft.Extensions.DependencyInjection;
 /// ```
 /// 
 /// ## Controller
-/// @include Controllers/HomeController.cs
+/// @include Cloud-UACH/Controllers/HomeController.cs
 /// 
 /// ## View
-/// @include Views/Home/Index.cshtml
+/// @include Cloud-UACH/Views/Home/Index.cshtml
 /// 
 /// ## Startup
 
