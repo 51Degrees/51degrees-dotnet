@@ -31,6 +31,8 @@ jobs:
         with:
           ref: main
           path: 51degrees-dotnet
+          submodules: recursive
+          token: ${{ secrets.ACCESS_TOKEN }}
       # The same key the shared prefetch action works out from the secrets
       # pull-requests.yml passes, so today's cache is reused when it matches.
       - name: Work out the asset cache key
