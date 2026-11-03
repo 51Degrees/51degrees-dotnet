@@ -74,12 +74,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { label: '4.5.100 Release', ref: main, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '0' }
-          - { label: '4.5.100 Release forced GC', ref: main, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '1' }
-          - { label: '4.5.101 Release', ref: fix/cxx-4.5.101, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '0' }
-          - { label: '4.5.101 Release forced GC', ref: fix/cxx-4.5.101, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '1' }
-          - { label: '4.5.101 Debug', ref: fix/cxx-4.5.101, name: Windows_x64_Debug, configuration: Debug, build: dotnet, gc: '0' }
-          - { label: '4.5.101 Debug forced GC', ref: fix/cxx-4.5.101, name: Windows_x64_Debug, configuration: Debug, build: dotnet, gc: '1' }
+          - { label: '4.5.100 Release, every assembly', ref: main, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '0' }
+          - { label: '4.5.101 Release, every assembly', ref: fix/cxx-4.5.101, name: Windows_x64_Release, configuration: Release, build: msbuild, gc: '0' }
+          - { label: '4.5.101 Debug, every assembly', ref: fix/cxx-4.5.101, name: Windows_x64_Debug, configuration: Debug, build: dotnet, gc: '0' }
     name: ${{ matrix.label }}
     steps:
       - uses: actions/checkout@v6
@@ -136,6 +133,14 @@ jobs:
                       var sys = GlobalMemoryStatusEx(ref s)
                           ? $"system commit {(s.ullTotalPageFile - s.ullAvailPageFile) >> 20} of {s.ullTotalPageFile >> 20} MB, physical free {s.ullAvailPhys >> 20} MB"
                           : "system commit unknown";
+                      if (label.StartsWith("begin"))
+                      {
+                          var top = System.Diagnostics.Process.GetProcesses()
+                              .Select(x => { try { return (x.ProcessName, x.Id, x.PrivateMemorySize64 >> 20); } catch { return ("?", 0, 0L); } })
+                              .OrderByDescending(x => x.Item3).Take(5)
+                              .Select(x => $"{x.Item1}({x.Item2}) {x.Item3} MB");
+                          System.IO.File.AppendAllText(LogPath, $"   largest processes: {string.Join(", ", top)}{Environment.NewLine}");
+                      }
                       System.IO.File.AppendAllText(LogPath,
                           $"{DateTime.UtcNow:HH:mm:ss} {label}: process private {p.PrivateMemorySize64 >> 20} MB, working set {p.WorkingSet64 >> 20} MB, managed {GC.GetTotalMemory(false) >> 20} MB, gen2 collections {GC.CollectionCount(2)}, {sys}{Environment.NewLine}");
                   }
@@ -153,7 +158,6 @@ jobs:
           ./steps/run-script.ps1 ./51degrees-dotnet/ci/fetch-assets.ps1 $Options
           ./steps/run-script.ps1 ./51degrees-dotnet/ci/setup-environment.ps1 $Options
           ./steps/run-script.ps1 ./51degrees-dotnet/ci/build-project.ps1 $Options
-          $env:FIFTYONE_TEST_FILTER = '^FiftyOne\.IpIntelligence\.Tests\.Core\.dll$'
           $failed = $false
           try { ./steps/run-script.ps1 ./51degrees-dotnet/ci/run-unit-tests.ps1 $Options } catch { $failed = $true; Write-Host "Tests failed: $_" }
           Write-Host "::group::Memory log"
