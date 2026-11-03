@@ -12,7 +12,7 @@
 		<copyright>51Degrees Mobile Experts Limited</copyright>
 		<language>en</language>
 		<tags>51degrees,pipeline,aggregate,data service,web</tags>
-		<repository type="git" url="https://github.com/51Degrees/pipeline-dotnet" />
+		<repository type="git" url="https://github.com/51Degrees/51degrees-dotnet" />
 		<dependencies>
 			<group targetFramework="net8.0">
 				<dependency id="FiftyOne.Pipeline.Engines.FiftyOne" version="$version$" />

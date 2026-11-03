@@ -12,13 +12,13 @@
 	<!-- NuGet package properties -->
 	<PackageId>FiftyOne.IpIntelligence</PackageId>
 	<Title>51Degrees IP Intelligence Pipeline Configuration for the Pipeline API</Title>
-	<Description>Pipeline builder components for integrating 51Degrees IP Intelligence with the Pipeline API. This package provides builders for configuring IP Intelligence pipelines using either the Cloud or On-premise implementations, based on IP address data.</Description>
+	<Description>IP Intelligence and IP geolocation for .NET and C#. Finds an IP address's likely location (country, region, town, and coordinates), connection type, and network, on-premise with a data file or in the cloud. This package holds the builders that set up an on-premise or cloud pipeline with the 51Degrees Pipeline API. An alternative to MaxMind and IPinfo.</Description>
 	<Authors>51Degrees Engineering</Authors>
 	<PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
 	<PackageIconUrl>https://51degrees.com/Nuget-FiftyOne.IpIntelligence/Square%20Logo.png</PackageIconUrl>
 	<Copyright>51Degrees Mobile Experts Limited</Copyright>
-	<PackageTags>51degrees;pipeline;pipeline-api;pipeline-builder;builder;configuration;ip-intelligence;ip;ip-address;ip-geolocation;geolocation;geoip;asn;autonomous-system;isp;organization;network</PackageTags>
-	<RepositoryUrl>https://github.com/51Degrees/ip-intelligence-dotnet</RepositoryUrl>
+	<PackageTags>51degrees;ip-intelligence;ip-geolocation;geoip;ip-lookup;asn;ip-to-country;pipeline;pipeline-api;pipeline-builder;builder;configuration;ip;ip-address;geolocation;autonomous-system;isp;organization;network;maxmind;ipinfo</PackageTags>
+	<RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
 	<PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.ipintelligence-fiftyone.ipintelligence.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
 	<RepositoryType>git</RepositoryType>
 	<PackageIcon>51d-logo.png</PackageIcon>
