@@ -96,13 +96,17 @@ function Invoke-ContractTests {
     }
 }
 
+# The examples build in the job's own configuration, which build-project.ps1
+# has already built, so nothing is rebuilt here. Building the cloud example
+# as Release on a Debug job rebuilt the pipeline projects in Release while
+# an MSBuild node from the earlier build still held their output.
 $references = $Version ? @() : @("-p:FiftyOneReferences=Project")
 $failed = @()
 $cloudProject = "$RepoName/examples/device-detection/Cloud/GettingStarted-Web"
 $onPremiseProject = "$RepoName/examples/device-detection/OnPremise/GettingStarted-Web"
 try {
     Invoke-ContractTests -Label 'cloud' -Project $cloudProject -Port 8095 `
-        -BuildArgs (@('-c', 'Release') + $references) `
+        -BuildArgs (@('-c', $Configuration) + $references) `
         -ExampleEnv @{ FIFTYONE_CLOUD_ENDPOINT = "https://cloud.51degrees.com/api/v4/" }
 } catch {
     Write-Host "::error title=Selenium contract (cloud)::$_"
