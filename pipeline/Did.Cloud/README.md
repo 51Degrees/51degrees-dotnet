@@ -30,4 +30,4 @@ key rather than by envelope, use
 
 - [51Degrees documentation](https://51degrees.com/documentation?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.did.cloud-readme.md&utm_term=documentation)
 - [Get a resource key](https://configure.51degrees.com/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.did.cloud-readme.md&utm_term=resource-key)
-- https://github.com/51Degrees/pipeline-dotnet
+- https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline

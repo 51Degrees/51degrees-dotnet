@@ -39,4 +39,4 @@ parses it and gives access to the match key.
 ## Find out more
 
 - [51Degrees documentation](https://51degrees.com/documentation?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.did.core-readme.md&utm_term=documentation)
-- https://github.com/51Degrees/pipeline-dotnet
+- https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline
