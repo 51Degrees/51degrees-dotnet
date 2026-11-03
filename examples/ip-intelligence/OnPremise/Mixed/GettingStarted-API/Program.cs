@@ -118,8 +118,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI
             AppendConfigOverrides(
                 builder.Configuration,
                 out var rawOptions,
-                ipiDataFileOverride,
-                ddDataFileOverride);
+                ddDataFileOverride: ddDataFileOverride,
+                ipiDataFileOverride: ipiDataFileOverride);
 
             // Add services to the container.
             builder.Services.AddAuthorization();
