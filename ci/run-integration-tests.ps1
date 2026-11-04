@@ -24,22 +24,20 @@ $Filter = "^FiftyOne\.(?!DeviceDetection\.Example\.Tests\.Web\.dll$).*Examples?\
 if ($env:FIFTYONE_TEST_FILTER) {
     $Filter = $env:FIFTYONE_TEST_FILTER
 }
-# The shared integration step allows five minutes without output before it
-# treats a test as hung. The IP Intelligence examples load the 6 GB
-# Enterprise file and can take longer than that, so they get the 20 minutes
-# the separate examples repository allowed.
+# A test is treated as hung after 20 minutes, the limit the separate examples
+# repository allowed, because the IP Intelligence examples load the 6 GB
+# Enterprise file.
 # Every example test project is SDK-style, so dotnet test runs them on every
 # platform. The host is picked from the assembly's platform, which the
 # on-premise example test projects set, so an x86 build loads its x86 library.
-./dotnet/run-unit-tests.ps1 `
+# They run in parallel lanes, which ci/run-test-lanes.ps1 describes.
+& "$PSScriptRoot/run-test-lanes.ps1" `
     -RepoName $RepoName `
     -Name $Name `
     -Configuration $Configuration `
-    -Arch $Arch `
-    -BuildMethod "dotnet" `
     -BlameHangTimeout "20m" `
-    -OutputFolder "integration" `
-    -Filter $Filter
+    -Filter $Filter `
+    -OutputFolder "integration"
 if ($LASTEXITCODE -ne 0) {
     throw "The example tests failed."
 }

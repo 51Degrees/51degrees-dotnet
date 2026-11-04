@@ -167,16 +167,16 @@ Rules:
                 "  This repository, where the derived property element " +
                 "lives:");
             Console.WriteLine(
-                "    https://github.com/51Degrees/pipeline-dotnet");
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline");
             Console.WriteLine(
                 "  The device detection engine, which supplies most of " +
                 "the properties a script reads:");
             Console.WriteLine(
-                "    https://github.com/51Degrees/device-detection-dotnet");
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/device-detection");
             Console.WriteLine(
                 "  The IP intelligence engine, which supplies the rest:");
             Console.WriteLine(
-                "    https://github.com/51Degrees/ip-intelligence-dotnet");
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/ip-intelligence");
             Console.WriteLine("  The 51Degrees documentation:");
             Console.WriteLine(
                 "    https://51degrees.com/documentation" +

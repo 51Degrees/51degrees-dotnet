@@ -23,14 +23,15 @@ if ($env:FIFTYONE_TEST_FILTER) {
     $Filter = $env:FIFTYONE_TEST_FILTER
 }
 
-./dotnet/run-unit-tests.ps1 `
+# The SDK-style assemblies run in parallel lanes, which ci/run-test-lanes.ps1
+# describes.
+& "$PSScriptRoot/run-test-lanes.ps1" `
     -RepoName $RepoName `
     -Name $Name `
     -Configuration $Configuration `
-    -Arch $Arch `
-    -BuildMethod "dotnet" `
     -BlameHangTimeout "20m" `
-    -Filter $Filter
+    -Filter $Filter `
+    -OutputFolder "unit"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

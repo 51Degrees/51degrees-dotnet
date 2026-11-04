@@ -31,7 +31,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,32 +43,16 @@ namespace FiftyOne.IpIntelligence.Tests.Core
     {
         private static readonly IEnumerable<bool> AllBools = new bool[] { false, true };
 
-        private static object _lock = new object();
-        private static readonly bool ShouldSaveMemory =
-            (IntPtr.Size == 4) || RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
-
-        [TestInitialize]
-        public void Init()
-        {
-            // If the test is running in x86 then we need to take some 
-            // extra precautions to prevent occasionally running out
-            // of memory.
-            if (ShouldSaveMemory)
-            {
-                // Ensure that only one integration test is running at once.
-                Monitor.Enter(_lock);
-                // Force garbage collection
-                GC.Collect();
-            }
-        }
-
         [TestCleanup]
         public void Cleanup()
         {
-            if (ShouldSaveMemory)
-            {
-                Monitor.Exit(_lock);
-            }
+            // The native results of each flow data hold the data set until
+            // their finalizers run. The cases allocate so little managed
+            // memory that .NET may not collect before the next case loads
+            // the data file, so collect and wait for the finalizers here.
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
         }
 
         private static IEnumerable<object[]> TestParams

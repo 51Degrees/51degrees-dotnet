@@ -483,6 +483,24 @@ class IpIntelligenceEngineModulePINVOKE {
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsDouble__SWIG_1___")]
   public static extern global::System.IntPtr ResultsBaseSwig_getValueAsDouble__SWIG_1(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
 
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictBool__SWIG_0___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictBool__SWIG_0(global::System.Runtime.InteropServices.HandleRef jarg1, string jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictBool__SWIG_1___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictBool__SWIG_1(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictInteger__SWIG_0___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictInteger__SWIG_0(global::System.Runtime.InteropServices.HandleRef jarg1, string jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictInteger__SWIG_1___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictInteger__SWIG_1(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictDouble__SWIG_0___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictDouble__SWIG_0(global::System.Runtime.InteropServices.HandleRef jarg1, string jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_ResultsBaseSwig_getValueAsStrictDouble__SWIG_1___")]
+  public static extern global::System.IntPtr ResultsBaseSwig_getValueAsStrictDouble__SWIG_1(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2);
+
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_Date_getYear___")]
   public static extern int Date_getYear(global::System.Runtime.InteropServices.HandleRef jarg1);
 
@@ -632,6 +650,9 @@ class IpIntelligenceEngineModulePINVOKE {
 
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_UTF8StringSwig_Remove___")]
   public static extern bool UTF8StringSwig_Remove(global::System.Runtime.InteropServices.HandleRef jarg1, byte jarg2);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_UTF8StringSwig_copyToArray___")]
+  public static extern int UTF8StringSwig_copyToArray(global::System.Runtime.InteropServices.HandleRef jarg1, byte[] jarg2, int jarg3);
 
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_delete_UTF8StringSwig___")]
   public static extern void delete_UTF8StringSwig(global::System.Runtime.InteropServices.HandleRef jarg1);
@@ -1419,6 +1440,9 @@ class IpIntelligenceEngineModulePINVOKE {
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_ResultsIpiSwig_getTargetIpAddress___")]
   public static extern global::System.IntPtr ResultsIpiSwig_getTargetIpAddress(global::System.Runtime.InteropServices.HandleRef jarg1);
 
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_ResultsIpiSwig_copyValueAsUTF8String___")]
+  public static extern int ResultsIpiSwig_copyValueAsUTF8String(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, byte[] jarg3, int jarg4);
+
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_delete_ConfigBaseSwig___")]
   public static extern void delete_ConfigBaseSwig(global::System.Runtime.InteropServices.HandleRef jarg1);
 
@@ -1580,15 +1604,6 @@ class IpIntelligenceEngineModulePINVOKE {
 
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_EngineIpiSwig_process__SWIG_2___")]
   public static extern global::System.IntPtr EngineIpiSwig_process__SWIG_2(global::System.Runtime.InteropServices.HandleRef jarg1, byte[] jarg2, int jarg3, int jarg4);
-
-  [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_EngineIpiSwig_process__SWIG_3___")]
-  public static extern global::System.IntPtr EngineIpiSwig_process__SWIG_3(global::System.Runtime.InteropServices.HandleRef jarg1, global::System.Runtime.InteropServices.HandleRef jarg2, [global::System.Runtime.InteropServices.In, global::System.Runtime.InteropServices.MarshalAs(global::System.Runtime.InteropServices.UnmanagedType.LPArray)]int[] jarg3, int jarg4);
-
-  [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_EngineIpiSwig_process__SWIG_4___")]
-  public static extern global::System.IntPtr EngineIpiSwig_process__SWIG_4(global::System.Runtime.InteropServices.HandleRef jarg1, string jarg2, [global::System.Runtime.InteropServices.In, global::System.Runtime.InteropServices.MarshalAs(global::System.Runtime.InteropServices.UnmanagedType.LPArray)]int[] jarg3, int jarg4);
-
-  [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_EngineIpiSwig_process__SWIG_5___")]
-  public static extern global::System.IntPtr EngineIpiSwig_process__SWIG_5(global::System.Runtime.InteropServices.HandleRef jarg1, byte[] jarg2, int jarg3, int jarg4, [global::System.Runtime.InteropServices.In, global::System.Runtime.InteropServices.MarshalAs(global::System.Runtime.InteropServices.UnmanagedType.LPArray)]int[] jarg5, int jarg6);
 
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefIpIntelligencefEnginefOnPremisefInterop_EngineIpiSwig_processBase___")]
   public static extern global::System.IntPtr EngineIpiSwig_processBase(global::System.Runtime.InteropServices.HandleRef jarg1, global::System.Runtime.InteropServices.HandleRef jarg2);

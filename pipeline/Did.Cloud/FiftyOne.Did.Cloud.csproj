@@ -17,7 +17,7 @@
     <PackageIconUrl>https://51degrees.com/portals/0/Logos/Square%20Logo.png?width=64</PackageIconUrl>
     <Copyright>51Degrees Mobile Experts Limited</Copyright>
     <PackageTags>51degrees,51did,fodid,identifier,pipeline,cloud,owid</PackageTags>
-    <RepositoryUrl>https://github.com/51Degrees/pipeline-dotnet</RepositoryUrl>
+    <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
     <PackageIcon>51d-logo.png</PackageIcon>
     <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.did.cloud-fiftyone.did.cloud.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <Description>Returns the 51Degrees Identifier (51Did) from the 51Degrees Cloud service through the 51Degrees Pipeline API.</Description>

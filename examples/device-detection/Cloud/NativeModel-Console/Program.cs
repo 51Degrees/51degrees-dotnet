@@ -41,7 +41,7 @@ using System.Net.Http;
 /// [Android devices](https://developer.android.com/reference/android/os/Build#MODEL) and 
 /// [iOS devices](https://gist.github.com/soapyigu/c99e1f45553070726f14c1bb0a54053b#file-machinename-swift)
 /// 
-/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/device-detection/4.5/Examples/Cloud/NativeModel-Console/Program.cs). 
+/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/device-detection/Cloud/NativeModel-Console/Program.cs). 
 /// 
 /// @include{doc} example-require-resourcekey.txt
 ///

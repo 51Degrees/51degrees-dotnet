@@ -18,7 +18,7 @@
     <PackageIconUrl>https://51degrees.com/portals/0/Logos/Square%20Logo.png?width=64</PackageIconUrl>
 	  <Copyright>51Degrees Mobile Experts Limited</Copyright>
 	  <PackageTags>51degrees,pipeline,data service</PackageTags>
-	  <RepositoryUrl>https://github.com/51Degrees/pipeline-dotnet</RepositoryUrl>
+	  <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
 	  <Description>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains base classes that implement the shared features available to engines - a specialized type of flow element.</Description>
 	  <PackageIcon>51d-logo.png</PackageIcon>
 	  <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-fiftyone.pipeline.engines.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>

@@ -36,10 +36,10 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 
 /// <summary>
-/// @example OnPremise/GettingStarted-API/Program.cs
+/// @example OnPremise/Mixed/GettingStarted-API/Program.cs
 /// 
 /// 
-/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/GettingStarted-API/Program.cs). 
+/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Mixed/GettingStarted-API/Program.cs). 
 /// 
 /// 
 /// Required NuGet Dependencies:

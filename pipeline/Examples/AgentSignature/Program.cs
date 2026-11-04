@@ -69,7 +69,7 @@ using CoreConstants = FiftyOne.Pipeline.Core.Constants;
 /// This repository ships no data file, so the example uses the agent
 /// signature element on its own and adds no device detection dependency.
 /// The engine lives at
-/// [device-detection-dotnet](https://github.com/51Degrees/device-detection-dotnet).
+/// [device-detection-dotnet](https://github.com/51Degrees/51degrees-dotnet/tree/main/device-detection).
 ///
 /// The example shows how to:
 ///
@@ -337,12 +337,12 @@ namespace Examples.AgentSignature
                 "  The device detection engine, which adds IsCrawler, " +
                 "CrawlerName and IsArtificialIntelligence:");
             Console.WriteLine(
-                "    https://github.com/51Degrees/device-detection-dotnet");
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/device-detection");
             Console.WriteLine(
                 "  This repository, where the agent signature element " +
                 "lives:");
             Console.WriteLine(
-                "    https://github.com/51Degrees/pipeline-dotnet");
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline");
             Console.WriteLine("  The 51Degrees documentation:");
             Console.WriteLine(
                 "    https://51degrees.com/documentation" +

@@ -46,9 +46,11 @@ $env:ACCEPTCH_HARDWARE_KEY = $Keys.AcceptCHHardwareKey
 $env:ACCEPTCH_PLATFORM_KEY = $Keys.AcceptCHPlatformKey
 $env:ACCEPTCH_NONE_KEY = $Keys.AcceptCHNoneKey
 
-# The license key the data update examples and tests use.
+# The license key the device detection data update example and test use.
+# No IP Intelligence key is set. The device detection key was set here once,
+# and the IP Intelligence update service refuses it, so the update test
+# copied the 6 GB data file and then reported inconclusive on every job.
 $env:DEVICEDETECTIONLICENSEKEY_DOTNET = $Keys.DeviceDetection
-$env:IPINTELLIGENCELICENSEKEY_DOTNET = $Keys.DeviceDetection
 
 # A chromedriver on PATH is used even when it no longer matches the installed
 # Chrome, and the images ship ones that lag behind. Skipping PATH makes

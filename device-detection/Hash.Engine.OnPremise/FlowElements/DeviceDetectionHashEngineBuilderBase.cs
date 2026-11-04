@@ -53,8 +53,8 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         #region Constants
         private const string NATIVE_DEFAULTS = "The default value for this property comes " +
             "from the native C/C++ code. You can find these defaults in the following files: " +
-            "https://github.com/51Degrees/common-cxx/blob/master/config.h, " +
-            "https://github.com/51Degrees/device-detection-cxx/blob/master/src/config-dd.h";
+            "https://github.com/51Degrees/51degrees-cxx/blob/main/src/common/config.h, " +
+            "https://github.com/51Degrees/51degrees-cxx/blob/main/src/dd/config-dd.h";
         #endregion
 
         #region Private Properties
@@ -267,7 +267,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         /// <param name="profileName">Name of the profile to use</param>
         /// <returns>This builder</returns>
         [DefaultValue("Balanced - Performance profiles are defined in the native C code. " +
-            "See https://github.com/51Degrees/device-detection-cxx/blob/master/src/hash/hash.c#L175")]
+            "See https://github.com/51Degrees/51degrees-cxx/blob/main/src/dd/hash/hash.c#L297")]
         public DeviceDetectionHashEngineBuilderBase<TEngine> SetPerformanceProfile(
             string profileName)
         {

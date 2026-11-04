@@ -46,7 +46,7 @@ using System.IO;
 /// cloud. If you are only using a single product (for example - device detection) then not all
 /// of these keys will be relevant.
 /// 
-/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/device-detection/4.5/Examples/Cloud/Metadata-Console/Program.cs). 
+/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/device-detection/Cloud/Metadata-Console/Program.cs). 
 /// 
 /// @include{doc} example-require-resourcekey.txt
 /// 

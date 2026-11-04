@@ -33,7 +33,7 @@ using System.Threading.Tasks;
 /// 
 /// @include{doc} example-getting-started-web.txt
 /// 
-/// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection/4.5/Examples/Cloud/GettingStarted-Web). 
+/// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection/Cloud/GettingStarted-Web). 
 /// 
 /// @include{doc} example-require-resourcekey.txt
 /// 
@@ -81,10 +81,10 @@ using System.Threading.Tasks;
 /// @include Cloud/GettingStarted-Web/appsettings.json
 /// 
 /// ## Controller
-/// @include Controllers/HomeController.cs
+/// @include Cloud/GettingStarted-Web/Controllers/HomeController.cs
 /// 
 /// ## View
-/// @include Views/Home/Index.cshtml
+/// @include Cloud/GettingStarted-Web/Views/Home/Index.cshtml
 /// 
 /// ## Startup
 namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb
