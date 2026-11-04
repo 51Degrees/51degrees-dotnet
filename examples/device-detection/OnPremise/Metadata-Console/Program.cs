@@ -98,7 +98,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
                     // example. See the documentation for more detail on this and other
                     // configuration options:
                     // https://51degrees.com/documentation/_device_detection__features__performance_options.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=run
-                    // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=run
+                    // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=run
                     .SetPerformanceProfile(profile)
                     // inhibit auto-update of the data file for this test
                     .SetAutoUpdate(false)

@@ -65,24 +65,19 @@ command, for example `env 51DEGREES_DD_PATH=/data/TAC-HashV41.hash dotnet run`.
 
 ## Running examples with changes to Pipeline packages
 
-A common use case is to make a change to the Pipeline logic in
-device-detection-dotnet and then use these examples to observe the results of
-the change.
+A common use case is to make a change to the Device Detection or Pipeline
+packages in this repository and then use these examples to observe the
+results of the change.
 
-By default, the examples are configured to use the packages from nuget feed. In
-order to produce and use local packages instead:
+By default, the examples use the packages published to NuGet. To build them
+against the projects in this repository instead, set `FiftyOneReferences`
+to `Project`, as the
+[root README](../../README.md#package-and-project-references) describes,
+for example from the root of the repository:
 
--   Clone and make your changes to device-detection-dotnet
--   Create and install the packages to the local nuget feed `dotnet pack
-    [Project] -o "[PackagesFolder]" /p:PackageVersion=0.0.0 -c [Configuration]
-    /p:Platform=[Architecture]` `dotnet nuget push "[PackagesFolder]/*.nupkg" -s
-    LocalFeed `
--   Update the version of the device-detection-dotnet in the examples project: `
-    dotnet add package "FiftyOne.DeviceDetection" --version 0.0.0 --source
-    LocalFeed`
-
-The same principle can be applied to incorporate changes in pipeline-dotnet if
-needed.
+```
+dotnet build FiftyOne.slnx -p:FiftyOneReferences=Project
+```
 
 The tables below describe the examples available in this repository.
 

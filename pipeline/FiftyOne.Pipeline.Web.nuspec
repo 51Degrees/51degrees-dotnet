@@ -13,6 +13,8 @@
 		<language>en</language>
 		<tags>51degrees,pipeline,aggregate,data service,web</tags>
 		<repository type="git" url="https://github.com/51Degrees/51degrees-dotnet" />
+		<projectUrl>https://51degrees.com/build-your-own?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.web&amp;utm_term=projecturl</projectUrl>
+		<readme>docs\README.md</readme>
 		<dependencies>
 			<group targetFramework="net8.0">
 				<dependency id="FiftyOne.Pipeline.Engines.FiftyOne" version="$version$" />
@@ -36,6 +38,7 @@
     </metadata>
 	<files>
 		<file src="images\51d-logo.png" target="images\" />
+		<file src="README.md" target="docs\" />
     <file src="Web\bin\$config$\net8.0\FiftyOne.Pipeline.Web.dll" target="lib\net8.0" />
 		<file src="Web.Framework\bin\$config$\FiftyOne.Pipeline.Web.Framework.dll" target="lib\net462" />
 		<file src="Web.Framework\Web.config.transform" target="content/net462/Web.config.transform" />
