@@ -68,16 +68,6 @@ public class DidCloudEngineEntitlementTests
     };
 
     /// <summary>
-    /// Duplicated here because the message resource is internal to
-    /// FiftyOne.Pipeline.CloudRequestEngine. The base test
-    /// CloudAspectEngineBaseTests carries the same copy.
-    /// </summary>
-    private const string PropertiesErrorFormat =
-        "Failed to load properties for '{0}'. This usually means your " +
-        "resource key does not include access to any properties under " +
-        "'{0}'.";
-
-    /// <summary>
     /// Stands in for the cloud request engine, so a test can say exactly
     /// what the resource key is entitled to without making a request.
     /// </summary>
@@ -223,13 +213,12 @@ public class DidCloudEngineEntitlementTests
 
     /// <summary>
     /// A key with no entitlement to the product. The cloud lists no entry
-    /// for the element, and the pipeline build fails naming it, which is
-    /// what every other cloud engine already does. Before this change the
-    /// engine advertised all six properties for such a key and the caller
-    /// was told the identifier was available and then never got one.
+    /// for the element, so the pipeline builds, the engine reports no
+    /// properties, and the pipeline offers none under the element, which
+    /// is what the JavaScript builder reads to leave the block out.
     /// </summary>
     [TestMethod]
-    public void UnentitledKeyFailsTheBuildNamingTheElement()
+    public void UnentitledKeyBuildsAndOffersNothing()
     {
         var engine = NewEngine();
         var requestEngine = new StubRequestEngine
@@ -240,25 +229,21 @@ public class DidCloudEngineEntitlementTests
             },
         };
 
-        try
-        {
-            using var pipeline = new PipelineBuilder(new LoggerFactory())
-                .AddFlowElement(requestEngine)
-                .AddFlowElement(engine)
-                .Build();
-            Assert.Fail("the build must fail for a key that does not carry " +
-                "the product");
-        }
-        catch (PipelineException ex)
-        {
-            var expected = string.Format(
-                System.Globalization.CultureInfo.InvariantCulture,
-                PropertiesErrorFormat,
-                DidBaseEnginePropertiesBuilder.ComponentName);
-            StringAssert.StartsWith(ex.Message, expected,
-                "the message must name the element whose properties are " +
-                $"missing, was: {ex.Message}");
-        }
+        using var pipeline = new PipelineBuilder(new LoggerFactory())
+            .AddFlowElement(requestEngine)
+            .AddFlowElement(engine)
+            .Build();
+
+        Assert.IsTrue(engine.HasLoadedProperties,
+            "the cloud answered, so the properties have been loaded");
+        Assert.AreEqual(0, engine.Properties.Count,
+            "the key carries no 51Did property");
+        Assert.IsTrue(
+            pipeline.ElementAvailableProperties.TryGetValue(
+                DidBaseEnginePropertiesBuilder.ComponentName,
+                out var forElement) && forElement.Count == 0,
+            "the pipeline must offer no 51Did property, which is what the " +
+            "JavaScript builder reads to leave the block out");
     }
 
     /// <summary>
