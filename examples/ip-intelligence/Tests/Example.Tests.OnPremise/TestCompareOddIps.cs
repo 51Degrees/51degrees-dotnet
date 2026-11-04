@@ -78,14 +78,14 @@ public class TestCompareOddIps
             Assert.Inconclusive(_skipReason);
         }
         using var loggerFactory = new LoggerFactory();
-        using var engine = new IpiOnPremiseEngineBuilder(loggerFactory)
+        var engine = new IpiOnPremiseEngineBuilder(loggerFactory)
             .SetPerformanceProfile(PerformanceProfiles.LowMemory)
             .SetAutoUpdate(false)
             .SetDataFileSystemWatcher(false)
             .Build(_dataFile, false);
+        // Disposing the pipeline also disposes the engine.
         using var pipeline = new PipelineBuilder(loggerFactory)
             .AddFlowElement(engine)
-            .SetAutoDisposeElements(false)
             .Build();
 
         using var flowData = pipeline.CreateFlowData();
