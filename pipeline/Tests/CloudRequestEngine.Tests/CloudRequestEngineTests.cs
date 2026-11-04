@@ -2063,11 +2063,10 @@ cloudEx.Message, "Exception message did not contain the expected text.");
             _evidenceKeysResponseStatus = HttpStatusCode.OK;
 
             // First use must retry the discovery requests and succeed.
-            // Note that Process does not use EvidenceKeyFilter itself
-            // (GetContent sends all evidence), so access both values the
-            // way a consumer such as the web integration would.
+            // Process retries the evidence keys itself, because it sends
+            // only the evidence they list, and the accessible properties
+            // are read here the way a cloud aspect engine reads them.
             Assert.IsTrue(engine.PublicProperties.Count > 0);
-            Assert.IsNotNull(engine.EvidenceKeyFilter);
             using (var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build())
             {
                 var data = pipeline.CreateFlowData();
