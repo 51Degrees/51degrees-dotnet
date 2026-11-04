@@ -1,7 +1,253 @@
 # Working in this repository
 
-Notes on what is not obvious from the code. Keep them short and current.
-Building, testing and the layout are described in the [README](README.md).
+If you have been asked to get an example running, follow
+[Run the examples](#run-the-examples). It gives every step in order, from a
+fresh clone to the output. The sections after it are notes on what is not
+obvious from the code, for changing it. Keep them short and current. The
+[README](README.md) describes the build, the tests and the layout.
+
+## Run the examples
+
+Run each command from the repository root unless the step says otherwise.
+Device Detection's on-premise `GettingStarted-Console` is the quickest example
+to show, because its data file is about 35 MB. IP Intelligence's on-premise
+`GettingStarted-Console` needs a download of about 230 MB that unpacks to
+about 460 MB, so run it second.
+
+The examples build against the published NuGet packages unless
+`FiftyOneReferences` is set to `Project` (see
+[References between the folders](#references-between-the-folders)). Those
+packages carry the native engines, so running an example needs no C or C++
+compiler and no CMake.
+
+### Prerequisites
+
+- Git, and [Git LFS](https://git-lfs.github.com/) for the Device Detection
+  data file.
+- The .NET 10 SDK, because the getting-started examples target `net10.0`.
+- Network access to GitHub, and to nuget.org for the packages the examples
+  restore.
+- For the IP Intelligence data file, PowerShell 7 (`pwsh`) on any system, or
+  `curl`, `gunzip` and `md5sum` (`md5` on macOS) for the shell script on Linux
+  and macOS.
+
+Clone the repository with its submodules.
+
+```
+git clone --recurse-submodules https://github.com/51Degrees/51degrees-dotnet.git
+cd 51degrees-dotnet
+```
+
+In a clone made without `--recurse-submodules`, fetch the submodules.
+
+```
+git submodule update --init --recursive
+```
+
+### Data files
+
+The examples use the free Lite data files, which need no licence key. They
+come from the `cxx` submodule, and two layouts exist. Read the "Getting the
+code" section of `README.md` in your checkout to find out which one applies.
+
+- **The README says to run `git lfs pull`.** This is the layout on `rc` and
+  `main` today. The files are in `cxx/device-detection-data` and
+  `cxx/ip-intelligence-data`. Follow "Without cxx/data".
+- **The README says to run `cxx/data/get-data-files.ps1`.** The draft pull
+  request [#60](https://github.com/51Degrees/51degrees-dotnet/pull/60) moves
+  the examples to the [data](https://github.com/51Degrees/data) repository,
+  which cxx carries as `cxx/data`. Once it is merged, follow "With cxx/data".
+
+Go by the README rather than by whether `cxx/data` exists, because the folder
+can arrive with a newer `cxx` before the examples here read it.
+
+#### Without cxx/data
+
+The Device Detection Lite file is stored with Git LFS. Install Git LFS, for
+example with `sudo apt-get install git-lfs` on Ubuntu, then pull the file in
+its submodule.
+
+```
+git lfs install
+cd cxx/device-detection-data
+git lfs pull
+cd ../..
+```
+
+A script in `cxx/ip-intelligence-data` downloads the IP Intelligence Lite
+file. Run it from inside that folder, because it saves the file in the folder
+it runs from.
+
+```
+cd cxx/ip-intelligence-data
+pwsh ./get-lite-file-from-azure.ps1
+cd ../..
+```
+
+On Linux and macOS, `./get-lite-file-from-azure.sh` in the same folder does
+the same. Either script also downloads the Asn file over the copy committed in
+the submodule, so `git status` then shows the submodule as modified, which is
+expected.
+
+#### With cxx/data
+
+```
+pwsh cxx/data/get-data-files.ps1
+```
+
+On Linux and macOS, `sh cxx/data/get-data-files.sh` does the same, and needs
+`curl` and `gzip`. Either script downloads every free file into
+`cxx/data/device-detection` and `cxx/data/ip-intelligence`, and keeps a file
+that is already there. In this layout an example whose free file is missing
+runs the script for that file itself.
+
+#### Check the files
+
+- `cxx/device-detection-data/51Degrees-LiteV4.1.hash` is more than 10 MB. A
+  file of about 130 bytes that starts with
+  `version https://git-lfs.github.com/spec/v1` is a Git LFS pointer, which
+  means Git LFS has not pulled the file.
+- `cxx/ip-intelligence-data/51Degrees-LiteV41.ipi` is more than 100 MB.
+
+With `cxx/data`, the same files are in `cxx/data/device-detection` and
+`cxx/data/ip-intelligence`.
+
+### Run
+
+`dotnet run` builds an example and runs it. The first run restores the
+packages, so it takes longer.
+
+Device Detection finds `51Degrees-LiteV4.1.hash` by searching the folder it
+runs in and every folder below it, then each folder above it in turn, for up
+to 10 seconds (`FindFile` in `common/Common/FileUtils.cs`). Run it from the
+repository root, on any system.
+
+```
+dotnet run --project examples/device-detection/OnPremise/GettingStarted-Console
+```
+
+The IP Intelligence example looks for the paid Enterprise file,
+`51Degrees-EnterpriseIpiV41.ipi`, so give it the Lite file in the
+`51DEGREES_IPI_PATH` environment variable. The name starts with a digit, so on
+Linux and macOS set it with `env`.
+
+```
+env 51DEGREES_IPI_PATH="$PWD/cxx/ip-intelligence-data/51Degrees-LiteV41.ipi" dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
+```
+
+In PowerShell, on any system, run these.
+
+```
+${env:51DEGREES_IPI_PATH} = "$PWD/cxx/ip-intelligence-data/51Degrees-LiteV41.ipi"
+dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
+```
+
+With `cxx/data`, the path is `cxx/data/ip-intelligence/51Degrees-LiteV41.ipi`.
+`51DEGREES_DD_PATH` does the same for Device Detection, and a path given as
+the first argument after `--` takes the place of either variable.
+
+### Correct output
+
+The Device Detection example processes six sets of evidence, then each device
+ID it found as `query.51D_deviceId`. For each it prints `Input values:` and
+the evidence, then `Results:` with `Mobile Device`, `Platform Name`,
+`Platform Version`, `Browser Name`, `Browser Version`, `DeviceId`,
+`Headless Browser`, `Has Web Driver` and `Window Visible`, and then `Matched`
+with the parts of the User-Agent that matched. The Lite file has no
+`IsHeadless`, `HasWebDriver` or `IsVisible`, so those three lines read
+`No value (property missing from the resource key or data file)`. The console
+logger then reports the data file, in lines like these.
+
+```
+info: FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedConsole.Program[0]
+      Using a 'Lite' data file created '<date>' from location '<path>'
+```
+
+It also warns that the example uses the Lite file, and may warn that the file
+is more than 30 days old. Both are expected. The exit code is 0.
+
+The IP Intelligence example looks up five IPv4 addresses. For each it prints
+`Input values:` with `query.client-ip`, then `Results:` with a line for each
+property, starting with `RegisteredName`, `RegisteredOwner` and
+`RegisteredCountry`. It reads properties such as `Country` without checking
+that the data file has them, and the
+[data repository README](https://github.com/51Degrees/data#ip-intelligence)
+says the Lite file has only RegisteredCountry, RegisteredName and
+RegisteredOwner. Reading a property the data file does not have throws
+`PropertyMissingException` (`GetAs` in `pipeline/Engines/Data/AspectDataBase.cs`),
+which is why `LocationAnalysis-Console` catches it. So with the Lite file the
+example can stop with that exception at the first property the file lacks.
+That is a limit of the Lite file, not a fault in your setup. CI runs this
+example only with the Enterprise file.
+
+The paid data files have many more properties, as the
+[pricing page](https://51degrees.com/pricing?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=correct-output)
+describes.
+
+### Cloud examples
+
+The cloud examples need a resource key, which a person creates in the
+configurator, so ask for one if none is set. A free key for the Device
+Detection examples can be made
+[here](https://configure.51degrees.com/Wkqxf3Bs?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=cloud-examples),
+and one for the IP Intelligence examples
+[here](https://configure.51degrees.com/1QWJwHxl?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=cloud-examples).
+
+The Device Detection cloud example takes the key as its first argument or from
+`_51DEGREES_RESOURCE_KEY`, unless the `ResourceKey` in its `appsettings.json`
+has been filled in, which then wins.
+
+```
+env _51DEGREES_RESOURCE_KEY=<key> dotnet run --project examples/device-detection/Cloud/GettingStarted-Console
+```
+
+In PowerShell, set `$env:_51DEGREES_RESOURCE_KEY = '<key>'` first. The output
+has the same `Input values:` and `Results:` blocks for five properties. When
+the key lacks a property, the example ends by saying that some properties need
+a paid subscription. The IP Intelligence cloud example reads its key from
+`51DEGREES_RESOURCE_KEY` instead (`examples/ip-intelligence/README.md`).
+
+### Pitfalls
+
+- **A Git LFS pointer instead of the data file.** The engine cannot load it,
+  so the example fails before it prints any results. Check the file sizes as
+  above.
+- **Missing submodules.** The example then logs `Failed to find a device
+  detection data file` and suggests `git submodule update --recursive`, which
+  does not fetch submodules that were never initialised. Run
+  `git submodule update --init --recursive` instead.
+- **The IP Intelligence example without `51DEGREES_IPI_PATH`.** It searches for
+  the Enterprise file name, gives up after 10 seconds and logs `Failed to find
+  a IP Intelligence data file`, even when the Lite file is in place.
+- **global.json.** `pipeline` and `device-detection` each have a `global.json`
+  that asks for the .NET 8 SDK. Run `dotnet` from the repository root, as
+  above, unless .NET 8 is installed too.
+- **Project references.** `-p:FiftyOneReferences=Project`, which CI uses,
+  builds the native engines from `cxx`. That needs CMake 3.24 or later, a
+  C++17 compiler, PowerShell 7 and a platform such as `-p:Platform=x64`, as
+  the README says. It is not needed to run the examples.
+- **Platforms the packages cover.** The published
+  `FiftyOne.DeviceDetection.Hash.Engine.OnPremise` 4.5.179 has native
+  libraries for Windows x64 and x86, Linux x64 and arm64, and macOS x64 and
+  arm64. `FiftyOne.IpIntelligence.Engine.OnPremise` 4.5.154 has Windows x64,
+  Linux x64 and macOS x64 and arm64 only. Neither has Windows on Arm. On a
+  platform a package lacks, the example cannot load the engine.
+- **Windows line endings.** Git for Windows usually checks files out with
+  `core.autocrlf=true`, and `cxx/ip-intelligence-data` has no
+  `.gitattributes`, so its shell script gets Windows line endings and the
+  shell cannot run it. Use the PowerShell script on Windows.
+- **Warnings are errors.** The example projects set `TreatWarningsAsErrors`,
+  so an SDK newer than the one CI uses can stop the build on a new warning.
+- **The .NET Framework examples.** The `Framework-Web` examples need `msbuild`
+  on Windows, as [Frameworks](#frameworks) says, and `dotnet run` cannot run
+  them.
+- **What CI does not test.** CI builds and tests the examples with project
+  references (`ci/build-project.ps1`), and against the packages only when it
+  publishes (`ci/README.md`). It runs the example tests with the paid data
+  files that `ci/fetch-assets.ps1` fetches, never the Lite IP Intelligence
+  file. The Device Detection example tests send the output to
+  `TextWriter.Null`, and the IP Intelligence one checks only a few words of
+  it.
 
 ## References between the folders
 
