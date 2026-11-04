@@ -238,7 +238,7 @@ public class Program
             // not loaded into RAM. See the documentation for more detail on
             // this and other configuration options.
             // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-locationanalysis-console-program.cs&utm_term=run
-            using var ipiEngine = new IpiOnPremiseEngineBuilder(loggerFactory)
+            var ipiEngine = new IpiOnPremiseEngineBuilder(loggerFactory)
                 .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                 // Inhibit auto-update of the data file for this example.
                 .SetAutoUpdate(false)
@@ -248,10 +248,10 @@ public class Program
 
             // Build a pipeline to consume the IP Intelligence engine. Needed
             // so that flow data can be used to pass evidence in and get
-            // results.
+            // results. Disposing the pipeline also disposes the engine, which
+            // frees the native memory it holds.
             using var pipeline = new PipelineBuilder(loggerFactory)
                 .AddFlowElement(ipiEngine)
-                .SetAutoDisposeElements(false)
                 .Build();
 
             // The properties present in the data file being analyzed. Lower

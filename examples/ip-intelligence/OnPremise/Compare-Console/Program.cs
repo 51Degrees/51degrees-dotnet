@@ -453,6 +453,9 @@ public class Program
             CancellationToken stoppingToken,
             ILogger logger = null)
         {
+            // The pipeline that Run builds does not dispose the engine, so
+            // that one engine can serve many truth files. It is disposed
+            // here instead.
             using var ipiEngine = BuildEngine(dataFile, loggerFactory);
             await Run(
                 ipiEngine,
@@ -530,7 +533,8 @@ public class Program
 
             // Build a pipeline to consumer the IP intelligence engine. Needed
             // so that flowdata can be used to pass evidence in and get
-            // results.
+            // results. The caller owns the engine and disposes it, so this
+            // pipeline must not.
             using var pipeline = new PipelineBuilder(loggerFactory)
                 .AddFlowElement(ipiEngine)
                 .SetAutoDisposeElements(false)

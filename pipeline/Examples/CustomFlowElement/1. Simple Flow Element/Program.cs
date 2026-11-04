@@ -38,8 +38,9 @@ namespace Examples.CustomFlowElement
             // Construct the engine.
             var starSignElement = new SimpleFlowElementBuilder(_loggerFactory)
                 .Build();
-            // Construct the pipeline with the example engine.
-            var pipeline = new PipelineBuilder(_loggerFactory)
+            // Construct the pipeline with the example engine. Disposing the
+            // pipeline also disposes the element.
+            using var pipeline = new PipelineBuilder(_loggerFactory)
                 .AddFlowElement(starSignElement)
                 .Build();
 

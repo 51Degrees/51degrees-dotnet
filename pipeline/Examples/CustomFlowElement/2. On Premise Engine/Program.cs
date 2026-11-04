@@ -41,8 +41,9 @@ namespace Examples.OnPremiseEngine
                 .SetAutoUpdate(false)
                 .SetDataFileSystemWatcher(false)
                 .Build("starsigns.csv", false);
-            // Construct the pipeline with the example engine.
-            var pipeline = new PipelineBuilder(_loggerFactory)
+            // Construct the pipeline with the example engine. Disposing the
+            // pipeline also disposes the engine.
+            using var pipeline = new PipelineBuilder(_loggerFactory)
                 .AddFlowElement(starSignEngine)
                 .Build();
 

@@ -43,18 +43,6 @@ namespace FiftyOne.IpIntelligence.Tests.Core
     {
         private static readonly IEnumerable<bool> AllBools = new bool[] { false, true };
 
-        [TestCleanup]
-        public void Cleanup()
-        {
-            // The native results of each flow data hold the data set until
-            // their finalizers run. The cases allocate so little managed
-            // memory that .NET may not collect before the next case loads
-            // the data file, so collect and wait for the finalizers here.
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-        }
-
         private static IEnumerable<object[]> TestParams
             => from profile in Constants.TestableProfiles
                from useLazyLoading in AllBools
@@ -132,8 +120,11 @@ namespace FiftyOne.IpIntelligence.Tests.Core
                 builder.UseLazyLoading();
             }
 
-            CancellationTokenSource cancellationSource = new CancellationTokenSource();
+            using var cancellationSource = new CancellationTokenSource();
 
+            // Disposing the pipeline disposes the engine, and disposing each
+            // flow data frees its native results. The data set is freed when
+            // both have happened.
             using (var pipeline = builder.Build())
             {
                 var options = new ParallelOptions()
@@ -157,7 +148,7 @@ namespace FiftyOne.IpIntelligence.Tests.Core
                     (ipaddress) =>
                     {
                         // Create the flow data instance
-                        var flowData = pipeline.CreateFlowData();
+                        using var flowData = pipeline.CreateFlowData();
 
                         // Add the IP address to the flow data 
                         // and process it
