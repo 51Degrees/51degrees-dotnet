@@ -42,8 +42,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests;
 /// <summary>
 /// A valid resource key can carry no product for a cloud aspect engine.
 /// The Pipeline still builds, the engine has no properties and logs that
-/// once, and nothing is read from the response for it. See the start-up
-/// activity section of the cloud aspect engine specification.
+/// once, and nothing is read from the response for it. For the same
+/// reason a property the meta-data does not list is not logged on each
+/// response. See the start-up activity section of the cloud aspect engine
+/// specification.
 /// </summary>
 [TestClass]
 public class CloudAspectEngineMissingProductTests
@@ -75,6 +77,15 @@ public class CloudAspectEngineMissingProductTests
     /// </summary>
     private const string ProductResponse =
         "{ \"test\": { \"ismobile\": true } }";
+
+    /// <summary>
+    /// A response for the engine's product that also holds properties its
+    /// meta-data does not list, one of them null with a reason beside it.
+    /// </summary>
+    private const string UnlistedPropertiesResponse =
+        "{ \"test\": { \"ismobile\": true, \"hardwarevendor\": \"Apple\", " +
+        "\"hardwarename\": null, " +
+        "\"hardwarenamenullreason\": \"Not in the resource key\" } }";
 
     /// <summary>
     /// Aspect data that reports missing properties through the cloud
@@ -344,5 +355,36 @@ public class CloudAspectEngineMissingProductTests
         Assert.IsFalse(
             Logged(loggerFactory, LogLevel.Error, string.Empty).Any(),
             "nothing is wrong, so nothing is logged as an error");
+    }
+
+    /// <summary>
+    /// Properties the meta-data does not list are not logged on any
+    /// response, because the reason entries in the response and the log
+    /// made when the Pipeline was built already say why. Their values are
+    /// still read unchanged.
+    /// </summary>
+    [TestMethod]
+    public void PropertyWithNoMetaData_NotLogged()
+    {
+        var loggerFactory = new TestLoggerFactory();
+        using var pipeline = Build(
+            loggerFactory,
+            Granted(),
+            UnlistedPropertiesResponse,
+            out var engine);
+
+        for (var i = 0; i < RequestCount; i++)
+        {
+            using var data = pipeline.CreateFlowData();
+            data.Process();
+            Assert.AreEqual("Apple",
+                data.GetFromElement(engine)["hardwarevendor"],
+                "a value with no meta-data is still read unchanged");
+        }
+
+        Assert.AreEqual(RequestCount, engine.ResponsesRead);
+        Assert.IsFalse(
+            Logged(loggerFactory, LogLevel.Warning, string.Empty).Any(),
+            "nothing is logged for a property with no meta-data");
     }
 }
