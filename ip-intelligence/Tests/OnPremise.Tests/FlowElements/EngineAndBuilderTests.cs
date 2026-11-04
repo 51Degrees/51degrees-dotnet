@@ -67,7 +67,9 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
 
             // Setup swig engine wrapper
             var swigEngine = new Mock<IEngineSwigWrapper>();
-            swigEngine.Setup(e => e.getKeys()).Returns(new VectorStringSwig());
+            // The engine frees the keys it is given, so each call gets new
+            // ones.
+            swigEngine.Setup(e => e.getKeys()).Returns(() => new VectorStringSwig());
             swigEngine.Setup(e => e.getMetaData()).Returns(swigMetaData.Object);
             swigEngine.Setup(e => e.getPublishedTime()).Returns(date.Object);
             swigEngine.Setup(e => e.getUpdateAvailableTime()).Returns(date.Object);
@@ -89,7 +91,7 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
         [TestMethod]
         public void EngineBuilder_CheckDataFileEngineSet()
         {
-            var engine = _builder.Build(new MemoryStream());
+            using var engine = _builder.Build(new MemoryStream());
             Assert.AreEqual(engine, engine.DataFiles.ElementAt(0).Engine);
         }
 
@@ -123,7 +125,7 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
         [TestMethod]
         public void Engine_CacheDisabled()
         {
-            var engine = _builder.Build(new MemoryStream());
+            using var engine = _builder.Build(new MemoryStream());
             Assert.Throws<NotSupportedException>(() =>
             {
                 engine.SetCache(new DefaultFlowCache(new CacheConfiguration()));

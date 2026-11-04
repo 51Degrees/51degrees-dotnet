@@ -81,7 +81,7 @@ public class PropertyKeyedDeviceEngineBuilderTests
     {
         var builder = new TacEngineBuilder(_loggerFactory);
 
-        var engine = InvokeBuild<TacEngine>(builder);
+        using var engine = InvokeBuild<TacEngine>(builder);
 
         Assert.AreEqual("hardware", engine.ElementDataKey);
     }
@@ -94,7 +94,7 @@ public class PropertyKeyedDeviceEngineBuilderTests
     {
         var builder = new NativeEngineBuilder(_loggerFactory);
 
-        var engine = InvokeBuild<NativeEngine>(builder);
+        using var engine = InvokeBuild<NativeEngine>(builder);
 
         Assert.AreEqual("hardware", engine.ElementDataKey);
     }

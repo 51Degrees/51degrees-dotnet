@@ -47,5 +47,10 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Wrappers
         {
             return _object.getYear();
         }
+
+        public void Dispose()
+        {
+            _object.Dispose();
+        }
     }
 }

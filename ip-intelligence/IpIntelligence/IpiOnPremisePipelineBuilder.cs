@@ -442,28 +442,54 @@ namespace FiftyOne.IpIntelligence
         public override IPipeline Build()
         {
             IAspectEngine ipiEngine = null;
-
-            // Create the IP intelligence engine based on the configuration.
-            var ipiBuilder = new IpiOnPremiseEngineBuilder(LoggerFactory, _dataUpdateService);
-            ipiEngine = ConfigureAndBuild(ipiBuilder);
-
-            if (ipiEngine != null)
+            IFlowElement shareUsageElement = null;
+            try
             {
-                // Add the share usage element to the list if enabled
-                if (_shareUsageEnabled)
+                // Create the IP intelligence engine based on the configuration.
+                var ipiBuilder = new IpiOnPremiseEngineBuilder(LoggerFactory, _dataUpdateService);
+                ipiEngine = ConfigureAndBuild(ipiBuilder);
+
+                if (ipiEngine != null)
                 {
-                    FlowElements.Add(new ShareUsageBuilder(LoggerFactory, _httpClient).Build());
+                    // Add the share usage element to the list if enabled
+                    if (_shareUsageEnabled)
+                    {
+                        shareUsageElement = new ShareUsageBuilder(LoggerFactory, _httpClient).Build();
+                        FlowElements.Add(shareUsageElement);
+                    }
+                    // Add the IP intelligence engine to the list
+                    FlowElements.Add(ipiEngine);
                 }
-                // Add the IP intelligence engine to the list
-                FlowElements.Add(ipiEngine);
-            }
-            else
-            {
-                throw new PipelineException(Messages.ExceptionErrorOnStartup);
-            }
+                else
+                {
+                    throw new PipelineException(Messages.ExceptionErrorOnStartup);
+                }
 
-            // Create and return the pipeline
-            return base.Build();
+                // Create and return the pipeline
+                return base.Build();
+            }
+            catch
+            {
+                // No pipeline holds the elements built here, so they are
+                // disposed before the exception leaves.
+                DisposeOnFailure(ipiEngine);
+                DisposeOnFailure(shareUsageElement);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Removes an element made for a pipeline that failed to build and
+        /// disposes it, as nothing else holds it.
+        /// </summary>
+        /// <param name="element">The element, or null if none was made.</param>
+        private void DisposeOnFailure(IFlowElement element)
+        {
+            if (element != null)
+            {
+                FlowElements.Remove(element);
+                element.Dispose();
+            }
         }
 
         /// <summary>

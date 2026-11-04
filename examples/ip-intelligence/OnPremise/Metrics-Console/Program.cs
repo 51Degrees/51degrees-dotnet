@@ -973,7 +973,7 @@ public class Program
             // Build a new on-premise IP Intelligence engine. See the
             // documentation for more detail on this and other configuration options.
             // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metrics-console-program.cs&utm_term=run
-            using var ipiEngine = new IpiOnPremiseEngineBuilder(loggerFactory)
+            var ipiEngine = new IpiOnPremiseEngineBuilder(loggerFactory)
                 .SetPerformanceProfile(performanceProfile)
                 // inhibit auto-update of the data file for this test
                 .SetAutoUpdate(false)
@@ -990,9 +990,10 @@ public class Program
                 // and fails the run with "Insufficient handles available".
                 .SetConcurrency((ushort)(Environment.ProcessorCount + 1))
                 .Build(dataFile, false);
+            // Disposing the pipeline also disposes the engine, which frees
+            // the native memory it holds.
             using var pipeline = new PipelineBuilder(loggerFactory)
                 .AddFlowElement(ipiEngine)
-                .SetAutoDisposeElements(false)
                 .Build();
 
             // Log data file information

@@ -41,15 +41,12 @@ namespace FiftyOne.DeviceDetection.Hash.Tests
         [TestInitialize]
         public virtual void Init()
         {
-            // If the test is running in x86 then we need to take some 
-            // extra precautions to prevent occasionally running out
-            // of memory.
+            // In a 32 bit process, only one test holds a data set at a
+            // time, to stay within memory. Each test disposes its flow data
+            // and wrapper, which frees the data set it loaded.
             if (IntPtr.Size == 4)
             {
-                // Ensure that only one integration test is running at once.
                 _lock.WaitOne();
-                // Force garbage collection
-                GC.Collect();
             }
         }
 

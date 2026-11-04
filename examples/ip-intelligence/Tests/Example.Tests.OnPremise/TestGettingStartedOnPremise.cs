@@ -161,9 +161,27 @@ public class TestGettingStartedOnPremise
         }
     }
 
+    // The flow data each test creates. The results a test reads are freed
+    // when their flow data is disposed, so it is disposed when the test ends.
+    private readonly List<IFlowData> _flowData = new List<IFlowData>();
+
+    [TestCleanup]
+    public void Cleanup()
+    {
+        foreach (var data in _flowData)
+        {
+            data.Dispose();
+        }
+        _flowData.Clear();
+    }
+
     private IIpIntelligenceData Process(string ipAddress)
     {
-        using var data = _pipeline.CreateFlowData();
+        var data = _pipeline.CreateFlowData();
+        lock (_flowData)
+        {
+            _flowData.Add(data);
+        }
         data.AddEvidence(EvidenceKey, ipAddress);
         data.Process();
         return data.Get<IIpIntelligenceData>();

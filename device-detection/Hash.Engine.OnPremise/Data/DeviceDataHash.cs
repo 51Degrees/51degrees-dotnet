@@ -80,6 +80,12 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Data
         #region Internal Methods
         internal void SetResults(IResultsSwigWrapper results)
         {
+            // Results that arrive after disposal, from processing that was
+            // still running, are freed here as nothing will read them.
+            if (disposedValue)
+            {
+                results.Dispose();
+            }
             CheckState();
             Results.AddResult(results);
         }
@@ -475,17 +481,9 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Data
         {
             if (!disposedValue)
             {
-                foreach (var result in Results.ResultsList)
-                {
-                    try
-                    {
-                        result.Dispose();
-                    }
-                    catch (ObjectDisposedException e)
-                    {
-                        Logger.LogError(Messages.DeviceDataHashFailedToDispose, e);
-                    }
-                }
+                // Frees the native results, which hold the data set in
+                // memory until they are freed.
+                Results.Dispose();
                 disposedValue = true;
             }
         }

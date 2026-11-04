@@ -36,104 +36,109 @@ namespace FiftyOne.IpIntelligence.TestHelpers.Data
 
         public static void ValueTypes(IWrapper wrapper)
         {
-            var data = wrapper.Pipeline.CreateFlowData();
-            data.AddEvidence("query.client-ip-51d", Constants.Ipv4Address)
-                    .Process();
-            var elementData = data.Get(wrapper.GetEngine().ElementDataKey);
-            foreach (var property in wrapper.GetEngine().Properties
-                .Where(p => p.Available))
+            using (var data = wrapper.Pipeline.CreateFlowData())
             {
-                Type expectedType = property.Type;
-
-                var value = elementData[property.Name];
-                Assert.IsNotNull(value);
-
-                if (value != null)
+                data.AddEvidence("query.client-ip-51d", Constants.Ipv4Address)
+                        .Process();
+                var elementData = data.Get(wrapper.GetEngine().ElementDataKey);
+                foreach (var property in wrapper.GetEngine().Properties
+                    .Where(p => p.Available))
                 {
-                    Assert.IsTrue(expectedType.IsAssignableFrom(
-                        value.GetType().GenericTypeArguments[0]),
-                        $"Value of '{property.Name}' was of type " +
-                        $"{value.GetType()} but should have been " +
-                        $"{expectedType}.");
+                    Type expectedType = property.Type;
+
+                    var value = elementData[property.Name];
+                    Assert.IsNotNull(value);
+
+                    if (value != null)
+                    {
+                        Assert.IsTrue(expectedType.IsAssignableFrom(
+                            value.GetType().GenericTypeArguments[0]),
+                            $"Value of '{property.Name}' was of type " +
+                            $"{value.GetType()} but should have been " +
+                            $"{expectedType}.");
+                    }
                 }
             }
-
         }
 
         public static void AvailableProperties(IWrapper wrapper)
         {
-            var data = wrapper.Pipeline.CreateFlowData();
-            data.AddEvidence("query.client-ip-51d", Constants.Ipv4Address)
-                    .Process();
-            var elementData = data.Get(wrapper.GetEngine().ElementDataKey);
-            foreach (var property in wrapper.GetEngine().Properties)
+            using (var data = wrapper.Pipeline.CreateFlowData())
             {
-                // Echo properties are only populated when the matching IP
-                // family is supplied as evidence, so their presence is
-                // conditional and not tied to the Available flag.
-                if (Constants.EchoPropertyNames.Contains(property.Name))
+                data.AddEvidence("query.client-ip-51d", Constants.Ipv4Address)
+                        .Process();
+                var elementData = data.Get(wrapper.GetEngine().ElementDataKey);
+                foreach (var property in wrapper.GetEngine().Properties)
                 {
-                    continue;
+                    // Echo properties are only populated when the matching IP
+                    // family is supplied as evidence, so their presence is
+                    // conditional and not tied to the Available flag.
+                    if (Constants.EchoPropertyNames.Contains(property.Name))
+                    {
+                        continue;
+                    }
+
+                    var dict = elementData.AsDictionary();
+
+                    Assert.AreEqual(property.Available, dict.ContainsKey(property.Name),
+                        $"Property '{property.Name}' " +
+                        $"{(property.Available ? "should" : "should not")} be in the results.");
                 }
-
-                var dict = elementData.AsDictionary();
-
-                Assert.AreEqual(property.Available, dict.ContainsKey(property.Name),
-                    $"Property '{property.Name}' " +
-                    $"{(property.Available ? "should" : "should not")} be in the results.");
             }
         }
 
         public static void TypedGetters(IWrapper wrapper)
         {
-            var data = wrapper.Pipeline.CreateFlowData();
-            data.AddEvidence("query.client-ip-51d", Constants.Ipv4Address)
-                    .Process();
-            var elementData = data.Get(wrapper.GetEngine().ElementDataKey);
             var missingGetters = new List<string>();
-            foreach (var property in wrapper.GetEngine().Properties)
+            using (var data = wrapper.Pipeline.CreateFlowData())
             {
-                var cleanPropertyName = property.Name
-                    .Replace("/", "")
-                    .Replace("-", "");
-                var classProperty = elementData.GetType().GetProperties()
-                    .Where(p => p.Name == cleanPropertyName)
-                    .FirstOrDefault();
-                if (classProperty != null)
+                data.AddEvidence("query.client-ip-51d", Constants.Ipv4Address)
+                        .Process();
+                var elementData = data.Get(wrapper.GetEngine().ElementDataKey);
+                foreach (var property in wrapper.GetEngine().Properties)
                 {
-                    var accessor = classProperty.GetAccessors().FirstOrDefault();
-                    if (property.Available == true)
+                    var cleanPropertyName = property.Name
+                        .Replace("/", "")
+                        .Replace("-", "");
+                    var classProperty = elementData.GetType().GetProperties()
+                        .Where(p => p.Name == cleanPropertyName)
+                        .FirstOrDefault();
+                    if (classProperty != null)
                     {
-                        var value = accessor.Invoke(elementData, null);
-                        Assert.IsNotNull(value,
-                            $"The typed getter for '{property.Name}' should " +
-                            $"not have returned a null value.");
+                        var accessor = classProperty.GetAccessors().FirstOrDefault();
+                        if (property.Available == true)
+                        {
+                            var value = accessor.Invoke(elementData, null);
+                            Assert.IsNotNull(value,
+                                $"The typed getter for '{property.Name}' should " +
+                                $"not have returned a null value.");
+                        }
+                        else
+                        {
+                            try
+                            {
+                                var value = accessor.Invoke(elementData, null);
+                                Assert.Fail(
+                                    $"The property getter for '{property.Name}' " +
+                                    $"should have thrown a " +
+                                    $"PropertyMissingException.");
+                            }
+                            catch (TargetInvocationException e)
+                            {
+                                Assert.IsInstanceOfType(
+                                    e.InnerException,
+                                    typeof(PropertyMissingException),
+                                    $"The property getter for '{property.Name}' " +
+                                    $"should have thrown a " +
+                                    $"PropertyMissingException, but the exception " +
+                                    $"was of type '{e.InnerException.GetType()}'.");
+                            }
+                        }
                     }
                     else
                     {
-                        try
-                        {
-                            var value = accessor.Invoke(elementData, null);
-                            Assert.Fail(
-                                $"The property getter for '{property.Name}' " +
-                                $"should have thrown a " +
-                                $"PropertyMissingException.");
-                        }
-                        catch (TargetInvocationException e)
-                        {
-                            Assert.IsInstanceOfType(
-                                e.InnerException,
-                                typeof(PropertyMissingException),
-                                $"The property getter for '{property.Name}' " +
-                                $"should have thrown a " +
-                                $"PropertyMissingException, but the exception " +
-                                $"was of type '{e.InnerException.GetType()}'.");
-                        }
+                        missingGetters.Add(property.Name);
                     }
-                }
-                else
-                {
-                    missingGetters.Add(property.Name);
                 }
             }
             if (missingGetters.Count > 0)

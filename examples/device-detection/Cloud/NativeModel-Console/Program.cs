@@ -89,12 +89,13 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                 }
 
                 // Create the cloud request engine.
-                using (var cloudEngine = cloudRequestEngineBuilder.Build())
+                var cloudEngine = cloudRequestEngineBuilder.Build();
                 // Create the hardware profile engine to process the response from the
                 // request engine.
-                using (var propertyKeyedEngine = new HardwareProfileCloudEngineBuilder(loggerFactory)
-                    .Build())
-                // Create the pipeline using the engines.
+                var propertyKeyedEngine = new HardwareProfileCloudEngineBuilder(loggerFactory)
+                    .Build();
+                // Create the pipeline using the engines. Disposing the pipeline also
+                // disposes the engines.
                 using (var pipeline = new PipelineBuilder(loggerFactory)
                     .AddFlowElement(cloudEngine)
                     .AddFlowElement(propertyKeyedEngine)
