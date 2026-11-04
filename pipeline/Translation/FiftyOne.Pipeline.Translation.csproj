@@ -18,7 +18,7 @@
     <PackageIconUrl>https://51degrees.com/portals/0/Logos/Square%20Logo.png?width=64</PackageIconUrl>
     <Copyright>51Degrees Mobile Experts Limited</Copyright>
     <PackageTags>51degrees,pipeline,data service,translation,language</PackageTags>
-    <RepositoryUrl>https://github.com/51Degrees/pipeline-dotnet</RepositoryUrl>
+    <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
     <PackageIcon>51d-logo.png</PackageIcon>
     <RepositoryType>git</RepositoryType>
     <NeutralLanguage>en</NeutralLanguage>

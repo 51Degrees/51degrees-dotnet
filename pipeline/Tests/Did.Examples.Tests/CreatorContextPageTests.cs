@@ -293,7 +293,7 @@ namespace FiftyOne.Did.Examples.Tests
             StringAssert.Contains(page, "Find out more");
             StringAssert.Contains(page, "utm_campaign=51degrees-dotnet");
             StringAssert.Contains(
-                page, "https://github.com/51Degrees/pipeline-dotnet");
+                page, "https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline");
         }
     }
 }

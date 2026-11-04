@@ -217,8 +217,8 @@ as their `utm_campaign`, which a copy changes to its own repository's name.
 - Talk to 51Degrees about using them,
   https://51degrees.com/contact-us?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-readme.md&utm_term=find-out-more
 - The source code for this demo and what it uses.
-  - https://github.com/51Degrees/device-detection-dotnet-examples
-  - https://github.com/51Degrees/pipeline-dotnet
+  - https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection
+  - https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline
   - https://github.com/51Degrees/javascript-templates
   - https://github.com/51Degrees/specifications
   - https://github.com/51Degrees/selenium-api-tests

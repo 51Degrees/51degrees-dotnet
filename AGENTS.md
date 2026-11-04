@@ -63,3 +63,14 @@ projects that need `msbuild` on Windows.
 Until the first release from this repository, each package family keeps the
 version its separate repository last published, held in the root
 `Directory.Build.props`.
+
+## Pull requests
+
+Pull requests target `rc`, not `main`. Changes collect on `rc` and reach `main`
+together in one pull request when a release is wanted, and the publish builds
+`main`.
+
+Keep a pull request a draft until it has been reviewed, because the nightly
+merges any pull request into `rc` that is not a draft and has no review
+requested. The "Only rc into main" check fails a pull request into `main` from
+any other branch.

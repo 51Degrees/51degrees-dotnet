@@ -37,7 +37,7 @@ using Microsoft.Extensions.DependencyInjection;
 /// 
 /// @include{doc} example-web-integration-client-hints.txt
 /// 
-/// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection/4.5/Examples/Legacy%20Web/UACH). 
+/// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection/Legacy%20Web/UACH). 
 /// 
 /// Required NuGet Dependencies:
 /// - [Microsoft.AspNetCore.App](https://www.nuget.org/packages/Microsoft.AspNetCore.App/)
@@ -128,10 +128,10 @@ using Microsoft.Extensions.DependencyInjection;
 /// ```
 /// 
 /// ## Controller
-/// @include Controllers/HomeController.cs
+/// @include UACH/Controllers/HomeController.cs
 /// 
 /// ## View
-/// @include Views/Home/Index.cshtml
+/// @include UACH/Views/Home/Index.cshtml
 /// 
 /// ## Startup
 

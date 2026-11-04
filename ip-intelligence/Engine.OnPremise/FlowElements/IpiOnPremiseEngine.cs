@@ -84,13 +84,6 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         private IList<IComponentMetaData> _components;
 
         /// <summary>
-        /// Required property index for each property name, rebuilt whenever
-        /// data is loaded.
-        /// </summary>
-        private IReadOnlyDictionary<string, int> _requiredPropertyIndexes =
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-
-        /// <summary>
         /// Wrapper to pass general configuration from managed code to unmanaged 
         /// code.
         /// </summary>
@@ -144,19 +137,6 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         /// <see cref="IFlowData"/> instance.
         /// </summary>
         public override string ElementDataKey => "ip";
-
-        /// <summary>
-        /// Required property index for each property name, compared ignoring
-        /// case. Pass the indexes of the properties a request will read to
-        /// <see cref="ProcessEngine(IFlowData, IIpDataOnPremise, int[])"/>.
-        /// </summary>
-        /// <remarks>
-        /// Indexes come from the loaded data file, so a refresh can change
-        /// them. The map is replaced before <see cref="RefreshCompleted"/> is
-        /// raised.
-        /// </remarks>
-        public IReadOnlyDictionary<string, int> RequiredPropertyIndexes =>
-            _requiredPropertyIndexes;
 
         /// <summary>
         /// Not supported. Results refer to native memory, which is not safe
@@ -317,35 +297,6 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         /// </exception>
         protected override void ProcessEngine(IFlowData data, IIpDataOnPremise ipData)
         {
-            ProcessEngine(data, ipData, null);
-        }
-
-        /// <summary>
-        /// Processes the request, evaluating only the graphs that the given
-        /// required properties need. For subclasses that know which
-        /// properties each request reads.
-        /// </summary>
-        /// <remarks>
-        /// A property whose graph was skipped has no value and reports a null
-        /// profile, unless it is mandatory with a default value, which it then
-        /// reads as. Only the first 32 components can be skipped.
-        /// </remarks>
-        /// <param name="data">The flow data for the request.</param>
-        /// <param name="ipData">The IP data to populate.</param>
-        /// <param name="requiredPropertyIndexes">
-        /// Indexes from <see cref="RequiredPropertyIndexes"/> for the
-        /// properties that will be read. Null evaluates every graph and an
-        /// empty array none. Indexes that are not required properties are
-        /// ignored.
-        /// </param>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown if a required parameter is null.
-        /// </exception>
-        protected void ProcessEngine(
-            IFlowData data,
-            IIpDataOnPremise ipData,
-            int[] requiredPropertyIndexes)
-        {
             if (data == null) { throw new ArgumentNullException(nameof(data)); }
             if (ipData == null) { throw new ArgumentNullException(nameof(ipData)); }
 
@@ -417,7 +368,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
                     }
                 }
                 (ipData as IpDataOnPremise).SetResults(
-                    _engine.process(relevantEvidence, requiredPropertyIndexes));
+                    _engine.process(relevantEvidence));
             }
 
             (ipData as IpDataOnPremise).SetEchoIp(
@@ -533,25 +484,6 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
                 .ToArray();
         }
 
-        /// <summary>
-        /// One native call returns the required property names in index
-        /// order, so the position of each name is its index. A wrapper that
-        /// supplies no list, such as a test double, leaves the map empty.
-        /// </summary>
-        private IReadOnlyDictionary<string, int> ConstructRequiredPropertyIndexes()
-        {
-            var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            using (var names = _engine.getRequiredProperties())
-            {
-                int count = names == null ? 0 : names.Count;
-                for (int i = 0; i < count; i++)
-                {
-                    result[names[i]] = i;
-                }
-            }
-            return result;
-        }
-
         private void InitEngineMetaData()
         {
             var engineKeys = new List<string>(_engine.getKeys());
@@ -566,7 +498,6 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
 
             _properties = ConstructProperties();
             _components = ConstructComponents();
-            _requiredPropertyIndexes = ConstructRequiredPropertyIndexes();
 
             // Populate these data file properties from the native engine.
             var dataFileMetaData = GetDataFileMetaData() as IFiftyOneDataFile;

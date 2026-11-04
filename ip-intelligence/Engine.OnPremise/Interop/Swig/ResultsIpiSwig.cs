@@ -149,6 +149,12 @@ internal class ResultsIpiSwig : ResultsBaseSwig {
     return ret;
   }
 
+  public int copyValueAsUTF8String(int requiredPropertyIndex, byte[] copy, int length) {
+    int ret = IpIntelligenceEngineModulePINVOKE.ResultsIpiSwig_copyValueAsUTF8String(swigCPtr, requiredPropertyIndex, copy, length);
+    if (IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Pending) throw IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
 }
 
 }

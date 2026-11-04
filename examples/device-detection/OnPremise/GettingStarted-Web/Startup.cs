@@ -32,7 +32,7 @@ using System.Threading.Tasks;
 /// 
 /// @include{doc} example-getting-started-web.txt
 /// 
-/// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection/4.5/Examples/OnPremise/GettingStarted-Web). 
+/// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection/OnPremise/GettingStarted-Web). 
 /// 
 /// @include{doc} example-require-datafile.txt
 /// 
@@ -80,10 +80,10 @@ using System.Threading.Tasks;
 /// @include OnPremise/GettingStarted-Web/appsettings.json
 /// 
 /// ## Controller
-/// @include Controllers/HomeController.cs
+/// @include OnPremise/GettingStarted-Web/Controllers/HomeController.cs
 /// 
 /// ## View
-/// @include Views/Home/Index.cshtml
+/// @include OnPremise/GettingStarted-Web/Views/Home/Index.cshtml
 /// 
 /// ## Startup
 namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedWeb

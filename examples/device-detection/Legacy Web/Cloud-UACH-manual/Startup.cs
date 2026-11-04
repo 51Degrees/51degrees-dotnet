@@ -32,7 +32,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-/// @example UACH-manual/Startup.cs
+/// @example Cloud-UACH-manual/Startup.cs
 /// 
 /// @include{doc} example-web-integration-client-hints.txt
 /// 
@@ -42,7 +42,7 @@ using Microsoft.Extensions.DependencyInjection;
 /// For example, setting the HTTP response headers to request user-agent 
 /// client hints.
 /// 
-/// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection/4.5/Examples/Legacy%20Web/Cloud-UACH-manual).
+/// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection/Legacy%20Web/Cloud-UACH-manual).
 /// 
 /// To use the cloud service you will need to create a **resource key**. 
 /// The resource key is used as short-hand to store the particular set of 
@@ -149,10 +149,10 @@ using Microsoft.Extensions.DependencyInjection;
 /// ```
 /// 
 /// ## Controller
-/// @include Controllers/HomeController.cs
+/// @include Cloud-UACH-manual/Controllers/HomeController.cs
 /// 
 /// ## View
-/// @include Views/Home/Index.cshtml
+/// @include Cloud-UACH-manual/Views/Home/Index.cshtml
 /// 
 /// ## Startup
 

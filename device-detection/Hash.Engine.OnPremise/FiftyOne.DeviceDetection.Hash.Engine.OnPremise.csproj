@@ -12,13 +12,13 @@
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.DeviceDetection.Hash.Engine.OnPremise</PackageId>
 	  <Title>On-premise device detection service for the 51Degrees Pipeline API</Title>
-    <Description>51Degrees Device Detection parses HTTP headers to return detailed hardware, operating system, browser, and crawler information for the devices used to access your website or service. This package is an implementation of the device detection hash engine. CMake is used to build the native binaries.</Description>
+    <Description>Device Detection and User-Agent parser for .NET and C#. Detects the device, browser, operating system, and crawlers from the User-Agent and User-Agent Client Hints, reading a data file on your server. This package is the on-premise Hash engine for the 51Degrees Pipeline API. CMake is used to build the native binaries. An alternative to UAParser.js, DeviceAtlas, and WURFL.</Description>
 	  <Authors>51Degrees Engineering</Authors>
 	  <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
     <PackageIconUrl>https://51degrees.com/Nuget-FiftyOne.DeviceDetection.Hash.Engine.OnPremise/Square%20Logo.png</PackageIconUrl>
 	  <Copyright>51Degrees Mobile Experts Limited</Copyright>
-	  <PackageTags>51degrees;pipeline;data;device;detection;user-agent;parse;detection-library;bots;crawler;desktop;tablet;mobile;tv;hash</PackageTags>
-	  <RepositoryUrl>https://github.com/51Degrees/device-detection-dotnet</RepositoryUrl>
+	  <PackageTags>51degrees;device-detection;user-agent;user-agent-parser;client-hints;browser-detection;mobile-detection;crawler-detection;pipeline;data;device;detection;parse;detection-library;bots;crawler;desktop;tablet;mobile;tv;hash;wurfl;deviceatlas;uaparser</PackageTags>
+	  <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
     <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection.hash.engine.onpremise-fiftyone.devicedetection.hash.engine.onpremise.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <PackageIcon>51d-logo.png</PackageIcon>

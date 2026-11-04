@@ -42,7 +42,7 @@ using System.Net.Http;
 /// based on a given 'TAC'. More background information on TACs can be found through various online 
 /// sources such as <a href="https://en.wikipedia.org/wiki/Type_Allocation_Code">Wikipedia</a>.
 /// 
-/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/device-detection/4.5/Examples/Cloud/TAC-Console/Program.cs). 
+/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/device-detection/Cloud/TAC-Console/Program.cs). 
 /// 
 /// @include{doc} example-require-resourcekey.txt
 ///

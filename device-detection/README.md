@@ -77,7 +77,7 @@ git lfs pull
 ```
 
 The examples in the
-[device-detection-dotnet-examples](https://github.com/51Degrees/device-detection-dotnet-examples)
+[device-detection-dotnet-examples](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection)
 repository resolve the data file in the following order:
 
 1.  The `_51DEGREES_DD_PATH` environment variable, set to an explicit path to
@@ -175,9 +175,9 @@ related CI scripts:
   - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-core.ps1]
   - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-package-nuget.ps1]
   - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-framework.ps1]
-  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/device-detection/ci/run-performance-tests-console.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/run-performance-tests.ps1]
 - Copying native binaries:
-  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/device-detection/ci/build-package.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]
 
 #### Strong naming
 
@@ -185,7 +185,7 @@ All NuGet packages published from this repository are [strong-name](https://lear
 
 Local developer builds use the [PublicSign](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/compiler-options/security#publicsign) pattern with the committed `51Degrees.publickey` (no secrets required). Production builds run in CI and use the matching private key from a GitHub organization secret to produce a real cryptographic signature.
 
-See the [Strong naming section in the pipeline-dotnet README](https://github.com/51Degrees/pipeline-dotnet#strong-naming) for the full mechanics — the same setup is applied across every 51Degrees .NET shipping repo so the dependency chain remains consistent under strong-name identity checks.
+See the [Strong naming section in the pipeline-dotnet README](https://github.com/51Degrees/51degrees-dotnet/blob/main/pipeline/README.md#strong-naming) for the full mechanics — the same setup is applied across every 51Degrees .NET shipping repo so the dependency chain remains consistent under strong-name identity checks.
 
 ##### Upgrading from non-strong-named to strong-named packages
 
@@ -201,7 +201,7 @@ For a working .NET Framework reference, see the [Cloud/Framework-Web example](ht
 ## Examples
 
 Examples can be found in
-[device-detection-dotnet-examples](https://github.com/51Degrees/device-detection-dotnet-examples)
+[device-detection-dotnet-examples](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/device-detection)
 repository.
 
 ## Tests
