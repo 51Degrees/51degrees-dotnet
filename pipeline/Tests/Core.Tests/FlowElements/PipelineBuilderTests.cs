@@ -1038,6 +1038,71 @@ namespace FiftyOne.Pipeline.Core.Tests.FlowElements
             }
         }
 
+        /// <summary>
+        /// Test that when the second element in the configuration fails to
+        /// build, the first element is disposed and the exception describing
+        /// the failure is the one thrown.
+        /// </summary>
+        [TestMethod]
+        public void PipelineBuilder_BuildFromConfiguration_FailureDisposesBuiltElements()
+        {
+            KeptElementBuilder.Reset();
+            PipelineOptions options = new PipelineOptions();
+            options.Elements = new List<ElementOptions>
+            {
+                new ElementOptions()
+                {
+                    BuilderName = nameof(KeptElementBuilder)
+                },
+                new ElementOptions()
+                {
+                    BuilderName = nameof(FailingElementBuilder)
+                }
+            };
+            _maxErrors = 1;
+
+            var exception = Assert.ThrowsExactly<PipelineConfigurationException>(
+                () => _builder.BuildFromConfiguration(options));
+
+            Assert.Contains(
+                "This element always fails to build.",
+                exception.Message);
+            Assert.HasCount(1, KeptElementBuilder.Built);
+            Assert.IsTrue(
+                KeptElementBuilder.Built.Single().IsDisposed,
+                "The element built before the failure was not disposed.");
+        }
+
+        /// <summary>
+        /// Test that when an element to run in parallel fails to build, the
+        /// element built before it in the same group is disposed.
+        /// </summary>
+        [TestMethod]
+        public void PipelineBuilder_BuildFromConfiguration_ParallelFailureDisposesBuiltElements()
+        {
+            KeptElementBuilder.Reset();
+            var parentElement = new ElementOptions();
+            parentElement.SubElements.Add(new ElementOptions()
+            {
+                BuilderName = nameof(KeptElementBuilder)
+            });
+            parentElement.SubElements.Add(new ElementOptions()
+            {
+                BuilderName = nameof(FailingElementBuilder)
+            });
+            PipelineOptions options = new PipelineOptions();
+            options.Elements = new List<ElementOptions> { parentElement };
+            _maxErrors = 1;
+
+            Assert.ThrowsExactly<PipelineConfigurationException>(
+                () => _builder.BuildFromConfiguration(options));
+
+            Assert.HasCount(1, KeptElementBuilder.Built);
+            Assert.IsTrue(
+                KeptElementBuilder.Built.Single().IsDisposed,
+                "The element built before the failure was not disposed.");
+        }
+
         private void VerifyMultiplyByElementPipeline(PipelineOptions options)
         {
             // Pass the configuration to the builder to create the pipeline.
