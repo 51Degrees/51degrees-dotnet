@@ -11,9 +11,10 @@ if ($env:GITHUB_JOB -eq "PreBuild") {
     exit 0
 }
 
-# The tests and examples find the data files in the cxx data submodules.
-$deviceDetectionData = "$PSScriptRoot/../cxx/device-detection-data"
-$ipIntelligenceData = "$PSScriptRoot/../cxx/ip-intelligence-data"
+# The tests and examples find the data files in the data submodule of cxx.
+$data = "$PSScriptRoot/../cxx/data"
+$deviceDetectionData = "$data/device-detection"
+$ipIntelligenceData = "$data/ip-intelligence"
 
 $assets = @("51Degrees-LiteV4.1.hash", "20000 Evidence Records.yml", "20000 User Agents.csv")
 if ($DeviceDetection) {
@@ -36,6 +37,14 @@ if ($IpIntelligenceUrl) {
     }
 } else {
     Write-Host "::warning title=No License Key::No IP Intelligence data file URL, so the Enterprise file is not downloaded and the tests that need it are skipped."
+}
+
+# The free files the tests and examples read. The data repository's script
+# keeps the ones copied in above and downloads the rest, which include the
+# Asn file the IP Intelligence tests use.
+pwsh -NoProfile -File "$data/get-data-files.ps1" "51Degrees-LiteV4.1.hash" "20000 Evidence Records.yml" "20000 User Agents.csv" "51Degrees-IPIV4AsnIpiV41.ipi"
+if ($LASTEXITCODE -ne 0) {
+    throw "The data repository's script did not download every free data file."
 }
 
 # The evidence files the IP Intelligence tests and examples read.

@@ -36,7 +36,7 @@ using System.Text;
 /// It shows how to call the cloud with the newly created key and how to access the values 
 /// of the selected properties.
 ///
-/// See [Getting Started](https://51degrees.com/documentation/_examples__device_detection__getting_started__console__cloud.html?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-configurator-console-program.cs&amp;utm_term=header)
+/// See [Getting Started](https://51degrees.com/documentation/_device_detection__examples__getting_started__console__cloud.html?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-configurator-console-program.cs&amp;utm_term=header)
 /// for a fuller example.
 /// 
 /// Required NuGet Dependencies:
@@ -148,7 +148,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Configurator
                             $"variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees " +
                             $"cloud service is accessed using a 'ResourceKey'. For more " +
                             $"information see " +
-                            $"https://51degrees.com/documentation/_info__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required. " +
+                            $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required. " +
                             $"A free resource key can be created at " +
                             $"https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required and populates the free " +
                             $"properties. With a paid subscription, a key created at " +

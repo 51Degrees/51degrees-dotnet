@@ -21,8 +21,8 @@ $runConfiguration = $Configuration.Contains("Release") ? "Release" : "Debug"
 
 # The device detection console example, with the TAC file and the evidence
 # records. Its result is the one the shared performance comparison reads.
-$tacFile = "$RepoPath/cxx/device-detection-data/TAC-HashV41.hash"
-$evidence = "$RepoPath/cxx/device-detection-data/20000 Evidence Records.yml"
+$tacFile = "$RepoPath/cxx/data/device-detection/TAC-HashV41.hash"
+$evidence = "$RepoPath/cxx/data/device-detection/20000 Evidence Records.yml"
 if (Test-Path $tacFile) {
     Write-Host "::group::Device detection console performance"
     $project = "$RepoPath/examples/device-detection/OnPremise/Performance-Console"
@@ -44,8 +44,8 @@ if (Test-Path $tacFile) {
 }
 
 # The IP Intelligence console example, with the Enterprise file.
-$ipiFile = "$RepoPath/cxx/ip-intelligence-data/51Degrees-EnterpriseIpiV41.ipi"
-$ipiEvidence = "$RepoPath/cxx/ip-intelligence-data/evidence.yml"
+$ipiFile = "$RepoPath/cxx/data/ip-intelligence/51Degrees-EnterpriseIpiV41.ipi"
+$ipiEvidence = "$RepoPath/cxx/data/ip-intelligence/evidence.yml"
 if (Test-Path $ipiFile) {
     Write-Host "::group::IP Intelligence console performance"
     $project = "$RepoPath/examples/ip-intelligence/OnPremise/Performance-Console"

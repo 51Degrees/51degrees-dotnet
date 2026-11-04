@@ -119,7 +119,7 @@ public class TestGettingStartedOnPremise
             _skipReason =
                 $"The IP Intelligence data file '{_dataFile}' could not be loaded " +
                 $"by the native engine (likely a data/engine version mismatch). " +
-                $"Update the ip-intelligence-data submodule or the engine package. " +
+                $"Update the data file or the engine package. " +
                 $"Details: {ex.Message}";
         }
     }

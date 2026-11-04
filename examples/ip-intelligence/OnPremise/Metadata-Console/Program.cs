@@ -72,7 +72,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Metadata
                     // data file is paged from disk rather than loaded entirely into RAM.
                     // See the documentation for more detail on this and other
                     // configuration options.
-                    // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=run
+                    // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=run
                     .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                     // inhibit auto-update of the data file for this test
                     .SetAutoUpdate(false)
@@ -268,10 +268,9 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Metadata
             else
             {
                 logger.LogError("Failed to find a IP Intelligence data file. Make sure the " +
-                    "ip-intelligence-data submodule has been updated by running " +
-                    "`git submodule update --recursive`. By default, the 'lite' file included " +
-                    "with this code will be used. A different file can be specified " +
-                    "by supplying the full path as a command line argument");
+                    "Enterprise data file is in cxx/data/ip-intelligence. A different " +
+                    "file can be specified by supplying the full path as a command " +
+                    "line argument");
             }
 
             // Dispose the logger to ensure any messages get flushed

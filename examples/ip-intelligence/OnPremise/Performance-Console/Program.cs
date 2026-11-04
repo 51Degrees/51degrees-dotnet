@@ -47,7 +47,7 @@ using System.Threading.Tasks;
 /// The example illustrates a "clock-time" benchmark for assessing detection speed.
 ///
 /// Using a YAML formatted evidence file - "20000 Evidence Records.yml" - supplied with the
-/// distribution or can be obtained from the [data repository on Github](https://github.com/51Degrees/ip-intelligence-data).
+/// distribution or can be obtained from the [data repository on Github](https://github.com/51Degrees/data).
 ///
 /// It's important to understand the trade-offs between performance, memory usage and accuracy, that
 /// the 51Degrees pipeline configuration makes available, and this example shows a range of
@@ -345,8 +345,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Performance
                     {
                         serviceProvider.GetRequiredService<ILogger<Program>>().LogError(
                             "Failed to find a IP Intelligence data file. Make sure the " +
-                            "ip-intelligence-data submodule has been updated by running " +
-                            "`git submodule update --recursive`.");
+                            "Enterprise data file is in cxx/data/ip-intelligence, or supply " +
+                            "the path to a data file as a command line argument.");
                         return null;
                     }
                     else

@@ -63,7 +63,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedConsole
 
                 // In this example, we use the FiftyOnePipelineBuilder and configure it from a file.
                 // For more information about builders in general see the documentation at
-                // https://51degrees.com/documentation/_concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=run
+                // https://51degrees.com/documentation/_pipeline_api__concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=run
 
                 // Create the pipeline using the service provider and the configured options.
                 using (var pipeline = new FiftyOnePipelineBuilder(loggerFactory, serviceProvider)
@@ -192,7 +192,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedConsole
                             $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees cloud " +
                             $"service is accessed using a 'ResourceKey'. For more information " +
                             $"see " +
-                            $"https://51degrees.com/documentation/_info__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=resource-key-required. " +
+                            $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=resource-key-required. " +
                             $"A free resource key can be created at " +
                             $"https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=resource-key-required and populates the free " +
                             $"properties. With a paid subscription, a key created at " +

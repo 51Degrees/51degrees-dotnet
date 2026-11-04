@@ -71,8 +71,8 @@ using System.Web.UI;
 /// the same as those that will be available in the configuration file. 
 /// 
 /// Note that you will need to update the configuration with the complete path to a data file. 
-/// The free 'lite' file is included with this repository under the path 
-/// `FiftyOne.DeviceDetection\device-detection-cxx\device-detection-data`
+/// The free 'lite' file is downloaded into the path
+/// `cxx\data\device-detection` by the data repository's scripts.
 /// Alternatively, you can obtain a [license key](https://51degrees.com/pricing?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx.cs&amp;utm_term=header) which can be used 
 /// to download a data file from our 
 /// [Distributor](/documentation/4.5/_services__distributor.html) service.

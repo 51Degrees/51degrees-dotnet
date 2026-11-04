@@ -19,7 +19,7 @@
 	  <Copyright>51Degrees Mobile Experts Limited</Copyright>
 	  <PackageTags>51degrees;device-detection;user-agent;user-agent-parser;client-hints;browser-detection;mobile-detection;crawler-detection;pipeline;data;device;detection;parse;detection-library;bots;crawler;desktop;tablet;mobile;tv;cloud;wurfl;deviceatlas;uaparser</PackageTags>
 	  <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
-    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection.cloud-fiftyone.devicedetection.cloud.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageProjectUrl>https://51degrees.com/device-detection?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection.cloud&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <PackageIcon>51d-logo.png</PackageIcon>
     <NeutralLanguage>en</NeutralLanguage>

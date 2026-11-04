@@ -106,7 +106,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The value for the ‘sequence’ parameter is not valid. See https://51degrees.com/documentation/_info__error_messages.html#Sequence_value_invalid for more information..
+        ///   Looks up a localized string similar to The value for the ‘sequence’ parameter is not valid. See https://51degrees.com/documentation/_services__cloud__error_messages.html#Sequence_value_invalid for more information..
         /// </summary>
         internal static string MessageFailSequenceNumberParse {
             get {
