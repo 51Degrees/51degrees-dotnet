@@ -89,8 +89,10 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
         [TestMethod]
         public void EngineBuilder_CheckDataFileEngineSet()
         {
-            using var engine = _builder.Build(new MemoryStream());
-            Assert.AreEqual(engine, engine.DataFiles.ElementAt(0).Engine);
+            using (var engine = _builder.Build(new MemoryStream()))
+            {
+                Assert.AreEqual(engine, engine.DataFiles.ElementAt(0).Engine);
+            }
         }
 
         ///<summary>
@@ -125,12 +127,16 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
         [TestMethod]
         public void Engine_CacheDisabled()
         {
-            using var engine = _builder.Build(new MemoryStream());
-            Assert.Throws<NotSupportedException>(() =>
+            using (var engine = _builder.Build(new MemoryStream()))
             {
-                engine.SetCache(new Pipeline.Engines.Caching.DefaultFlowCache(
-                    new Pipeline.Engines.Configuration.CacheConfiguration()));
-            });
+                Assert.Throws<NotSupportedException>(() =>
+                {
+                    engine.SetCache(
+                        new Pipeline.Engines.Caching.DefaultFlowCache(
+                            new Pipeline.Engines.Configuration
+                                .CacheConfiguration()));
+                });
+            }
         }
     }
 }

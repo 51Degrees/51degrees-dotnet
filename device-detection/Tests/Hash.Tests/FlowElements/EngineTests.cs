@@ -101,22 +101,26 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
         public void TestParallelSerialization(string fileName, string expectedJsonExample)
         {
             var dataFileInfo = TestHelpers.Utils.GetFilePath(fileName);
-            using var wrapper = new WrapperHash(dataFileInfo,
+            using (var wrapper = new WrapperHash(dataFileInfo,
                 PerformanceProfiles.MaxPerformance,
-                TestHelpers.Constants.RequiredProperties
-                );
-            // The device data is read after every flow data has been
-            // processed, so the flow data is disposed when the test ends.
-            var flowDatas = new List<IFlowData>();
-            try
+                TestHelpers.Constants.RequiredProperties))
             {
-                SerializeInParallel(wrapper, flowDatas, expectedJsonExample);
-            }
-            finally
-            {
-                foreach (var flowData in flowDatas)
+                // The device data is read after every flow data has been
+                // processed, so the flow data is disposed when the test ends.
+                var flowDatas = new List<IFlowData>();
+                try
                 {
-                    flowData.Dispose();
+                    SerializeInParallel(
+                        wrapper,
+                        flowDatas,
+                        expectedJsonExample);
+                }
+                finally
+                {
+                    foreach (var flowData in flowDatas)
+                    {
+                        flowData.Dispose();
+                    }
                 }
             }
         }
