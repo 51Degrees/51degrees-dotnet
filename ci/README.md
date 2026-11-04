@@ -33,6 +33,16 @@ numbers follow it.
 | `run-performance-tests.ps1` | The console examples and the web overhead | Same |
 | `publish-package.ps1` | | Pushes, tags each family, opens the versions pull request |
 
+`select-options.ps1` chooses the entries a pull request runs. The standard set
+is `Ubuntu_x64_Release`, with the Selenium contract, and `Windows_x64_Release`,
+the only build of the .NET Framework projects. Both leave out the IP
+Intelligence tests that load the Enterprise data file and the web example
+tests. A native change adds Linux ARM and Windows x86, an IP Intelligence change
+runs the Enterprise tests, a web change runs the web example tests on Linux, and
+a change outside the package folders adds every entry but macOS. macOS and
+performance run only when `rc` itself or the release pull request is built,
+which `.github/workflows/release-pull-request.yml` does on every entry.
+
 The secrets are the ones the separate repositories used: `ACCESS_TOKEN`,
 `NUGET_API_KEY`, the `CODE_SIGNING_KEY_VAULT_*` set, `STRONG_NAME_KEY_BASE64`,
 `DEVICE_DETECTION_KEY`, `DEVICE_DETECTION_URL`, `IPI_DATA_FILE_URL`,

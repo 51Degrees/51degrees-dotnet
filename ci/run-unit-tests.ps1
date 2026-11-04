@@ -3,7 +3,12 @@ param (
     [string]$Name = "Release_x64",
     [string]$Configuration = "Release",
     [string]$Arch = "x64",
-    [string]$BuildMethod = "dotnet"
+    [string]$BuildMethod = "dotnet",
+    # How deeply a pull request is tested, as select-options.ps1 chose.
+    # standard leaves out the IP Intelligence engine tests, which load the
+    # Enterprise data file. Empty, for the branch itself or a release, runs
+    # every test.
+    [string]$Depth
 )
 
 # The two old-style .NET Framework test projects. Their binding redirects are
@@ -23,6 +28,9 @@ if ($env:FIFTYONE_TEST_FILTER) {
     $Filter = $env:FIFTYONE_TEST_FILTER
 }
 
+$Exclude = $Depth -eq 'standard' ?
+    '^FiftyOne\.IpIntelligence\.OnPremise\.Tests\.dll$' : ''
+
 # The SDK-style assemblies run in parallel lanes, which ci/run-test-lanes.ps1
 # describes.
 & "$PSScriptRoot/run-test-lanes.ps1" `
@@ -31,6 +39,7 @@ if ($env:FIFTYONE_TEST_FILTER) {
     -Configuration $Configuration `
     -BlameHangTimeout "20m" `
     -Filter $Filter `
+    -Exclude $Exclude `
     -OutputFolder "unit"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
