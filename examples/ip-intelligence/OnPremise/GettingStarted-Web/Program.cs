@@ -164,8 +164,9 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb
             {
                 throw new Exception($"Failed to find a IP Intelligence data file matching " +
                     $"'{dataFile}'. If using the lite file, then make sure the " +
-                    $"ip-intelligence-data submodule has been updated by running " +
-                    "`git submodule update --recursive`. Otherwise, ensure that the filename " +
+                    $"submodules have been fetched by running " +
+                    "`git submodule update --init --recursive`, so that it can be " +
+                    "downloaded. Otherwise, ensure that the filename " +
                     "is correct in appsettings.json.");
             }
 

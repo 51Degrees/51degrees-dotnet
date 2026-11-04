@@ -251,9 +251,9 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
             else
             {
                 logger.LogError("Failed to find a device detection data file. Make sure the " +
-                    "device-detection-data submodule has been updated by running " +
-                    "`git submodule update --recursive`. By default, the 'lite' file included " +
-                    "with this code will be used. A different file can be specified " +
+                    "submodules have been fetched by running " +
+                    "`git submodule update --init --recursive`. By default, the free 'lite' " +
+                    "file is downloaded and used. A different file can be specified " +
                     "by supplying the full path as a command line argument");
             }
 

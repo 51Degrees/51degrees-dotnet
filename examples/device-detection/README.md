@@ -54,10 +54,11 @@ the file in the following order:
    explicit path to the data file. The earlier "_51DEGREES_DD_PATH" and the
    legacy "DEVICEDETECTIONDATAFILE" environment variables are also still
    supported, and are checked in that order after "51DEGREES_DD_PATH".
-2. A search of the folder hierarchy, walking up from the working directory,
+2. The data submodule of this repository, `cxx/data`. When the free 'Lite'
+   file is missing, the example downloads it there with the data
+   repository's script, and prints the command it runs.
+3. A search of the folder hierarchy, walking up from the working directory,
    for the expected data file name.
-3. The free 'Lite' data file in its expected location, which is the
-   device-detection-data submodule of this repository.
 
 Note that the aligned variable names start with a digit, which POSIX shells
 do not accept in plain assignments. On Linux and macOS set them with the env

@@ -26,6 +26,7 @@ using FiftyOne.Pipeline.Core.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -235,22 +236,158 @@ public static class ExampleUtils
     }
 
     /// <summary>
-    /// Uses a background task to search for the specified filename within the working
-    /// directory.
-    /// If the file cannot be found, the algorithm will move to the parent directory and
-    /// repeat the process.
-    /// This continues until the file is found or a timeout is triggered.
+    /// The data repository's folder, relative to the root of this repository.
+    /// It holds the free data files, each listed as a link until it is
+    /// downloaded, and the scripts that download them.
     /// </summary>
-    /// <param name="filename"></param>
+    private static readonly string DataFolder = Path.Combine("cxx", "data");
+
+    /// <summary>
+    /// Added to a data file's name to give the name of the file beside it
+    /// that holds the address it is downloaded from.
+    /// </summary>
+    private const string LinkExtension = ".link";
+
+    /// <summary>
+    /// Sent with each download, so that downloads by these examples can be
+    /// counted.
+    /// </summary>
+    private const string DownloadSource = "examples-51degrees-dotnet";
+
+    private static readonly bool IsWindows =
+        Environment.OSVersion.Platform == PlatformID.Win32NT;
+
+    /// <summary>
+    /// The data repository's download script for this platform.
+    /// </summary>
+    private static readonly string DataScript = IsWindows ?
+        "get-data-files.ps1" :
+        "get-data-files.sh";
+
+    /// <summary>
+    /// Finds a file by name. The data repository in cxx/data is looked in
+    /// first, and a free data file it links to is downloaded there when it
+    /// is missing. Any other file is searched for within the working
+    /// directory, and then each parent directory in turn, until it is found
+    /// or a timeout is triggered.
+    /// </summary>
+    /// <param name="filename">
+    /// The name of the file to find.
+    /// </param>
     /// <param name="dir">
     /// The directory to start looking from. If not provided the current directory is used.
     /// </param>
-    /// <returns></returns>
+    /// <returns>
+    /// The path to the file, or null if it could not be found.
+    /// </returns>
     public static string FindFile(
         string filename,
         DirectoryInfo dir = null)
     {
+        var data = FindDataFolder(dir);
+        if (data != null && Path.GetFileName(filename) == filename)
+        {
+            var file = FindInFolder(data, filename);
+            if (file != null)
+            {
+                return file;
+            }
+            // A linked file is only looked for here, so that an older copy
+            // elsewhere in the tree is never used in place of the download.
+            var link = FindInFolder(data, filename + LinkExtension);
+            if (link != null)
+            {
+                return DownloadDataFile(data, link, filename);
+            }
+        }
         return FileUtils.FindFile(filename, dir);
+    }
+
+    /// <summary>
+    /// Walks up from the directory to find the data repository. A folder
+    /// without the download script, such as a submodule that has not been
+    /// checked out, is passed over.
+    /// </summary>
+    private static string FindDataFolder(DirectoryInfo dir)
+    {
+        var current = dir ??
+            new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (current != null)
+        {
+            var data = Path.Combine(current.FullName, DataFolder);
+            if (File.Exists(Path.Combine(data, DataScript)))
+            {
+                return data;
+            }
+            current = current.Parent;
+        }
+        return null;
+    }
+
+    private static string FindInFolder(string folder, string filename)
+    {
+        try
+        {
+            var files = Directory.GetFiles(
+                folder,
+                filename,
+                SearchOption.AllDirectories);
+            return files.Length > 0 ? files[0] : null;
+        }
+        // A folder that cannot be read does not hold the file.
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Downloads a free data file with the data repository's script, which
+    /// saves it beside its link, and says what it runs. The script is used
+    /// rather than a download here so that every language downloads the
+    /// files the same way.
+    /// </summary>
+    /// <returns>
+    /// The path to the file, or null if it could not be downloaded.
+    /// </returns>
+    private static string DownloadDataFile(
+        string data,
+        string link,
+        string filename)
+    {
+        var script = Path.Combine(data, DataScript);
+        var start = IsWindows ?
+            new ProcessStartInfo(
+                "powershell",
+                $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\" " +
+                $"\"{filename}\" -Source {DownloadSource}") :
+            new ProcessStartInfo(
+                "sh",
+                $"\"{script}\" -s {DownloadSource} \"{filename}\"");
+        start.UseShellExecute = false;
+        var command = $"{start.FileName} {start.Arguments}";
+        Console.WriteLine($"'{filename}' is missing, so downloading it with:");
+        Console.WriteLine($"  {command}");
+        try
+        {
+            using (var process = Process.Start(start))
+            {
+                process.WaitForExit();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+        }
+        var file = Path.Combine(Path.GetDirectoryName(link), filename);
+        if (File.Exists(file))
+        {
+            return file;
+        }
+        Console.Error.WriteLine(
+            $"'{filename}' could not be downloaded. Run this command to get it:");
+        Console.Error.WriteLine($"  {command}");
+        return null;
     }
 
     /// <summary>
@@ -395,8 +532,9 @@ public static class ExampleUtils
                 logger.LogWarning($"This example is using a data file that is more than " +
                     $"{DataFileAgeWarning} days old. A more recent data file may be needed " +
                     $"to correctly detect the latest devices, browsers, etc. The latest lite " +
-                    $"data file is available from the device-detection-data repository on " +
-                    $"GitHub https://github.com/51Degrees/device-detection-data. Find out " +
+                    $"data file is downloaded by running get-data-files.ps1 -Update or " +
+                    $"get-data-files.sh -u in the data repository, the cxx/data submodule, " +
+                    $"from GitHub https://github.com/51Degrees/data. Find out " +
                     $"about the Enterprise data file, which includes automatic daily " +
                     $"updates, on our pricing page: https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=data-file-age-warning");
             }

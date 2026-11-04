@@ -57,23 +57,22 @@ subscription with more properties.
 #### On-Premise
 
 In order to perform device detection on-premise, you will need to use a
-51Degrees data file. This repository includes a free, 'lite' file in the
-'device-detection-data' sub-module that has a significantly reduced set of
+51Degrees data file. The free 'lite' file has a significantly reduced set of
 properties. To obtain a file with a more complete set of device properties see
-the [51Degrees website](https://51degrees.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=on-premise). If you want to use the
-lite file, you will need to install [GitLFS](https://git-lfs.github.com/).
+the [51Degrees website](https://51degrees.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=on-premise).
 
-On Linux:
-
-```
-sudo apt-get install git-lfs
-git lfs install
-```
-
-Then, navigate to 'device-detection-cxx/device-detection-data' and execute:
+The lite file is downloaded by the scripts in the
+[data](https://github.com/51Degrees/data) repository, which is the `cxx/data`
+submodule. From the repository root, run:
 
 ```
-git lfs pull
+pwsh cxx/data/get-data-files.ps1 51Degrees-LiteV4.1.hash
+```
+
+or, with curl and gzip installed:
+
+```
+sh cxx/data/get-data-files.sh 51Degrees-LiteV4.1.hash
 ```
 
 The examples in the
@@ -82,8 +81,9 @@ repository resolve the data file in the following order:
 
 1.  The `_51DEGREES_DD_PATH` environment variable, set to an explicit path to
     the data file.
-2.  A search of the folder hierarchy for the expected data file name.
-3.  The free 'Lite' data file in the device-detection-data submodule.
+2.  The `cxx/data` submodule, where the example downloads the free 'Lite'
+    file when it is missing.
+3.  A search of the folder hierarchy for the expected data file name.
 
 ## Solutions and projects
 

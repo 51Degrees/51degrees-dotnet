@@ -10,19 +10,17 @@ Cloud examples will be added once the Cloud service for IP Intelligence becomes 
 
 ## ⚠️ Required files
 
-See `ip-intelligence-data/README` ([local](./ip-intelligence-data/README) / [GitHub](https://github.com/51Degrees/ip-intelligence-data/)) on how to pull and/or generate necessary files.
+See the [data](https://github.com/51Degrees/data) repository, which is the `cxx/data` submodule, on how to download and generate the necessary files.
 
 ### Mixed Examples Data Files
 
 For the **Mixed examples** that combine Device Detection and IP Intelligence:
 
-1. **IP Intelligence data file**: Place `51Degrees-EnterpriseIpiV41.ipi` (or `51Degrees-LiteV41.ipi`) in the `ip-intelligence-data/` directory at the repository root.
+1. **IP Intelligence data file**: Place `51Degrees-EnterpriseIpiV41.ipi` in the `cxx/data/ip-intelligence/` directory, or use the free `51Degrees-LiteV41.ipi`, which the data repository's scripts download there.
 
-2. **Device Detection data file**: Place `51Degrees-EnterpriseV41.hash` (or `51Degrees-LiteV41.hash`) in the `ip-intelligence-data/` directory at the repository root.
+2. **Device Detection data file**: Place `51Degrees-EnterpriseV41.hash` in the `cxx/data/ip-intelligence/` directory, or use the free `51Degrees-LiteV4.1.hash`, which the data repository's scripts download into `cxx/data/device-detection/`.
 
-Both data files should be obtained from the respective repositories:
-- Device Detection data files: [device-detection-data](https://github.com/51Degrees/device-detection-data)
-- IP Intelligence data files: [ip-intelligence-data](https://github.com/51Degrees/ip-intelligence-data)
+The console example downloads the free files itself when it needs them and they are missing.
 
 ## On-premise data file
 
@@ -33,11 +31,16 @@ the file in the following order:
    explicit path to the data file. The legacy "IPINTELLIGENCEDATAFILE"
    environment variable is also still supported, and is checked after
    "51DEGREES_IPI_PATH".
-2. A search of the folder hierarchy, walking up from the working directory,
+2. The data submodule of this repository, `cxx/data`. When an example asks
+   for a free 'Lite' file that is missing, it downloads the file there with
+   the data repository's script, and prints the command it runs.
+3. A search of the folder hierarchy, walking up from the working directory,
    for the expected data file name.
-3. The free 'Lite' data file in its expected location, which is the
-   ip-intelligence-data submodule of this repository. See the Required files
-   section above on how to pull and/or generate the data files.
+
+Most of the examples ask for the Enterprise file,
+`51Degrees-EnterpriseIpiV41.ipi`, which is not free and has to be supplied.
+See the Required files section above on how to download and generate the free
+files.
 
 ## 📦 NuGet Package
 
@@ -70,8 +73,8 @@ dotnet add package FiftyOne.IpIntelligence --prerelease
 | **Mixed/GettingStarted-Web**     | **.NET 10.0**        | **Combined Device Detection and IP Intelligence ASP.NET Core project.** |
 
 `Compare-Console`, `Metrics-Console` and `Suspicious-Console` need an enterprise
-data file; the lite file in the `ip-intelligence-data` submodule does not carry
-the location data they analyse. `LocationAnalysis-Console` runs against the lite
+data file, because the free lite file does not carry the location data they
+analyse. `LocationAnalysis-Console` runs against the lite
 file too, reporting the properties it does not carry as `NotAvailable`.
 
 `Metrics-Console` samples the address ranges in the data file rather than

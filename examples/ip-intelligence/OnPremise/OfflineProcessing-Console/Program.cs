@@ -55,7 +55,7 @@ using YamlDotNet.Serialization;
 /// performance and predictive power using Performance Profile, Graph and Difference and Drift 
 /// settings.
 /// 
-/// Evidence files can be obtained from the [ip-intelligence-data repository](https://github.com/51Degrees/ip-intelligence-data).
+/// Evidence files can be obtained from the [data repository](https://github.com/51Degrees/data).
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/OfflineProcessing-Console/Program.cs). 
 /// 
@@ -238,8 +238,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.OfflineProcessing
             else
             {
                 logger.LogError("Failed to find a IP Intelligence data file. Make sure the " +
-                    "ip-intelligence-data submodule has been updated by running " +
-                    "`git submodule update --recursive`.");
+                    "Enterprise data file is in cxx/data/ip-intelligence, or supply " +
+                    "the path to a data file as a command line argument.");
             }
 
             // Dispose the logger to ensure any messages get flushed

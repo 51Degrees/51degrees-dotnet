@@ -218,8 +218,9 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedConsole
             else
             {
                 logger.LogError("Failed to find a device detection data file. Make sure the " +
-                    "device-detection-data submodule has been updated by running " +
-                    "`git submodule update --recursive`.");
+                    "submodules have been fetched by running " +
+                    "`git submodule update --init --recursive`, so that the free Lite " +
+                    "file can be downloaded.");
             }
 
             // Dispose the logger to ensure any messages get flushed

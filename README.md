@@ -63,10 +63,17 @@ If you have already cloned the repository, fetch the submodules with:
 git submodule update --init --recursive
 ```
 
-The free Device Detection Lite data file in `cxx/device-detection-data` is
-stored with [Git LFS](https://git-lfs.github.com/). Install Git LFS and run
-`git lfs pull` in that folder to fetch it. The free IP Intelligence file is in
-`cxx/ip-intelligence-data`.
+The free data files are not stored in the repository. The
+[data](https://github.com/51Degrees/data) repository, the `cxx/data`
+submodule, keeps a link for each one in its `device-detection` and
+`ip-intelligence` folders, and its scripts download them beside their links.
+From the repository root, run `pwsh cxx/data/get-data-files.ps1`, or
+`sh cxx/data/get-data-files.sh`, which needs curl and gzip. The examples run
+the script themselves when the free file they need is missing.
+
+Nothing here reads the older `cxx/device-detection-data` and
+`cxx/ip-intelligence-data` folders. When cxx removes those submodules, git
+leaves their folders on disk in an existing clone, and they can be deleted.
 
 ## Building
 

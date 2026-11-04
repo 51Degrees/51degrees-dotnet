@@ -110,7 +110,7 @@ try {
     Write-Host "::error title=Selenium contract (cloud)::$_"
     $failed += 'cloud'
 }
-$tacFile = "$PWD/$RepoName/cxx/device-detection-data/TAC-HashV41.hash"
+$tacFile = "$PWD/$RepoName/cxx/data/device-detection/TAC-HashV41.hash"
 if ($Arch -eq 'x86') {
     Write-Host "::warning title=Selenium on-premise skipped::The native library on this job is x86, so the example would have to run as an x86 process."
 } elseif (-not (Test-Path $tacFile)) {

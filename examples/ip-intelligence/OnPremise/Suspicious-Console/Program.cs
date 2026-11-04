@@ -185,10 +185,9 @@ public class Program
         else
         {
             logger.LogError("Failed to find a IP Intelligence data file. Make sure the " +
-                "ip-intelligence-data submodule has been updated by running " +
-                "`git submodule update --recursive`. By default, the 'lite' file included " +
-                "with this code will be used. A different file can be specified " +
-                "by supplying the full path as a command line argument");
+                "Enterprise data file is in cxx/data/ip-intelligence. A different " +
+                "file can be specified by supplying the full path as a command " +
+                "line argument");
         }
 
         // Dispose the logger to ensure any messages get flushed

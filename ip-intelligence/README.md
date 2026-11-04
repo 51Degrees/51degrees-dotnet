@@ -37,7 +37,7 @@ The API does detections using a local (on-premise) data file or cloud service (c
 In order to perform IP intelligence on-premise, you will need to use a
 data file.
 
-[ip-intelligence-data](https://github.com/51Degrees/ip-intelligence-data/) submodule repository instructs how to obtain a 'Lite' data file, otherwise [contact us](https://51degrees.com/contact-us?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=on-premise) to obtain an 'Enterprise' data file.
+The scripts in the [data](https://github.com/51Degrees/data) repository, which is the `cxx/data` submodule, download the free 'Lite' data file, for example with `pwsh cxx/data/get-data-files.ps1 51Degrees-LiteV41.ipi` from the repository root. Otherwise [contact us](https://51degrees.com/contact-us?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=on-premise) to obtain an 'Enterprise' data file.
 
 Tests that need a data file locate it in the following order:
 
@@ -47,8 +47,8 @@ Tests that need a data file locate it in the following order:
    "_51DEGREES_IPI_PATH".
 2. A search of the folder hierarchy, walking up from the working directory,
    for the expected data file name.
-3. The free 'Lite' data file in its expected location, which is the
-   ip-intelligence-data submodule of this repository.
+3. The free 'Lite' data file in its expected location, which is
+   `cxx/data/ip-intelligence`.
 
 #### Cloud (coming soon)
 
