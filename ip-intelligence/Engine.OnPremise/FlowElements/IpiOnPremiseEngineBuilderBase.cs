@@ -51,23 +51,17 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
 
         private readonly ILoggerFactory _loggerFactory;
 
-        private IConfigSwigWrapper _config = null;
+        /// <summary>
+        /// The settings for the native configuration. Each engine gets a new
+        /// configuration with these applied, which it owns and frees when it
+        /// is disposed, so a builder can build more than one engine.
+        /// </summary>
+        private readonly List<Action<IConfigSwigWrapper>> _configSettings =
+            new List<Action<IConfigSwigWrapper>>();
 
         #endregion
 
         internal ISwigFactory SwigFactory { get; set; } = new SwigFactory();
-
-        private IConfigSwigWrapper SwigConfig
-        {
-            get
-            {
-                if (_config == null)
-                {
-                    _config = SwigFactory.CreateConfig();
-                }
-                return _config;
-            }
-        }
 
         #region Constructor
 
@@ -112,7 +106,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         /// <returns>This builder</returns>
         public IpiOnPremiseEngineBuilderBase<TEngine> SetReuseTempFile(bool reuse)
         {
-            SwigConfig.setReuseTempFile(reuse);
+            _configSettings.Add(c => c.setReuseTempFile(reuse));
             return this;
         }
 
@@ -152,19 +146,19 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
             switch (profile)
             {
                 case PerformanceProfiles.LowMemory:
-                    SwigConfig.setLowMemory();
+                    _configSettings.Add(c => c.setLowMemory());
                     break;
                 case PerformanceProfiles.Balanced:
-                    SwigConfig.setBalanced();
+                    _configSettings.Add(c => c.setBalanced());
                     break;
                 case PerformanceProfiles.BalancedTemp:
-                    SwigConfig.setBalancedTemp();
+                    _configSettings.Add(c => c.setBalancedTemp());
                     break;
                 case PerformanceProfiles.HighPerformance:
-                    SwigConfig.setHighPerformance();
+                    _configSettings.Add(c => c.setHighPerformance());
                     break;
                 case PerformanceProfiles.MaxPerformance:
-                    SwigConfig.setMaxPerformance();
+                    _configSettings.Add(c => c.setMaxPerformance());
                     break;
                 default:
                     throw new ArgumentException(
@@ -185,7 +179,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         public override IpiOnPremiseEngineBuilderBase<TEngine> SetConcurrency(
             ushort concurrency)
         {
-            SwigConfig.setConcurrency(concurrency);
+            _configSettings.Add(c => c.setConcurrency(concurrency));
             return this;
         }
 
@@ -219,41 +213,64 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
             // again by the base class.
             DataFiles.Remove(dataFile);
 
-            // Update the swig configuration object.
-            if (dataFile.Configuration.CreateTempCopy && String.IsNullOrEmpty(TempDir) == false)
-            {
-                using (var tempDirs = new VectorStringSwig())
-                {
-                    tempDirs.Add(TempDir);
-                    SwigConfig.setTempDirectories(tempDirs);
-                }
-                SwigConfig.setUseTempFile(true);
-            }
-
-            // Create swig property configuration object.
+            // Create the swig configuration object, which the engine owns.
+            var config = SwigFactory.CreateConfig();
             IRequiredPropertiesConfigSwigWrapper propertyConfig = null;
-            using (var vProperties = new VectorStringSwig(properties))
+            TEngine engine = null;
+            try
             {
-                propertyConfig = SwigFactory.CreateRequiredProperties(vProperties);
+                foreach (var setting in _configSettings)
+                {
+                    setting(config);
+                }
+                if (dataFile.Configuration.CreateTempCopy && String.IsNullOrEmpty(TempDir) == false)
+                {
+                    using (var tempDirs = new VectorStringSwig())
+                    {
+                        tempDirs.Add(TempDir);
+                        config.setTempDirectories(tempDirs);
+                    }
+                    config.setUseTempFile(true);
+                }
+
+                // Create swig property configuration object.
+                using (var vProperties = new VectorStringSwig(properties))
+                {
+                    propertyConfig = SwigFactory.CreateRequiredProperties(vProperties);
+                }
+
+                // Create a new instance of the required engine type.
+                engine = CreateEngine(
+                    _loggerFactory,
+                    CreateAspectData,
+                    TempDir);
+
+                // Then set the instances of properties that remain internal to
+                // the package.
+                engine.SwigFactory = SwigFactory;
+                engine.PropertiesConfigSwig = propertyConfig;
+                engine.Config = config;
+
+                // This must be last as the call results in RefreshData being
+                // triggered which requires the prior three properties to be set.
+                engine.AddDataFile(dataFile);
+                return engine;
             }
-
-            // Create a new instance of the required engine type.
-            var engine = CreateEngine(
-                _loggerFactory,
-                CreateAspectData,
-                TempDir);
-
-            // Then set the instances of properties that remain internal to
-            // the package.
-            engine.SwigFactory = SwigFactory;
-            engine.PropertiesConfigSwig = propertyConfig;
-            engine.Config = SwigConfig;
-
-            // This must be last as the call results in RefreshData being
-            // triggered which requires the prior three properties to be set.
-            engine.AddDataFile(dataFile);
-
-            return engine;
+            catch
+            {
+                // No caller receives an engine that failed to load, so free
+                // it, or the native configuration if there is no engine yet.
+                if (engine != null)
+                {
+                    engine.Dispose();
+                }
+                else
+                {
+                    propertyConfig?.Dispose();
+                    config.Dispose();
+                }
+                throw;
+            }
         }
 
         /// <summary>

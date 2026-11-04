@@ -109,8 +109,9 @@ namespace Examples.UsageSharing
                 .BuildServiceProvider();
             var factory = serviceProvider.GetRequiredService<ILoggerFactory>();
 
-            // Create the pipeline using the options object
-            var pipeline = new PipelineBuilder(factory, serviceProvider)
+            // Create the pipeline using the options object. Disposing the
+            // pipeline also disposes the elements it built.
+            using var pipeline = new PipelineBuilder(factory, serviceProvider)
                 .BuildFromConfiguration(options);
 
             // Alternatively, the commented code below shows how to

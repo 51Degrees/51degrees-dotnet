@@ -28,39 +28,44 @@ using System.Collections.Generic;
 
 namespace FiftyOne.IpIntelligence.Engine.OnPremise.Wrappers
 {
+    /// <summary>
+    /// A managed copy of a native list of weighted values, so the
+    /// native list is freed as soon as the value has been read.
+    /// </summary>
     internal class WeightedUTF8StringListSwigWrapper : IReadOnlyList<IWeightedValue<string>>
     {
-        private WeightedUTF8StringListSwig _object;
+        private readonly IWeightedValue<string>[] _values;
 
-        public IWeightedValue<string> this[int index] => GetWeightedValue(index);
+        public IWeightedValue<string> this[int index] => _values[index];
 
-        public int Count => _object.Count;
+        public int Count => _values.Length;
 
         public WeightedUTF8StringListSwigWrapper(
             WeightedUTF8StringListSwig instance)
         {
-            _object = instance;
-        }
-
-        private IWeightedValue<string> GetWeightedValue(int index) {
-            using (var value = _object[index].getValue())
+            _values = new IWeightedValue<string>[instance.Count];
+            for (int i = 0; i < _values.Length; i++)
             {
-                string s = value.ToUTF8String();
-                return new WeightedValue<string>(this._object[index].getShortRawWeight(), s);
+                var item = instance[i];
+                string text;
+                using (var value = item.getValue())
+                {
+                    text = value.ToUTF8String();
+                }
+                _values[i] = new WeightedValue<string>(
+                    item.getShortRawWeight(),
+                    text);
             }
         }
 
         public IEnumerator<IWeightedValue<string>> GetEnumerator()
         {
-            for (int i = 0; i < _object.Count; i++)
-            {
-                yield return GetWeightedValue(i);
-            }
+            return ((IEnumerable<IWeightedValue<string>>)_values).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return GetEnumerator(); ;
+            return GetEnumerator();
         }
     }
 }

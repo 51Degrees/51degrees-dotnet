@@ -56,11 +56,12 @@ namespace FiftyOne.DeviceDetection.PackageConsumption
 
             var logger = NullLoggerFactory.Instance;
 
-            using (var engine = new DeviceDetectionHashEngineBuilder(logger)
+            var engine = new DeviceDetectionHashEngineBuilder(logger)
                 .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                 .SetAutoUpdate(false)
                 .SetDataFileSystemWatcher(false)
-                .Build(dataFile, false))
+                .Build(dataFile, false);
+            // Disposing the pipeline also disposes the engine.
             using (var pipeline = new PipelineBuilder(logger)
                 .AddFlowElement(engine)
                 .Build())

@@ -254,8 +254,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedConsole
             else
             {
                 logger.LogError("Failed to find a IP Intelligence data file. Make sure the " +
-                    "ip-intelligence-data submodule has been updated by running " +
-                    "`git submodule update --recursive`.");
+                    "Enterprise data file is in cxx/data/ip-intelligence, or supply " +
+                    "the path to a data file as a command line argument.");
             }
 
             // Dispose the logger to ensure any messages get flushed

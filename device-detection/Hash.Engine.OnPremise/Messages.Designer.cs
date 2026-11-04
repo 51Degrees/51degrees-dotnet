@@ -70,15 +70,6 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Failed to close native results instance. A DeviceDataHash instance contains native unmanaged memory which needs to be closed. Failing to close could lead to memory leaks..
-        /// </summary>
-        internal static string DeviceDataHashFailedToDispose {
-            get {
-                return ResourceManager.GetString("DeviceDataHashFailedToDispose", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to 51Degrees uses a native binary that must match the ‘bitness’ of the running process (i.e. x86 or x64). Please ensure your build process is targeting the correct platform. This will ensure that the correct dll is used. If using IIS, be aware that, although this is a 64 bit process, it is often run with a setting that allows 32 bit applications. In this case, your build must target x86. The currently running process is {0}..
         /// </summary>
         internal static string DllBadImageFormatException {

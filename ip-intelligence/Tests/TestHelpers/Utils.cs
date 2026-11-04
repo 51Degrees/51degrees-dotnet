@@ -70,8 +70,8 @@ namespace FiftyOne.IpIntelligence.TestHelpers
         {
             var folders = new[]
             {
-                "ip-intelligence-data",
-                Path.Combine("cxx", "ip-intelligence-data")
+                Path.Combine("data", "ip-intelligence"),
+                Path.Combine("cxx", "data", "ip-intelligence")
             };
             var current = new DirectoryInfo(AppContext.BaseDirectory);
             while (current != null)

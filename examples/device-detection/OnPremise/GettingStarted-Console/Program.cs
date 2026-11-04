@@ -52,7 +52,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedConsole
             {
                 // In this example, we use the DeviceDetectionPipelineBuilder and configure it
                 // in code. For more information about builders in general see the documentation at
-                // https://51degrees.com/documentation/_concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-gettingstarted-console-program.cs&utm_term=run
+                // https://51degrees.com/documentation/_pipeline_api__concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-gettingstarted-console-program.cs&utm_term=run
 
                 // Note that we wrap the creation of a pipeline in a using to control its life cycle
                 using (var pipeline = new DeviceDetectionPipelineBuilder(loggerFactory)
@@ -61,8 +61,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedConsole
                     // example. See the documentation for more detail on this and other
                     // configuration options:
                     // https://51degrees.com/documentation/_device_detection__features__performance_options.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-gettingstarted-console-program.cs&utm_term=run
-                    // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-gettingstarted-console-program.cs&utm_term=run
-                    // https://51degrees.com/documentation/_features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-gettingstarted-console-program.cs&utm_term=run
+                    // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-gettingstarted-console-program.cs&utm_term=run
+                    // https://51degrees.com/documentation/_pipeline_api__features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-gettingstarted-console-program.cs&utm_term=run
                     .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                     // inhibit sharing usage for this example, usually this should be set to "true"
                     .SetShareUsage(false)
@@ -218,8 +218,9 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedConsole
             else
             {
                 logger.LogError("Failed to find a device detection data file. Make sure the " +
-                    "device-detection-data submodule has been updated by running " +
-                    "`git submodule update --recursive`.");
+                    "submodules have been fetched by running " +
+                    "`git submodule update --init --recursive`, so that the free Lite " +
+                    "file can be downloaded.");
             }
 
             // Dispose the logger to ensure any messages get flushed

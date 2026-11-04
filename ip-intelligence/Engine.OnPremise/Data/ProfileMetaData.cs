@@ -54,14 +54,17 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         {
             _source = source;
             _engine = engine;
+            // Read now, so it can still be read once the native source has
+            // been disposed.
+            ProfileId = _source.getProfileId();
         }
 
         /// <summary>
-        /// Get the id for this profile. 
+        /// Get the id for this profile.
         /// The id number is guaranteed to stay the same for a profile
         /// regardless of data updates and API version changes.
         /// </summary>
-        public uint ProfileId => _source.getProfileId();
+        public uint ProfileId { get; }
 
         /// <summary>
         /// Get the meta-data for all values associated with this profile. 
@@ -98,11 +101,26 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         {
             get
             {
-                var name = String.Join("/",
-                    GetValues().Where(i =>
-                    i.GetProperty().DisplayOrder > 0 && i.Name != "N/A").OrderByDescending(i =>
-                    i.GetProperty().DisplayOrder).Select(i =>
-                    i.Name).Distinct()).Trim();
+                // Each value and its property own native memory, so they are
+                // disposed as soon as their name and display order are read.
+                var values = new List<KeyValuePair<byte, string>>();
+                foreach (var value in GetValues())
+                {
+                    using (value)
+                    using (var property = value.GetProperty())
+                    {
+                        if (property.DisplayOrder > 0 && value.Name != "N/A")
+                        {
+                            values.Add(new KeyValuePair<byte, string>(
+                                property.DisplayOrder,
+                                value.Name));
+                        }
+                    }
+                }
+                var name = String.Join("/", values
+                    .OrderByDescending(i => i.Key)
+                    .Select(i => i.Value)
+                    .Distinct()).Trim();
 
                 if (string.IsNullOrEmpty(name))
                     return ProfileId.ToString(CultureInfo.InvariantCulture);

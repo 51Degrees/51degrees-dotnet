@@ -21,10 +21,11 @@
  * ********************************************************************* */
 
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Interop;
+using System;
 
 namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Wrappers
 {
-    internal interface IRequiredPropertiesConfigSwigWrapper
+    internal interface IRequiredPropertiesConfigSwigWrapper : IDisposable
     {
         RequiredPropertiesConfigSwig Object { get; }
     }

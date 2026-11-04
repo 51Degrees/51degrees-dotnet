@@ -66,44 +66,45 @@ namespace FiftyOne.DeviceDetection.Tests.Framework
 
             // Configure the pipeline.
             var loggerFactory = new TestLoggerFactory();
-            var pipeline = new DeviceDetectionPipelineBuilder(
-                loggerFactory, 
-                null, 
+            using (var pipeline = new DeviceDetectionPipelineBuilder(
+                loggerFactory,
+                null,
                 updateService.Object)
                 .UseOnPremise(datafile.FullName, licenseKey, false)
                 .SetAutoUpdate(autoUpdate)
                 .SetShareUsage(shareUsage)
-                .Build();
-
-            // Check that the flow elements in the pipeline are as expected.
-            if (shareUsage)
+                .Build())
             {
-                Assert.HasCount(2, pipeline.FlowElements);
+                // Check that the flow elements in the pipeline are as expected.
+                if (shareUsage)
+                {
+                    Assert.HasCount(2, pipeline.FlowElements);
+                    Assert.IsTrue(pipeline.FlowElements.Any(
+                        e => e.GetType() == typeof(ShareUsageElement)));
+                }
+                else
+                {
+                    Assert.HasCount(1, pipeline.FlowElements);
+                }
                 Assert.IsTrue(pipeline.FlowElements.Any(
-                    e => e.GetType() == typeof(ShareUsageElement)));
-            }
-            else
-            {
-                Assert.HasCount(1, pipeline.FlowElements);
-            }
-            Assert.IsTrue(pipeline.FlowElements.Any(
-                e => e.GetType() == typeof(DeviceDetectionHashEngine)));
+                    e => e.GetType() == typeof(DeviceDetectionHashEngine)));
 
-            // Get the device detection engine element and check that it has
-            // been configured as specified.
-            var engine = pipeline.FlowElements.Single(
-                e => e.GetType() == typeof(DeviceDetectionHashEngine)) as DeviceDetectionHashEngine;
+                // Get the device detection engine element and check that it has
+                // been configured as specified.
+                var engine = pipeline.FlowElements.Single(
+                    e => e.GetType() == typeof(DeviceDetectionHashEngine)) as DeviceDetectionHashEngine;
 
-            if (licenseKey != null)
-            {
-                Assert.AreEqual(autoUpdate, engine.DataFiles[0].AutomaticUpdatesEnabled);
-                Assert.AreEqual(licenseKey, engine.DataFiles[0].Configuration.DataUpdateLicenseKeys[0]);
-            }
-            else
-            {
-                // If there is no license key configured then automatic updates will be
-                // disabled.
-                Assert.IsFalse(engine.DataFiles[0].AutomaticUpdatesEnabled);
+                if (licenseKey != null)
+                {
+                    Assert.AreEqual(autoUpdate, engine.DataFiles[0].AutomaticUpdatesEnabled);
+                    Assert.AreEqual(licenseKey, engine.DataFiles[0].Configuration.DataUpdateLicenseKeys[0]);
+                }
+                else
+                {
+                    // If there is no license key configured then automatic updates will be
+                    // disabled.
+                    Assert.IsFalse(engine.DataFiles[0].AutomaticUpdatesEnabled);
+                }
             }
         }
     }

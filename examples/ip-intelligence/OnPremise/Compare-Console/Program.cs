@@ -453,6 +453,9 @@ public class Program
             CancellationToken stoppingToken,
             ILogger logger = null)
         {
+            // The pipeline that Run builds does not dispose the engine, so
+            // that one engine can serve many truth files. It is disposed
+            // here instead.
             using var ipiEngine = BuildEngine(dataFile, loggerFactory);
             await Run(
                 ipiEngine,
@@ -487,7 +490,7 @@ public class Program
                 // LowMemory keeps the (multi-gigabyte) IP Intelligence data file on
                 // disk rather than loading it entirely into memory. See the
                 // documentation for more detail on this and other configuration options.
-                // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-compare-console-program.cs&utm_term=run
+                // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-compare-console-program.cs&utm_term=run
                 .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                 // inhibit auto-update of the data file for this test
                 .SetAutoUpdate(false)
@@ -530,7 +533,8 @@ public class Program
 
             // Build a pipeline to consumer the IP intelligence engine. Needed
             // so that flowdata can be used to pass evidence in and get
-            // results.
+            // results. The caller owns the engine and disposes it, so this
+            // pipeline must not.
             using var pipeline = new PipelineBuilder(loggerFactory)
                 .AddFlowElement(ipiEngine)
                 .SetAutoDisposeElements(false)
@@ -1176,11 +1180,9 @@ public class Program
         {
             var logger = configuration.LoggerFactory.CreateLogger<Program>();
             logger.LogError("Failed to find a IP Intelligence data file. " +
-                "Make sure the ip-intelligence-data submodule has been " +
-                "updated by running `git submodule update --recursive`. By " +
-                "default, the 'lite' file included with this code will be " +
-                "used. A different file can be specified by supplying the " +
-                "full path as a command line argument");
+                "Make sure the Enterprise data file is in " +
+                "cxx/data/ip-intelligence. A different file can be specified " +
+                "by supplying the full path as a command line argument");
         }
 
         // Dispose the logger to ensure any messages get flushed

@@ -37,9 +37,11 @@ using System.Net;
 namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
 {
     /// <summary>
-    /// Class used for on-premise results
+    /// The IP Intelligence data of one flow data. Its native results hold
+    /// the data set in memory until they are freed, so the flow data
+    /// disposes it.
     /// </summary>
-    internal class IpDataOnPremise : IpDataBaseOnPremise<ResultsIpiSwig>, IIpDataOnPremise
+    internal class IpDataOnPremise : IpDataBaseOnPremise<ResultsIpiSwig>, IIpDataOnPremise, IDisposable
     {
         #region Constructor
 
@@ -146,6 +148,30 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         }
 
         /// <summary>
+        /// Frees the native results. The results' finalizers free them if
+        /// this is never called.
+        /// </summary>
+        /// <param name="disposing">
+        /// True when called from <see cref="Dispose()"/>.
+        /// </param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Results.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Frees the native results.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
         /// Drops the Ip and IpV6 entries when the matching address is not in
         /// evidence. Direct .NET accessors are unchanged.
         /// </summary>
@@ -213,7 +239,10 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
                 {
                     if (value.hasValue())
                     {
-                        result.Value = new WeightedBoolListSwigWrapper(value.getValue());
+                        using (var list = value.getValue())
+                        {
+                            result.Value = new WeightedBoolListSwigWrapper(list);
+                        }
                     }
                     else
                     {
@@ -235,7 +264,10 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
                 {
                     if (value.hasValue())
                     {
-                        result.Value = new WeightedDoubleListSwigWrapper(value.getValue());
+                        using (var list = value.getValue())
+                        {
+                            result.Value = new WeightedDoubleListSwigWrapper(list);
+                        }
                     }
                     else
                     {
@@ -257,8 +289,11 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
                 {
                     if (value.hasValue())
                     {
-                        result.Value = new List<IWeightedValue<float>>(new WeightedDoubleListSwigWrapper(value.getValue())
-                            .Select(x => new WeightedValue<float>(x.RawWeighting, (float)x.Value)));
+                        using (var list = value.getValue())
+                        {
+                            result.Value = new List<IWeightedValue<float>>(new WeightedDoubleListSwigWrapper(list)
+                                .Select(x => new WeightedValue<float>(x.RawWeighting, (float)x.Value)));
+                        }
                     }
                     else
                     {
@@ -280,7 +315,10 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
                 {
                     if (value.hasValue())
                     {
-                        result.Value = new WeightedIntListSwigWrapper(value.getValue());
+                        using (var list = value.getValue())
+                        {
+                            result.Value = new WeightedIntListSwigWrapper(list);
+                        }
                     }
                     else
                     {
@@ -493,7 +531,10 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
                 {
                     if (value.hasValue())
                     {
-                        result.Value = new WeightedUTF8StringListSwigWrapper(value.getValue());
+                        using (var list = value.getValue())
+                        {
+                            result.Value = new WeightedUTF8StringListSwigWrapper(list);
+                        }
                     }
                     else
                     {
@@ -515,8 +556,11 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
                 {
                     if (value.hasValue())
                     {
-                        result.Value = new List<IWeightedValue<IPAddress>>(new WeightedStringListSwigWrapper(value.getValue())
-                            .Select(x => new WeightedValue<IPAddress>(x.RawWeighting, IPAddress.Parse(x.Value))));
+                        using (var list = value.getValue())
+                        {
+                            result.Value = new List<IWeightedValue<IPAddress>>(new WeightedStringListSwigWrapper(list)
+                                .Select(x => new WeightedValue<IPAddress>(x.RawWeighting, IPAddress.Parse(x.Value))));
+                        }
                     }
                     else
                     {
@@ -539,7 +583,10 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
                 {
                     if (value.hasValue())
                     {
-                        result.Value = new WeightedStringListSwigWrapper(value.getValue());
+                        using (var list = value.getValue())
+                        {
+                            result.Value = new WeightedStringListSwigWrapper(list);
+                        }
                     }
                     else
                     {

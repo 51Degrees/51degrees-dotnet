@@ -62,34 +62,25 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<DeviceDataHash> _dataLogger;
 
-        private IConfigSwigWrapper _config = null;
+        /// <summary>
+        /// The settings for the native configuration. Each engine gets a new
+        /// configuration with these applied, which it owns and frees when it
+        /// is disposed, so a builder can build more than one engine.
+        /// </summary>
+        private readonly List<Action<IConfigSwigWrapper>> _configSettings =
+            new List<Action<IConfigSwigWrapper>>();
 
         #endregion
 
         #region Public Properties
         /// <summary>
-        /// Factory used to create a new <see cref="SwigConfig"/>. 
+        /// Factory used to create the native configuration and engine.
         /// </summary>
         /// <remarks>
         /// Must be set after construction and before usage.
         /// </remarks>
         internal ISwigFactory SwigFactory { get; set; } = new SwigFactory();
 
-        /// <summary>
-        /// Wrapper used to build a Configuration file for the engine.
-        /// </summary>
-        private IConfigSwigWrapper SwigConfig
-        {
-            get
-            {
-                if (_config == null)
-                {
-                    _config = SwigFactory.CreateConfig();
-                }
-                return _config;
-            }
-        }
-        
         #endregion
 
         #region Constructor
@@ -140,7 +131,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public override DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetDifference(int difference)
         {
-            SwigConfig.setDifference(difference);
+            _configSettings.Add(c => c.setDifference(difference));
             return this;
         }
 
@@ -154,7 +145,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetDrift(int drift)
         {
-            SwigConfig.setDrift(drift);
+            _configSettings.Add(c => c.setDrift(drift));
             return this;
         }
 
@@ -175,7 +166,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public override DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetAllowUnmatched(bool allow)
         {
-            SwigConfig.setAllowUnmatched(allow);
+            _configSettings.Add(c => c.setAllowUnmatched(allow));
             return this;
         }
 
@@ -189,7 +180,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetReuseTempFile(bool reuse)
         {
-            SwigConfig.setReuseTempFile(reuse);
+            _configSettings.Add(c => c.setReuseTempFile(reuse));
             return this;
         }
 
@@ -205,7 +196,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetUpdateMatchedUserAgent(bool update)
         {
-            SwigConfig.setUpdateMatchedUserAgent(update);
+            _configSettings.Add(c => c.setUpdateMatchedUserAgent(update));
             return this;
         }
 
@@ -231,7 +222,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public override DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetUsePerformanceGraph(bool use)
         {
-            SwigConfig.setUsePerformanceGraph(use);
+            _configSettings.Add(c => c.setUsePerformanceGraph(use));
             return this;
         }
 
@@ -257,7 +248,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public override DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetUsePredictiveGraph(bool use)
         {
-            SwigConfig.setUsePredictiveGraph(use);
+            _configSettings.Add(c => c.setUsePredictiveGraph(use));
             return this;
         }
 
@@ -300,19 +291,19 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
             switch (profile)
             {
                 case PerformanceProfiles.LowMemory:
-                    SwigConfig.setLowMemory();
+                    _configSettings.Add(c => c.setLowMemory());
                     break;
                 case PerformanceProfiles.Balanced:
-                    SwigConfig.setBalanced();
+                    _configSettings.Add(c => c.setBalanced());
                     break;
                 case PerformanceProfiles.BalancedTemp:
-                    SwigConfig.setBalancedTemp();
+                    _configSettings.Add(c => c.setBalancedTemp());
                     break;
                 case PerformanceProfiles.HighPerformance:
-                    SwigConfig.setHighPerformance();
+                    _configSettings.Add(c => c.setHighPerformance());
                     break;
                 case PerformanceProfiles.MaxPerformance:
-                    SwigConfig.setMaxPerformance();
+                    _configSettings.Add(c => c.setMaxPerformance());
                     break;
                 default:
                     throw new ArgumentException(
@@ -334,7 +325,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public override DeviceDetectionHashEngineBuilderBase<TEngine> SetConcurrency(
             ushort concurrency)
         {            
-            SwigConfig.setConcurrency(concurrency);
+            _configSettings.Add(c => c.setConcurrency(concurrency));
             return this;
         }
 
@@ -391,41 +382,64 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
             // again by the base class.
             DataFiles.Remove(dataFile);
 
-            // Update the swig configuration object.
-            SwigConfig.setUseUpperPrefixHeaders(false);
-            if (dataFile.Configuration.CreateTempCopy && String.IsNullOrEmpty(TempDir) == false)
-            {
-                using (var tempDirs = new VectorStringSwig())
-                {
-                    tempDirs.Add(TempDir);
-                    SwigConfig.setTempDirectories(tempDirs);
-                }
-                SwigConfig.setUseTempFile(true);
-            }
-
-            // Create swig property configuration object.
+            // Create the swig configuration object, which the engine owns.
+            var config = SwigFactory.CreateConfig();
             IRequiredPropertiesConfigSwigWrapper propertyConfig = null;
-            using (var vProperties = new VectorStringSwig(properties)) {
-                propertyConfig = SwigFactory.CreateRequiredProperties(vProperties);
+            TEngine engine = null;
+            try
+            {
+                foreach (var setting in _configSettings)
+                {
+                    setting(config);
+                }
+                config.setUseUpperPrefixHeaders(false);
+                if (dataFile.Configuration.CreateTempCopy && String.IsNullOrEmpty(TempDir) == false)
+                {
+                    using (var tempDirs = new VectorStringSwig())
+                    {
+                        tempDirs.Add(TempDir);
+                        config.setTempDirectories(tempDirs);
+                    }
+                    config.setUseTempFile(true);
+                }
+
+                // Create swig property configuration object.
+                using (var vProperties = new VectorStringSwig(properties)) {
+                    propertyConfig = SwigFactory.CreateRequiredProperties(vProperties);
+                }
+
+                // Create a new instance of the required engine type.
+                engine = CreateEngine(
+                    _loggerFactory,
+                    CreateAspectData,
+                    TempDir);
+
+                // Then set the instances of properties that remain internal to
+                // the package.
+                engine.SwigFactory = SwigFactory;
+                engine.PropertiesConfigSwig = propertyConfig;
+                engine.Config = config;
+
+                // This must be last as the call results in RefreshData being
+                // triggered which requires the prior three properties to be set.
+                engine.AddDataFile(dataFile);
+                return engine;
             }
-
-            // Create a new instance of the required engine type.
-            var engine = CreateEngine(
-                _loggerFactory,        
-                CreateAspectData,
-                TempDir);
-
-            // Then set the instances of properties that remain internal to
-            // the package.
-            engine.SwigFactory = SwigFactory;
-            engine.PropertiesConfigSwig = propertyConfig;
-            engine.Config = SwigConfig;
-
-            // This must be last as the call results in RefreshData being
-            // triggered which requires the prior three properties to be set.
-            engine.AddDataFile(dataFile);
-
-            return engine;
+            catch
+            {
+                // No caller receives an engine that failed to load, so free
+                // it, or the native configuration if there is no engine yet.
+                if (engine != null)
+                {
+                    engine.Dispose();
+                }
+                else
+                {
+                    propertyConfig?.Dispose();
+                    config.Dispose();
+                }
+                throw;
+            }
         }
         
         /// <summary>
