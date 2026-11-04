@@ -47,5 +47,10 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Wrappers
         {
             return _object.getYear();
         }
+
+        public void Dispose()
+        {
+            _object.Dispose();
+        }
     }
 }

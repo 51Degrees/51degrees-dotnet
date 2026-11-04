@@ -20,9 +20,11 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using System;
+
 namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Wrappers
 {
-    internal interface IDateSwigWrapper
+    internal interface IDateSwigWrapper : IDisposable
     {
         int getYear();
         int getMonth();

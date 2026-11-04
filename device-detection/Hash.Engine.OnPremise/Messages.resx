@@ -120,9 +120,6 @@
   <data name="DeviceDataHashDisposed" xml:space="preserve">
     <value>The DeviceDataHash instance has been closed, and cannot be used. Any result processing should be carried out within a 'try-with-resource' block which closes the FlowData and any AutoCloseable elements.</value>
   </data>
-  <data name="DeviceDataHashFailedToDispose" xml:space="preserve">
-    <value>Failed to close native results instance. A DeviceDataHash instance contains native unmanaged memory which needs to be closed. Failing to close could lead to memory leaks.</value>
-  </data>
   <data name="DllBadImageFormatException" xml:space="preserve">
     <value>51Degrees uses a native binary that must match the ‘bitness’ of the running process (i.e. x86 or x64). Please ensure your build process is targeting the correct platform. This will ensure that the correct dll is used. If using IIS, be aware that, although this is a 64 bit process, it is often run with a setting that allows 32 bit applications. In this case, your build must target x86. The currently running process is {0}.</value>
   </data>

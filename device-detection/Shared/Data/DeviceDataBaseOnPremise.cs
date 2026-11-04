@@ -71,9 +71,12 @@ namespace FiftyOne.DeviceDetection.Shared.Data
 
             /// <summary>
             /// Get the list of result objects.
-            /// After this property accessed, the <see cref="AddResult(TResult)"/> 
+            /// After this property accessed, the <see cref="AddResult(TResult)"/>
             /// method will throw an error if it is called.
             /// </summary>
+            /// <exception cref="ObjectDisposedException">
+            /// Thrown if the results have been freed.
+            /// </exception>
             public IReadOnlyList<TResult> ResultsList
             {
                 get
@@ -81,7 +84,7 @@ namespace FiftyOne.DeviceDetection.Shared.Data
                     lock (_resultsListLock)
                     {
                         ResultsAccessed = true;
-                        return _resultsList;
+                        return GetResults();
                     }
                 }
             }
@@ -92,9 +95,19 @@ namespace FiftyOne.DeviceDetection.Shared.Data
             /// <returns>
             /// True if there are results objects available.
             /// </returns>
+            /// <exception cref="ObjectDisposedException">
+            /// Thrown if the results have been freed.
+            /// </exception>
             public bool HasResults()
             {
-                return _resultsList.Count > 0;
+                return GetResults().Count > 0;
+            }
+
+            private List<TResult> GetResults()
+            {
+                return _resultsList ?? throw new ObjectDisposedException(
+                    GetType().Name,
+                    Messages.ExceptionResultsDisposed);
             }
 
             /// <summary>
@@ -104,13 +117,30 @@ namespace FiftyOne.DeviceDetection.Shared.Data
             /// The result object to add to the list.
             /// </param>
             /// <exception cref="PipelineException">
-            /// Thrown if the <see cref="ResultsList"/> property for 
+            /// Thrown if the <see cref="ResultsList"/> property for
             /// this instance has already been accessed.
+            /// </exception>
+            /// <exception cref="ObjectDisposedException">
+            /// Thrown if the results have been freed, after freeing the
+            /// result.
             /// </exception>
             public void AddResult(TResult result)
             {
                 lock (_resultsListLock)
                 {
+                    if (_resultsList == null)
+                    {
+                        // Processing that finishes after the results were
+                        // freed has nowhere to put its result, so it is
+                        // freed too.
+                        if (result != null)
+                        {
+                            result.Dispose();
+                        }
+                        throw new ObjectDisposedException(
+                            GetType().Name,
+                            Messages.ExceptionResultsDisposed);
+                    }
                     if (ResultsAccessed == true)
                     {
                         throw new PipelineException(
