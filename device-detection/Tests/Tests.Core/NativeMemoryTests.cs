@@ -30,6 +30,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime;
+using System.Runtime.InteropServices;
 using Constants = FiftyOne.DeviceDetection.TestHelpers.Constants;
 
 namespace FiftyOne.DeviceDetection.Tests.Core;
@@ -43,8 +44,8 @@ namespace FiftyOne.DeviceDetection.Tests.Core;
 public class NativeMemoryTests
 {
     /// <summary>
-    /// The private memory the process may keep after everything is
-    /// disposed. MaxPerformance holds the whole Lite data file in memory,
+    /// The memory the process may keep after everything is disposed.
+    /// MaxPerformance holds the whole Lite data file in memory,
     /// about 35 MB, so a data set that is not freed is larger than this.
     /// </summary>
     private const long MemoryMarginMegabytes = 10;
@@ -65,9 +66,11 @@ public class NativeMemoryTests
     [TestMethod]
     public void NativeMemory_FreedByDispose()
     {
-        if (OperatingSystem.IsWindows() == false)
+        if (OperatingSystem.IsWindows() == false &&
+            OperatingSystem.IsLinux() == false)
         {
-            Assert.Inconclusive("Private memory is measured on Windows.");
+            Assert.Inconclusive(
+                "Process memory is measured on Windows and Linux only.");
         }
 
         // Loads the native library and compiles the code, so that neither
@@ -84,9 +87,9 @@ public class NativeMemoryTests
         try
         {
             GC.WaitForPendingFinalizers();
-            before = PrivateMegabytes();
+            before = ProcessMegabytes();
             loaded = RunPipeline();
-            after = PrivateMegabytes();
+            after = ProcessMegabytes();
         }
         finally
         {
@@ -113,7 +116,7 @@ public class NativeMemoryTests
     /// everything.
     /// </summary>
     /// <returns>
-    /// The private memory in megabytes before the pipeline was disposed.
+    /// The process memory in megabytes before the pipeline was disposed.
     /// </returns>
     private static long RunPipeline()
     {
@@ -135,12 +138,40 @@ public class NativeMemoryTests
             flowData.Process();
             _ = flowData.Get<IDeviceData>().IsMobile;
         }
-        return PrivateMegabytes();
+        return ProcessMegabytes();
     }
 
-    private static long PrivateMegabytes()
+    /// <summary>
+    /// The memory the process holds, in megabytes. On Windows this is the
+    /// private memory. On Linux it is the resident memory, read after
+    /// malloc_trim returns the memory the C library keeps free for reuse,
+    /// which would otherwise stay resident after the data set is freed.
+    /// </summary>
+    private static long ProcessMegabytes()
     {
+        if (OperatingSystem.IsLinux())
+        {
+            try
+            {
+                NativeMethods.MallocTrim(UIntPtr.Zero);
+            }
+            catch (Exception e) when (
+                e is DllNotFoundException || e is EntryPointNotFoundException)
+            {
+                Assert.Inconclusive(
+                    "The C library has no malloc_trim to return freed " +
+                    "memory to the system, so the memory is not measured.");
+            }
+        }
         using var process = Process.GetCurrentProcess();
-        return process.PrivateMemorySize64 >> 20;
+        return (OperatingSystem.IsWindows()
+            ? process.PrivateMemorySize64
+            : process.WorkingSet64) >> 20;
+    }
+
+    private static class NativeMethods
+    {
+        [DllImport("libc.so.6", EntryPoint = "malloc_trim")]
+        internal static extern int MallocTrim(UIntPtr pad);
     }
 }
