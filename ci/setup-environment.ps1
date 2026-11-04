@@ -26,9 +26,9 @@ if ($IsWindows) {
 # The web examples and their tests run over https.
 dotnet dev-certs https
 
-# The data files fetch-assets.ps1 put in the cxx data submodules.
-$env:_51DEGREES_DD_PATH = "$RepoPath/cxx/device-detection-data/TAC-HashV41.hash"
-$env:_51DEGREES_IPI_PATH = "$RepoPath/cxx/ip-intelligence-data/51Degrees-EnterpriseIpiV41.ipi"
+# The data files fetch-assets.ps1 put in the data submodule of cxx.
+$env:_51DEGREES_DD_PATH = "$RepoPath/cxx/data/device-detection/TAC-HashV41.hash"
+$env:_51DEGREES_IPI_PATH = "$RepoPath/cxx/data/ip-intelligence/51Degrees-EnterpriseIpiV41.ipi"
 $env:IPINTELLIGENCEDATAFILE = $env:_51DEGREES_IPI_PATH
 ${env:51DEGREES_IPI_PATH} = $env:_51DEGREES_IPI_PATH
 

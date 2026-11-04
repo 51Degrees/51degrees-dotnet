@@ -32,11 +32,16 @@ wrappers are what ships.
 
 ## Data files
 
-Tests and examples read the free data files from `cxx/device-detection-data`
-and `cxx/ip-intelligence-data`, by searching upward from where they run. The
-IP Intelligence translation resources are embedded from
-`cxx/ip-intelligence-data/Translations`. CI puts the Enterprise files in the
-same folders.
+Tests and examples read the data files from `cxx/data/device-detection` and
+`cxx/data/ip-intelligence`, the folders of the data submodule in cxx. The free
+files are not committed. Each is a `<file>.link`, which
+`cxx/data/get-data-files.ps1` or `get-data-files.sh` downloads. The examples
+look in `cxx/data` before searching by name, and run the script themselves
+when a linked file is missing. The IP Intelligence translation resources are
+embedded from `cxx/data/ip-intelligence/Translations` with a wildcard, which
+embeds nothing if the folder is missing, and the translation tests then fail.
+CI puts the Enterprise files in the same folders, and `ci/fetch-assets.ps1`
+runs the script for the free files.
 
 ## Layout
 

@@ -73,7 +73,7 @@ using System.Threading;
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/LocationAnalysis-Console/Program.cs).
 ///
 /// This example can be run against the free 'Lite' IP Intelligence data file
-/// obtained via the [ip-intelligence-data repository](https://github.com/51Degrees/ip-intelligence-data),
+/// obtained via the [data repository](https://github.com/51Degrees/data),
 /// although the Lite file contains fewer properties and less precise data
 /// than the enterprise data file. To obtain an enterprise data file for
 /// testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-locationanalysis-console-program.cs&amp;utm_term=header).
@@ -870,10 +870,9 @@ public class Program
         else
         {
             logger.LogError("Failed to find a IP Intelligence data file. " +
-                "Make sure the ip-intelligence-data submodule has been " +
-                "updated by running `git submodule update --recursive`. A " +
-                "different file can be specified by supplying the full " +
-                "path as a command line argument");
+                "Make sure the Enterprise data file is in " +
+                "cxx/data/ip-intelligence. A different file can be specified " +
+                "by supplying the full path as a command line argument");
         }
 
         // Dispose the logger to ensure any messages get flushed
