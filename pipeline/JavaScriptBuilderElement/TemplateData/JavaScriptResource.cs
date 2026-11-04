@@ -22,6 +22,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace FiftyOne.Pipeline.JavaScriptBuilder.TemplateData
@@ -103,6 +105,50 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.TemplateData
         }
 
         /// <summary>
+        /// The callback URL to write into the script. The template writes
+        /// it inside single quotes as it is, and <see cref="Uri.AbsoluteUri"/>
+        /// keeps a quote in the user information, path, query and fragment,
+        /// and a line separator in the host, so every character that could
+        /// end the string or the script is percent-encoded.
+        /// </summary>
+        private static string SafeUrl(Uri url)
+        {
+            if (url == null)
+            {
+                return null;
+            }
+            var text = url.AbsoluteUri;
+            var safe = new StringBuilder(text.Length);
+            foreach (var c in text)
+            {
+                if (CanEndString(c))
+                {
+                    foreach (var b in Encoding.UTF8.GetBytes(new[] { c }))
+                    {
+                        safe.Append('%').Append(
+                            b.ToString("X2", CultureInfo.InvariantCulture));
+                    }
+                }
+                else
+                {
+                    safe.Append(c);
+                }
+            }
+            return safe.ToString();
+        }
+
+        /// <summary>
+        /// True if <paramref name="c"/> could end a quoted string in the
+        /// script, or the script element that holds it.
+        /// </summary>
+        private static bool CanEndString(char c)
+        {
+            return c == '\'' || c == '"' || c == '\\' || c == '<' ||
+                c == '>' || c == '\u2028' || c == '\u2029' ||
+                char.IsControl(c);
+        }
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <remarks>
@@ -139,8 +185,10 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.TemplateData
         /// XMLHttpRequest.
         /// </param>
         /// <param name="url">
-        /// The complete URL to use for the callback mechanism described 
-        /// in remarks for this constructor.
+        /// The complete URL to use for the callback mechanism described
+        /// in remarks for this constructor. A quote, or any other character
+        /// that could end the string the script holds the URL in, is
+        /// written percent-encoded.
         /// </param>
         /// <param name="parameters">
         /// The parameters to append to the call-back URL.
@@ -225,8 +273,10 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.TemplateData
         /// XMLHttpRequest.
         /// </param>
         /// <param name="url">
-        /// The complete URL to use for the callback mechanism described 
-        /// in remarks for this constructor.
+        /// The complete URL to use for the callback mechanism described
+        /// in remarks for this constructor. A quote, or any other character
+        /// that could end the string the script holds the URL in, is
+        /// written percent-encoded.
         /// </param>
         /// <param name="parameters">
         /// The parameters to append to the call-back URL.
@@ -292,7 +342,7 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.TemplateData
             hash.Add("_sequence", _sequence);
             hash.Add("_supportsPromises", _supportsPromises);
             hash.Add("_supportsFetch", _supportsFetch);
-            hash.Add("_url", _url?.AbsoluteUri);
+            hash.Add("_url", SafeUrl(_url));
             hash.Add("_parameters", _parameters);
             hash.Add("_enableCookies", _enableCookies);
             hash.Add("_updateEnabled", _updateEnabled);
