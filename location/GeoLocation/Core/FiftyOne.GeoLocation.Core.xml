@@ -178,7 +178,7 @@
             For example, if only 'country' is needed, the zoom level can
             be set to 3, decreasing the amount of time that the query takes.
             For more detail on zoom levels, see the 'setZoom' method in
-            the <a href="https://github.com/osm-search/Nominatim/blob/master/lib-php/ReverseGeocode.php">Nominatim API</a> 
+            the <a href="https://github.com/osm-search/Nominatim/blob/4b53cf146492b4a0773727af1fc4c0cb9acfa860/lib-php/ReverseGeocode.php#L27">Nominatim API</a> 
             </summary>
         </member>
         <member name="T:FiftyOne.GeoLocation.Core.Data.IGeoData">

@@ -59,7 +59,7 @@ public class Program
         {
             // In this example, we use the IpiPipelineBuilder and configure it
             // in code. For more information about builders in general see the documentation at
-            // https://51degrees.com/documentation/_concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
+            // https://51degrees.com/documentation/_pipeline_api__concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
 
             // Note that we wrap the creation of a pipeline in a using to control its life cycle
             using (var pipeline = new IpiPipelineBuilder()
@@ -68,8 +68,8 @@ public class Program
                 // data file is paged from disk rather than loaded entirely into RAM.
                 // See the documentation for more detail on this and other
                 // configuration options.
-                // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
-                // https://51degrees.com/documentation/_features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
+                // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
+                // https://51degrees.com/documentation/_pipeline_api__features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-suspicious-console-program.cs&utm_term=run
                 .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                 // inhibit sharing usage for this example, usually this should be set to "true"
                 .SetShareUsage(false)

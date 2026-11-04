@@ -27,7 +27,7 @@
     <RepositoryType>git</RepositoryType>
     <NeutralLanguage>en</NeutralLanguage>
     <Description>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains an element that computes new properties from properties already in the flow data, according to a script written in YAML or JSON.</Description>
-    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.elements-fiftyone.pipeline.derivedproperty-fiftyone.pipeline.derivedproperty.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageProjectUrl>https://51degrees.com/build-your-own?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.derivedproperty&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 

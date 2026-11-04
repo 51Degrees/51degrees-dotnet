@@ -82,7 +82,7 @@ using System.Web.UI;
 /// 
 /// Alternatively, you can obtain a [license key](https://51degrees.com/pricing?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx.cs&amp;utm_term=header) which can be used 
 /// to download a data file from our 
-/// [Distributor](https://51degrees.com/documentation/_info__distributor.html?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx.cs&amp;utm_term=header) service.
+/// [Distributor](https://51degrees.com/documentation/_services__distributor.html?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx.cs&amp;utm_term=header) service.
 /// 
 /// @include OnPremise/Framework-Web/App_Data/51Degrees.json
 /// 

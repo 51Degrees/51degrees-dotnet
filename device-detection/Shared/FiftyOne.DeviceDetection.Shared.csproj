@@ -19,7 +19,7 @@
 	  <Copyright>51Degrees Mobile Experts Limited</Copyright>
 	  <PackageTags>51degrees;pipeline;data;device;detection;user-agent;parse;detection-library;bots;crawler;desktop;tablet;mobile;tv</PackageTags>
 	  <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
-	  <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection.data-fiftyone.devicedetection.shared.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+	  <PackageProjectUrl>https://51degrees.com/device-detection?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection.shared&amp;utm_term=packageprojecturl</PackageProjectUrl>
 	  <RepositoryType>git</RepositoryType>
 	  <PackageIcon>51d-logo.png</PackageIcon>
 	  <NeutralLanguage>en</NeutralLanguage>
