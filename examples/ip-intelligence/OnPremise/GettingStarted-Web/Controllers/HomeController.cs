@@ -47,7 +47,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb.Controlle
 
         public IActionResult Index()
         {
-            // Log warnings if the data file is too old or the 'Lite' file is being used.
+            // Log a warning if the data file is too old.
             if(_checkedDataFile == false)
             {
                 ExampleUtils.CheckDataFile(_provider.GetFlowData().Pipeline, _logger);

@@ -448,13 +448,13 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                 Constants.ASN_IPI_DATA_FILE_NAME);
             if (dataFile != null && File.Exists(dataFile))
             {
-                var info = ExampleUtils.GetDataFileInfo(
-                    dataFile,
-                    new IpiOnPremiseEngineBuilder(NullLoggerFactory.Instance)
-                        .SetPerformanceProfile(PerformanceProfiles.LowMemory)
-                        .SetAutoUpdate(false)
-                        .SetDataFileSystemWatcher(false)
-                        .SetDataUpdateOnStartup(false));
+                var builder = new IpiOnPremiseEngineBuilder(NullLoggerFactory.Instance);
+                builder
+                    .SetPerformanceProfile(PerformanceProfiles.LowMemory)
+                    .SetAutoUpdate(false)
+                    .SetDataFileSystemWatcher(false)
+                    .SetDataUpdateOnStartup(false);
+                var info = ExampleUtils.GetDataFileInfo(dataFile, builder);
                 output.WriteLine($"The data file in use, '{info.Filepath}', was " +
                     $"published on {info.PublishDate:d}" +
                     (info.Free ? " and is a free data file." : "."));
