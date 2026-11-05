@@ -118,6 +118,12 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Performance
             /// </summary>
             public static bool UsedFreeDataFile { get; private set; }
 
+            /// <summary>
+            /// True when the data file has RegisteredName. The free Asn data
+            /// file has AsnName in its place.
+            /// </summary>
+            private bool _readRegisteredName;
+
             private IPipeline _pipeline;
 
             public Example(IPipeline pipeline)
@@ -131,6 +137,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Performance
                 int threadCount)
             {
                 var evidence = GetEvidence(evidenceReader).ToList();
+                _readRegisteredName = ExampleUtils.HasProperty(
+                    _pipeline.GetElement<IpiOnPremiseEngine>(), "RegisteredName");
 
                 // Make an initial run to warm up the system
                 output.WriteLine("Warming up");
@@ -242,9 +250,11 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Performance
 
                                 // Access a property to ensure compiler optimizer doesn't optimize
                                 // out the very method that the benchmark is testing.
-                                if (ipData.RegisteredName.HasValue)
+                                var name = _readRegisteredName ?
+                                    ipData.RegisteredName : ipData.AsnName;
+                                if (name.HasValue)
                                 {
-                                    result.HashSum += ipData.RegisteredName.Value.GetHashCode();
+                                    result.HashSum += name.Value.GetHashCode();
                                 }
                             }
 

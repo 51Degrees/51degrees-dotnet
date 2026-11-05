@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
+using FiftyOne.Pipeline.Engines;
 using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -447,8 +448,15 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             {
                 using (var loggerFactory = new LoggerFactory())
                 {
-                    var info = ExampleUtils.GetDataFileInfo(
-                        dataFile, new DeviceDetectionHashEngineBuilder(loggerFactory));
+                    // Without a data update service the builder must not
+                    // watch or update the file.
+                    var builder = new DeviceDetectionHashEngineBuilder(loggerFactory);
+                    builder
+                        .SetPerformanceProfile(PerformanceProfiles.LowMemory)
+                        .SetAutoUpdate(false)
+                        .SetDataFileSystemWatcher(false)
+                        .SetDataUpdateOnStartup(false);
+                    var info = ExampleUtils.GetDataFileInfo(dataFile, builder);
                     output.WriteLine($"The data file in use is the '{info.Tier}' " +
                         $"file published on {info.PublishDate:d}, at '{info.Filepath}'.");
                 }
