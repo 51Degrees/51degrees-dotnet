@@ -71,7 +71,7 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Mixed.GettingStartedConsole
 
                 // In this example, we use the FiftyOnePipelineBuilder and configure it from a file.
                 // For more information about builders in general see the documentation at
-                // https://51degrees.com/documentation/_concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&utm_term=run
+                // https://51degrees.com/documentation/_pipeline_api__concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&utm_term=run
 
                 // Create the pipeline using the service provider and the configured options.
                 using (var pipeline = new FiftyOnePipelineBuilder(loggerFactory, serviceProvider)
@@ -263,7 +263,7 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Mixed.GettingStartedConsole
                             $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud " +
                             $"service is accessed using a 'ResourceKey'. For more information " +
                             $"see " +
-                            $"https://51degrees.com/documentation/_info__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&utm_term=resource-key-required. " +
+                            $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&utm_term=resource-key-required. " +
                             $"A resource key with the properties required by this example can be " +
                             $"created for free at https://configure.51degrees.com/1QWJwHxl?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&utm_term=resource-key-required. " +
                             $"Once complete, populate the config file or environment variable " +

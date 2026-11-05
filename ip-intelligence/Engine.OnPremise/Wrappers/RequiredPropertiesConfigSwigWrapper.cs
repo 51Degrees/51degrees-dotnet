@@ -34,5 +34,10 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Wrappers
         {
             _object = instance;
         }
+
+        public void Dispose()
+        {
+            _object.Dispose();
+        }
     }
 }

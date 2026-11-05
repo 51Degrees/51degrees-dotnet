@@ -44,15 +44,12 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests
         [TestInitialize]
         public void Init()
         {
-            // If the test is running in x86 then we need to take some 
-            // extra precautions to prevent occasionally running out
-            // of memory.
+            // In a 32 bit process or on Linux, only one test holds a data
+            // set at a time, to stay within memory. Each test disposes its
+            // flow data and wrapper, which frees the data set it loaded.
             if (ShouldSaveMemory)
             {
-                // Ensure that only one integration test is running at once.
                 Monitor.Enter(_lock);
-                // Force garbage collection
-                GC.Collect();
             }
         }
 

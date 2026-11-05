@@ -55,7 +55,7 @@ using YamlDotNet.Serialization;
 /// performance and predictive power using Performance Profile, Graph and Difference and Drift 
 /// settings.
 /// 
-/// Evidence files can be obtained from the [ip-intelligence-data repository](https://github.com/51Degrees/ip-intelligence-data).
+/// Evidence files can be obtained from the [data repository](https://github.com/51Degrees/data).
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/OfflineProcessing-Console/Program.cs). 
 /// 
@@ -98,7 +98,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.OfflineProcessing
                 var logger = loggerFactory.CreateLogger<Program>();
                 // In this example, we use the IpiPipelineBuilder and configure it
                 // in code. For more information about builders in general see the documentation at
-                // https://51degrees.com/documentation/_concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
+                // https://51degrees.com/documentation/_pipeline_api__concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
 
                 // Note that we wrap the creation of a pipeline in a using to control its life cycle
                 using (var pipeline = new IpiPipelineBuilder(loggerFactory)
@@ -107,8 +107,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.OfflineProcessing
                     // data file is paged from disk rather than loaded entirely into RAM.
                     // See the documentation for more detail on this and other
                     // configuration options.
-                    // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
-                    // https://51degrees.com/documentation/_features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
+                    // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
+                    // https://51degrees.com/documentation/_pipeline_api__features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
                     .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                     // Inhibit sharing usage for this example.
                     // In general, off line processing usage should NOT be shared back to 51Degrees.
@@ -118,7 +118,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.OfflineProcessing
                     // in order to help us improve the detection, then
                     // this additional data will need to be collected and included as evidence
                     // to the Pipeline. See
-                    // https://51degrees.com/documentation/_features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run#Low_Level_Usage_Sharing
+                    // https://51degrees.com/documentation/_pipeline_api__features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run#Low_Level_Usage_Sharing
                     // for more details on this.
                     .SetShareUsage(false)
                     // Inhibit auto-update of the data file for this example
@@ -238,8 +238,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.OfflineProcessing
             else
             {
                 logger.LogError("Failed to find a IP Intelligence data file. Make sure the " +
-                    "ip-intelligence-data submodule has been updated by running " +
-                    "`git submodule update --recursive`.");
+                    "Enterprise data file is in cxx/data/ip-intelligence, or supply " +
+                    "the path to a data file as a command line argument.");
             }
 
             // Dispose the logger to ensure any messages get flushed

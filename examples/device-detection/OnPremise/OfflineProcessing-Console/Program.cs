@@ -99,7 +99,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.OfflineProcessing
                 var logger = loggerFactory.CreateLogger<Program>();
                 // In this example, we use the DeviceDetectionPipelineBuilder and configure it
                 // in code. For more information about builders in general see the documentation at
-                // https://51degrees.com/documentation/_concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
+                // https://51degrees.com/documentation/_pipeline_api__concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
 
                 // Note that we wrap the creation of a pipeline in a using to control its life cycle
                 using (var pipeline = new DeviceDetectionPipelineBuilder(loggerFactory)
@@ -108,8 +108,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.OfflineProcessing
                     // example. See the documentation for more detail on this and other
                     // configuration options:
                     // https://51degrees.com/documentation/_device_detection__features__performance_options.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
-                    // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
-                    // https://51degrees.com/documentation/_features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
+                    // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
+                    // https://51degrees.com/documentation/_pipeline_api__features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run
                     .SetPerformanceProfile(profile)
                     // Inhibit sharing usage for this example.
                     // In general, off line processing usage should NOT be shared back to 51Degrees.
@@ -119,7 +119,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.OfflineProcessing
                     // in order to help us improve detection of new devices/browsers/etc, then
                     // this additional data will need to be collected and included as evidence
                     // to the Pipeline. See
-                    // https://51degrees.com/documentation/_features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run#Low_Level_Usage_Sharing
+                    // https://51degrees.com/documentation/_pipeline_api__features__usage_sharing.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=run#Low_Level_Usage_Sharing
                     // for more details on this.
                     .SetShareUsage(false)
                     // Inhibit auto-update of the data file for this example
@@ -259,8 +259,9 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.OfflineProcessing
             else
             {
                 logger.LogError("Failed to find a device detection data file. Make sure the " +
-                    "device-detection-data submodule has been updated by running " +
-                    "`git submodule update --recursive`.");
+                    "submodules have been fetched by running " +
+                    "`git submodule update --init --recursive`, so that the free Lite " +
+                    "file can be downloaded.");
             }
 
             // Dispose the logger to ensure any messages get flushed

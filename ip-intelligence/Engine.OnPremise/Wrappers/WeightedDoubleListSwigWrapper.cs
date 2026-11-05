@@ -27,36 +27,39 @@ using System.Collections.Generic;
 
 namespace FiftyOne.IpIntelligence.Engine.OnPremise.Wrappers
 {
+    /// <summary>
+    /// A managed copy of a native list of weighted values, so the
+    /// native list is freed as soon as the value has been read.
+    /// </summary>
     internal class WeightedDoubleListSwigWrapper : IReadOnlyList<IWeightedValue<double>>
     {
-        private WeightedDoubleListSwig _object;
+        private readonly IWeightedValue<double>[] _values;
 
-        public IWeightedValue<double> this[int index] => GetWeightedValue(index);
+        public IWeightedValue<double> this[int index] => _values[index];
 
-        public int Count => _object.Count;
+        public int Count => _values.Length;
 
         public WeightedDoubleListSwigWrapper(
             WeightedDoubleListSwig instance)
         {
-            _object = instance;
-        }
-
-        private IWeightedValue<double> GetWeightedValue(int index)
-        {
-            return new WeightedValue<double>(this._object[index].getShortRawWeight(), this._object[index].getValue());
+            _values = new IWeightedValue<double>[instance.Count];
+            for (int i = 0; i < _values.Length; i++)
+            {
+                var item = instance[i];
+                _values[i] = new WeightedValue<double>(
+                    item.getShortRawWeight(),
+                    item.getValue());
+            }
         }
 
         public IEnumerator<IWeightedValue<double>> GetEnumerator()
         {
-            for (int i = 0; i < _object.Count; i++)
-            {
-                yield return GetWeightedValue(i);
-            }
+            return ((IEnumerable<IWeightedValue<double>>)_values).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return GetEnumerator(); ;
+            return GetEnumerator();
         }
     }
 }

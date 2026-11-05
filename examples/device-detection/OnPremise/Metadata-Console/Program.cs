@@ -98,7 +98,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
                     // example. See the documentation for more detail on this and other
                     // configuration options:
                     // https://51degrees.com/documentation/_device_detection__features__performance_options.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=run
-                    // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=run
+                    // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=run
                     .SetPerformanceProfile(profile)
                     // inhibit auto-update of the data file for this test
                     .SetAutoUpdate(false)
@@ -251,9 +251,9 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
             else
             {
                 logger.LogError("Failed to find a device detection data file. Make sure the " +
-                    "device-detection-data submodule has been updated by running " +
-                    "`git submodule update --recursive`. By default, the 'lite' file included " +
-                    "with this code will be used. A different file can be specified " +
+                    "submodules have been fetched by running " +
+                    "`git submodule update --init --recursive`. By default, the free 'lite' " +
+                    "file is downloaded and used. A different file can be specified " +
                     "by supplying the full path as a command line argument");
             }
 

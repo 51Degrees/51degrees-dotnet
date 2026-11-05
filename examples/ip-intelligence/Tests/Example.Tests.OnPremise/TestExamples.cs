@@ -147,7 +147,7 @@ public class TestExamples
             Assert.Inconclusive(
                 "The configured IP Intelligence data file could not be loaded by " +
                 "the native engine (likely a data/engine version mismatch). Update " +
-                "the ip-intelligence-data submodule or the engine package. " +
+                "the data file or the engine package. " +
                 $"Details: {ex.Message}");
         }
     }

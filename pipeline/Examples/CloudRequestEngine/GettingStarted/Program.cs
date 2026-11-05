@@ -61,8 +61,8 @@ namespace GettingStarted
 
 
             using (var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build())
+            using (var data = pipeline.CreateFlowData())
             {
-                var data = pipeline.CreateFlowData();
                 data.AddEvidence("query.User-Agent", "iPhone");
                 data.Process();
                 var result = data.GetFromElement(engine).JsonResponse;

@@ -250,7 +250,7 @@ namespace FiftyOne.Pipeline.Engines {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This is because your resource key does not include access to any properties under &apos;{0}&apos;. For more details on resource keys, see our explainer: https://51degrees.com/documentation/_info__resource_keys.html.
+        ///   Looks up a localized string similar to This is because your resource key does not include access to any properties under &apos;{0}&apos;. For more details on resource keys, see our explainer: https://51degrees.com/documentation/_services__cloud__resource_keys.html.
         /// </summary>
         internal static string MissingPropertyMessageProductNotInCloudResource {
             get {
@@ -268,7 +268,7 @@ namespace FiftyOne.Pipeline.Engines {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This is because your resource key does not include access to this property. Properties that are included for this key under &apos;{0}&apos; are {1}. For more details on resource keys, see our explainer: https://51degrees.com/documentation/_info__resource_keys.html.
+        ///   Looks up a localized string similar to This is because your resource key does not include access to this property. Properties that are included for this key under &apos;{0}&apos; are {1}. For more details on resource keys, see our explainer: https://51degrees.com/documentation/_services__cloud__resource_keys.html.
         /// </summary>
         internal static string MissingPropertyMessagePropertyNotInCloudResource {
             get {

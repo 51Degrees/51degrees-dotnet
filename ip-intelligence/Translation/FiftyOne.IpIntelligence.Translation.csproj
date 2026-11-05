@@ -18,7 +18,8 @@
     <Copyright>51Degrees Mobile Experts Limited</Copyright>
     <PackageTags>51degrees;pipeline;pipeline-api;ip-intelligence;language;translation</PackageTags>
     <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
-    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.ipintelligence.translation-fiftyone.ipintelligence.translation.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageProjectUrl>https://51degrees.com/ip-intelligence?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.ipintelligence.translation&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryType>git</RepositoryType>
     <PackageIcon>51d-logo.png</PackageIcon>
     <NeutralLanguage>en</NeutralLanguage>
@@ -30,6 +31,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
     <None Include="..\Images\51d-logo.png">
       <Pack>True</Pack>
       <PackagePath></PackagePath>
@@ -41,8 +46,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\..\cxx\ip-intelligence-data\Translations\OSM\countries.*.yml" LinkBase="Resources\" WithCulture="false" />
-    <EmbeddedResource Include="..\..\cxx\ip-intelligence-data\Translations\countrycodes.*.yml" LinkBase="Resources\" WithCulture="false" />
+    <EmbeddedResource Include="..\..\cxx\data\ip-intelligence\Translations\OSM\countries.*.yml" LinkBase="Resources\" WithCulture="false" />
+    <EmbeddedResource Include="..\..\cxx\data\ip-intelligence\Translations\countrycodes.*.yml" LinkBase="Resources\" WithCulture="false" />
   </ItemGroup>
 
   <ItemGroup>

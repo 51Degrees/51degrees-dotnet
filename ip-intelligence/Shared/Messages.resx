@@ -120,4 +120,7 @@
   <data name="ExceptionCannotUpdateResults" xml:space="preserve">
     <value>The results collection for this data object has already been accessed and must not be updated.</value>
   </data>
+  <data name="ExceptionResultsDisposed" xml:space="preserve">
+    <value>The results were freed when the flow data that holds them was disposed. Read the values before disposing the flow data.</value>
+  </data>
 </root>

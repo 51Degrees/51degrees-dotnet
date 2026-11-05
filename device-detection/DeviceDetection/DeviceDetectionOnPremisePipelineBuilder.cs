@@ -600,36 +600,62 @@ namespace FiftyOne.DeviceDetection
         public override IPipeline Build()
         {
             IAspectEngine deviceDetectionEngine = null;
-
-            // Create the device detection engine based on the configuration.
-            switch (_algorithm)
+            IFlowElement shareUsageElement = null;
+            try
             {
-                case DeviceDetectionAlgorithm.Hash:
-                    var hashBuilder = new DeviceDetectionHashEngineBuilder(LoggerFactory, _dataUpdateService);
-                    deviceDetectionEngine = ConfigureAndBuild(hashBuilder);
-                    break;
-                default:
-                    throw new PipelineConfigurationException(
-                        $"Unrecognized algorithm '{_algorithm}'.");
-            }
-            
-            if (deviceDetectionEngine != null)
-            {
-                // Add the share usage element to the list if enabled
-                if (_shareUsageEnabled)
+                // Create the device detection engine based on the configuration.
+                switch (_algorithm)
                 {
-                    FlowElements.Add(new ShareUsageBuilder(LoggerFactory, _httpClient).Build());
+                    case DeviceDetectionAlgorithm.Hash:
+                        var hashBuilder = new DeviceDetectionHashEngineBuilder(LoggerFactory, _dataUpdateService);
+                        deviceDetectionEngine = ConfigureAndBuild(hashBuilder);
+                        break;
+                    default:
+                        throw new PipelineConfigurationException(
+                            $"Unrecognized algorithm '{_algorithm}'.");
                 }
-                // Add the device detection engine to the list
-                FlowElements.Add(deviceDetectionEngine);
-            }
-            else
-            {
-                throw new PipelineException(Messages.ExceptionErrorOnStartup);
-            }
+            
+                if (deviceDetectionEngine != null)
+                {
+                    // Add the share usage element to the list if enabled
+                    if (_shareUsageEnabled)
+                    {
+                        shareUsageElement = new ShareUsageBuilder(LoggerFactory, _httpClient).Build();
+                        FlowElements.Add(shareUsageElement);
+                    }
+                    // Add the device detection engine to the list
+                    FlowElements.Add(deviceDetectionEngine);
+                }
+                else
+                {
+                    throw new PipelineException(Messages.ExceptionErrorOnStartup);
+                }
 
-            // Create and return the pipeline
-            return base.Build();
+                // Create and return the pipeline
+                return base.Build();
+            }
+            catch
+            {
+                // No pipeline holds the elements built here, so they are
+                // disposed before the exception leaves.
+                DisposeOnFailure(deviceDetectionEngine);
+                DisposeOnFailure(shareUsageElement);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Removes an element made for a pipeline that failed to build and
+        /// disposes it, as nothing else holds it.
+        /// </summary>
+        /// <param name="element">The element, or null if none was made.</param>
+        private void DisposeOnFailure(IFlowElement element)
+        {
+            if (element != null)
+            {
+                FlowElements.Remove(element);
+                element.Dispose();
+            }
         }
 
         /// <summary>

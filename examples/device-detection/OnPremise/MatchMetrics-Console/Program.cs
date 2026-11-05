@@ -278,9 +278,9 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.MatchMetrics
                 if(dataFile == null || File.Exists(dataFile) == false)
                 {
                     Logger.LogError("Failed to find a device detection data file. " +
-                        "If using the default 'lite' data file, make sure that git lfs is " +
-                        "installed and that the device-detection-data submodule has been " +
-                        "updated by running `git submodule update --recursive`.");
+                        "If using the default 'lite' data file, make sure that the " +
+                        "submodules have been fetched by running `git submodule update " +
+                        "--init --recursive`, so that it can be downloaded.");
                     throw new PipelineConfigurationException($"Data file '{dataFile}' not found");
                 }
 

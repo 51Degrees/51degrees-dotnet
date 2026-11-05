@@ -59,8 +59,8 @@ namespace FiftyOne.DeviceDetection.Tests.Core
                     .SetDataUpdateOnStartup(false)
                     .SetDataFileSystemWatcher(false)
                     .Build(dataFile, false);
-                // Create pipeline
-                var pipeline = new PipelineBuilder(logFactory)
+                // Create pipeline, which disposes both engines with it
+                using var pipeline = new PipelineBuilder(logFactory)
                     .AddFlowElement(engine)
                     .AddFlowElement(ddEngine)
                     .Build();

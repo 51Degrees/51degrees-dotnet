@@ -122,8 +122,10 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Data
         private List<IDeviceData> ResolveProfiles()
         {
             var result = new List<IDeviceData>();
-            
-            if (_dataSet?.Pipeline == null)
+
+            // Nothing would free flow data created after this data is
+            // disposed.
+            if (_disposed || _dataSet?.Pipeline == null)
             {
                 return result;
             }
@@ -134,13 +136,22 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Data
                 // this class to ensure it remains available when values are
                 // retrieved.
                 var flowData = _dataSet.Pipeline.CreateFlowData();
+                IDeviceData deviceData;
+                try
+                {
+                    flowData.AddEvidence(
+                        Shared.Constants.EVIDENCE_PROFILE_IDS_KEY,
+                        profileId.ToString());
+                    flowData.Process();
+                    deviceData = flowData.Get<IDeviceData>();
+                }
+                catch
+                {
+                    // Not owned by this class yet, so freed here.
+                    flowData.Dispose();
+                    throw;
+                }
 
-                flowData.AddEvidence(
-                    Shared.Constants.EVIDENCE_PROFILE_IDS_KEY,
-                    profileId.ToString());
-                flowData.Process();
-                
-                var deviceData = flowData.Get<IDeviceData>();
                 if (deviceData != null)
                 {
                     // The profile is identified by its ProfileId — that's

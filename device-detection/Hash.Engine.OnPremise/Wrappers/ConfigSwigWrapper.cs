@@ -113,5 +113,10 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Wrappers
         {
             _object.setUseTempFile(useTemp);
         }
+
+        public void Dispose()
+        {
+            _object.Dispose();
+        }
     }
 }

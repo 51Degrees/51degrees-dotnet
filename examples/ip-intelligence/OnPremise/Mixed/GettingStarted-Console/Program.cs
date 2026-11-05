@@ -386,14 +386,16 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
                 if (deviceDataFile == null)
                 {
                     logger.LogError("Failed to find a Device Detection data file. Make sure the " +
-                        "device-detection-data submodule has been updated by running " +
-                        "`git submodule update --recursive`.");
+                        "submodules have been fetched by running " +
+                        "`git submodule update --init --recursive`, so that the free Lite " +
+                        "file can be downloaded.");
                 }
                 if (ipDataFile == null)
                 {
                     logger.LogError("Failed to find an IP Intelligence data file. Make sure the " +
-                        "ip-intelligence-data submodule has been updated by running " +
-                        "`git submodule update --recursive`.");
+                        "submodules have been fetched by running " +
+                        "`git submodule update --init --recursive`, so that the free Lite " +
+                        "file can be downloaded.");
                 }
             }
 

@@ -82,8 +82,8 @@ namespace FiftyOne.DeviceDetection.TestHelpers
         {
             var folders = new[]
             {
-                "device-detection-data",
-                Path.Combine("cxx", "device-detection-data")
+                Path.Combine("data", "device-detection"),
+                Path.Combine("cxx", "data", "device-detection")
             };
             var current = new DirectoryInfo(AppContext.BaseDirectory);
             while (current != null)

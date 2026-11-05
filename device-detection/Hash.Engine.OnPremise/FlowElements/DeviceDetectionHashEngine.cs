@@ -363,18 +363,34 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         }
 
         /// <summary>
-        /// Dispose of any unmanaged resources.
+        /// Dispose of the property and component meta data, which own native
+        /// copies of their entries.
+        /// </summary>
+        protected override void ManagedResourcesCleanup()
+        {
+            foreach (var property in _properties ??
+                Enumerable.Empty<IFiftyOneAspectPropertyMetaData>())
+            {
+                property.Dispose();
+            }
+            foreach (var component in _components ??
+                Enumerable.Empty<IComponentMetaData>())
+            {
+                component.Dispose();
+            }
+            base.ManagedResourcesCleanup();
+        }
+
+        /// <summary>
+        /// Dispose of the native engine, then the configuration it was built
+        /// with. The data set is freed when the last results that refer to
+        /// it are freed, which is when their flow data is disposed.
         /// </summary>
         protected override void UnmanagedResourcesCleanup()
         {
-            if (Config.Object != null)
-            {
-                Config.Object.Dispose();
-            }
-            if (_engine != null)
-            {
-                _engine.Dispose();
-            }
+            _engine?.Dispose();
+            PropertiesConfigSwig?.Dispose();
+            Config?.Dispose();
         }
 
         /// <summary>
@@ -423,10 +439,16 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
             // data file is loaded, so drop the memoised availability answers.
             PropertyAvailableCache.Clear();
 
-            _evidenceKeyFilter = new EvidenceKeyFilterWhitelist(
-                new List<string>(_engine.getKeys()),
-                StringComparer.InvariantCultureIgnoreCase);
+            using (var keys = _engine.getKeys())
+            {
+                _evidenceKeyFilter = new EvidenceKeyFilterWhitelist(
+                    new List<string>(keys),
+                    StringComparer.InvariantCultureIgnoreCase);
+            }
             
+            // The meta data from before a refresh is not disposed here, as
+            // the pipeline and its callers can still hold it. Its finalizers
+            // free it, and the engine disposes the current meta data.
             _properties = ConstructProperties();
             _components = ConstructComponents();
 
@@ -541,15 +563,17 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         {
             if (_engine != null)
             {
-                var value = _engine.getPublishedTime();
-                return new DateTime(
-                    value.getYear(),
-                    value.getMonth(),
-                    value.getDay(),
-                    0,
-                    0, 
-                    0,
-                    DateTimeKind.Utc);
+                using (var value = _engine.getPublishedTime())
+                {
+                    return new DateTime(
+                        value.getYear(),
+                        value.getMonth(),
+                        value.getDay(),
+                        0,
+                        0,
+                        0,
+                        DateTimeKind.Utc);
+                }
             }
             return new DateTime();
         }
@@ -563,15 +587,17 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         {
             if (_engine != null)
             {
-                var value = _engine.getUpdateAvailableTime();
-                return new DateTime(
-                    value.getYear(),
-                    value.getMonth(),
-                    value.getDay(), 
-                    12,
-                    _rng.Next(0, 60), 
-                    0,
-                    DateTimeKind.Utc);
+                using (var value = _engine.getUpdateAvailableTime())
+                {
+                    return new DateTime(
+                        value.getYear(),
+                        value.getMonth(),
+                        value.getDay(),
+                        12,
+                        _rng.Next(0, 60),
+                        0,
+                        DateTimeKind.Utc);
+                }
             }
             return new DateTime();
         }

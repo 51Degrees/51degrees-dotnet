@@ -65,7 +65,9 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
 
             // Setup swig engine wrapper
             var swigEngine = new Mock<IEngineSwigWrapper>();
-            swigEngine.Setup(e => e.getKeys()).Returns(new VectorStringSwig());
+            // The engine frees the keys it is given, so each call gets new
+            // ones.
+            swigEngine.Setup(e => e.getKeys()).Returns(() => new VectorStringSwig());
             swigEngine.Setup(e => e.getMetaData()).Returns(swigMetaData.Object);
             swigEngine.Setup(e => e.getPublishedTime()).Returns(date.Object);
             swigEngine.Setup(e => e.getUpdateAvailableTime()).Returns(date.Object);
@@ -87,8 +89,10 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
         [TestMethod]
         public void EngineBuilder_CheckDataFileEngineSet()
         {
-            var engine = _builder.Build(new MemoryStream());
-            Assert.AreEqual(engine, engine.DataFiles.ElementAt(0).Engine);
+            using (var engine = _builder.Build(new MemoryStream()))
+            {
+                Assert.AreEqual(engine, engine.DataFiles.ElementAt(0).Engine);
+            }
         }
 
         ///<summary>
@@ -123,12 +127,16 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
         [TestMethod]
         public void Engine_CacheDisabled()
         {
-            var engine = _builder.Build(new MemoryStream());
-            Assert.Throws<NotSupportedException>(() =>
+            using (var engine = _builder.Build(new MemoryStream()))
             {
-                engine.SetCache(new Pipeline.Engines.Caching.DefaultFlowCache(
-                    new Pipeline.Engines.Configuration.CacheConfiguration()));
-            });
+                Assert.Throws<NotSupportedException>(() =>
+                {
+                    engine.SetCache(
+                        new Pipeline.Engines.Caching.DefaultFlowCache(
+                            new Pipeline.Engines.Configuration
+                                .CacheConfiguration()));
+                });
+            }
         }
     }
 }

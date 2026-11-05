@@ -54,6 +54,10 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         {
             _engine = engine;
             _source = source;
+            // Read now, so they can still be read once the native source has
+            // been disposed.
+            Name = _source.getName();
+            ComponentId = (byte)_source.getComponentIdAsInt();
             ProfileMetaDataSwig _defaultProfile = _engine.MetaData.getDefaultProfileForComponent(_source);
             // There is no default profile if a component is dynamic
             if (_defaultProfile != null) 
@@ -135,12 +139,12 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         /// <summary>
         /// The name of this component.
         /// </summary>
-        public string Name => _source.getName();
+        public string Name { get; }
 
         /// <summary>
         /// The id number for this component.
         /// </summary>
-        public byte ComponentId => (byte)_source.getComponentIdAsInt();
+        public byte ComponentId { get; }
 
         #region IDisposable Support
         /// <summary>
@@ -154,6 +158,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
             if (disposing)
             {
                 _source.Dispose();
+                DefaultProfile?.Dispose();
             }
         }
 

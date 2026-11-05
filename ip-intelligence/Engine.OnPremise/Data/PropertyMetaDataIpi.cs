@@ -50,13 +50,16 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
     {
         private readonly PropertyMetaDataSwig _source;
         private readonly IpiOnPremiseEngine _engine;
+        private readonly string _type;
 
         internal PropertyMetaDataIpi(IpiOnPremiseEngine engine, PropertyMetaDataSwig source)
         {
             _source = source;
             _engine = engine;
 
-            // Load property meta data
+            // Load property meta data, so it can still be read once the
+            // native source has been disposed.
+            _type = _source.getType();
             Url = _source.getUrl();
             DisplayOrder = (byte)_source.getDisplayOrder();
             Mandatory = _source.getIsMandatory();
@@ -184,7 +187,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         {
             get
             {
-                switch (_source.getType())
+                switch (_type)
                 {
                     case "string": return Name.ToUpperInvariant() == "MCC" ? typeof(IReadOnlyList<IWeightedValue<string>>) : typeof(string);
                     case "int": return typeof(int);
