@@ -4,7 +4,7 @@
 **Pipeline API**
 
 [Developer
-Documentation](https://51degrees.com/documentation/_device_detection__index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines)
+Documentation](https://51degrees.com/documentation/_device_detection__quickstart.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines)
 
 ## Introduction
 
@@ -233,7 +233,7 @@ For complete documentation on the Pipeline API and associated engines, see the
 ## Find out more
 
 - [Device Detection](https://51degrees.com/device-detection?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=find-out-more-device-detection)
-- [Device Detection documentation](https://51degrees.com/documentation/_device_detection__index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=find-out-more-documentation)
+- [Device Detection documentation](https://51degrees.com/documentation/_device_detection__quickstart.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=find-out-more-documentation)
 - [Getting started](https://51degrees.com/documentation/_device_detection__quickstart.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=find-out-more-getting-started)
 - [Pricing](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=find-out-more-pricing)
 - [robots.txt](https://51degrees.com/robots-txt?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=find-out-more-robots-txt)
