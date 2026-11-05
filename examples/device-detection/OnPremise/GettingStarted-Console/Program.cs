@@ -20,6 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines;
 using FiftyOne.Pipeline.Engines.Data;
@@ -48,8 +49,22 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedConsole
     {
         public class Example : ExampleBase
         {
+            /// <summary>
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-gettingstarted-console-program.cs&utm_term=enterprise-data-file";
+
+            /// <summary>
+            /// True once the example has shown a property that the data file
+            /// in use does not have.
+            /// </summary>
+            private bool _needsEnterprise;
+
             public void Run(string dataFile, ILoggerFactory loggerFactory, TextWriter output)
             {
+                _needsEnterprise = false;
+
                 // In this example, we use the DeviceDetectionPipelineBuilder and configure it
                 // in code. For more information about builders in general see the documentation at
                 // https://51degrees.com/documentation/_pipeline_api__concepts__configuration__builders__index.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-gettingstarted-console-program.cs&utm_term=run
@@ -72,13 +87,15 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedConsole
                     .SetDataFileSystemWatcher(false)
                     .Build())
                 {
+                    // The engine says which properties the data file has.
+                    var engine = pipeline.GetElement<DeviceDetectionHashEngine>();
                     var deviceIDs = new List<string>(ExampleUtils.EvidenceValues.Count);
 
                     // carry out some sample detections
                     // and collect device IDs
                     foreach (var values in ExampleUtils.EvidenceValues)
                     {
-                        AnalyseEvidence(values, pipeline, output, out var nextDeviceID);
+                        AnalyseEvidence(values, pipeline, engine, output, out var nextDeviceID);
                         deviceIDs.Add(nextDeviceID);
                     }
 
@@ -89,16 +106,21 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedConsole
                         {
                             { "query.51D_deviceId", nextDeviceID },
                         };
-                        AnalyseEvidence(evidence, pipeline, output, out _);
+                        AnalyseEvidence(evidence, pipeline, engine, output, out _);
                     }
 
+                    if (_needsEnterprise)
+                    {
+                        ExampleUtils.WriteEnterpriseNote(output, ContactUs);
+                    }
                     ExampleUtils.CheckDataFile(pipeline, loggerFactory.CreateLogger<Program>());
                 }
             }
 
             private void AnalyseEvidence(
-                Dictionary<string, object> evidence, 
-                IPipeline pipeline, 
+                Dictionary<string, object> evidence,
+                IPipeline pipeline,
+                DeviceDetectionHashEngine engine,
                 TextWriter output,
                 out string deviceID)
             {
@@ -146,11 +168,21 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedConsole
                     OutputValue("Browser Version", device.BrowserVersion, message);
                     OutputValue("DeviceId", device.DeviceId, message);
 
+                    // Only the Enterprise data file has these properties. The
+                    // free Lite data file has the ones above.
+                    OutputEnterpriseValue("Hardware Vendor", nameof(device.HardwareVendor),
+                        () => device.HardwareVendor, engine, message);
+                    OutputEnterpriseValue("Hardware Name", nameof(device.HardwareName),
+                        () => device.HardwareName, engine, message);
+                    OutputEnterpriseValue("Device Type", nameof(device.DeviceType),
+                        () => device.DeviceType, engine, message);
+
                     // The generated IDeviceData interface does not expose these
-                    // three properties yet, so they are read by name.
-                    OutputNamedValue("Headless Browser", device, "IsHeadless", message);
-                    OutputNamedValue("Has Web Driver", device, "HasWebDriver", message);
-                    OutputNamedValue("Window Visible", device, "IsVisible", message);
+                    // three properties yet, so they are read by name. They are
+                    // also only in the Enterprise data file.
+                    OutputNamedValue("Headless Browser", device, "IsHeadless", engine, message);
+                    OutputNamedValue("Has Web Driver", device, "HasWebDriver", engine, message);
+                    OutputNamedValue("Window Visible", device, "IsVisible", engine, message);
 
                     message.AppendLine("Matched");
                     foreach(var entry in device.UserAgents.Value)
@@ -174,27 +206,64 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedConsole
                 // throw an exception. `AspectPropertyValue` also includes the `NoValueMessage`
                 // property, which describes why the value has not been set.
                 message.AppendLine(value.HasValue ?
-                    $"\t{name}: " + value.Value :
+                    $"\t{name}: " + Format(value.Value) :
                     $"\t{name}: " + value.NoValueMessage);
+            }
+
+            private static string Format(object value) =>
+                value is IEnumerable<string> values ?
+                    string.Join(", ", values) :
+                    value.ToString();
+
+            /// <summary>
+            /// Output a property that only the Enterprise data file has, or
+            /// say that it needs the Enterprise data file when the data file
+            /// in use does not have it. The value is only read when the data
+            /// file has the property.
+            /// </summary>
+            private void OutputEnterpriseValue(string name,
+                string propertyName,
+                Func<IAspectPropertyValue> value,
+                DeviceDetectionHashEngine engine,
+                StringBuilder message)
+            {
+                if (ExampleUtils.HasProperty(engine, propertyName))
+                {
+                    OutputValue(name, value(), message);
+                }
+                else
+                {
+                    message.AppendLine($"\t{name}: {ExampleUtils.NEEDS_ENTERPRISE}");
+                    _needsEnterprise = true;
+                }
             }
 
             /// <summary>
             /// Output a property that is looked up by name because the strongly
-            /// typed <see cref="IDeviceData"/> interface does not expose it. The
-            /// helper reports 'No value' plus the reason when the data file in use
-            /// does not contain the property, which is the case for the Lite file.
+            /// typed <see cref="IDeviceData"/> interface does not expose it, or
+            /// say that it needs the Enterprise data file when the data file in
+            /// use does not have it.
             /// </summary>
             private void OutputNamedValue(string name,
                 IDeviceData device,
                 string propertyName,
+                DeviceDetectionHashEngine engine,
                 StringBuilder message)
             {
-                message.AppendLine(
-                    $"\t{name}: " + device.GetHumanReadableByName(propertyName));
+                if (ExampleUtils.HasProperty(engine, propertyName))
+                {
+                    message.AppendLine(
+                        $"\t{name}: " + device.GetHumanReadableByName(propertyName));
+                }
+                else
+                {
+                    message.AppendLine($"\t{name}: {ExampleUtils.NEEDS_ENTERPRISE}");
+                    _needsEnterprise = true;
+                }
             }
         }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             // Use the supplied path for the data file or find the lite file that is included
             // in the repository.
@@ -203,8 +272,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedConsole
                 // project space, or you may specify another file as a command line parameter.
                 //
                 // Note that the Lite data file contains a more limited set of properties than the
-                // Enterprise data file. Find out about the Enterprise data file on our pricing page:
-                // https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-gettingstarted-console-program.cs&utm_term=main
+                // Enterprise data file. Contact us for a copy of the Enterprise data file:
+                // https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-gettingstarted-console-program.cs&utm_term=main
                 ExampleUtils.FindDataFile(Constants.LITE_HASH_DATA_FILE_NAME);
 
             // Configure a logger to output to the console.
