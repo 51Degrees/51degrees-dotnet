@@ -1,5 +1,7 @@
 # FiftyOne.Caching
 
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious")
+
 This package contains interfaces and classes relating to caching. There are two major types of cache represented, 'put' caches and 'loading' caches.
 Both types have an indexer to access the data stored in the cache.
 

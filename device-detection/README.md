@@ -1,10 +1,10 @@
 # 51Degrees Device Detection Engines
 
-![51Degrees](https://raw.githubusercontent.com/51Degrees/common-ci/main/images/logo/360x67.png "Data rewards the curious")
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious")
 **Pipeline API**
 
 [Developer
-Documentation](https://51degrees.com/device-detection-dotnet/index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines)
+Documentation](https://51degrees.com/documentation/_device_detection__index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines)
 
 ## Introduction
 
@@ -26,8 +26,8 @@ engines are written in C\# and target .NET Standard 2.0.3. Example and test
 projects mostly target .NET 6.0 though in some cases, projects are available
 targeting other frameworks.
 
-For runtime dependencies, see our
-[dependencies](https://51degrees.com/documentation/_info__dependencies.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=dependencies)
+For the .NET versions we test against, see the
+[tested versions](https://51degrees.com/documentation/_product_summaries__tested_versions.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=dependencies)
 page. The `ci/options.json` file lists the tested and packaged .NET versions
 and operating systems automatic tests are performed with. The solution will
 likely operate with other versions.

@@ -1,5 +1,7 @@
 # FiftyOne.Did
 
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious")
+
 Strongly-typed .NET parser for the 51Did (51Degrees Identifier)
 returned by the 51Degrees Cloud service, and the client a server uses
 to verify a 51Did and redeem its creator context result.

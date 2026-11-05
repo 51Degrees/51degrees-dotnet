@@ -1,8 +1,8 @@
 # 51Degrees Pipeline API
 
-![51Degrees](https://raw.githubusercontent.com/51Degrees/common-ci/main/images/logo/360x67.png "Data rewards the curious") **Pipeline API**
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious") **Pipeline API**
 
-[Developer Documentation](https://51degrees.com/pipeline-dotnet/index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=top "developer documentation")
+[Developer Documentation](https://51degrees.com/documentation/_pipeline_api__index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=top "developer documentation")
 | NuGet | Package | NuGet | Package |
 | --- | --- | --- | --- |
 | [![NuGet](https://img.shields.io/nuget/v/FiftyOne.Pipeline.CloudRequestEngine.svg)](https://www.nuget.org/packages/FiftyOne.Pipeline.CloudRequestEngine) | CloudRequestEngine | [![NuGet](https://img.shields.io/nuget/v/FiftyOne.Pipeline.Examples.Shared.svg)](https://www.nuget.org/packages/FiftyOne.Pipeline.Examples.Shared) | Examples.Shared |

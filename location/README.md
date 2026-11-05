@@ -1,8 +1,8 @@
 # 51Degrees Geo-Location Engines
 
-![51Degrees](https://raw.githubusercontent.com/51Degrees/common-ci/main/images/logo/360x67.png "Data rewards the curious") **Pipeline API**
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious") **Pipeline API**
 
-[Developer Documentation](https://51degrees.com/location-dotnet/index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.geolocation&utm_term=51degrees-geo-location-engines "developer documentation")
+[Developer Documentation](https://51degrees.com/documentation/_reverse_geocoding__index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.geolocation&utm_term=51degrees-geo-location-engines "developer documentation")
 ## Introduction
 
 This repository contains engines for the .NET implementation of the Pipeline API 
