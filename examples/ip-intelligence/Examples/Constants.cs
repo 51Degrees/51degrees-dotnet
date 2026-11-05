@@ -34,6 +34,21 @@ namespace FiftyOne.IpIntelligence.Examples
         public const string ENTERPRISE_IPI_DATA_FILE_NAME = "51Degrees-EnterpriseIpiV41.ipi";
 
         /// <summary>
+        /// The free IP Intelligence data file with the registration
+        /// properties, which the examples that show location or
+        /// registration properties use by default. The data repository
+        /// links it, and the examples download it when it is missing.
+        /// </summary>
+        public const string LITE_IPI_DATA_FILE_NAME = "51Degrees-LiteV41.ipi";
+
+        /// <summary>
+        /// The free IP Intelligence data file with Asn and AsnName, which the
+        /// performance and update examples use by default because it is far
+        /// smaller to download than the Lite file.
+        /// </summary>
+        public const string ASN_IPI_DATA_FILE_NAME = "51Degrees-IPIV4AsnIpiV41.ipi";
+
+        /// <summary>
         /// Name of the file to use for the test evidence.
         /// </summary>
         public const string YAML_EVIDENCE_FILE_NAME = "evidence.yml";

@@ -171,12 +171,17 @@ public static class ExampleUtils
 
     /// <summary>
     /// Sent with each download, so that downloads by these examples can be
-    /// counted.
+    /// counted. It is left out inside GitHub Actions, where the data
+    /// repository's script names the build instead, so that test runs are
+    /// not counted as people using the examples.
     /// </summary>
     private const string DownloadSource = "examples-51degrees-dotnet";
 
     private static readonly bool IsWindows =
         Environment.OSVersion.Platform == PlatformID.Win32NT;
+
+    private static readonly bool InGitHubActions =
+        Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
 
     /// <summary>
     /// The data repository's download script for this platform.
@@ -316,14 +321,30 @@ public static class ExampleUtils
         string filename)
     {
         var script = Path.Combine(data, DataScript);
-        var start = IsWindows ?
-            new ProcessStartInfo(
-                "powershell",
+        ProcessStartInfo start;
+        if (IsWindows)
+        {
+            var powerShell = PowerShell();
+            start = new ProcessStartInfo(
+                powerShell,
                 $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\" " +
-                $"\"{filename}\" -Source {DownloadSource}") :
-            new ProcessStartInfo(
+                $"\"{filename}\"" +
+                (InGitHubActions ? "" : $" -Source {DownloadSource}"));
+            if (powerShell == WindowsPowerShell)
+            {
+                // Started from PowerShell 7, Windows PowerShell inherits its
+                // module path and then cannot load its own commands.
+                start.Environment.Remove("PSModulePath");
+            }
+        }
+        else
+        {
+            start = new ProcessStartInfo(
                 "sh",
-                $"\"{script}\" -s {DownloadSource} \"{filename}\"");
+                $"\"{script}\" " +
+                (InGitHubActions ? "" : $"-s {DownloadSource} ") +
+                $"\"{filename}\"");
+        }
         start.UseShellExecute = false;
         var command = $"{start.FileName} {start.Arguments}";
         Console.WriteLine($"'{filename}' is missing, so downloading it with:");
@@ -348,6 +369,31 @@ public static class ExampleUtils
             $"'{filename}' could not be downloaded. Run this command to get it:");
         Console.Error.WriteLine($"  {command}");
         return null;
+    }
+
+    private const string WindowsPowerShell = "powershell";
+
+    /// <summary>
+    /// PowerShell 7 when it is on the path, otherwise Windows PowerShell.
+    /// </summary>
+    private static string PowerShell()
+    {
+        var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+        foreach (var folder in path.Split(Path.PathSeparator))
+        {
+            try
+            {
+                if (File.Exists(Path.Combine(folder.Trim('"'), "pwsh.exe")))
+                {
+                    return "pwsh";
+                }
+            }
+            // A malformed entry on the path cannot hold PowerShell 7.
+            catch (ArgumentException)
+            {
+            }
+        }
+        return WindowsPowerShell;
     }
 
     /// <summary>
@@ -404,8 +450,8 @@ public static class ExampleUtils
     }
 
     /// <summary>
-    /// Display information about the data file and log warnings if specific requirements
-    /// are not met.
+    /// Log a warning if the data file is old. An example run on a free data
+    /// file says what the Enterprise data file adds in its own output.
     /// </summary>
     /// <param name="engine"></param>
     /// <param name="logger"></param>
@@ -420,16 +466,9 @@ public static class ExampleUtils
                     $"for a more precise detection. The latest lite " +
                     $"data file is downloaded by running get-data-files.ps1 -Update or " +
                     $"get-data-files.sh -u in the data repository, the cxx/data submodule, " +
-                    $"from GitHub https://github.com/51Degrees/data. Find out " +
+                    $"from GitHub https://github.com/51Degrees/data. Contact us " +
                     $"about the Enterprise data file, which includes automatic daily " +
-                    $"updates, on our pricing page: https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-fiftyone.ipintelligence.examples-exampleutils.cs&utm_term=data-file-age-warning");
-            }
-            if (info.Tier == "Lite")
-            {
-                logger.LogWarning($"This example is using the 'Lite' data file. This is " +
-                    $"used for illustration, and has limited accuracy and capabilities. " +
-                    $"Find out about the Enterprise data file on our pricing page: " +
-                    $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-fiftyone.ipintelligence.examples-exampleutils.cs&utm_term=lite-data-file");
+                    $"updates, at https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-fiftyone.ipintelligence.examples-exampleutils.cs&utm_term=data-file-age-warning");
             }
         }
     }

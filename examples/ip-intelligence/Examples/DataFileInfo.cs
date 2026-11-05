@@ -29,5 +29,11 @@ namespace FiftyOne.IpIntelligence.Examples
         public string Filepath { get; set; }
         public string Tier { get; set; }
         public DateTime PublishDate { get; set; }
+
+        /// <summary>
+        /// True for one of the free data files. Every IP Intelligence data
+        /// file reports the same tier, so the tier cannot say.
+        /// </summary>
+        public bool Free { get; set; }
     }
 }

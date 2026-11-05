@@ -250,12 +250,17 @@ public static class ExampleUtils
 
     /// <summary>
     /// Sent with each download, so that downloads by these examples can be
-    /// counted.
+    /// counted. It is left out inside GitHub Actions, where the data
+    /// repository's script names the build instead, so that test runs are
+    /// not counted as people using the examples.
     /// </summary>
     private const string DownloadSource = "examples-51degrees-dotnet";
 
     private static readonly bool IsWindows =
         Environment.OSVersion.Platform == PlatformID.Win32NT;
+
+    private static readonly bool InGitHubActions =
+        Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
 
     /// <summary>
     /// The data repository's download script for this platform.
@@ -356,14 +361,30 @@ public static class ExampleUtils
         string filename)
     {
         var script = Path.Combine(data, DataScript);
-        var start = IsWindows ?
-            new ProcessStartInfo(
-                "powershell",
+        ProcessStartInfo start;
+        if (IsWindows)
+        {
+            var powerShell = PowerShell();
+            start = new ProcessStartInfo(
+                powerShell,
                 $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\" " +
-                $"\"{filename}\" -Source {DownloadSource}") :
-            new ProcessStartInfo(
+                $"\"{filename}\"" +
+                (InGitHubActions ? "" : $" -Source {DownloadSource}"));
+            if (powerShell == WindowsPowerShell)
+            {
+                // Started from PowerShell 7, Windows PowerShell inherits its
+                // module path and then cannot load its own commands.
+                start.Environment.Remove("PSModulePath");
+            }
+        }
+        else
+        {
+            start = new ProcessStartInfo(
                 "sh",
-                $"\"{script}\" -s {DownloadSource} \"{filename}\"");
+                $"\"{script}\" " +
+                (InGitHubActions ? "" : $"-s {DownloadSource} ") +
+                $"\"{filename}\"");
+        }
         start.UseShellExecute = false;
         var command = $"{start.FileName} {start.Arguments}";
         Console.WriteLine($"'{filename}' is missing, so downloading it with:");
@@ -388,6 +409,31 @@ public static class ExampleUtils
             $"'{filename}' could not be downloaded. Run this command to get it:");
         Console.Error.WriteLine($"  {command}");
         return null;
+    }
+
+    private const string WindowsPowerShell = "powershell";
+
+    /// <summary>
+    /// PowerShell 7 when it is on the path, otherwise Windows PowerShell.
+    /// </summary>
+    private static string PowerShell()
+    {
+        var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+        foreach (var folder in path.Split(Path.PathSeparator))
+        {
+            try
+            {
+                if (File.Exists(Path.Combine(folder.Trim('"'), "pwsh.exe")))
+                {
+                    return "pwsh";
+                }
+            }
+            // A malformed entry on the path cannot hold PowerShell 7.
+            catch (ArgumentException)
+            {
+            }
+        }
+        return WindowsPowerShell;
     }
 
     /// <summary>
@@ -518,8 +564,10 @@ public static class ExampleUtils
     }
 
     /// <summary>
-    /// Display information about the data file and log warnings if specific requirements
-    /// are not met.
+    /// Log a warning if the data file is old. An example run on the free
+    /// Lite data file says what the Enterprise data file adds in its own
+    /// output, with <see cref="WriteEnterpriseNote"/> or
+    /// <see cref="WriteEnterpriseOffer"/>.
     /// </summary>
     /// <param name="engine"></param>
     /// <param name="logger"></param>
@@ -534,19 +582,73 @@ public static class ExampleUtils
                     $"to correctly detect the latest devices, browsers, etc. The latest lite " +
                     $"data file is downloaded by running get-data-files.ps1 -Update or " +
                     $"get-data-files.sh -u in the data repository, the cxx/data submodule, " +
-                    $"from GitHub https://github.com/51Degrees/data. Find out " +
+                    $"from GitHub https://github.com/51Degrees/data. Contact us " +
                     $"about the Enterprise data file, which includes automatic daily " +
-                    $"updates, on our pricing page: https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=data-file-age-warning");
-            }
-            if (info.Tier == "Lite")
-            {
-                logger.LogWarning($"This example is using the 'Lite' data file. This " +
-                    $"contains a more limited set of properties than the Enterprise " +
-                    $"data file. " +
-                    $"Find out about the Enterprise data file on our pricing page: " +
-                    $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=lite-data-file");
+                    $"updates, at https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=data-file-age-warning");
             }
         }
+    }
+
+    /// <summary>
+    /// Shown in place of a value for a property that the data file in use
+    /// does not have. Every property the examples ask for is in the
+    /// Enterprise data file.
+    /// </summary>
+    public const string NEEDS_ENTERPRISE = "needs the Enterprise data file";
+
+    /// <summary>
+    /// Reports whether the engine's data file has the property. The Lite
+    /// data file leaves out the properties only the Enterprise data file
+    /// has, such as HardwareVendor, HardwareName and DeviceType.
+    /// </summary>
+    public static bool HasProperty(DeviceDetectionHashEngine engine, string name)
+    {
+        return engine.Properties.Any(p => string.Equals(
+            p.Name, name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Reports whether the engine uses the free Lite data file.
+    /// </summary>
+    public static bool IsLiteDataFile(DeviceDetectionHashEngine engine)
+    {
+        return engine.DataSourceTier == "Lite";
+    }
+
+    /// <summary>
+    /// Writes, after an example has shown properties that the data file in
+    /// use does not have, where to ask for a copy of the Enterprise data
+    /// file.
+    /// </summary>
+    /// <param name="output"></param>
+    /// <param name="contactUs">
+    /// The link to the contact page, tagged with the example's file so that
+    /// an enquiry can be traced to the example.
+    /// </param>
+    public static void WriteEnterpriseNote(TextWriter output, string contactUs)
+    {
+        output.WriteLine();
+        output.WriteLine("Some of these properties need the Enterprise data " +
+            $"file. Contact us for a copy at {contactUs}");
+    }
+
+    /// <summary>
+    /// Writes, after an example that shows no properties has run on the
+    /// free Lite data file, what the Enterprise data file adds and where to
+    /// ask for a copy.
+    /// </summary>
+    /// <param name="output"></param>
+    /// <param name="contactUs">
+    /// The link to the contact page, tagged with the example's file so that
+    /// an enquiry can be traced to the example.
+    /// </param>
+    public static void WriteEnterpriseOffer(TextWriter output, string contactUs)
+    {
+        output.WriteLine();
+        output.WriteLine("This example used the free Lite data file. The " +
+            "Enterprise data file adds many more properties, such as " +
+            "HardwareVendor, HardwareName and DeviceType. Contact us for a " +
+            $"copy at {contactUs}");
     }
 
     /// <summary>
