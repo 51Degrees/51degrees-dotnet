@@ -24,6 +24,7 @@ using FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Engines.Data;
 using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FiftyOne.IpIntelligence.Translation.Data;
@@ -61,6 +62,12 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb.Model
 
         public IpiOnPremiseEngine Engine { get; private set; }
 
+        /// <summary>
+        /// True when the engine uses one of the free data files, which have
+        /// none of the location properties.
+        /// </summary>
+        public bool FreeDataFile { get; private set; }
+
         public IAspectEngineDataFile DataFile { get; private set; }
 
         public List<EvidenceModel> Evidence { get; private set; }
@@ -74,6 +81,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb.Model
 
             // Get the engine that performed the detection.
             Engine = FlowData.Pipeline.GetElement<IpiOnPremiseEngine>();
+            FreeDataFile = ExampleUtils.IsFreeDataFile(Engine);
             // Get meta-data about the data file.
             DataFile = Engine.DataFiles[0];
             // Get the evidence that was used when performing IP Intelligence
@@ -91,36 +99,82 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb.Model
             // Use helper functions to get a human-readable string representation of various
             // property values. These helpers handle situations such as the property missing
             // due to using a lite data file or the property not having a value because
-            // IP intelligence didn't find a match.
-            Name = ipiData.TryGetValue(d => d.RegisteredName.GetHumanReadable());
-            RegisteredOwner = ipiData.TryGetValue(d => d.RegisteredOwner.GetHumanReadable());
-            RegisteredCountry = ipiData.TryGetValue(d => d.RegisteredCountry.GetHumanReadable());
-            IpRangeStart = ipiData.TryGetValue(d => d.IpRangeStart.GetHumanReadable());
-            IpRangeEnd = ipiData.TryGetValue(d => d.IpRangeEnd.GetHumanReadable());
-            Country = ipiData.TryGetValue(d => d.Country.GetHumanReadable());
-            CountryCode = ipiData.TryGetValue(d => d.CountryCode.GetHumanReadable());
-            CountryCode3 = ipiData.TryGetValue(d => d.CountryCode3.GetHumanReadable());
-            Region = ipiData.TryGetValue(d => d.Region.GetHumanReadable());
-            State = ipiData.TryGetValue(d => d.State.GetHumanReadable());
-            Town = ipiData.TryGetValue(d => d.Town.GetHumanReadable());
-            Latitude = ipiData.TryGetValue(d => d.Latitude.GetHumanReadable());
-            Longitude = ipiData.TryGetValue(d => d.Longitude.GetHumanReadable());
-            Areas = ipiData.TryGetValue(d => d.Areas.GetHumanReadable());
-            AccuracyRadius = ipiData.TryGetValue(d => d.AccuracyRadiusMin.GetHumanReadable());
-            TimeZoneOffset = ipiData.TryGetValue(d => d.TimeZoneOffset.GetHumanReadable());
-            CountryCodesGeographical = ipiData.TryGetValue(d => d.CountryCodesGeographical.GetHumanReadableList());
-            CountryCodesPopulation = ipiData.TryGetValue(d => d.CountryCodesPopulation.GetHumanReadableList());
-            
-            // Get the results of IP Intelligence.
+            // IP intelligence didn't find a match. The free Lite data file has the first
+            // three, and the page shows the others as needing the Enterprise data file.
+            Name = Value(nameof(ipiData.RegisteredName),
+                () => ipiData.TryGetValue(d => d.RegisteredName.GetHumanReadable()));
+            RegisteredOwner = Value(nameof(ipiData.RegisteredOwner),
+                () => ipiData.TryGetValue(d => d.RegisteredOwner.GetHumanReadable()));
+            RegisteredCountry = Value(nameof(ipiData.RegisteredCountry),
+                () => ipiData.TryGetValue(d => d.RegisteredCountry.GetHumanReadable()));
+            IpRangeStart = Value(nameof(ipiData.IpRangeStart),
+                () => ipiData.TryGetValue(d => d.IpRangeStart.GetHumanReadable()));
+            IpRangeEnd = Value(nameof(ipiData.IpRangeEnd),
+                () => ipiData.TryGetValue(d => d.IpRangeEnd.GetHumanReadable()));
+            Country = Value(nameof(ipiData.Country),
+                () => ipiData.TryGetValue(d => d.Country.GetHumanReadable()));
+            CountryCode = Value(nameof(ipiData.CountryCode),
+                () => ipiData.TryGetValue(d => d.CountryCode.GetHumanReadable()));
+            CountryCode3 = Value(nameof(ipiData.CountryCode3),
+                () => ipiData.TryGetValue(d => d.CountryCode3.GetHumanReadable()));
+            Region = Value(nameof(ipiData.Region),
+                () => ipiData.TryGetValue(d => d.Region.GetHumanReadable()));
+            State = Value(nameof(ipiData.State),
+                () => ipiData.TryGetValue(d => d.State.GetHumanReadable()));
+            Town = Value(nameof(ipiData.Town),
+                () => ipiData.TryGetValue(d => d.Town.GetHumanReadable()));
+            Latitude = Value(nameof(ipiData.Latitude),
+                () => ipiData.TryGetValue(d => d.Latitude.GetHumanReadable()));
+            Longitude = Value(nameof(ipiData.Longitude),
+                () => ipiData.TryGetValue(d => d.Longitude.GetHumanReadable()));
+            Areas = Value(nameof(ipiData.Areas),
+                () => ipiData.TryGetValue(d => d.Areas.GetHumanReadable()));
+            AccuracyRadius = Value(nameof(ipiData.AccuracyRadiusMin),
+                () => ipiData.TryGetValue(d => d.AccuracyRadiusMin.GetHumanReadable()));
+            TimeZoneOffset = Value(nameof(ipiData.TimeZoneOffset),
+                () => ipiData.TryGetValue(d => d.TimeZoneOffset.GetHumanReadable()));
+            CountryCodesGeographical = Values(nameof(ipiData.CountryCodesGeographical),
+                () => ipiData.TryGetValue(d => d.CountryCodesGeographical.GetHumanReadableList()));
+            CountryCodesPopulation = Values(nameof(ipiData.CountryCodesPopulation),
+                () => ipiData.TryGetValue(d => d.CountryCodesPopulation.GetHumanReadableList()));
+
+            // Get the results of the translation engines, which translate the
+            // country codes, so they also need the Enterprise data file.
             var translationData = FlowData.Get<ICountriesTranslationData>();
-            CountryNamesGeographicalAllTranslated = translationData.TryGetValue(
-                d => d.CountryNamesGeographicalAllTranslated.GetHumanReadableList());
-            CountryNamesPopulationAllTranslated = translationData.TryGetValue(
-                d => d.CountryNamesPopulationAllTranslated.GetHumanReadableList());
-            CountryCodesGeographicalAll = translationData.TryGetValue(
-                d => d.CountryCodesGeographicalAll.GetHumanReadableList());
-            CountryCodesPopulationAll = translationData.TryGetValue(
-                d => d.CountryCodesPopulationAll.GetHumanReadableList());
+            CountryNamesGeographicalAllTranslated = Values(nameof(ipiData.CountryCodesGeographical),
+                () => translationData.TryGetValue(
+                    d => d.CountryNamesGeographicalAllTranslated.GetHumanReadableList()));
+            CountryNamesPopulationAllTranslated = Values(nameof(ipiData.CountryCodesPopulation),
+                () => translationData.TryGetValue(
+                    d => d.CountryNamesPopulationAllTranslated.GetHumanReadableList()));
+            CountryCodesGeographicalAll = Values(nameof(ipiData.CountryCodesGeographical),
+                () => translationData.TryGetValue(
+                    d => d.CountryCodesGeographicalAll.GetHumanReadableList()));
+            CountryCodesPopulationAll = Values(nameof(ipiData.CountryCodesPopulation),
+                () => translationData.TryGetValue(
+                    d => d.CountryCodesPopulationAll.GetHumanReadableList()));
+        }
+
+        /// <summary>
+        /// The value of the property, or that it needs the Enterprise data
+        /// file when the data file in use does not have it.
+        /// </summary>
+        private string Value(string property, Func<string> value)
+        {
+            return ExampleUtils.HasProperty(Engine, property) ?
+                value() : ExampleUtils.NEEDS_ENTERPRISE;
+        }
+
+        /// <summary>
+        /// The values of the property, or that it needs the Enterprise data
+        /// file when the data file in use does not have it.
+        /// </summary>
+        private IReadOnlyList<string> Values(
+            string property,
+            Func<IReadOnlyList<string>> values)
+        {
+            return ExampleUtils.HasProperty(Engine, property) ?
+                values() : new[] { ExampleUtils.NEEDS_ENTERPRISE };
         }
     }
 }

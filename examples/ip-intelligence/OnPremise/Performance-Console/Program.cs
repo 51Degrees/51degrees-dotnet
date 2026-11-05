@@ -60,7 +60,9 @@ using System.Threading.Tasks;
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Performance-Console/Program.cs).
 /// 
-/// This example requires an enterprise IP Intelligence data file (.ipi). 
+/// By default the example uses the free Asn IP Intelligence data file, which it downloads when
+/// it is missing, and is far smaller than the Lite file. It asks for RegisteredName and AsnName,
+/// so it also runs with the Lite and enterprise data files.
 /// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-performance-console-program.cs&amp;utm_term=header).
 /// 
 /// Required NuGet Dependencies:
@@ -105,6 +107,17 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Performance
 
         public class Example : ExampleBase
         {
+            /// <summary>
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            internal const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-ip-intelligence-onpremise-performance-console-program.cs&utm_term=enterprise-data-file";
+
+            /// <summary>
+            /// True when the last benchmark ran on a free data file.
+            /// </summary>
+            public static bool UsedFreeDataFile { get; private set; }
+
             private IPipeline _pipeline;
 
             public Example(IPipeline pipeline)
@@ -312,7 +325,11 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Performance
                         // for just platform or "IsCrawler" for the crawler component.
                         if (config.AllProperties == false)
                         {
+                            // The free Asn data file has AsnName, and the Lite and
+                            // enterprise data files have RegisteredName, so the
+                            // benchmark runs with any of them.
                             builder.SetProperty("RegisteredName");
+                            builder.SetProperty("AsnName");
                         }
 
                         // The data file can be loaded directly from disk or from a byte array
@@ -352,9 +369,11 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Performance
                     else
                     {
                         ExampleUtils.CheckDataFile(
-                            serviceProvider.GetRequiredService<IPipeline>(), 
+                            serviceProvider.GetRequiredService<IPipeline>(),
                             serviceProvider.GetRequiredService<ILogger<Program>>());
-                        
+                        UsedFreeDataFile = ExampleUtils.IsFreeDataFile(
+                            serviceProvider.GetRequiredService<IpiOnPremiseEngine>());
+
                         output.WriteLine($"Engine startup time: {_startupTimeMs} ms");
                         output.WriteLine($"Processing evidence from '{evidenceFile}'");
 
@@ -364,20 +383,20 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Performance
             }
         }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
-            // Use the supplied path for the data file or find the lite file that is included
-            // in the repository.
+            // Use the supplied path for the data file or find the free Asn file that the
+            // data repository links, downloading it when it is missing.
             var options = Examples.ExampleUtils.ParseOptions(args);
             if (options != null) {
                 var dataFile = options.DataFilePath != null ? options.DataFilePath :
-                    // In this example, by default, the 51degrees "Lite" file needs to be somewhere in the
-                    // project space, or you may specify another file as a command line parameter.
+                    // In this example, by default, the free 51degrees "Asn" file needs to be somewhere
+                    // in the project space, or you may specify another file as a command line parameter.
                     //
-                    // Note that the Lite data file is only used for illustration, and has limited accuracy
-                    // and capabilities. Find out about the Enterprise data file on our pricing page:
-                    // https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-performance-console-program.cs&utm_term=main
-                    Examples.ExampleUtils.FindDataFile(Constants.ENTERPRISE_IPI_DATA_FILE_NAME);
+                    // Note that the free data files are only used for illustration, and have limited
+                    // accuracy and capabilities. Contact us for a copy of the Enterprise data file:
+                    // https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-performance-console-program.cs&utm_term=main
+                    Examples.ExampleUtils.FindDataFile(Constants.ASN_IPI_DATA_FILE_NAME);
                 // Do the same for the yaml evidence file.
                 var evidenceFile = options.EvidenceFile != null ? options.EvidenceFile :
                     // This file contains the 20,000 most commonly seen combinations of header values 
@@ -393,6 +412,10 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Performance
                     }
                     var result = Example.Run(dataFile, evidenceFile, _configs[i], Console.Out, DEFAULT_THREAD_COUNT);
                     results[_configs[i]] = result;
+                }
+                if (Example.UsedFreeDataFile)
+                {
+                    ExampleUtils.WriteEnterpriseOffer(Console.Out, Example.ContactUs);
                 }
 
                 if (string.IsNullOrEmpty(options.JsonOutput) == false)
