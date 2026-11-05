@@ -107,9 +107,9 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.TemplateData
         /// <summary>
         /// The callback URL as the element built and checked it, written
         /// into the script in place of the <see cref="Uri"/> given to the
-        /// constructor. It is already encoded, and <see cref="Uri"/> would
-        /// rewrite parts of it, such as a port with leading zeros or an IPv6
-        /// zone.
+        /// constructor. It is already encoded, so it is written as it is
+        /// rather than through <see cref="Uri"/>, which normalises a URL as
+        /// it parses it.
         /// </summary>
         internal string CheckedUrl { get; set; }
 
