@@ -61,6 +61,15 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The generated URL {0} is not valid, so the JavaScript has no callback URL. Check the JavaScript builder&apos;s protocol, host and endpoint, and the protocol and host evidence. This is reported once..
+        /// </summary>
+        internal static string ErrorCallbackUrlInvalid {
+            get {
+                return ResourceManager.GetString("ErrorCallbackUrlInvalid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to FlowData instance cannot be null..
         /// </summary>
         internal static string ExceptionFlowDataIsNull {
@@ -88,11 +97,11 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The generated Uri &apos;{0}&apos; is invalid. Please check your JavaScriptBuilderElement protocol, host and endpoint configuration..
+        ///   Looks up a localized string similar to Invalid protocol in configuration ({0}), must be &apos;http&apos; or &apos;https&apos;..
         /// </summary>
-        internal static string ExceptionUriInvalid {
+        internal static string ExceptionProtocolInvalid {
             get {
-                return ResourceManager.GetString("ExceptionUriInvalid", resourceCulture);
+                return ResourceManager.GetString("ExceptionProtocolInvalid", resourceCulture);
             }
         }
         
