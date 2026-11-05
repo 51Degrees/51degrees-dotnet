@@ -44,6 +44,7 @@ using FiftyOne.Pipeline.Engines;
 using Newtonsoft.Json;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
 {
@@ -240,10 +241,10 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
 			_properties;
 
         /// <summary>
-        /// Flag to record whether we have already logged an error about an invalid uri.
-        /// This prevents us from spamming the user with error messages.
+        /// 1 once an error has been logged about a callback URL that is not
+        /// valid, which is reported the first time only.
         /// </summary>
-        private bool _invalidUriLogged = false;
+        private int _invalidUrlLogged = 0;
 
         /// <summary>
         /// Default constructor.
@@ -272,16 +273,17 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         /// </param>
         /// <param name="host">
         /// The host that the client JavaScript should query for updates.
-        /// If null or blank then the host from the request will be used
+        /// If null or empty then the host from the request will be used
         /// </param>
         /// <param name="protocol">
-        /// The protocol (HTTP or HTTPS) that the client JavaScript will use when 
-        /// querying for updates.
-        /// If null or blank then the protocol from the request will be used
+        /// The protocol, http or https, that the client JavaScript will use
+        /// when querying for updates.
+        /// If null or empty then the protocol from the request will be used
         /// </param>
         /// <exception cref="PipelineConfigurationException">
         /// Thrown if <paramref name="objectName"/> is not null and is not
-        /// a valid JavaScript identifier.
+        /// a valid JavaScript identifier, or if <paramref name="protocol"/>
+        /// is set and is neither http nor https.
         /// </exception>
 		public JavaScriptBuilderElement(
             ILogger<JavaScriptBuilderElement> logger,
@@ -328,6 +330,18 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
                     string.Format(CultureInfo.InvariantCulture,
                         Messages.ExceptionObjectNameInvalid,
                         objectName));
+            }
+
+            // A protocol given here is used for every request, so one the
+            // script cannot send its request with is refused now rather than
+            // logged on the first request.
+            if (string.IsNullOrEmpty(protocol) == false &&
+                CallbackUrl.IsScheme(protocol) == false)
+            {
+                throw new PipelineConfigurationException(
+                    string.Format(CultureInfo.InvariantCulture,
+                        Messages.ExceptionProtocolInvalid,
+                        protocol));
             }
 
             Host = host;
@@ -532,44 +546,10 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
             var sessionId = GetSessionId(data);
             var sequence = GetSequence(data);
 
-            string endpoint = Endpoint;
-            Uri url = null;
-            // Check the call-back URL is formatted correctly.
-            if (string.IsNullOrWhiteSpace(protocol) == false &&
-                string.IsNullOrWhiteSpace(host) == false &&
-                string.IsNullOrWhiteSpace(endpoint) == false)
-            {
-                var endpointHasSlash = endpoint[0] == '/';
-                var hostHasSlash = host[host.Length - 1] == '/';
-                // if there is no slash between host and endpoint then add one.
-                if (endpointHasSlash == false && hostHasSlash == false)
-                {
-                    endpoint = $"/{endpoint}";
-                }
-                // if there are two slashes between host and endpoint then remove one.
-                else if (endpointHasSlash == true && hostHasSlash == true)
-                {
-                    endpoint = endpoint.Substring(1);
-                }
-
-                var urlString = $"{protocol}://{host}{endpoint}";
-                try
-                {
-                    url = new Uri(urlString);
-                }
-                catch (UriFormatException ex)
-                {
-                    if (_invalidUriLogged == false) 
-                    {
-                        _invalidUriLogged = true;
-                        Logger.LogError(ex, string.Format(CultureInfo.InvariantCulture,
-                            Messages.ExceptionUriInvalid, urlString));
-                    }
-                }
-            }
-
             // With the gathered resources, build a new JavaScriptResource.
-            BuildJavaScript(data, javascriptBuilderElementDataProvider, jsonObject, sessionId, sequence, supportsPromises, supportsFetch, url, paramsObject);
+            BuildJavaScript(data, javascriptBuilderElementDataProvider,
+                jsonObject, sessionId, sequence, supportsPromises,
+                supportsFetch, protocol, host, Endpoint, paramsObject);
         }
 
 
@@ -852,6 +832,13 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         /// <exception cref="ArgumentNullException">
         /// Thrown if the supplied flow data is null.
         /// </exception>
+        /// <remarks>
+        /// The URL is written into the script as it is given, apart from
+        /// percent-encoding each character that could end the string the
+        /// script holds it in, and is not checked. A subclass that builds
+        /// its URL from the request uses the overload that takes the
+        /// protocol, host and endpoint instead.
+        /// </remarks>
         protected void BuildJavaScript(
             IFlowData data, 
             Func<IJavaScriptBuilderElementData> javascriptBuilderElementDataProvider,
@@ -861,6 +848,131 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
             bool supportsPromises,
             bool supportsFetch,
             Uri url,
+            string parameters)
+        {
+            BuildJavaScript(data, javascriptBuilderElementDataProvider,
+                jsonObject, sessionId, sequence, supportsPromises,
+                supportsFetch, url, null, parameters);
+        }
+
+        /// <summary>
+        /// Build the JavaScript content and add it to the supplied
+        /// <see cref="IFlowData"/> instance, with a callback URL built from
+        /// the protocol, host and endpoint.
+        /// </summary>
+        /// <remarks>
+        /// The protocol and host usually come from the request, so the URL
+        /// is checked against the rules in the
+        /// <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/javascript-builder.md#callback-url">specification</see>
+        /// before the script holds it. A URL that fails them is logged as an
+        /// error the first time, and the script is built without callback
+        /// functionality, as it is when the protocol, host or endpoint is not
+        /// set.
+        /// </remarks>
+        /// <param name="data">
+        /// The <see cref="IFlowData"/> instance to populate with the
+        /// resulting <see cref="JavaScriptBuilderElementData"/>
+        /// and additional evidence source
+        /// </param>
+        /// <param name="javascriptBuilderElementDataProvider">
+        /// Defines a destination for
+        /// <see cref="JavaScriptBuilderElementData"/>
+        /// to be set into.
+        /// </param>
+        /// <param name="jsonObject">
+        /// The JSON data object to include in the JavaScript.
+        /// </param>
+        /// <param name="sessionId">
+        /// The session Id to use in the JavaScript response.
+        /// </param>
+        /// <param name="sequence">
+        /// The sequence value to use in the JavaScript response.
+        /// </param>
+        /// <param name="supportsPromises">
+        /// True to build JavaScript that uses promises. False to
+        /// build JavaScript that does not use promises.
+        /// </param>
+        /// <param name="supportsFetch">
+        /// True to build JavaScript that makes use of the
+        /// fetch API. Otherwise, the template will fall back to using
+        /// XMLHttpRequest.
+        /// </param>
+        /// <param name="protocol">
+        /// The protocol of the callback URL, http or https in any case.
+        /// </param>
+        /// <param name="host">
+        /// The host of the callback URL, which can start with user
+        /// information and end with a port, a path, a query or a fragment.
+        /// </param>
+        /// <param name="endpoint">
+        /// The endpoint of the callback URL, joined to the host with one
+        /// '/'.
+        /// </param>
+        /// <param name="parameters">The parameters to append to the URL</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if the supplied flow data is null.
+        /// </exception>
+        protected void BuildJavaScript(
+            IFlowData data,
+            Func<IJavaScriptBuilderElementData> javascriptBuilderElementDataProvider,
+            string jsonObject,
+            string sessionId,
+            int sequence,
+            bool supportsPromises,
+            bool supportsFetch,
+            string protocol,
+            string host,
+            string endpoint,
+            string parameters)
+        {
+            BuildJavaScript(data, javascriptBuilderElementDataProvider,
+                jsonObject, sessionId, sequence, supportsPromises,
+                supportsFetch, null, CheckedUrl(protocol, host, endpoint),
+                parameters);
+        }
+
+        /// <summary>
+        /// The callback URL built from the protocol, host and endpoint when
+        /// it passes the checks, and otherwise null. A URL that fails them
+        /// is logged the first time only, quoted and escaped so that it
+        /// cannot start a new log line.
+        /// </summary>
+        private string CheckedUrl(string protocol, string host, string endpoint)
+        {
+            var url = CallbackUrl.Of(protocol, host, endpoint);
+            if (url == null)
+            {
+                return null;
+            }
+            if (url.Valid)
+            {
+                return url.Url;
+            }
+            if (Interlocked.Exchange(ref _invalidUrlLogged, 1) == 0)
+            {
+                Logger.LogError(string.Format(
+                    CultureInfo.InvariantCulture,
+                    Messages.ErrorCallbackUrlInvalid,
+                    JsonConvert.SerializeObject(url.Url)));
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Builds the script with the callback URL either as the
+        /// <see cref="Uri"/> a subclass gave, or as the text
+        /// <see cref="CheckedUrl"/> returned.
+        /// </summary>
+        private void BuildJavaScript(
+            IFlowData data,
+            Func<IJavaScriptBuilderElementData> javascriptBuilderElementDataProvider,
+            string jsonObject,
+            string sessionId,
+            int sequence,
+            bool supportsPromises,
+            bool supportsFetch,
+            Uri url,
+            string checkedUrl,
             string parameters)
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
@@ -901,8 +1013,8 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
                     boolEnableCookies : EnableCookies;
             }
 
-            var updateEnabled = url != null &&
-                url.AbsoluteUri.Length > 0;
+            var updateEnabled = checkedUrl != null ||
+                (url != null && url.AbsoluteUri.Length > 0);
 
             // This check won't be 100% fool-proof but it only needs to be 
             // reasonably accurate and not take too long.
@@ -925,6 +1037,7 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
                 hasDelayedProperties)
             {
                 UserPrompt = userPrompt,
+                CheckedUrl = checkedUrl,
             };
 
             string content = _stubble.Render(_template, javaScriptObj.AsDictionary());

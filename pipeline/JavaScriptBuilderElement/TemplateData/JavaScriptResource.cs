@@ -105,11 +105,21 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.TemplateData
         }
 
         /// <summary>
-        /// The callback URL to write into the script. The template writes
-        /// it inside single quotes as it is, and <see cref="Uri.AbsoluteUri"/>
-        /// keeps a quote in the user information, path, query and fragment,
-        /// and a line separator in the host, so every character that could
-        /// end the string or the script is percent-encoded.
+        /// The callback URL as the element built and checked it, written
+        /// into the script in place of the <see cref="Uri"/> given to the
+        /// constructor. It is already encoded, and <see cref="Uri"/> would
+        /// rewrite parts of it, such as a port with leading zeros or an IPv6
+        /// zone.
+        /// </summary>
+        internal string CheckedUrl { get; set; }
+
+        /// <summary>
+        /// The callback URL to write into the script when it was given as a
+        /// <see cref="Uri"/>. The template writes it inside single quotes as
+        /// it is, and <see cref="Uri.AbsoluteUri"/> keeps a quote in the user
+        /// information, path, query and fragment, and a line separator in the
+        /// host, so every character that could end the string or the script
+        /// is percent-encoded.
         /// </summary>
         private static string SafeUrl(Uri url)
         {
@@ -342,7 +352,7 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.TemplateData
             hash.Add("_sequence", _sequence);
             hash.Add("_supportsPromises", _supportsPromises);
             hash.Add("_supportsFetch", _supportsFetch);
-            hash.Add("_url", SafeUrl(_url));
+            hash.Add("_url", CheckedUrl ?? SafeUrl(_url));
             hash.Add("_parameters", _parameters);
             hash.Add("_enableCookies", _enableCookies);
             hash.Add("_updateEnabled", _updateEnabled);
