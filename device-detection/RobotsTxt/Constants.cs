@@ -49,6 +49,13 @@ public class Constants
     public const string NotApplicableUsage = "N/A";
 
     /// <summary>
+    /// The value the data gives a crawler property that has none, such as
+    /// the product tokens of NotCrawler, the profile every browser resolves
+    /// to.
+    /// </summary>
+    internal const string NoValue = "N/A";
+
+    /// <summary>
     /// Evidence key used to supply one or more Terms Document Locator URIs.
     /// Multiple URIs may be comma- or pipe-separated (e.g. "url1,url2").
     /// </summary>
