@@ -41,8 +41,8 @@ using System.Text;
 /// @example OnPremise/Mixed/GettingStarted-Console/Program.cs
 /// 
 /// This example demonstrates using both Device Detection and IP Intelligence 
-/// engines in a single pipeline. The engines process evidence in parallel
-/// for optimal performance.
+/// engines in a single pipeline. The pipeline runs both engines on the same
+/// evidence, one after the other.
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Mixed/GettingStarted-Console/Program.cs). 
 /// 
@@ -111,7 +111,8 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
                     var shareUsageElement = new ShareUsageBuilder(loggerFactory, httpClient).Build();
 
                     // Create a raw pipeline and add all elements to it
-                    // All elements will process evidence in parallel
+                    // The pipeline runs the elements one after the other, in the
+                    // order they are added
                     using (var pipeline = new PipelineBuilder(loggerFactory)
                         .AddFlowElement(shareUsageElement)  // Add first for early processing
                         .AddFlowElement(deviceEngine)
@@ -193,7 +194,8 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
                     // Add the evidence values to the flow data
                     data.AddEvidence(evidence);
 
-                    // Process the flow data - both engines will run in parallel
+                    // Process the flow data. The pipeline runs both engines, one
+                    // after the other.
                     data.Process();
 
                     message = new StringBuilder();

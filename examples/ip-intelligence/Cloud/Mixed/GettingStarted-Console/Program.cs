@@ -156,7 +156,8 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Mixed.GettingStartedConsole
                     // Add the evidence values to the flow data
                     data.AddEvidence(evidence);
 
-                    // Process the flow data - both engines will run in parallel
+                    // Process the flow data. The pipeline runs both engines, one
+                    // after the other.
                     data.Process();
 
                     message = new StringBuilder();
