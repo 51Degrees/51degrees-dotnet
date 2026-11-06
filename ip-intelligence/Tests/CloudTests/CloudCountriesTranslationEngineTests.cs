@@ -48,6 +48,9 @@ public class CloudCountriesTranslationEngineTests
     private const string _resource_key_env_variable = "_51DEGREES_RESOURCE_KEY";
     private const string _legacy_resource_key_env_variable = "51D_RESOURCE_KEY";
     private const string _super_resource_key_env_variable = "SUPER_RESOURCE_KEY";
+    // The default of 2 seconds is short for a first request from a
+    // machine that has not yet connected to the cloud service.
+    private const int _cloud_timeout_seconds = 10;
 
     /// <summary>
     /// Perform a simple gross error check by calling the cloud service
@@ -77,6 +80,7 @@ public class CloudCountriesTranslationEngineTests
                     new CloudRequestEngineBuilder(
                         loggerFactory, new System.Net.Http.HttpClient())
                     .SetResourceKey(resourceKey)
+                    .SetTimeOutSeconds(_cloud_timeout_seconds)
                     .Build())
                 .AddFlowElement(
                     new CloudCountriesTranslationEngineBuilder(loggerFactory)

@@ -60,5 +60,12 @@ namespace FiftyOne.GeoLocation.Tests
         internal const string TEST_LON = "-0.975922996290084";
 
         internal const string RESOURCE_KEY_ENV_VAR = "SUPER_RESOURCE_KEY";
+
+        /// <summary>
+        /// Seconds a request to the cloud service may take. The default of
+        /// 2 seconds is short for a first request from a machine that has
+        /// not yet connected to the service.
+        /// </summary>
+        internal const int CLOUD_TIMEOUT_SECONDS = 10;
     }
 }
