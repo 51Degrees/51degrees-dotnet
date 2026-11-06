@@ -1044,6 +1044,9 @@ namespace FiftyOne.Pipeline.Core.Tests.FlowElements
         /// the failure is the one thrown.
         /// </summary>
         [TestMethod]
+        // KeptElementBuilder keeps what it builds in static state, so the
+        // tests that use it must not run at the same time.
+        [DoNotParallelize]
         public void PipelineBuilder_BuildFromConfiguration_FailureDisposesBuiltElements()
         {
             KeptElementBuilder.Reset();
@@ -1078,6 +1081,9 @@ namespace FiftyOne.Pipeline.Core.Tests.FlowElements
         /// element built before it in the same group is disposed.
         /// </summary>
         [TestMethod]
+        // KeptElementBuilder keeps what it builds in static state, so the
+        // tests that use it must not run at the same time.
+        [DoNotParallelize]
         public void PipelineBuilder_BuildFromConfiguration_ParallelFailureDisposesBuiltElements()
         {
             KeptElementBuilder.Reset();
