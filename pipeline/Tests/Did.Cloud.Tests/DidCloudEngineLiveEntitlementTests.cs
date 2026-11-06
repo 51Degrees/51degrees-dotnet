@@ -23,7 +23,6 @@
 using FiftyOne.Did.Cloud.FlowElements;
 using FiftyOne.Did.Core.FlowElements;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
-using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -150,8 +149,8 @@ public class DidCloudEngineLiveEntitlementTests
     /// <summary>
     /// The customer style pipeline of the work package's three
     /// configurations. An entitled key builds and reports what the cloud
-    /// listed, and an unentitled one fails the build naming the element
-    /// rather than running and never creating an identifier.
+    /// listed. An unentitled one builds and reports nothing, so the
+    /// pipeline offers no 51Did property and no identifier is promised.
     /// </summary>
     [TestMethod]
     [Timeout(180_000)]
@@ -169,65 +168,55 @@ public class DidCloudEngineLiveEntitlementTests
         var listed = await ListedPropertiesAsync(key);
         var loggerFactory = new LoggerFactory();
 
-        IPipeline? pipeline = null;
-        try
-        {
-            // The cloud request engine's builder warms up at build, so the
-            // whole question is settled here.
-            pipeline = new PipelineBuilder(loggerFactory)
-                .AddFlowElement(new CloudRequestEngineBuilder(
-                        loggerFactory, new HttpClient())
-                    .SetResourceKey(key)
-                    .Build())
-                .AddFlowElement(new DidCloudEngineBuilder(loggerFactory)
-                    .Build())
-                .Build();
-        }
-        catch (PipelineException ex)
-        {
-            Assert.IsNull(listed,
-                "the cloud lists the 51Did product for this key, so the " +
-                "pipeline had no reason to refuse to build. The message " +
-                $"was: {ex.Message}");
-            StringAssert.Contains(ex.Message,
+        // The cloud request engine's builder warms up at build, so the
+        // whole question is settled here.
+        using var pipeline = new PipelineBuilder(loggerFactory)
+            .AddFlowElement(new CloudRequestEngineBuilder(
+                    loggerFactory, new HttpClient())
+                .SetResourceKey(key)
+                .Build())
+            .AddFlowElement(new DidCloudEngineBuilder(loggerFactory)
+                .Build())
+            .Build();
+
+        var engine = pipeline.GetElement<DidCloudEngine>();
+        var reported = engine.Properties.Select(p => p.Name).ToList();
+        var offered = pipeline.ElementAvailableProperties.TryGetValue(
                 DidBaseEnginePropertiesBuilder.ComponentName,
-                "a key that does not carry the product must fail the build " +
-                "with a message naming the element, which is what every " +
-                "other cloud engine already does");
+                out var forElement)
+            ? forElement.Count
+            : 0;
+
+        if (listed == null)
+        {
+            Assert.IsEmpty(reported,
+                "the cloud lists no 51Did entry for this key, so the " +
+                "engine must report nothing, engine: " +
+                $"[{string.Join(", ", reported)}]");
+            Assert.AreEqual(0, offered,
+                "and the pipeline must offer nothing under the element " +
+                "data key, so the JavaScript builder leaves the user " +
+                "prompt block out");
             TestContext.WriteLine(
                 "The key carries no 51Did entitlement, and the pipeline " +
-                "build failed naming the element: " + ex.Message);
+                "builds offering nothing under " +
+                DidBaseEnginePropertiesBuilder.ComponentName + ".");
             return;
         }
 
-        using (pipeline)
-        {
-            Assert.IsNotNull(listed,
-                "the cloud lists no 51Did entry for this key, so the " +
-                "pipeline must have refused to build rather than running " +
-                "and never creating an identifier");
-
-            var engine = pipeline.GetElement<DidCloudEngine>();
-            var reported = engine.Properties.Select(p => p.Name).ToList();
-            CollectionAssert.AreEquivalent(listed, reported,
-                "the engine must report exactly what the cloud listed, " +
-                $"cloud: [{string.Join(", ", listed)}], engine: " +
-                $"[{string.Join(", ", reported)}]");
-            Assert.IsTrue(engine.Properties.All(p => p.Available),
-                "everything the cloud lists is available");
-
-            var available = pipeline.ElementAvailableProperties;
-            Assert.IsTrue(
-                available.TryGetValue(
-                    DidBaseEnginePropertiesBuilder.ComponentName,
-                    out var forElement) && forElement.Count > 0,
-                "and the pipeline must offer them under the element data " +
-                "key, because that is what the JavaScript builder reads to " +
-                "decide whether to render the user prompt block");
-            TestContext.WriteLine(
-                "The key is entitled and the pipeline offers " +
-                $"[{string.Join(", ", reported)}] under " +
-                DidBaseEnginePropertiesBuilder.ComponentName + ".");
-        }
+        CollectionAssert.AreEquivalent(listed, reported,
+            "the engine must report exactly what the cloud listed, " +
+            $"cloud: [{string.Join(", ", listed)}], engine: " +
+            $"[{string.Join(", ", reported)}]");
+        Assert.IsTrue(engine.Properties.All(p => p.Available),
+            "everything the cloud lists is available");
+        Assert.IsGreaterThan(0, offered,
+            "and the pipeline must offer them under the element data " +
+            "key, because that is what the JavaScript builder reads to " +
+            "decide whether to render the user prompt block");
+        TestContext.WriteLine(
+            "The key is entitled and the pipeline offers " +
+            $"[{string.Join(", ", reported)}] under " +
+            DidBaseEnginePropertiesBuilder.ComponentName + ".");
     }
 }

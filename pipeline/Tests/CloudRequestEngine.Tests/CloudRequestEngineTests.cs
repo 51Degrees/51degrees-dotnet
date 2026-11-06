@@ -114,6 +114,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             string nestedKey = "query.id.usage";
             string value = "test123";
             string capturedContent = null;
+            _evidenceKeysResponse = $"['query.User-Agent', '{nestedKey}']";
 
             // Set up mock to capture the request content
             _handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
@@ -215,6 +216,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                 "Chrome/139.0.0.0 Safari/537.36";
             HttpRequestMessage jsonRequest = null;
             string jsonContent = null;
+            _evidenceKeysResponse =
+                "['header.user-agent', 'query.user-agent', 'query.id.usage']";
             ConfigureMockedClient(r =>
             {
                 if (r.RequestUri.AbsolutePath.ToLower().EndsWith("json"))
@@ -287,6 +290,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             var evidence2Parts = evidence2.Split("=");
 
             string resourceKey = "resource_key";
+            _evidenceKeysResponse = JsonConvert.SerializeObject(
+                new[] { evidence1Parts[0], evidence2Parts[0] });
             ConfigureMockedClient(r =>
                   r.Content.ReadAsStringAsync(TestContext.CancellationToken).Result.Contains(evidence1.Split('.').Last())
             );
@@ -366,6 +371,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                 .Distinct()
                 .Where(e => e != evidence[0].Split('.').Last());
 
+            _evidenceKeysResponse = JsonConvert.SerializeObject(
+                evidence.Select(e => e.Split('=')[0]));
             ConfigureMockedClient(r =>
             {
                 var valid = true || excludedEvidence.Count() > 0;
@@ -2056,11 +2063,10 @@ cloudEx.Message, "Exception message did not contain the expected text.");
             _evidenceKeysResponseStatus = HttpStatusCode.OK;
 
             // First use must retry the discovery requests and succeed.
-            // Note that Process does not use EvidenceKeyFilter itself
-            // (GetContent sends all evidence), so access both values the
-            // way a consumer such as the web integration would.
+            // Process retries the evidence keys itself, because it sends
+            // only the evidence they list, and the accessible properties
+            // are read here the way a cloud aspect engine reads them.
             Assert.IsTrue(engine.PublicProperties.Count > 0);
-            Assert.IsNotNull(engine.EvidenceKeyFilter);
             using (var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build())
             {
                 var data = pipeline.CreateFlowData();

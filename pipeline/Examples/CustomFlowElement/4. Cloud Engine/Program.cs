@@ -71,9 +71,12 @@ namespace Examples.CloudEngine
             var dob = "18/12/1992";
             // Create a new flow data.
             var flowData = pipeline.CreateFlowData();
-            // Add the evidence and process the data.
+            // Add the evidence and process the data. The cloud request
+            // engine sends only the evidence the service lists as
+            // accepted, and the star sign service lists the date of
+            // birth as cookie.date-of-birth.
             flowData
-                .AddEvidence("date-of-birth", dob)
+                .AddEvidence("cookie.date-of-birth", dob)
                 .Process();
             // Now get the result of the processing.
             Console.WriteLine($"With a date of birth of {dob}, " +

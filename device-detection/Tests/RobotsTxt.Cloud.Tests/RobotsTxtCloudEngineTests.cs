@@ -93,6 +93,23 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Cloud.Tests
                     """)
                 });
 
+            // Mock the evidence keys endpoint. Only the evidence it lists
+            // is sent to the data endpoint.
+            handlerMock
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(req =>
+                        req.RequestUri.ToString().Contains("evidencekeys")),
+                    ItExpr.IsAny<CancellationToken>()
+                )
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent(
+                        """["query.robotstxt.analytics"]"""),
+                });
+
             // Mock the data endpoint
             handlerMock
                 .Protected()
@@ -100,7 +117,9 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Cloud.Tests
                     "SendAsync",
                     ItExpr.Is<HttpRequestMessage>(
                         i => !i.RequestUri.ToString()
-                            .Contains("accessibleproperties")),
+                            .Contains("accessibleproperties") &&
+                            !i.RequestUri.ToString()
+                            .Contains("evidencekeys")),
                     ItExpr.IsAny<CancellationToken>()
                 )
                 .ReturnsAsync(new HttpResponseMessage

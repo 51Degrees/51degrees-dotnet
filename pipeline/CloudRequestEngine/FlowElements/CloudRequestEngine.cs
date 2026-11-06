@@ -60,6 +60,56 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         private static readonly char[] EVIDENCE_SEPARATOR_CHAR_ARRAY = 
             Core.Constants.EVIDENCE_SEPERATOR.ToCharArray();
 
+        /// <summary>
+        /// The form field holding the resource key.
+        /// </summary>
+        private const string RESOURCE_FIELD = "resource";
+
+        /// <summary>
+        /// The form field holding the license key.
+        /// </summary>
+        private const string LICENSE_FIELD = "license";
+
+        /// <summary>
+        /// The form field the cloud service reads a list of requested
+        /// properties from.
+        /// </summary>
+        private const string VALUES_FIELD = "values";
+
+        /// <summary>
+        /// The form fields that evidence must not supply, because they
+        /// carry the credentials and the list of requested properties.
+        /// </summary>
+        private static readonly HashSet<string> ENGINE_FIELDS =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                RESOURCE_FIELD, LICENSE_FIELD, VALUES_FIELD
+            };
+
+        /// <summary>
+        /// The prefix of evidence used internally by 51Degrees.
+        /// </summary>
+        private const string FIFTYONE_PREFIX = "fiftyone";
+
+        /// <summary>
+        /// The prefix of evidence that supplies geo-location information.
+        /// </summary>
+        private const string LOCATION_PREFIX = "location";
+
+        /// <summary>
+        /// The evidence prefixes in order of precedence, highest first, as
+        /// the evidence specification lists them.
+        /// </summary>
+        private static readonly string[] EVIDENCE_PREFIX_PRECEDENCE =
+        {
+            Core.Constants.EVIDENCE_QUERY_PREFIX,
+            Core.Constants.EVIDENCE_HTTPHEADER_PREFIX,
+            Core.Constants.EVIDENCE_COOKIE_PREFIX,
+            Core.Constants.EVIDENCE_SERVER_PREFIX,
+            FIFTYONE_PREFIX,
+            LOCATION_PREFIX
+        };
+
         private HttpClient _httpClient;
 
         /// <summary>
@@ -347,6 +397,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// by this engine. This will vary based on the supplied resource key 
         /// so will be populated after a call to the cloud service as part of 
         /// object initialization.
+        /// Only evidence this filter includes is sent to the cloud
+        /// service, and reading it after that call failed makes the call
+        /// again.
         /// </summary>
         /// <exception cref="CloudRequestException">
         /// Thrown if there is an error from the cloud service or
@@ -746,134 +799,165 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// Generate the Content to send in the POST request. The evidence keys
-        /// e.g. 'query.' and 'header.' have an order of precedence. These are
-        /// added to the evidence in reverse order, if there is conflict then 
-        /// the queryData value is overwritten. 
-        /// 
-        /// 'query.' evidence should take precedence over all other evidence.
-        /// If there are evidence keys other than 'query.' that conflict then
-        /// this is unexpected so an error will be logged.
+        /// Generate the Content to send in the POST request, being the
+        /// credentials followed by the evidence the cloud service accepts.
         /// </summary>
         /// <param name="data"></param>
         /// <returns>Evidence in a FormUrlEncodedContent object</returns>
+        /// <exception cref="CloudRequestException">
+        /// Thrown if the evidence keys could not be fetched when the engine
+        /// was built and fetching them again fails.
+        /// </exception>
         private FormUrlEncodedContent GetContent(IFlowData data)
         {
-            var queryData = new Dictionary<string, string>();
-
-            queryData.Add("resource", _endpointsAndKeys.ResourceKey);
+            var form = new List<KeyValuePair<string, string>>()
+            {
+                new KeyValuePair<string, string>(
+                    RESOURCE_FIELD, _endpointsAndKeys.ResourceKey)
+            };
 
             if (string.IsNullOrWhiteSpace(_endpointsAndKeys.LicenseKey) == false)
             {
-                queryData.Add("license", _endpointsAndKeys.LicenseKey);
+                form.Add(new KeyValuePair<string, string>(
+                    LICENSE_FIELD, _endpointsAndKeys.LicenseKey));
             }
 
-            var evidence = data.GetEvidence().AsDictionary();
-
-            // Add evidence in reverse alphabetical order, excluding special
-            // keys. 
-            AddQueryData(queryData, evidence, evidence
-                .Where(e =>
-                    KeyHasPrefix(e, Core.Constants.EVIDENCE_QUERY_PREFIX) == false &&
-                    KeyHasPrefix(e, Core.Constants.EVIDENCE_HTTPHEADER_PREFIX) == false &&
-                    KeyHasPrefix(e, Core.Constants.EVIDENCE_COOKIE_PREFIX) == false)
-                .OrderByDescending(e => e.Key));
-            // Add cookie evidence.
-            AddQueryData(queryData, evidence, evidence
-                .Where(e => KeyHasPrefix(e, Core.Constants.EVIDENCE_COOKIE_PREFIX)));
-            // Add header evidence.
-            AddQueryData(queryData, evidence, evidence
-                .Where(e => KeyHasPrefix(e, Core.Constants.EVIDENCE_HTTPHEADER_PREFIX)));
-            // Add query evidence.
-            AddQueryData(queryData, evidence, evidence
-                .Where(e => KeyHasPrefix(e, Core.Constants.EVIDENCE_QUERY_PREFIX)));
-
-            var content = new FormUrlEncodedContent(queryData);
-            return content;
-        }
-        
-        /// <summary>
-        /// Check that the key of a KeyValuePair has the given prefix.
-        /// </summary>
-        /// <param name="item">The KeyValuePair to check.</param>
-        /// <param name="prefix">The prefix to check for.</param>
-        /// <returns>True if the key has the prefix.</returns>
-        private static bool KeyHasPrefix(
-            KeyValuePair<string, object> item,
-            string prefix)
-        {
-            // Compare the portion of the key before the first separator
-            // in place, avoiding the string array that Split allocates
-            // for every evidence entry.
-            var key = item.Key;
-            int separatorIndex = key.IndexOfAny(EVIDENCE_SEPARATOR_CHAR_ARRAY);
-            int prefixLength = separatorIndex >= 0 ? separatorIndex : key.Length;
-            return prefixLength == prefix.Length &&
-                string.Compare(key, 0, prefix, 0, prefixLength,
-                    StringComparison.InvariantCultureIgnoreCase) == 0;
+            form.AddRange(GetEvidenceFields(data));
+            return new FormUrlEncodedContent(form);
         }
 
         /// <summary>
-        /// Add query data to the evidence.
+        /// Get the evidence the cloud service accepts as form fields, each
+        /// named by its key without the prefix, so 'query.id.usage' gives
+        /// 'id.usage'. Where two keys give the same field, the one whose
+        /// prefix comes first in the order of the
+        /// <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/evidence.md">evidence specification</see>
+        /// is sent. A clash is logged as a warning unless the value sent is
+        /// 'query.' evidence, which is expected to replace the others.
         /// </summary>
-        /// <param name="queryData">
-        /// The destination dictionary to add query data to.
+        /// <param name="data">
+        /// The flow data holding the evidence.
         /// </param>
-        /// <param name="allEvidence">
-        /// All evidence in the flow data. This is used to report which 
-        /// evidence keys are conflicting.
-        /// </param>
-        /// <param name="evidence">
-        /// Evidence to add to the query Data.
-        /// </param>
-        private void AddQueryData(
-            Dictionary<string, string> queryData,
-            IReadOnlyDictionary<string, object> allEvidence,
-            IEnumerable<KeyValuePair<string, object>> evidence)
+        /// <returns>
+        /// The fields to add to the form.
+        /// </returns>
+        private IEnumerable<KeyValuePair<string, string>> GetEvidenceFields(
+            IFlowData data)
         {
-            foreach (var item in evidence)
+            // Reading the filter makes the evidence keys request again if
+            // it failed when the engine was built.
+            var filter = EvidenceKeyFilter;
+            var accepted = data.GetEvidence().AsDictionary()
+                .Where(e => filter?.Include(e.Key) == true)
+                .ToList();
+
+            // Lowest precedence first, so that each value replaces any
+            // already added for its field.
+            accepted.Sort((x, y) => ComparePrecedence(y.Key, x.Key));
+
+            var fields = new Dictionary<string, KeyValuePair<string, string>>(
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var item in accepted)
             {
-                // Get the key parts without allocating the string array
-                // that Split would create for every evidence entry.
-                int separatorIndex =
-                    item.Key.IndexOfAny(EVIDENCE_SEPARATOR_CHAR_ARRAY);
-                var prefix = separatorIndex >= 0
-                    ? item.Key.Substring(0, separatorIndex)
-                    : item.Key;
-                var suffix = separatorIndex >= 0
-                    ? item.Key.Substring(separatorIndex + 1)
-                    : item.Key;
+                var field = GetField(item.Key);
 
-                // Check and add the evidence to the query parameters.
-                if (queryData.ContainsKey(suffix) == false)
+                // Evidence named as one of these would put a second field
+                // of that name beside the engine's own, with no way to tell
+                // which one applied.
+                if (ENGINE_FIELDS.Contains(field))
                 {
-                    queryData.Add(suffix, item.Value.ToString());
+                    continue;
                 }
-                // If the queryParameter exists already...
-                else
-                {
-                    // Get the conflicting pieces of evidence and then log a 
-                    // warning, if the evidence prefix is not query. Otherwise
-                    // a warning is not needed as query evidence is expected 
-                    // to overwrite any existing evidence with the same suffix.
-                    if (prefix.Equals(Core.Constants.EVIDENCE_QUERY_PREFIX, 
-                        StringComparison.InvariantCultureIgnoreCase) == false)
-                    {
-                        var oldValue = queryData[suffix];
-                        var conflicts = allEvidence
-                            .Where(e => e.Key != item.Key)
-                            .Where(e => e.Key.EndsWith(suffix, 
-                                StringComparison.InvariantCultureIgnoreCase))
-                            .Select(e => $"{e.Key}={e.Value}");
 
-                        Logger?.LogWarning(
-                            $"'{item.Key}={item.Value}' evidence conflicts " +
-                            $"with '{string.Join("', '", conflicts)}'");
-                    }
-                    // Overwrite the existing queryParameter value.
-                    queryData[suffix] = item.Value.ToString();
+                if (fields.ContainsKey(field) &&
+                    HasPrefix(item.Key, Core.Constants.EVIDENCE_QUERY_PREFIX)
+                        == false)
+                {
+                    var conflicts = accepted
+                        .Where(e => e.Key != item.Key)
+                        .Where(e => e.Key.EndsWith(field,
+                            StringComparison.OrdinalIgnoreCase))
+                        .Select(e => $"{e.Key}={e.Value}");
+
+                    Logger?.LogWarning(
+                        $"'{item.Key}={item.Value}' evidence conflicts " +
+                        $"with '{string.Join("', '", conflicts)}'");
+                }
+                fields[field] = new KeyValuePair<string, string>(
+                    field, item.Value.ToString());
+            }
+            return fields.Values;
+        }
+
+        /// <summary>
+        /// Compare two evidence keys so that the key whose value is sent
+        /// comes first. Keys are ranked by the position of their prefix in
+        /// <see cref="EVIDENCE_PREFIX_PRECEDENCE"/>, and any other prefix,
+        /// or none, ranks after those. Keys of equal rank are in
+        /// alphabetical order, compared in lower case.
+        /// </summary>
+        private static int ComparePrecedence(string x, string y)
+        {
+            var result = GetPrefixRank(x).CompareTo(GetPrefixRank(y));
+            if (result != 0)
+            {
+                return result;
+            }
+            var length = Math.Min(x.Length, y.Length);
+            for (var i = 0; i < length; i++)
+            {
+                result = char.ToLowerInvariant(x[i]).CompareTo(
+                    char.ToLowerInvariant(y[i]));
+                if (result != 0)
+                {
+                    return result;
                 }
             }
+            result = x.Length.CompareTo(y.Length);
+            return result != 0 ? result : string.CompareOrdinal(x, y);
+        }
+
+        /// <summary>
+        /// The position of the key's prefix in
+        /// <see cref="EVIDENCE_PREFIX_PRECEDENCE"/>, or the length of that
+        /// list when the key has any other prefix or none.
+        /// </summary>
+        private static int GetPrefixRank(string key)
+        {
+            for (var rank = 0; rank < EVIDENCE_PREFIX_PRECEDENCE.Length; rank++)
+            {
+                if (HasPrefix(key, EVIDENCE_PREFIX_PRECEDENCE[rank]))
+                {
+                    return rank;
+                }
+            }
+            return EVIDENCE_PREFIX_PRECEDENCE.Length;
+        }
+
+        /// <summary>
+        /// Check that the part of the key before its first separator is the
+        /// prefix given, ignoring case.
+        /// </summary>
+        private static bool HasPrefix(string key, string prefix)
+        {
+            // Compare in place, avoiding the string array that Split
+            // allocates for every evidence entry.
+            var separatorIndex = key.IndexOfAny(EVIDENCE_SEPARATOR_CHAR_ARRAY);
+            return separatorIndex == prefix.Length &&
+                string.Compare(key, 0, prefix, 0, separatorIndex,
+                    StringComparison.OrdinalIgnoreCase) == 0;
+        }
+
+        /// <summary>
+        /// The key without its prefix, being everything after the first
+        /// separator. A key with no separator is its own field.
+        /// </summary>
+        private static string GetField(string key)
+        {
+            var separatorIndex = key.IndexOfAny(EVIDENCE_SEPARATOR_CHAR_ARRAY);
+            return separatorIndex >= 0
+                ? key.Substring(separatorIndex + 1)
+                : key;
         }
 
         /// <summary>
