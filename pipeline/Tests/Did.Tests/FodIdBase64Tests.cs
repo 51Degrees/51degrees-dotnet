@@ -25,6 +25,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Owid.Client;
 using System;
 using System.Linq;
+using System.Text;
 using static FiftyOne.Did.Tests.FodIdTestFactory;
 
 namespace FiftyOne.Did.Tests
@@ -62,6 +63,56 @@ namespace FiftyOne.Did.Tests
             }
             throw new InvalidOperationException(
                 "No signed envelope contained both + and / in 100 tries.");
+        }
+
+        /// <summary>
+        /// The standard text, and the URL-safe text with and without its
+        /// padding.
+        /// </summary>
+        private static string[] Forms(string standard)
+        {
+            var urlSafe = standard.Replace('+', '-').Replace('/', '_');
+            return new[] { standard, urlSafe, urlSafe.TrimEnd('=') };
+        }
+
+        /// <summary>
+        /// The text with the white space put in at a number of points
+        /// spread evenly through it.
+        /// </summary>
+        private static string Spaced(string text, string space, int count)
+        {
+            var spaced = new StringBuilder(text);
+            for (var point = count; point >= 1; point--)
+            {
+                spaced.Insert(text.Length * point / (count + 1), space);
+            }
+            return spaced.ToString();
+        }
+
+        /// <summary>
+        /// The text with each white space character written as its code,
+        /// so a failure message shows where it is.
+        /// </summary>
+        private static string Show(string text) => string.Concat(
+            text.Select(c => char.IsWhiteSpace(c)
+                ? $"\\u{(int)c:X4}"
+                : c.ToString()));
+
+        /// <summary>
+        /// Checks that both readers refuse the text as invalid base64, and
+        /// that the step they share gives nothing for it.
+        /// </summary>
+        private static void AssertInvalidBase64(string text)
+        {
+            Assert.IsFalse(
+                FodId.TryParse(text, out var fodId, out var status),
+                $"Parsed {Show(text)}");
+            Assert.IsNull(fodId);
+            Assert.AreEqual(
+                FodIdParseStatus.InvalidBase64, status, Show(text));
+            Assert.ThrowsExactly<FormatException>(
+                () => FodId.FromBase64(text));
+            Assert.IsNull(FodId.NormaliseBase64(text), Show(text));
         }
 
         [TestMethod]
@@ -118,6 +169,8 @@ namespace FiftyOne.Did.Tests
         [DataRow("-_", "+/==")]
         [DataRow("+/==", "+/==")]
         [DataRow("", "")]
+        [DataRow(" YQ\n", "YQ==")]
+        [DataRow("　-_　", "+/==")]
         public void NormaliseBase64_RestoresAlphabetAndPadding(
             string input, string expected)
         {
@@ -128,6 +181,72 @@ namespace FiftyOne.Did.Tests
         public void NormaliseBase64_NullGivesNull()
         {
             Assert.IsNull(FodId.NormaliseBase64(null));
+        }
+
+        [TestMethod]
+        [DataRow("YW Jj")]
+        [DataRow("YW\tJj")]
+        [DataRow("YW\r\nJj")]
+        [DataRow("YW Jj")]
+        [DataRow("+_")]
+        [DataRow("-/")]
+        [DataRow("+-")]
+        [DataRow("/_")]
+        public void NormaliseBase64_WhiteSpaceInsideOrBothAlphabets_GivesNull(
+            string input)
+        {
+            Assert.IsNull(FodId.NormaliseBase64(input), Show(input));
+        }
+
+        [TestMethod]
+        [DataRow(" ", "\n")]
+        [DataRow("\t", "\r\n")]
+        [DataRow(" ", " ")]
+        [DataRow("　", "　")]
+        public void TryParse_WhiteSpaceAroundTheText_Parses(
+            string before, string after)
+        {
+            var standard = StandardWithBothSpecials();
+            foreach (var text in Forms(standard))
+            {
+                var surrounded = before + text + after;
+                Assert.IsTrue(
+                    FodId.TryParse(surrounded, out var fodId, out var status),
+                    $"{status} for {Show(surrounded)}");
+                Assert.AreEqual(standard, fodId!.AsBase64());
+            }
+        }
+
+        [TestMethod]
+        [DataRow(" ", 1)]
+        [DataRow(" ", 2)]
+        [DataRow(" ", 3)]
+        [DataRow("\t", 4)]
+        [DataRow("\r\n", 2)]
+        [DataRow(" ", 4)]
+        [DataRow("　", 1)]
+        public void TryParse_WhiteSpaceInsideTheText_InvalidBase64(
+            string space, int count)
+        {
+            foreach (var text in Forms(StandardWithBothSpecials()))
+            {
+                AssertInvalidBase64(Spaced(text, space, count));
+            }
+        }
+
+        [TestMethod]
+        [DataRow(false, '+', '-')]
+        [DataRow(false, '/', '_')]
+        [DataRow(true, '-', '+')]
+        [DataRow(true, '_', '/')]
+        public void TryParse_BothAlphabets_InvalidBase64(
+            bool urlSafe, char from, char to)
+        {
+            var standard = StandardWithBothSpecials();
+            var text = urlSafe ? FodId.ToBase64Url(standard) : standard;
+            var index = text.IndexOf(from);
+            AssertInvalidBase64(
+                text.Substring(0, index) + to + text.Substring(index + 1));
         }
 
         [TestMethod]
