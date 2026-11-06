@@ -1,5 +1,7 @@
 # 51Degrees Identifier (51Did) cloud engine
 
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious")
+
 [![NuGet](https://img.shields.io/nuget/v/FiftyOne.Did.Cloud)](https://www.nuget.org/packages/FiftyOne.Did.Cloud)
 [![License](https://img.shields.io/badge/license-EUPL--1.2-blue)](https://github.com/51Degrees/51degrees-dotnet/blob/main/LICENSE)
 
