@@ -88,6 +88,13 @@ public class DidCloudEngineLiveEntitlementTests
     private const string AccessiblePropertiesUrl =
         "https://cloud.51degrees.com/api/v4/accessibleproperties";
 
+    /// <summary>
+    /// Seconds a request to the cloud service may take. The default of
+    /// 2 seconds is short for a first request from a machine that has
+    /// not yet connected to the service.
+    /// </summary>
+    private const int CloudTimeoutSeconds = 10;
+
     private static string? ResourceKey()
     {
         var key = Environment.GetEnvironmentVariable(ResourceKeyEnvVar);
@@ -178,6 +185,7 @@ public class DidCloudEngineLiveEntitlementTests
                 .AddFlowElement(new CloudRequestEngineBuilder(
                         loggerFactory, new HttpClient())
                     .SetResourceKey(key)
+                    .SetTimeOutSeconds(CloudTimeoutSeconds)
                     .Build())
                 .AddFlowElement(new DidCloudEngineBuilder(loggerFactory)
                     .Build())

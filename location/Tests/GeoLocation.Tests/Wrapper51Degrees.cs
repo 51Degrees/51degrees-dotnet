@@ -56,6 +56,7 @@ namespace FiftyOne.GeoLocation.Tests
 
             RequestEngine = new CloudRequestEngineBuilder(_logger, new HttpClient())
                 .SetResourceKey(resourceKey)
+                .SetTimeOutSeconds(Constants.CLOUD_TIMEOUT_SECONDS)
                 .Build();
             Engine = new GeoLocationCloudEngineBuilder(_logger)
                 .SetGeoLocationProvider("FiftyOneDegrees")

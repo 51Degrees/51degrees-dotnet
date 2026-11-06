@@ -45,6 +45,13 @@ namespace FiftyOne.DeviceDetection.Cloud.Tests
         /// </summary>
         private const string _legacy_resource_key_env_variable = "SUPER_RESOURCE_KEY";
 
+        /// <summary>
+        /// Seconds a request to the cloud service may take. The default of
+        /// 2 seconds is short for a first request from a machine that has
+        /// not yet connected to the service.
+        /// </summary>
+        private const int _cloud_timeout_seconds = 10;
+
         [TestInitialize]
         public void Init()
         {
@@ -75,6 +82,7 @@ namespace FiftyOne.DeviceDetection.Cloud.Tests
                 _pipeline = new DeviceDetectionPipelineBuilder(
                     new LoggerFactory(), new System.Net.Http.HttpClient())
                     .UseCloud(resourceKey)
+                    .SetCloudRequestTimeOutSeconds(_cloud_timeout_seconds)
                     .Build();
                 using (var data = _pipeline.CreateFlowData())
                 {
@@ -124,6 +132,7 @@ namespace FiftyOne.DeviceDetection.Cloud.Tests
                 _pipeline = new DeviceDetectionPipelineBuilder(
                     new LoggerFactory(), new System.Net.Http.HttpClient())
                     .UseCloud(resourceKey)
+                    .SetCloudRequestTimeOutSeconds(_cloud_timeout_seconds)
                     .SetCloudRequestOrigin(origin)
                     .Build();
                 using (var data = _pipeline.CreateFlowData())

@@ -57,6 +57,13 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             "{'Products': {'device': {'DataTier': 'tier','Properties': [{'Name': 'value','Type': 'String','Category': 'Device'}]}}}";
         private HttpStatusCode _accessiblePropertiesResponseStatus = HttpStatusCode.OK;
 
+        /// <summary>
+        /// Seconds a request to the cloud service may take. The default of
+        /// 2 seconds is short for a first request from a machine that has
+        /// not yet connected to the service.
+        /// </summary>
+        private const int _cloudTimeoutSeconds = 10;
+
 
         /// <summary>
         /// Test cloud request engine adds correct information to post request
@@ -1899,6 +1906,7 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                     _loggerFactory,
                     new HttpClient())
                     .SetResourceKey(resourceKey)
+                    .SetTimeOutSeconds(_cloudTimeoutSeconds)
                     .Build();
                 Assert.Fail("Expected exception did not occur");
             }
