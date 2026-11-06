@@ -144,7 +144,7 @@ just using `dotnet run` in the `OnPremise/Mixed/GettingStarted-API` directory fr
 
 The **Mixed examples** demonstrate how to combine Device Detection and IP Intelligence engines within a single application:
 
-- **Mixed/GettingStarted-Console**: A console application that processes both device detection (from User-Agent / User-Agent Client Hints) and IP intelligence (from IP address) in parallel using the 51Degrees Pipeline API.
+- **Mixed/GettingStarted-Console**: A console application that processes both device detection (from User-Agent / User-Agent Client Hints) and IP intelligence (from IP address), one after the other, using the 51Degrees Pipeline API.
 
 - **Mixed/GettingStarted-Web**: An ASP.NET Core web application featuring:
   - Combined device detection and IP intelligence results in a two-column layout
