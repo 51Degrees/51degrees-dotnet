@@ -465,11 +465,12 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
                 Array.Empty<Uri>(),
                 annotations: true);
 
-            StringAssert.Contains(text, "# N: Example crawler");
-            Assert.IsFalse(
-                text.Contains("NotCrawler"),
-                "A crawler with no product token must not appear anywhere "
-                + "in the file, comments included:\n" + text);
+            Assert.Contains("# N: Example crawler", text);
+            Assert.DoesNotContain(
+                "NotCrawler",
+                text,
+                "A crawler with no product token must not appear anywhere " +
+                "in the file, comments included");
         }
     }
 }
