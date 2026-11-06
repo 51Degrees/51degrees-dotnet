@@ -58,6 +58,12 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.MatchMetrics
         public class Example : ExampleBase
         {
             /// <summary>
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-matchmetrics-console-program.cs&utm_term=enterprise-data-file";
+
+            /// <summary>
             /// Builder used to create a Pipeline instance
             /// </summary>
             public DeviceDetectionPipelineBuilder PipelineBuilder { get; private set; }
@@ -123,7 +129,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.MatchMetrics
                     // in the device ID value.
                     //.SetProperty("BrowserName")
                     // If using the full on-premise data file this property will be
-                    // present in the data file. See https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-matchmetrics-console-program.cs&utm_term=run
+                    // present in the data file. Contact us for a copy at https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-matchmetrics-console-program.cs&utm_term=run
                     .SetProperty("HardwareName")
                     // Only use the predictive graph to better handle variances
                     // between the training data and the target User-Agent string.
@@ -250,6 +256,12 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.MatchMetrics
                             output.WriteLine();
 
                         }
+                    }
+
+                    if (ExampleUtils.IsLiteDataFile(
+                        pipeline.GetElement<DeviceDetectionHashEngine>()))
+                    {
+                        ExampleUtils.WriteEnterpriseOffer(output, ContactUs);
                     }
 
                     Logger.LogInformation("Finished Example");

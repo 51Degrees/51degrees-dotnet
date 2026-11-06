@@ -565,7 +565,7 @@ public class TestExamples
             Assert.Inconclusive(
                 "The combined example also requires a device detection data file " +
                 "(one of " +
-                $"'{string.Join("', '", Examples.Mixed.OnPremise.GettingStartedConsole.Constants.HASH_FILE_NAMES)}'). " +
+                $"'{string.Join("', '", HashFileNames)}'). " +
                 "It was not found. Supply it (CI fetches it as an asset) to run " +
                 "this test.");
         }
@@ -587,14 +587,23 @@ public class TestExamples
     }
 
     /// <summary>
-    /// Locate a device detection data file using the same candidate file names
-    /// and search the combined example itself uses. Returns null when none can
-    /// be found.
+    /// Device detection data file names, the fullest first, so that the test
+    /// of the combined example uses the Enterprise data file where CI has it.
+    /// </summary>
+    private static readonly string[] HashFileNames =
+    {
+        "TAC-HashV41.hash",
+        "51Degrees-EnterpriseV4.1.hash",
+        Examples.Mixed.OnPremise.GettingStartedConsole.Constants.LITE_HASH_FILE_NAME
+    };
+
+    /// <summary>
+    /// Locate a device detection data file, the fullest available. Returns
+    /// null when none can be found.
     /// </summary>
     private static string FindDeviceDataFile()
     {
-        foreach (var fileName in
-            Examples.Mixed.OnPremise.GettingStartedConsole.Constants.HASH_FILE_NAMES)
+        foreach (var fileName in HashFileNames)
         {
             var path = ExampleUtils.FindFile(fileName);
             if (string.IsNullOrWhiteSpace(path) == false)
