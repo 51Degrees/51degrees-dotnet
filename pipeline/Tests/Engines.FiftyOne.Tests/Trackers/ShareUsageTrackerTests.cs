@@ -39,6 +39,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
     {
 		private TimeSpan _interval;
 
+		/// <summary>
+		/// An interval longer than any test takes, for the tests that expect a
+		/// repeat to fall inside it however slowly the runner goes.
+		/// </summary>
+		private const int RepeatIntervalMinutes = 10;
+
 		private IEvidenceKeyFilter _evidenceKeyFilter;
 
 		private ShareUsageTracker _shareUsageTracker;
@@ -63,7 +69,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 					Builder = new LruPutCacheBuilder(),
 					Size = 1000
 				},
-				_interval,
+				TimeSpan.FromMinutes(RepeatIntervalMinutes),
 				_evidenceKeyFilter);
 
 			_evidenceData = new Dictionary<string, object>()
@@ -104,10 +110,18 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 		[TestMethod]
 		public void ShareUsageTracker_RepeatEvidence_AfterSessionTimeout()
 		{
+			var shareUsageTracker = new ShareUsageTracker(new CacheConfiguration()
+				{
+					Builder = new LruPutCacheBuilder(),
+					Size = 1000
+				},
+				_interval,
+				_evidenceKeyFilter);
+
 			int trackedEvents = 0;
 			for (var i = 0; i < 2; i++)
 			{
-				if (_shareUsageTracker.Track(_data.Object))
+				if (shareUsageTracker.Track(_data.Object))
 					trackedEvents++;
 
                 // Wait some time equal to the interval to elapse.
@@ -168,7 +182,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 				Builder = new LruPutCacheBuilder(),
 				Size = 1000
 			},
-			_interval,
+			TimeSpan.FromMinutes(RepeatIntervalMinutes),
 			evidenceKeyFilter);
 			
 			int trackedEvents = 0;
