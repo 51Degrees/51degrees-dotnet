@@ -5,7 +5,18 @@ param (
     [string]$Arch = "x64",
     [string]$BuildMethod = "dotnet",
     [string]$Version,
-    [string]$TestResourceKey
+    [string]$TestResourceKey,
+    # How deeply a pull request is tested, as select-options.ps1 chose.
+    # standard leaves out the IP Intelligence on-premise example tests, which
+    # load the Enterprise data file. Empty, for the branch itself or a
+    # release, runs them all.
+    [string]$Depth,
+    # False, from select-options.ps1, unless the pull request changes the web
+    # integration or the web examples.
+    [bool]$WebExamples = $true,
+    # False, from select-options.ps1, on every entry of a pull request but
+    # one, so the browser contract runs once.
+    [bool]$SeleniumContract = $true
 )
 $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
@@ -30,13 +41,19 @@ if ($env:FIFTYONE_TEST_FILTER) {
 # Every example test project is SDK-style, so dotnet test runs them on every
 # platform. The host is picked from the assembly's platform, which the
 # on-premise example test projects set, so an x86 build loads its x86 library.
-# They run in parallel lanes, which ci/run-test-lanes.ps1 describes.
+# They run in parallel lanes, which ci/run-test-lanes.ps1 describes, less
+# those a pull request's depth leaves out.
+$Exclude = @(
+    if ($Depth -eq 'standard') { '^FiftyOne\.IpIntelligence\.Example\.Tests\.OnPremise\.dll$' }
+    if (-not $WebExamples) { '^FiftyOne\.DeviceDetection\.Example\.Tests\.Web\.' }
+) -join '|'
 & "$PSScriptRoot/run-test-lanes.ps1" `
     -RepoName $RepoName `
     -Name $Name `
     -Configuration $Configuration `
     -BlameHangTimeout "20m" `
     -Filter $Filter `
+    -Exclude $Exclude `
     -OutputFolder "integration"
 if ($LASTEXITCODE -ne 0) {
     throw "The example tests failed."
@@ -45,6 +62,10 @@ if ($LASTEXITCODE -ne 0) {
 # The shared Selenium contract tests, run against the device detection web
 # examples. Lite data has neither the DeviceType property nor the JavaScript
 # properties the contract needs, so on-premise runs only with the TAC file.
+if (-not $SeleniumContract) {
+    Write-Host "Another entry runs the Selenium contract for this pull request."
+    return
+}
 if ($IsLinux -and $Arch -eq 'arm64') {
     Write-Host "::warning title=Selenium skipped::No selenium-manager build for linux-arm64. The contract runs on x64 and macOS."
     return

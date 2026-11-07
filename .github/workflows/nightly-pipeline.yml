@@ -16,51 +16,9 @@ on:
   #   - cron: '0 1 * * *'
 
 jobs:
-  PackageUpdate:
-    name: Nightly Package Update
-    uses: 51Degrees/common-ci/.github/workflows/nightly-package-update.yml@main
-    with:
-      repo-name: ${{ github.event.repository.name }}
-      org-name: ${{ github.event.repository.owner.login }}
-      dryrun: ${{ inputs.dryrun || false }}
-    secrets:
-      token: ${{ secrets.ACCESS_TOKEN }}
-
-  SubmoduleUpdate:
-    name: Nightly Submodule Update
-    uses: 51Degrees/common-ci/.github/workflows/nightly-submodule-update.yml@main
-    with:
-      repo-name: ${{ github.event.repository.name }}
-      org-name: ${{ github.event.repository.owner.login }}
-      dryrun: ${{ inputs.dryrun || false }}
-    secrets:
-      token: ${{ secrets.ACCESS_TOKEN }}
-
-  PullRequests:
-    if: ${{ !cancelled() }}
-    needs: [PackageUpdate, SubmoduleUpdate]
-    name: Nightly Pull Requests
-    uses: 51Degrees/common-ci/.github/workflows/nightly-pull-requests.yml@main
-    with:
-      repo-name: ${{ github.event.repository.name }}
-      org-name: ${{ github.event.repository.owner.login }}
-      dryrun: ${{ inputs.dryrun || false }}
-      cache-assets: true
-    secrets:
-      token: ${{ secrets.ACCESS_TOKEN }}
-      StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
-      DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
-      DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}
-      IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
-      TestResourceKey: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
-      AcceptCHBrowserKey: ${{ secrets.ACCEPTCH_BROWSER_KEY }}
-      AcceptCHHardwareKey: ${{ secrets.ACCEPTCH_HARDWARE_KEY }}
-      AcceptCHPlatformKey: ${{ secrets.ACCEPTCH_PLATFORM_KEY }}
-      AcceptCHNoneKey: ${{ secrets.ACCEPTCH_NONE_KEY }}
-
+  # The publish builds main, which the pull requests into rc do not change, so
+  # it runs first and has the runners before the pull request builds do.
   Publish:
-    if: ${{ !cancelled() }}
-    needs: PullRequests
     name: Nightly Publish
     uses: 51Degrees/common-ci/.github/workflows/nightly-publish.yml@main
     with:
@@ -86,3 +44,47 @@ jobs:
       CodeSigningKeyVaultTenantId: ${{ secrets.CODE_SIGNING_KEY_VAULT_TENANT_ID }}
       CodeSigningKeyVaultClientSecret: ${{ secrets.CODE_SIGNING_KEY_VAULT_CLIENT_SECRET }}
       CodeSigningKeyVaultCertificateName: ${{ secrets.CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME }}
+
+  PackageUpdate:
+    name: Nightly Package Update
+    uses: 51Degrees/common-ci/.github/workflows/nightly-package-update.yml@main
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      dryrun: ${{ inputs.dryrun || false }}
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+
+  SubmoduleUpdate:
+    name: Nightly Submodule Update
+    uses: 51Degrees/common-ci/.github/workflows/nightly-submodule-update.yml@main
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      dryrun: ${{ inputs.dryrun || false }}
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+
+  PullRequests:
+    if: ${{ !cancelled() }}
+    needs: [Publish, PackageUpdate, SubmoduleUpdate]
+    name: Nightly Pull Requests
+    uses: 51Degrees/common-ci/.github/workflows/nightly-pull-requests.yml@main
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      dryrun: ${{ inputs.dryrun || false }}
+      cache-assets: true
+      # One configuration that fails does not cancel the others.
+      fail-fast: false
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+      StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
+      DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
+      DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}
+      IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
+      TestResourceKey: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
+      AcceptCHBrowserKey: ${{ secrets.ACCEPTCH_BROWSER_KEY }}
+      AcceptCHHardwareKey: ${{ secrets.ACCEPTCH_HARDWARE_KEY }}
+      AcceptCHPlatformKey: ${{ secrets.ACCEPTCH_PLATFORM_KEY }}
+      AcceptCHNoneKey: ${{ secrets.ACCEPTCH_NONE_KEY }}
