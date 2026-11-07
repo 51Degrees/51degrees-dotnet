@@ -29,14 +29,16 @@ using System.Collections.Generic;
 namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
 {
     /// <summary>
-    /// This filter is used by the <see cref="ShareUsageElement"/>.
-    /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
+    /// Decides which of the evidence the <see cref="ShareUsageElement"/>
+    /// finds is shared.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/usage-sharing-element.md#shared-evidence">Specification</see>
     /// </summary>
     /// <remarks>
-    /// As this filter is generally inclusive, it will often cause far more
-    /// evidence to be passed into a pipeline than the engine-specific 
-    /// filters, which tend to be based on a list of values to include such as
-    /// <see cref="EvidenceKeyFilterWhitelist"/>.
+    /// This filter is not the element's
+    /// <see cref="ShareUsageBase.EvidenceKeyFilter"/>, which accepts no
+    /// evidence. It is generally inclusive, so as an element's filter it
+    /// would put far more evidence into a pipeline than the elements need,
+    /// and every cache key and ETag would depend on it.
     /// </remarks>
     public class EvidenceKeyFilterShareUsage : IEvidenceKeyFilter
     {
@@ -224,6 +226,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
             if(key == null)
             {
                 throw new ArgumentNullException(nameof(key));
+            }
+
+            // The web request itself is never shared, only the values read
+            // from it.
+            if (ShareUsageEvidence.IsRequestKey(key))
+            {
+                return false;
             }
 
             // The keys listed in _neverSharedEvidenceKeys must never leave
