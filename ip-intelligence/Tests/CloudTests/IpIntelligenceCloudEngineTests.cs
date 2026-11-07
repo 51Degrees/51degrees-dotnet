@@ -35,6 +35,9 @@ namespace FiftyOne.IpIntelligence.Cloud.Tests
         private const string _resource_key_env_variable = "_51DEGREES_RESOURCE_KEY";
         private const string _legacy_resource_key_env_variable = "51D_RESOURCE_KEY";
         private const string _super_resource_key_env_variable = "SUPER_RESOURCE_KEY";
+        // The default of 2 seconds is short for a first request from a
+        // machine that has not yet connected to the cloud service.
+        private const int _cloud_timeout_seconds = 10;
 
         [TestInitialize]
         public void Init()
@@ -64,6 +67,7 @@ namespace FiftyOne.IpIntelligence.Cloud.Tests
                 _pipeline = new IpiPipelineBuilder(
                     new LoggerFactory(), new System.Net.Http.HttpClient())
                     .UseCloud(resourceKey)
+                    .SetCloudRequestTimeOutSeconds(_cloud_timeout_seconds)
                     .Build();
                 var data = _pipeline.CreateFlowData();
                 data.AddEvidence("query.client-ip-51d",

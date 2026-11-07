@@ -67,6 +67,12 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
         public class Example : ExampleBase
         {
             /// <summary>
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-metadata-console-program.cs&utm_term=enterprise-data-file";
+
+            /// <summary>
             /// Extracts the metadata from the data file via the engine.
             /// </summary>
             /// <param name="dataFile">
@@ -110,6 +116,10 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
                     OutputProfileDetails(ddEngine, output);
                     OutputEvidenceKeyDetails(ddEngine, output);
 
+                    if (ExampleUtils.IsLiteDataFile(ddEngine))
+                    {
+                        ExampleUtils.WriteEnterpriseOffer(output, ContactUs);
+                    }
                     ExampleUtils.CheckDataFile(ddEngine, loggerFactory.CreateLogger<Program>());
                 }
             }
@@ -227,7 +237,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
         }
 
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             // Use the supplied path for the data file or find the lite file that is included
             // in the repository.
@@ -236,8 +246,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
                 // project space, or you may specify another file as a command line parameter.
                 //
                 // Note that the Lite data file contains a more limited set of properties than the
-                // Enterprise data file. Find out about the Enterprise data file on our pricing page:
-                // https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=main
+                // Enterprise data file. Contact us for a copy of the Enterprise data file:
+                // https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=main
                 ExampleUtils.FindDataFile(Constants.LITE_HASH_DATA_FILE_NAME);
 
             // Configure a logger to output to the console.

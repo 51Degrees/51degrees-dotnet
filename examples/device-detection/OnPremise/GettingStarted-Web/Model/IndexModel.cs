@@ -24,6 +24,7 @@ using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Engines.Data;
 using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -82,10 +83,15 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedWeb.Model
             // Use helper functions to get a human-readable string representation of various
             // property values. These helpers handle situations such as the property missing
             // due to using a lite data file or the property not having a value because device
-            // detection didn't find a match.
-            HardwareVendor = deviceData.TryGetValue(d => d.HardwareVendor.GetHumanReadable());
-            HardwareName = deviceData.TryGetValue(d => d.HardwareName.GetHumanReadable());
-            DeviceType = deviceData.TryGetValue(d => d.DeviceType.GetHumanReadable());
+            // detection didn't find a match. Only the Enterprise data file has the hardware,
+            // device type and price band properties, so with the free Lite data file they
+            // are shown as needing it.
+            HardwareVendor = EnterpriseValue(nameof(IDeviceData.HardwareVendor),
+                () => deviceData.TryGetValue(d => d.HardwareVendor.GetHumanReadable()));
+            HardwareName = EnterpriseValue(nameof(IDeviceData.HardwareName),
+                () => deviceData.TryGetValue(d => d.HardwareName.GetHumanReadable()));
+            DeviceType = EnterpriseValue(nameof(IDeviceData.DeviceType),
+                () => deviceData.TryGetValue(d => d.DeviceType.GetHumanReadable()));
             PlatformVendor = deviceData.TryGetValue(d => d.PlatformVendor.GetHumanReadable());
             PlatformName = deviceData.TryGetValue(d => d.PlatformName.GetHumanReadable());
             PlatformVersion = deviceData.TryGetValue(d => d.PlatformVersion.GetHumanReadable());
@@ -95,7 +101,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedWeb.Model
             ScreenWidth = deviceData.TryGetValue(d => d.ScreenPixelsWidth.GetHumanReadable());
             ScreenHeight = deviceData.TryGetValue(d => d.ScreenPixelsHeight.GetHumanReadable());
             DeviceId = deviceData.TryGetValue(d => d.DeviceId.GetHumanReadable());
-            PriceBand = deviceData.TryGetValue(d => d.PriceBand.GetHumanReadable());
+            PriceBand = EnterpriseValue(nameof(IDeviceData.PriceBand),
+                () => deviceData.TryGetValue(d => d.PriceBand.GetHumanReadable()));
 
             // IsHeadless, HasWebDriver and IsVisible are newer properties that the
             // generated IDeviceData interface does not expose yet, so they are read
@@ -103,10 +110,24 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedWeb.Model
             // data file holds before any JavaScript has run. The values shown after
             // the client-side callback, and on a reload of this page, are the ones
             // the browser reported through the 51D_HasWebDriver and 51D_IsVisible
-            // cookies.
-            IsHeadless = deviceData.GetHumanReadableByName("IsHeadless");
-            HasWebDriver = deviceData.GetHumanReadableByName("HasWebDriver");
-            IsVisible = deviceData.GetHumanReadableByName("IsVisible");
+            // cookies. They are also only in the Enterprise data file.
+            IsHeadless = EnterpriseValue("IsHeadless",
+                () => deviceData.GetHumanReadableByName("IsHeadless"));
+            HasWebDriver = EnterpriseValue("HasWebDriver",
+                () => deviceData.GetHumanReadableByName("HasWebDriver"));
+            IsVisible = EnterpriseValue("IsVisible",
+                () => deviceData.GetHumanReadableByName("IsVisible"));
+        }
+
+        /// <summary>
+        /// The value of a property only the Enterprise data file has, or that
+        /// it needs the Enterprise data file when the data file in use does
+        /// not have it.
+        /// </summary>
+        private string EnterpriseValue(string property, Func<string> value)
+        {
+            return ExampleUtils.HasProperty(Engine, property) ?
+                value() : ExampleUtils.NEEDS_ENTERPRISE;
         }
     }
 }

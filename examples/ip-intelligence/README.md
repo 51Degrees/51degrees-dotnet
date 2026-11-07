@@ -1,4 +1,6 @@
-# ![51Degrees](https://51degrees.com/img/logo.png?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=top "Data rewards the curious") IP Intelligence Engine Examples
+# IP Intelligence Engine Examples
+
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious")
 
 This repository contains the examples for [[ip-intelligence-dotnet](https://github.com/51Degrees/51degrees-dotnet/tree/main/ip-intelligence)].
 
@@ -144,7 +146,7 @@ just using `dotnet run` in the `OnPremise/Mixed/GettingStarted-API` directory fr
 
 The **Mixed examples** demonstrate how to combine Device Detection and IP Intelligence engines within a single application:
 
-- **Mixed/GettingStarted-Console**: A console application that processes both device detection (from User-Agent / User-Agent Client Hints) and IP intelligence (from IP address) in parallel using the 51Degrees Pipeline API.
+- **Mixed/GettingStarted-Console**: A console application that processes both device detection (from User-Agent / User-Agent Client Hints) and IP intelligence (from IP address), one after the other, using the 51Degrees Pipeline API.
 
 - **Mixed/GettingStarted-Web**: An ASP.NET Core web application featuring:
   - Combined device detection and IP intelligence results in a two-column layout

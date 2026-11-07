@@ -64,10 +64,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// The content of HTTP headers in this array will not be included in 
         /// the request information sent to 51degrees.
         /// Any header names added here are hard-coded to be blocked
-        /// regardless of the settings passed to the constructor.
+        /// regardless of the settings passed to the constructor. 'cookie' is
+        /// the header that carries every cookie, including the ones this
+        /// filter leaves out.
         /// </summary>
         private HashSet<string> _blockedHttpHeaders = new HashSet<string>()
         {
+            "cookie",
             "cookies"
         };
 

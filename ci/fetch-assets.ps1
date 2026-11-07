@@ -41,8 +41,9 @@ if ($IpIntelligenceUrl) {
 
 # The free files the tests and examples read. The data repository's script
 # keeps the ones copied in above and downloads the rest, which include the
-# Asn file the IP Intelligence tests use.
-pwsh -NoProfile -File "$data/get-data-files.ps1" "51Degrees-LiteV4.1.hash" "20000 Evidence Records.yml" "20000 User Agents.csv" "51Degrees-IPIV4AsnIpiV41.ipi"
+# Asn file the IP Intelligence tests use, and the Lite file that the IP
+# Intelligence examples use when they are run with no settings.
+pwsh -NoProfile -File "$data/get-data-files.ps1" "51Degrees-LiteV4.1.hash" "20000 Evidence Records.yml" "20000 User Agents.csv" "51Degrees-IPIV4AsnIpiV41.ipi" "51Degrees-LiteV41.ipi"
 if ($LASTEXITCODE -ne 0) {
     throw "The data repository's script did not download every free data file."
 }

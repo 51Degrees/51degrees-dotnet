@@ -137,20 +137,21 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         /// </summary>
         /// <param name="protocol">The protocol to use (http / https)</param>
         /// <returns></returns>
+        /// <exception cref="PipelineConfigurationException">
+        /// Thrown if <paramref name="protocol"/> is neither http nor https,
+        /// ignoring the case of ASCII letters only.
+        /// </exception>
         [DefaultValue(Constants.BUILDER_DEFAULT_PROTOCOL)]
         public JavaScriptBuilderElementBuilder SetProtocol(string protocol)
         {
-            if (string.Equals(protocol, "http", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(protocol, "https", StringComparison.OrdinalIgnoreCase))
-            {
-                Protocol = protocol;
-            }
-            else
+            if (CallbackUrl.IsScheme(protocol) == false)
             {
                 throw new PipelineConfigurationException(
-                    $"Invalid protocol in configuration ({protocol}), " +
-                    $"must be 'http' or https'");
+                    string.Format(CultureInfo.InvariantCulture,
+                        Messages.ExceptionProtocolInvalid,
+                        protocol));
             }
+            Protocol = protocol;
             return this;
         }
 

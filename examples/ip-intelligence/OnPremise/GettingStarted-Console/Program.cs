@@ -52,8 +52,11 @@ using System.Text;
 ///
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/GettingStarted-Console/Program.cs).
 ///
-/// This example requires an enterprise IP Intelligence data file (.ipi).
-/// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-gettingstarted-console-program.cs&amp;utm_term=header).
+/// By default the example uses the free Lite IP Intelligence data file, which it downloads when
+/// it is missing. The Lite file has the registration properties, and the example shows each of
+/// the others as needing the Enterprise data file, which adds the location, range and
+/// connection properties and the country translations. To obtain an enterprise data file for
+/// testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-gettingstarted-console-program.cs&amp;utm_term=header).
 ///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
@@ -64,10 +67,34 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedConsole
     {
         public class Example : ExampleBase
         {
+            /// <summary>
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-ip-intelligence-onpremise-gettingstarted-console-program.cs&utm_term=enterprise-data-file";
+
+            /// <summary>
+            /// The engine, which says which properties the data file has.
+            /// </summary>
+            private IpiOnPremiseEngine _engine;
+
+            /// <summary>
+            /// True when the pipeline has the translation engines.
+            /// </summary>
+            private bool _translates;
+
+            /// <summary>
+            /// True once the example has shown a property that the data file
+            /// in use does not have.
+            /// </summary>
+            private bool _needsEnterprise;
+
             public void Run(string dataFile, ILoggerFactory loggerFactory, TextWriter output)
             {
+                _needsEnterprise = false;
+
                 // Create IP Intelligence engine
-                var ipEngine = new IpiOnPremiseEngineBuilder(loggerFactory)
+                _engine = new IpiOnPremiseEngineBuilder(loggerFactory)
                     // LowMemory keeps the large IP Intelligence data file on disk
                     // instead of loading it entirely into memory.
                     .SetPerformanceProfile(PerformanceProfiles.LowMemory)
@@ -75,18 +102,23 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedConsole
                     .SetDataFileSystemWatcher(false)
                     .Build(dataFile, false);
 
-                // Create translation engines
-                var codeTranslationEngine = new CountryCodeTranslationEngineBuilder(loggerFactory)
-                    .Build();
-                var countriesTranslationEngine = new CountriesTranslationEngineBuilder(loggerFactory)
-                    .Build();
-
-                // Build pipeline - translation engines must come after ipEngine
-                using (var pipeline = new PipelineBuilder(loggerFactory)
-                    .AddFlowElement(ipEngine)
-                    .AddFlowElement(codeTranslationEngine)
-                    .AddFlowElement(countriesTranslationEngine)
-                    .Build())
+                // Build pipeline - translation engines must come after the IP
+                // Intelligence engine. They translate the country codes, which
+                // only the Enterprise data file has, so they are only added
+                // when the data file has them.
+                var builder = new PipelineBuilder(loggerFactory)
+                    .AddFlowElement(_engine);
+                _translates = ExampleUtils.HasProperty(
+                    _engine, "CountryCodesGeographical");
+                if (_translates)
+                {
+                    builder
+                        .AddFlowElement(new CountryCodeTranslationEngineBuilder(loggerFactory)
+                            .Build())
+                        .AddFlowElement(new CountriesTranslationEngineBuilder(loggerFactory)
+                            .Build());
+                }
+                using (var pipeline = builder.Build())
                 {
                     // IPs near country borders that produce multi-country weighted results
                     var borderIps = new List<Dictionary<string, object>>
@@ -103,6 +135,10 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedConsole
                         AnalyseEvidence(evidence, pipeline, output);
                     }
 
+                    if (_needsEnterprise)
+                    {
+                        ExampleUtils.WriteEnterpriseNote(output, ContactUs);
+                    }
                     ExampleUtils.CheckDataFile(pipeline, loggerFactory.CreateLogger<Program>());
                 }
             }
@@ -145,53 +181,86 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedConsole
                     // can get by asking for a result matching the `IIpIntelligenceData` interface.
                     var ipData = data.Get<IIpIntelligenceData>();
 
-                    // Output all the properties
-                    OutputProperty(nameof(ipData.RegisteredName), ipData.RegisteredName, message);
-                    OutputProperty(nameof(ipData.RegisteredOwner), ipData.RegisteredOwner, message);
-                    OutputProperty(nameof(ipData.RegisteredCountry), ipData.RegisteredCountry, message);
-                    OutputProperty(nameof(ipData.IpRangeStart), ipData.IpRangeStart, message);
-                    OutputProperty(nameof(ipData.IpRangeEnd), ipData.IpRangeEnd, message);
-                    OutputProperty(nameof(ipData.Country), ipData.Country, message);
-                    OutputProperty(nameof(ipData.CountryCode), ipData.CountryCode, message);
-                    OutputProperty(nameof(ipData.CountryCode3), ipData.CountryCode3, message);
-                    OutputProperty(nameof(ipData.Region), ipData.Region, message);
-                    OutputProperty(nameof(ipData.State), ipData.State, message);
-                    OutputProperty(nameof(ipData.Town), ipData.Town, message);
-                    OutputProperty(nameof(ipData.Latitude), ipData.Latitude, message);
-                    OutputProperty(nameof(ipData.Longitude), ipData.Longitude, message);
-                    OutputProperty(nameof(ipData.Areas), ipData.Areas, message);
-                    OutputProperty(nameof(ipData.AccuracyRadiusMin), ipData.AccuracyRadiusMin, message);
-                    OutputProperty(nameof(ipData.TimeZoneOffset), ipData.TimeZoneOffset, message);
+                    // Output all the properties. The free Lite data file has the
+                    // first three, and only the Enterprise data file has the rest.
+                    OutputProperty(nameof(ipData.RegisteredName), () => ipData.RegisteredName, message);
+                    OutputProperty(nameof(ipData.RegisteredOwner), () => ipData.RegisteredOwner, message);
+                    OutputProperty(nameof(ipData.RegisteredCountry), () => ipData.RegisteredCountry, message);
+                    OutputProperty(nameof(ipData.IpRangeStart), () => ipData.IpRangeStart, message);
+                    OutputProperty(nameof(ipData.IpRangeEnd), () => ipData.IpRangeEnd, message);
+                    OutputProperty(nameof(ipData.Country), () => ipData.Country, message);
+                    OutputProperty(nameof(ipData.CountryCode), () => ipData.CountryCode, message);
+                    OutputProperty(nameof(ipData.CountryCode3), () => ipData.CountryCode3, message);
+                    OutputProperty(nameof(ipData.Region), () => ipData.Region, message);
+                    OutputProperty(nameof(ipData.State), () => ipData.State, message);
+                    OutputProperty(nameof(ipData.Town), () => ipData.Town, message);
+                    OutputProperty(nameof(ipData.Latitude), () => ipData.Latitude, message);
+                    OutputProperty(nameof(ipData.Longitude), () => ipData.Longitude, message);
+                    OutputProperty(nameof(ipData.Areas), () => ipData.Areas, message);
+                    OutputProperty(nameof(ipData.AccuracyRadiusMin), () => ipData.AccuracyRadiusMin, message);
+                    OutputProperty(nameof(ipData.TimeZoneOffset), () => ipData.TimeZoneOffset, message);
 
                     // Output weighted country code properties
                     OutputWeightedList(
                         nameof(ipData.CountryCodesGeographical),
-                        ipData.CountryCodesGeographical,
+                        () => ipData.CountryCodesGeographical,
                         message);
                     OutputWeightedList(
                         nameof(ipData.CountryCodesPopulation),
-                        ipData.CountryCodesPopulation,
+                        () => ipData.CountryCodesPopulation,
                         message);
 
                     // Output complete country code lists from the CountriesTranslationEngine
-                    var translationData = data.Get<ICountriesTranslationData>();
-                    OutputList(
-                        nameof(translationData.CountryCodesGeographicalAll),
-                        translationData.CountryCodesGeographicalAll,
-                        message);
-                    OutputList(
-                        nameof(translationData.CountryCodesPopulationAll),
-                        translationData.CountryCodesPopulationAll,
-                        message);
+                    if (_translates)
+                    {
+                        var translationData = data.Get<ICountriesTranslationData>();
+                        OutputList(
+                            nameof(translationData.CountryCodesGeographicalAll),
+                            translationData.CountryCodesGeographicalAll,
+                            message);
+                        OutputList(
+                            nameof(translationData.CountryCodesPopulationAll),
+                            translationData.CountryCodesPopulationAll,
+                            message);
+                    }
+                    else
+                    {
+                        message.AppendLine(
+                            $"\t{nameof(ICountriesTranslationData.CountryCodesGeographicalAll)}: " +
+                            ExampleUtils.NEEDS_ENTERPRISE);
+                        message.AppendLine(
+                            $"\t{nameof(ICountriesTranslationData.CountryCodesPopulationAll)}: " +
+                            ExampleUtils.NEEDS_ENTERPRISE);
+                    }
 
                     output.WriteLine(message.ToString());
                 }
             }
 
+            /// <summary>
+            /// Reports whether the data file has the property, and when it does
+            /// not, writes that the property needs the Enterprise data file.
+            /// </summary>
+            private bool HasProperty(string name, StringBuilder message)
+            {
+                if (ExampleUtils.HasProperty(_engine, name))
+                {
+                    return true;
+                }
+                message.AppendLine($"\t{name}: {ExampleUtils.NEEDS_ENTERPRISE}");
+                _needsEnterprise = true;
+                return false;
+            }
+
             private void OutputProperty<T>(string name,
-                IAspectPropertyValue<T> property,
+                Func<IAspectPropertyValue<T>> value,
                 StringBuilder message)
             {
+                if (HasProperty(name, message) == false)
+                {
+                    return;
+                }
+                var property = value();
                 if (!property.HasValue)
                 {
                     message.AppendLine($"\t{name}: {property.NoValueMessage}");
@@ -203,9 +272,14 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedConsole
             }
 
             private void OutputWeightedList(string name,
-                IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>> property,
+                Func<IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>> value,
                 StringBuilder message)
             {
+                if (HasProperty(name, message) == false)
+                {
+                    return;
+                }
+                var property = value();
                 if (!property.HasValue)
                 {
                     message.AppendLine($"\t{name}: {property.NoValueMessage}");
@@ -236,12 +310,12 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedConsole
             }
         }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
-            // Use the supplied path for the data file or find the lite file that is included
-            // in the repository.
+            // Use the supplied path for the data file or find the free Lite file that the
+            // data repository links, downloading it when it is missing.
             var dataFile = args.Length > 0 ? args[0] :
-                Examples.ExampleUtils.FindDataFile(Constants.ENTERPRISE_IPI_DATA_FILE_NAME);
+                Examples.ExampleUtils.FindDataFile(Constants.LITE_IPI_DATA_FILE_NAME);
 
             // Configure a logger to output to the console.
             var loggerFactory = LoggerFactory.Create(b => b.AddConsole());
@@ -254,8 +328,10 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedConsole
             else
             {
                 logger.LogError("Failed to find a IP Intelligence data file. Make sure the " +
-                    "Enterprise data file is in cxx/data/ip-intelligence, or supply " +
-                    "the path to a data file as a command line argument.");
+                    "submodules have been fetched by running " +
+                    "`git submodule update --init --recursive`, so that the free Lite " +
+                    "file can be downloaded, or supply the path to a data file as a " +
+                    "command line argument.");
             }
 
             // Dispose the logger to ensure any messages get flushed

@@ -407,5 +407,70 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
                 text.Split('\n').Any(line => line.Trim() == "User-Agent:"),
                 "An empty User-Agent line must never be written");
         }
+
+        // NotCrawler as the data carries it, the profile every browser
+        // resolves to, whose usage and product token are both the no-value
+        // marker. Beside it a crawler with one real token among N/A ones.
+        private static GeneratorService BuildNoValueGenerator() =>
+            new GeneratorService(new RobotsTxtModel
+            {
+                Usages = new[]
+                {
+                    new UsageModel { Name = "AI", Order = 0 },
+                    new UsageModel { Name = "N/A", Order = 1 },
+                },
+                Crawlers = new[]
+                {
+                    new CrawlerModel
+                    {
+                        Name = "NotCrawler",
+                        Usages = new[] { "N/A" },
+                        ProductTokens = new[] { "N/A" },
+                    },
+                    new CrawlerModel
+                    {
+                        Name = "Example crawler",
+                        Usages = new[] { "AI" },
+                        ProductTokens = new[] { "n/a", "ExampleBot", " N/A " },
+                    },
+                },
+            });
+
+        [TestMethod]
+        public void PlainText_NoValueProductToken_NotWritten()
+        {
+            var text = Generate(
+                BuildNoValueGenerator(),
+                new HashSet<string>(),
+                Array.Empty<Uri>(),
+                annotations: false);
+
+            Assert.AreEqual(
+                "User-Agent: ExampleBot\nDisallow: /\nUser-Agent: *\nAllow: /",
+                Records(text),
+                "N/A names no crawler, so it must never head a group");
+        }
+
+        [TestMethod]
+        [DataRow(false)]
+        [DataRow(true)]
+        public void AnnotatedText_CrawlerWithNoToken_NotInTheFile(
+            bool everythingAllowed)
+        {
+            var text = Generate(
+                BuildNoValueGenerator(),
+                everythingAllowed
+                    ? new HashSet<string> { "AI", "N/A" }
+                    : new HashSet<string>(),
+                Array.Empty<Uri>(),
+                annotations: true);
+
+            Assert.Contains("# N: Example crawler", text);
+            Assert.DoesNotContain(
+                "NotCrawler",
+                text,
+                "A crawler with no product token must not appear anywhere " +
+                "in the file, comments included");
+        }
     }
 }
