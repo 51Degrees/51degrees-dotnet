@@ -20,7 +20,10 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.IpIntelligence.CloudTests;
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines;
+using FiftyOne.Pipeline.Engines.Data;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Extensions.Logging;
 
@@ -30,11 +33,6 @@ namespace FiftyOne.IpIntelligence.Cloud.Tests
     public class IpIntelligenceCloudEngineTests
     {
         private IPipeline _pipeline;
-        // The aligned environment variable name is checked first. The legacy
-        // names are retained for backwards compatibility.
-        private const string _resource_key_env_variable = "_51DEGREES_RESOURCE_KEY";
-        private const string _legacy_resource_key_env_variable = "51D_RESOURCE_KEY";
-        private const string _super_resource_key_env_variable = "SUPER_RESOURCE_KEY";
         // The default of 2 seconds is short for a first request from a
         // machine that has not yet connected to the cloud service.
         private const int _cloud_timeout_seconds = 10;
@@ -50,38 +48,40 @@ namespace FiftyOne.IpIntelligence.Cloud.Tests
         /// with a single IP address and validating the IP data is correct.
         /// This is an integration test that uses the live cloud service
         /// so any problems with that service could affect the result
-        /// of this test.
+        /// of this test. It fails when no resource key is set.
         /// </summary>
         [TestMethod]
         public void CloudIntegrationTest()
         {
-            var resourceKey = System.Environment.GetEnvironmentVariable(
-                _resource_key_env_variable)
-                ?? System.Environment.GetEnvironmentVariable(
-                    _legacy_resource_key_env_variable)
-                ?? System.Environment.GetEnvironmentVariable(
-                    _super_resource_key_env_variable);
+            var resourceKey = LiveCloudKey.Require(
+                "ip", "the CountryCode of an IP address");
 
-            if (resourceKey != null)
+            _pipeline = new IpiPipelineBuilder(
+                new LoggerFactory(), new System.Net.Http.HttpClient())
+                .UseCloud(resourceKey)
+                .SetCloudRequestTimeOutSeconds(_cloud_timeout_seconds)
+                .Build();
+            var data = _pipeline.CreateFlowData();
+            data.AddEvidence("query.client-ip-51d",
+                "185.28.167.78");
+            data.Process();
+
+            var ipData = data.Get<IIpIntelligenceData>();
+            Assert.IsNotNull(ipData);
+            IAspectPropertyValue<string> countryCode = null;
+            try
             {
-                _pipeline = new IpiPipelineBuilder(
-                    new LoggerFactory(), new System.Net.Http.HttpClient())
-                    .UseCloud(resourceKey)
-                    .SetCloudRequestTimeOutSeconds(_cloud_timeout_seconds)
-                    .Build();
-                var data = _pipeline.CreateFlowData();
-                data.AddEvidence("query.client-ip-51d",
-                    "185.28.167.78");
-                data.Process();
-
-                var ipData = data.Get<IIpIntelligenceData>();
-                Assert.IsNotNull(ipData);
-                Assert.IsTrue(ipData.CountryCode.HasValue);
+                countryCode = ipData.CountryCode;
             }
-            else
+            catch (PropertyMissingException ex)
             {
-                Assert.Inconclusive($"No resource key supplied in " +
-                    $"environment variable '{_resource_key_env_variable}'");
+                Assert.Fail(LiveCloudKey.Missing(
+                    "CountryCode", ex.Message, "ip"));
+            }
+            if (countryCode.HasValue == false)
+            {
+                Assert.Fail(LiveCloudKey.Missing(
+                    "CountryCode", countryCode.NoValueMessage, "ip"));
             }
         }
 
