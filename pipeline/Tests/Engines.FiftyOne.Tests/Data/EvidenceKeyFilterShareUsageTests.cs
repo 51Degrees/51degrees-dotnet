@@ -183,5 +183,30 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
             Assert.IsTrue(filter.Include("query.id.usage"));
             Assert.IsTrue(filter.Include("header.user-agent"));
         }
+
+        /// <summary>
+        /// The Cookie header carries every cookie, including the ones the
+        /// cookie rule leaves out, so it is not shared unless all evidence
+        /// is. The cookies starting 51D_ are still shared as their own
+        /// 'cookie.' evidence.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_TheCookieHeaderIsNotShared()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("header.cookie"));
+            Assert.IsFalse(filter.Include("header.Cookie"));
+            Assert.IsTrue(filter.Include("header.user-agent"));
+            Assert.IsTrue(filter.Include("cookie.51d_screenpixelswidth"));
+
+            var shareAll = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsTrue(shareAll.Include("header.cookie"));
+        }
     }
 }
