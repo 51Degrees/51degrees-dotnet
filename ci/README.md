@@ -10,9 +10,12 @@ is the native engines, the nuspec package and the version of each family.
 ## Versions
 
 Each family keeps the version stream its own repository had. A family is
-published when something under its folders changed since its last tag, and
-so is every family that depends on it, so that their packages require the
-new version. NuGet takes the lowest version that meets a requirement, so a fix
+published when a file that counts under its folders changed since its last
+tag, and so is every family that depends on it, so that their packages
+require the new version. Documentation, tests and examples do not count,
+which common-ci's plan decides, and nor does a project file or nuspec whose
+only changes are to package metadata such as the description or links, which
+[`release-plan-filter.ps1`](release-plan-filter.ps1) decides. NuGet takes the lowest version that meets a requirement, so a fix
 reaches the users of a dependent only when the dependent is published too.
 Each is published at its next patch version and tagged `<family>/<version>`.
 common-ci's
@@ -35,6 +38,7 @@ numbers follow it.
 | `build-project.ps1` | Every family and the examples, Project mode | |
 | `run-unit-tests.ps1` | The library tests | |
 | `get-next-package-version.ps1` | | Prints the plan, each family's last and next version and why it is or is not released |
+| `release-plan-filter.ps1` | | Called by the plan, leaves out a project file or nuspec whose only changes are to package metadata |
 | `package-update-required.ps1` | | Whether the plan releases any family |
 | `check-version-bump.ps1` | | Refuses a family whose major or minor number moves |
 | `build-package-requirements.ps1` | | The native libraries, one job per platform |
