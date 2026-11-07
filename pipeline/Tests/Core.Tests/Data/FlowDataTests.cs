@@ -137,9 +137,8 @@ namespace FiftyOne.Pipeline.Core.Tests.Data
 
         /// <summary>
         /// The stop token stays truthful after Dispose: a flow data cancelled
-        /// before disposal still reports cancellation afterwards. This is the
-        /// reason the token is captured into a field in the constructor rather
-        /// than read from the (now disposed) source.
+        /// before disposal still reports cancellation afterwards, although
+        /// its token was never read before, so no source was made for it.
         /// </summary>
         [TestMethod]
         public void FlowData_GetStopToken_CancelledThenDisposed_StaysCancelled()
