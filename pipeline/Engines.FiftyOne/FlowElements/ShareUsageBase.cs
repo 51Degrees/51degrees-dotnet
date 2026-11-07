@@ -910,8 +910,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 
             // Only attempt a final flush if there is something to send. This avoids
             // a needless network round-trip (and a logged error when offline) when
-            // the pipeline is disposed without any usage. See issue #224.
-            // Nothing is sent while paused, as recent sends have failed.
+            // the pipeline is disposed without any usage. Nothing is sent while
+            // paused, as recent sends have failed.
             var queued = EvidenceCollection.Count;
             if (queued > 0)
             {

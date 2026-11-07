@@ -105,21 +105,18 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         {
             List<ShareUsageData> allData = new List<ShareUsageData>();
             ShareUsageData currentData;
-            // The size is checked before taking from the queue. Checked the
-            // other way round, a full message still took one more entry off
-            // the queue and then dropped it, so a busy server lost about one
-            // entry in every message.
+            // The size is checked before taking from the queue, so an entry
+            // is never taken for a message that is already full.
             while (allData.Count < MinEntriesPerMessage * 2 &&
                 EvidenceCollection.TryTake(out currentData, TakeTimeout))
             {
                 allData.Add(currentData);
             }
 
-            // Nothing was queued (e.g. the element was disposed without any usage,
-            // or a concurrent send already drained the queue). Do not open a
-            // connection or POST an empty <Devices/> document - doing so produces
-            // spurious "Unexpected failure while sharing usage data" errors on
-            // machines that cannot reach the usage-sharing endpoint. See issue #224.
+            // Nothing was queued, for example when the element was disposed
+            // without any usage. An empty <Devices/> document is not posted,
+            // as on a machine that cannot reach the usage sharing endpoint it
+            // would only log a failure.
             if (allData.Count == 0)
             {
                 return;
