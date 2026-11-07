@@ -131,6 +131,33 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 		}
 
 		/// <summary>
+		/// A repeat is shared at most once in each interval. Sharing a
+		/// repeat after the interval starts a new interval, so a repeat
+		/// straight after it is not shared.
+		/// </summary>
+		[TestMethod]
+		public void ShareUsageTracker_RepeatEvidence_SharedOncePerInterval()
+		{
+			var interval = TimeSpan.FromMilliseconds(500);
+			var shareUsageTracker = new ShareUsageTracker(new CacheConfiguration()
+				{
+					Builder = new LruPutCacheBuilder(),
+					Size = 1000
+				},
+				interval,
+				_evidenceKeyFilter);
+
+			Assert.IsTrue(shareUsageTracker.Track(_data.Object),
+				"New evidence was not shared.");
+			Thread.Sleep(interval + TimeSpan.FromMilliseconds(250));
+			Assert.IsTrue(shareUsageTracker.Track(_data.Object),
+				"A repeat after the interval was not shared.");
+			Assert.IsFalse(shareUsageTracker.Track(_data.Object),
+				"A repeat straight after a repeat was shared was also " +
+				"shared, so the time it was shared was not stored.");
+		}
+
+		/// <summary>
 		/// Test that the session ID is included in the evidence when session
 		/// tracking is enabled. This means that for a request containing the 
 		/// same evidence but a different session ID, both will be tracked.
