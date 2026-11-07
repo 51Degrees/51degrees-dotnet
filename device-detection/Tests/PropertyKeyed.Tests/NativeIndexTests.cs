@@ -130,7 +130,7 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
             var indexed = string.Join(",", _native.Hash.IndexedProperties
                 .OrderBy(p => p, StringComparer.Ordinal));
             Assert.AreEqual(NATIVE_MODEL + "," + TAC, indexed);
-            Assert.AreEqual(0, _managed.Hash.IndexedProperties.Count);
+            Assert.IsEmpty(_managed.Hash.IndexedProperties);
         }
 
         /// <summary>
@@ -143,7 +143,7 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
         public void ManagedIndex_BuiltOnlyWithoutTheNativeIndex(
             string property)
         {
-            Assert.AreEqual(0, ManagedIndex(_native, property).Count,
+            Assert.IsEmpty(ManagedIndex(_native, property),
                 "The managed index was built although the Hash engine " +
                 "indexes the property.");
             Assert.AreNotEqual(0, ManagedIndex(_managed, property).Count,
@@ -191,7 +191,7 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
                 $"{property}: compared {values.Count} values, " +
                 $"{differences.Count} differ.");
             Assert.AreNotEqual(0, values.Count);
-            Assert.AreEqual(0, differences.Count,
+            Assert.IsEmpty(differences,
                 $"{differences.Count} of {values.Count} {property} values " +
                 "differ, for example " +
                 string.Join("; ", differences.Take(5)));
@@ -250,7 +250,7 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
                         $"native [{string.Join(",", actual)}]");
                 }
             }
-            Assert.AreEqual(0, differences.Count,
+            Assert.IsEmpty(differences,
                 $"{differences.Count} of {values.Count} {property} values " +
                 "differ, for example " +
                 string.Join("; ", differences.Take(5)));
