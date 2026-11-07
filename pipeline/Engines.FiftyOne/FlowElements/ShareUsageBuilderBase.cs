@@ -143,37 +143,43 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         protected bool ShareAllEvidence { get; private set; } = Constants.SHARE_USAGE_DEFAULT_SHARE_ALL_EVIDENCE;
 
         /// <summary>
-        /// Recovery seconds for linear strategies.
+        /// Not used. Usage sharing pauses for the initial recovery delay,
+        /// multiplied after each failed send that follows a pause.
         /// </summary>
+        [Obsolete("Not used by usage sharing.")]
         protected double RecoverySeconds { get; private set; } = Constants.SHARE_USAGE_RECOVERY_SECONDS_DEFAULT;
 
         /// <summary>
-        /// Enable exponential backoff recovery strategy instead of simple recovery.
+        /// Not used. Usage sharing always multiplies the pause after each
+        /// failed send that follows a pause.
         /// </summary>
+        [Obsolete("Not used by usage sharing.")]
         protected bool UseExponentialBackoff { get; private set; } = Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_ENABLED_DEFAULT;
 
         /// <summary>
-        /// Number of failures required to enter recovery mode.
+        /// The number of failed sends within the failures window that
+        /// pauses sending.
         /// </summary>
         protected int FailuresToEnterRecovery { get; private set; } = Constants.SHARE_USAGE_FAILURES_TO_ENTER_RECOVERY_DEFAULT;
 
         /// <summary>
-        /// Time window in seconds for tracking failures.
+        /// The time in seconds over which failed sends are counted.
         /// </summary>
         protected int FailuresWindowSeconds { get; private set; } = Constants.SHARE_USAGE_FAILURES_WINDOW_SECONDS_DEFAULT;
 
         /// <summary>
-        /// Initial delay in seconds for exponential backoff recovery strategy.
+        /// The length in seconds of the first pause after failed sends.
         /// </summary>
         protected double InitialRecoveryDelaySeconds { get; private set; } = Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_INITIAL_DELAY_SECONDS_DEFAULT;
 
         /// <summary>
-        /// Maximum delay in seconds for exponential backoff recovery strategy.
+        /// The longest a pause can be, in seconds.
         /// </summary>
         protected double MaxRecoveryDelaySeconds { get; private set; } = Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MAX_DELAY_SECONDS_DEFAULT;
 
         /// <summary>
-        /// Multiplier for exponential backoff recovery strategy.
+        /// What the pause is multiplied by each time the send tried when a
+        /// pause ends fails.
         /// </summary>
         protected double RecoveryMultiplier { get; private set; } = Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MULTIPLIER_DEFAULT;
 
@@ -560,10 +566,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Set the number of failures required to enter recovery mode.
+        /// Set the number of failed sends within the failures window that
+        /// pauses sending. Usage data is still queued while sending is
+        /// paused, up to the maximum queue size.
         /// </summary>
         /// <param name="failuresToEnterRecovery">
-        /// Number of failures within the window to trigger recovery.
+        /// The number of failed sends, from 1 to 100.
         /// </param>
         /// <returns>This builder instance.</returns>
         [DefaultValue(Constants.SHARE_USAGE_FAILURES_TO_ENTER_RECOVERY_DEFAULT)]
@@ -584,65 +592,96 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Set the time window in seconds for tracking failures.
+        /// Set the time in seconds over which failed sends are counted.
         /// </summary>
         /// <param name="failuresWindowSeconds">
-        /// Time window in seconds for failure tracking.
+        /// The time in seconds, 1 or more.
         /// </param>
         /// <returns>This builder instance.</returns>
         [DefaultValue(Constants.SHARE_USAGE_FAILURES_WINDOW_SECONDS_DEFAULT)]
         public ShareUsageBuilderBase<T> SetFailuresWindowSeconds(int failuresWindowSeconds)
         {
+            if (failuresWindowSeconds < 1)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(failuresWindowSeconds),
+                    failuresWindowSeconds,
+                    "Must be 1 or more.");
+            }
             FailuresWindowSeconds = failuresWindowSeconds;
             return this;
         }
 
         /// <summary>
-        /// Set the initial delay in seconds for exponential backoff recovery strategy.
+        /// Set the length in seconds of the first pause after failed sends.
         /// </summary>
         /// <param name="initialDelaySeconds">
-        /// Initial delay in seconds for the first failure.
+        /// The length in seconds, more than 0.
         /// </param>
         /// <returns>This builder instance.</returns>
         [DefaultValue(Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_INITIAL_DELAY_SECONDS_DEFAULT)]
         public ShareUsageBuilderBase<T> SetInitialRecoveryDelaySeconds(double initialDelaySeconds)
         {
+            if ((initialDelaySeconds > 0) == false)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(initialDelaySeconds),
+                    initialDelaySeconds,
+                    "Must be more than 0.");
+            }
             InitialRecoveryDelaySeconds = initialDelaySeconds;
             return this;
         }
 
         /// <summary>
-        /// Set the maximum delay in seconds for exponential backoff recovery strategy.
+        /// Set the longest a pause can be, in seconds.
         /// </summary>
         /// <param name="maxDelaySeconds">
-        /// Maximum delay in seconds to cap the exponential growth.
+        /// The length in seconds, more than 0.
         /// </param>
         /// <returns>This builder instance.</returns>
         [DefaultValue(Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MAX_DELAY_SECONDS_DEFAULT)]
         public ShareUsageBuilderBase<T> SetMaxRecoveryDelaySeconds(double maxDelaySeconds)
         {
+            if ((maxDelaySeconds > 0) == false)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(maxDelaySeconds),
+                    maxDelaySeconds,
+                    "Must be more than 0.");
+            }
             MaxRecoveryDelaySeconds = maxDelaySeconds;
             return this;
         }
 
         /// <summary>
-        /// Set the multiplier for exponential backoff recovery strategy.
+        /// Set what the pause is multiplied by each time the send tried when
+        /// a pause ends fails. 2 doubles the pause each time.
         /// </summary>
         /// <param name="multiplier">
-        /// Exponential multiplier (typically 2.0 for doubling).
+        /// The multiplier, 1 or more.
         /// </param>
         /// <returns>This builder instance.</returns>
         [DefaultValue(Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MULTIPLIER_DEFAULT)]
         public ShareUsageBuilderBase<T> SetRecoveryMultiplier(double multiplier)
         {
+            if ((multiplier >= 1) == false)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(multiplier),
+                    multiplier,
+                    "Must be 1 or more.");
+            }
             RecoveryMultiplier = multiplier;
             return this;
         }
 
         /// <summary>
-        /// Create the appropriate recovery strategy based on current configuration.
+        /// Not used. Usage sharing pauses sending with its own back-off,
+        /// set by the failures, delay and multiplier settings.
         /// </summary>
         /// <returns>The configured recovery strategy</returns>
+        [Obsolete("Not used by usage sharing.")]
         protected IRecoveryStrategy CreateRecoveryStrategy()
         {
             return RecoveryStrategyFactory.Create(

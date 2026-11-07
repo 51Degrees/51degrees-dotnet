@@ -20,7 +20,6 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
-using FiftyOne.Pipeline.Core.FailHandling.Facade;
 using FiftyOne.Pipeline.Engines.Trackers;
 using Microsoft.Extensions.Logging;
 using System;
@@ -64,7 +63,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             string aspSessionCookieName,
             ITracker tracker,
             bool shareAllEvidence,
-            IFailHandler failHandler = null)
+            int failuresToEnterRecovery =
+                Constants.SHARE_USAGE_FAILURES_TO_ENTER_RECOVERY_DEFAULT,
+            int failuresWindowSeconds =
+                Constants.SHARE_USAGE_FAILURES_WINDOW_SECONDS_DEFAULT,
+            double initialRecoveryDelaySeconds =
+                Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_INITIAL_DELAY_SECONDS_DEFAULT,
+            double maxRecoveryDelaySeconds =
+                Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MAX_DELAY_SECONDS_DEFAULT,
+            double recoveryMultiplier =
+                Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MULTIPLIER_DEFAULT)
             : base(logger,
                   httpClient,
                   sharePercentage,
@@ -81,7 +89,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                   aspSessionCookieName,
                   tracker,
                   shareAllEvidence,
-                  failHandler)
+                  failuresToEnterRecovery,
+                  failuresWindowSeconds,
+                  initialRecoveryDelaySeconds,
+                  maxRecoveryDelaySeconds,
+                  recoveryMultiplier)
         {
         }
 
@@ -143,6 +155,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                     else
                     {
                         Interlocked.Increment(ref _failCount);
+                        RecordSendFailure();
                         string response = "";
                         try
                         {
@@ -156,7 +169,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                         // If failure percentage is > 1% then log this as a warning.
                         // Otherwise, log at information level.
                         var logLevel = LogLevel.Information;
-                        var percentageFailure = _failCount / (_successCount + _failCount);
+                        var percentageFailure =
+                            (double)_failCount / (_successCount + _failCount);
                         if (percentageFailure > 0.01)
                         {
                             logLevel = LogLevel.Warning;

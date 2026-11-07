@@ -96,6 +96,25 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             Assert.AreEqual(expectedMaxQueueSize, _builder.GetMaximumQueueSize());
         }
 
+        /// <summary>
+        /// The settings that pause sending after failed sends reject
+        /// values the pause cannot work with.
+        /// </summary>
+        [TestMethod]
+        public void RecoverySettings_RejectValuesOutOfRange()
+        {
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(
+                () => { _builder.SetFailuresToEnterRecovery(0); });
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(
+                () => { _builder.SetFailuresWindowSeconds(0); });
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(
+                () => { _builder.SetInitialRecoveryDelaySeconds(0); });
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(
+                () => { _builder.SetMaxRecoveryDelaySeconds(-1); });
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(
+                () => { _builder.SetRecoveryMultiplier(0.5); });
+        }
+
     }
 
 }
