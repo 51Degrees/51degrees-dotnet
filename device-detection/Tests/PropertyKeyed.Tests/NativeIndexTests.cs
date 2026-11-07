@@ -22,6 +22,7 @@
 
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
 using FiftyOne.DeviceDetection.PropertyKeyed.FlowElements;
+using FiftyOne.DeviceDetection.PropertyKeyed.Services;
 using FiftyOne.DeviceDetection.TestHelpers;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Data;
@@ -29,6 +30,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
@@ -37,7 +39,9 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
     /// Compares the TAC and NativeModel engines on one data file with two
     /// Hash engines, one whose data set indexes those properties itself and
     /// one that does not, so that the engines fall back to the index the
-    /// data set service builds by processing every profile.
+    /// data set service builds by processing every profile. The Hash
+    /// engine's index matches a value's exact spelling, where the fallback
+    /// matches ignoring case.
     /// </summary>
     [TestClass]
     public class NativeIndexTests
@@ -152,18 +156,81 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
         }
 
         /// <summary>
+        /// The profiles holding each spelling of each value, read by
+        /// processing every profile as the data set service does, but keyed
+        /// on the exact spelling. Built once for each property.
+        /// </summary>
+        private static Dictionary<string, List<uint>> ExactIndex(
+            string property)
+        {
+            if (_exactIndexes.TryGetValue(property, out var index))
+            {
+                return index;
+            }
+            index = new Dictionary<string, List<uint>>(StringComparer.Ordinal);
+            var query = new PropertyValueQueryService(
+                new[] { property },
+                _loggerFactory);
+            using (var context = query.CreateContext(_managed.Hash))
+            {
+                foreach (var (profile, device) in query.Query(context))
+                {
+                    if (!(device[property] is IAspectPropertyValue value) ||
+                        value.HasValue == false)
+                    {
+                        continue;
+                    }
+                    var spellings = value.Value is IEnumerable<string> list ?
+                        list :
+                        new[] { value.Value.ToString() };
+                    foreach (var spelling in spellings.Distinct(
+                        StringComparer.Ordinal))
+                    {
+                        if (index.TryGetValue(spelling, out var ids) == false)
+                        {
+                            ids = new List<uint>();
+                            index.Add(spelling, ids);
+                        }
+                        ids.Add(profile.ProfileId);
+                    }
+                }
+            }
+            _exactIndexes[property] = index;
+            return index;
+        }
+
+        private static readonly Dictionary<string, Dictionary<string, List<uint>>>
+            _exactIndexes =
+                new Dictionary<string, Dictionary<string, List<uint>>>();
+
+        /// <summary>
+        /// The values that another value spells the same ignoring case.
+        /// </summary>
+        private static HashSet<string> SharedSpellings(
+            IEnumerable<string> values)
+        {
+            return new HashSet<string>(
+                values
+                    .GroupBy(v => v, StringComparer.OrdinalIgnoreCase)
+                    .Where(g => g.Count() > 1)
+                    .SelectMany(g => g),
+                StringComparer.Ordinal);
+        }
+
+        /// <summary>
         /// For every value of the property, the Hash engine's index gives
-        /// the same profiles in the same order as the index built by
-        /// processing every profile.
+        /// the profiles holding that exact spelling, in the same order as
+        /// processing every profile finds them. The test also writes how far
+        /// that is from the index that matches ignoring case.
         /// </summary>
         [TestMethod]
         [DataRow(TAC)]
         [DataRow(NATIVE_MODEL)]
-        public void EveryValue_NativeIndexGivesTheManagedProfiles(
+        public void EveryValue_NativeIndexGivesTheExactProfiles(
             string property)
         {
-            var managed = ManagedIndex(_managed, property);
-            var values = new HashSet<string>(managed.Keys, StringComparer.Ordinal);
+            var exact = ExactIndex(property);
+            var values = new HashSet<string>(exact.Keys, StringComparer.Ordinal);
             foreach (var value in _managed.Hash.Properties
                 .Single(p => p.Name == property).Values)
             {
@@ -171,25 +238,37 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
             }
 
             var differences = new List<string>();
+            var changed = 0;
+            var ignoringCase = ManagedIndex(_managed, property);
             foreach (var value in values.OrderBy(v => v, StringComparer.Ordinal))
             {
-                var expected = WithoutRepeats(managed.TryGetValue(value, out var ids) ?
+                var expected = exact.TryGetValue(value, out var ids) ?
                     ids :
-                    new List<uint>());
+                    new List<uint>();
                 var actual = _native.Hash.GetProfileIdsForPropertyValue(
                     property,
                     value);
                 if (expected.SequenceEqual(actual) == false)
                 {
                     differences.Add(
-                        $"'{value}' managed [{string.Join(",", expected)}] " +
+                        $"'{value}' exact [{string.Join(",", expected)}] " +
                         $"native [{string.Join(",", actual)}]");
+                }
+                var old = ignoringCase.TryGetValue(value, out var oldIds) ?
+                    oldIds.Distinct() :
+                    Enumerable.Empty<uint>();
+                if (old.SequenceEqual(expected) == false)
+                {
+                    changed++;
                 }
             }
 
             Console.WriteLine(
-                $"{property}: compared {values.Count} values, " +
-                $"{differences.Count} differ.");
+                $"{property}: {values.Count} values. {changed} give other " +
+                "profiles than the index that ignores case, " +
+                $"{SharedSpellings(exact.Keys).Count} are spelled the same " +
+                "as another ignoring case, and that index repeats a profile " +
+                $"for {ignoringCase.Values.Count(l => l.Distinct().Count() != l.Count)}.");
             Assert.AreNotEqual(0, values.Count);
             Assert.IsEmpty(differences,
                 $"{differences.Count} of {values.Count} {property} values " +
@@ -198,56 +277,37 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
         }
 
         /// <summary>
-        /// The engines give the same profiles for the same evidence whether
-        /// the Hash engine indexes the property or not.
+        /// The engines give the profiles holding the exact spelling of the
+        /// evidence, for values spelled the same as no other and for values
+        /// spelled the same as another ignoring case.
         /// </summary>
         [TestMethod]
         [DataRow(TAC)]
         [DataRow(NATIVE_MODEL)]
-        public void Engines_GiveTheSameProfiles(string property)
+        public void Engines_GiveTheExactProfiles(string property)
         {
-            var values = ManagedIndex(_managed, property).Keys
+            var exact = ExactIndex(property);
+            var values = exact.Keys
                 .OrderBy(v => v, StringComparer.Ordinal)
                 .Take(SampleSize)
+                .Concat(SharedSpellings(exact.Keys)
+                    .OrderBy(v => v, StringComparer.Ordinal)
+                    .Take(SampleSize))
+                .Distinct(StringComparer.Ordinal)
                 .ToList();
-            AssertSameProfiles(property, values);
-        }
 
-        /// <summary>
-        /// The engines match a value ignoring case, as the index built by
-        /// processing every profile does, so the same evidence in another
-        /// case gives the same profiles whether the Hash engine indexes the
-        /// property or not.
-        /// </summary>
-        [TestMethod]
-        public void ValueInAnotherCase_GivesTheSameProfiles()
-        {
-            var values = ManagedIndex(_managed, NATIVE_MODEL).Keys
-                .Where(v => v.ToUpperInvariant() != v.ToLowerInvariant())
-                .OrderBy(v => v, StringComparer.Ordinal)
-                .Take(SampleSize)
-                .Select(v => v == v.ToUpperInvariant() ?
-                    v.ToLowerInvariant() :
-                    v.ToUpperInvariant())
-                .ToList();
-            Assert.AreNotEqual(0, values.Count);
-            AssertSameProfiles(NATIVE_MODEL, values);
-        }
-
-        private static void AssertSameProfiles(
-            string property,
-            IReadOnlyList<string> values)
-        {
             var differences = new List<string>();
             foreach (var value in values)
             {
-                var expected = WithoutRepeats(ProfileIds(_managed, property, value));
+                var expected = exact[value]
+                    .Select(id => id.ToString(CultureInfo.InvariantCulture))
+                    .ToList();
                 var actual = ProfileIds(_native, property, value);
                 if (expected.SequenceEqual(actual) == false)
                 {
                     differences.Add(
-                        $"'{value}' managed [{string.Join(",", expected)}] " +
-                        $"native [{string.Join(",", actual)}]");
+                        $"'{value}' exact [{string.Join(",", expected)}] " +
+                        $"engine [{string.Join(",", actual)}]");
                 }
             }
             Assert.IsEmpty(differences,
@@ -257,14 +317,42 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
         }
 
         /// <summary>
-        /// The ids without repeats, in their order. A profile that holds two
-        /// values spelled the same ignoring case is added to the managed
-        /// index once for each, so its list can hold an id twice, and the
-        /// comparison is of the profiles.
+        /// With the Hash engine's index, a NativeModel in a case that no
+        /// value in the data file has finds no profiles, because the index
+        /// matches the exact spelling. Without it, the engine still matches
+        /// ignoring case.
         /// </summary>
-        private static List<T> WithoutRepeats<T>(IEnumerable<T> ids)
+        [TestMethod]
+        public void ValueInAnotherCase_FindsNothingWithTheNativeIndex()
         {
-            return ids.Distinct().ToList();
+            var exact = ExactIndex(NATIVE_MODEL);
+            var values = exact.Keys
+                .Where(v => v.ToUpperInvariant() != v.ToLowerInvariant())
+                .OrderBy(v => v, StringComparer.Ordinal)
+                .Select(v => v == v.ToUpperInvariant() ?
+                    v.ToLowerInvariant() :
+                    v.ToUpperInvariant())
+                .Where(v => exact.ContainsKey(v) == false)
+                .Take(SampleSize)
+                .ToList();
+            Assert.AreNotEqual(0, values.Count);
+
+            var found = values
+                .Where(v => ProfileIds(_native, NATIVE_MODEL, v).Count > 0)
+                .ToList();
+            Assert.IsEmpty(found,
+                $"{found.Count} of {values.Count} values in another case " +
+                "found profiles, for example " +
+                string.Join("; ", found.Take(5)));
+
+            var notFoundWithoutIndex = values
+                .Where(v => ProfileIds(_managed, NATIVE_MODEL, v).Count == 0)
+                .ToList();
+            Assert.IsEmpty(notFoundWithoutIndex,
+                $"{notFoundWithoutIndex.Count} of {values.Count} values in " +
+                "another case found nothing without the Hash engine's " +
+                "index, for example " +
+                string.Join("; ", notFoundWithoutIndex.Take(5)));
         }
 
         private static List<string> ProfileIds(
