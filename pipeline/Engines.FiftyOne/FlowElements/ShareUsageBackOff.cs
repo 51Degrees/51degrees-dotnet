@@ -65,12 +65,19 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             double maxDelaySeconds,
             double multiplier)
         {
-            if (failuresToEnterRecovery < 1)
+            if (failuresToEnterRecovery <
+                    Constants.SHARE_USAGE_FAILURES_TO_ENTER_RECOVERY_MIN ||
+                failuresToEnterRecovery >
+                    Constants.SHARE_USAGE_FAILURES_TO_ENTER_RECOVERY_MAX)
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(failuresToEnterRecovery),
                     failuresToEnterRecovery,
-                    "Must be 1 or more.");
+                    "Must be from " +
+                    Constants.SHARE_USAGE_FAILURES_TO_ENTER_RECOVERY_MIN +
+                    " to " +
+                    Constants.SHARE_USAGE_FAILURES_TO_ENTER_RECOVERY_MAX +
+                    ".");
             }
             if (failuresWindowSeconds < 1)
             {

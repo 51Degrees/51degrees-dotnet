@@ -145,6 +145,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
 
         [TestMethod]
         [DataRow(0, 10, 2.0, 5.0, 2.0)]
+        [DataRow(101, 10, 2.0, 5.0, 2.0)]
         [DataRow(1, 0, 2.0, 5.0, 2.0)]
         [DataRow(1, 10, 0.0, 5.0, 2.0)]
         [DataRow(1, 10, double.NaN, 5.0, 2.0)]
