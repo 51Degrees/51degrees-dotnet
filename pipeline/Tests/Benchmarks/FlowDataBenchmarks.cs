@@ -25,6 +25,7 @@ using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FlowElements;
+using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Collections.Generic;
@@ -113,8 +114,7 @@ public class FlowDataBenchmarks
                 NullLogger<AspectDataBase>.Instance,
                 pipeline,
                 engine,
-                FiftyOne.Pipeline.Engines.Services.MissingPropertyService
-                    .Instance)
+                MissingPropertyServiceOnPremise.Instance)
         {
         }
     }
