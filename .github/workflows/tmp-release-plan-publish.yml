@@ -1,0 +1,77 @@
+name: Temporary dry-run publish of the release plan
+
+on:
+  push:
+    branches:
+      - 'tmp/release-plan-publish'
+      - 'tmp/release-plan-dependents'
+
+jobs:
+  Publish:
+    name: Publish
+    uses: 51Degrees/common-ci/.github/workflows/nightly-publish.yml@rc
+    with:
+      repo-name: ${{ github.event.repository.name }}
+      org-name: ${{ github.event.repository.owner.login }}
+      common-ci-ref: rc
+      dryrun: true
+      build-platform: windows-latest
+      cache-assets: true
+      package-in-caller: true
+      skip-tests: true
+      skip-compare-performance: true
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+      StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
+      DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
+      DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}
+      IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
+      TestResourceKey: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
+      AcceptCHBrowserKey: ${{ secrets.ACCEPTCH_BROWSER_KEY }}
+      AcceptCHHardwareKey: ${{ secrets.ACCEPTCH_HARDWARE_KEY }}
+      AcceptCHPlatformKey: ${{ secrets.ACCEPTCH_PLATFORM_KEY }}
+      AcceptCHNoneKey: ${{ secrets.ACCEPTCH_NONE_KEY }}
+      CodeSigningKeyVaultUrl: ${{ secrets.CODE_SIGNING_KEY_VAULT_URL }}
+      CodeSigningKeyVaultClientId: ${{ secrets.CODE_SIGNING_KEY_VAULT_CLIENT_ID }}
+      CodeSigningKeyVaultTenantId: ${{ secrets.CODE_SIGNING_KEY_VAULT_TENANT_ID }}
+      CodeSigningKeyVaultClientSecret: ${{ secrets.CODE_SIGNING_KEY_VAULT_CLIENT_SECRET }}
+      CodeSigningKeyVaultCertificateName: ${{ secrets.CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME }}
+
+  # The packages the Build job packed, each with its version and the version
+  # of every FiftyOne package it requires.
+  Inspect:
+    needs: Publish
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Download Package Artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: package
+          path: package
+
+      - name: Versions and requirements
+        run: |
+          Write-Host "update-required $('${{ needs.Publish.outputs.update-required }}'), run label $('${{ needs.Publish.outputs.version }}')"
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          foreach ($file in Get-ChildItem package/*.nupkg | Sort-Object Name) {
+            $zip = [IO.Compression.ZipFile]::OpenRead($file.FullName)
+            try {
+              $entry = $zip.Entries | Where-Object { $_.FullName -like '*.nuspec' } | Select-Object -First 1
+              $reader = [IO.StreamReader]::new($entry.Open())
+              [xml]$nuspec = $reader.ReadToEnd()
+              $reader.Dispose()
+            } finally {
+              $zip.Dispose()
+            }
+            $metadata = $nuspec.package.metadata
+            $requires = @($nuspec.SelectNodes("//*[local-name()='dependency']") |
+              Where-Object { $_.GetAttribute('id') -like 'FiftyOne*' } |
+              ForEach-Object { "$($_.GetAttribute('id')) $($_.GetAttribute('version'))" } |
+              Sort-Object -Unique)
+            Write-Host "$($metadata.id) $($metadata.version)"
+            foreach ($line in $requires) { Write-Host "    requires $line" }
+          }
