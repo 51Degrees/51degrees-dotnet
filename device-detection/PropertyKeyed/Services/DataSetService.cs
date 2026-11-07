@@ -96,10 +96,20 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Services
             // Create the context pipeline.
             var contextPipeline = _queryService.CreateContext(engine);
 
-            // Populate the indexes.
-            foreach (var item in _queryService.Query(contextPipeline))
+            // Populate the indexes the Hash engine's data set does not hold
+            // itself, which needs every profile processed.
+            var nativelyIndexed = new HashSet<string>(
+                engine.IndexedProperties,
+                StringComparer.Ordinal);
+            var managedIndexes = indexes
+                .Where(i => nativelyIndexed.Contains(i.MetaData.Name) == false)
+                .ToList();
+            if (managedIndexes.Count > 0)
             {
-                ProcessProfile(item, indexes);
+                foreach (var item in _queryService.Query(contextPipeline))
+                {
+                    ProcessProfile(item, managedIndexes);
+                }
             }
 
             // Collect engine properties to expose as sub-properties of
