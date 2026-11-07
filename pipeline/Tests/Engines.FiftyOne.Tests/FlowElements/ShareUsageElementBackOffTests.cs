@@ -272,9 +272,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 .Select(i => (times[i] - times[i - 1]).TotalSeconds)
                 .ToArray();
             var shown = string.Join(", ", gaps.Select(g => g.ToString("0.00")));
-            Assert.IsTrue(gaps[0] >= 0.4,
+            Assert.IsGreaterThanOrEqualTo(0.4, gaps[0],
                 $"The first pause was not the initial delay. Gaps: {shown}");
-            Assert.IsTrue(gaps[1] >= 0.9,
+            Assert.IsGreaterThanOrEqualTo(0.9, gaps[1],
                 $"The second pause was not doubled. Gaps: {shown}");
             Assert.IsTrue(gaps[2] >= 0.9 && gaps[2] < 1.9,
                 $"The third pause was not held at the maximum. Gaps: {shown}");
