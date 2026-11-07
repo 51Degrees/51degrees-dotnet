@@ -171,12 +171,11 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
             }
 
             var differences = new List<string>();
-            var explainedByCase = 0;
             foreach (var value in values.OrderBy(v => v, StringComparer.Ordinal))
             {
-                var expected = managed.TryGetValue(value, out var ids) ?
+                var expected = WithoutRepeats(managed.TryGetValue(value, out var ids) ?
                     ids :
-                    new List<uint>();
+                    new List<uint>());
                 var actual = _native.Hash.GetProfileIdsForPropertyValue(
                     property,
                     value);
@@ -185,35 +184,16 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
                     differences.Add(
                         $"'{value}' managed [{string.Join(",", expected)}] " +
                         $"native [{string.Join(",", actual)}]");
-
-                    // The managed index matches ignoring case, so its
-                    // answer is the profiles of every value spelled the
-                    // same ignoring case.
-                    var sameIgnoringCase = values
-                        .Where(v => string.Equals(
-                            v, value, StringComparison.OrdinalIgnoreCase))
-                        .SelectMany(v =>
-                            _native.Hash.GetProfileIdsForPropertyValue(
-                                property,
-                                v))
-                        .Distinct()
-                        .OrderBy(id => id);
-                    if (expected.SequenceEqual(sameIgnoringCase))
-                    {
-                        explainedByCase++;
-                    }
                 }
             }
 
-            var summary =
+            Console.WriteLine(
                 $"{property}: compared {values.Count} values, " +
-                $"{differences.Count} differ, and for {explainedByCase} of " +
-                "them the managed answer is the native profiles of every " +
-                "value spelled the same ignoring case.";
-            Console.WriteLine(summary);
+                $"{differences.Count} differ.");
             Assert.AreNotEqual(0, values.Count);
             Assert.IsEmpty(differences,
-                summary + " For example " +
+                $"{differences.Count} of {values.Count} {property} values " +
+                "differ, for example " +
                 string.Join("; ", differences.Take(5)));
         }
 
@@ -261,7 +241,7 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
             var differences = new List<string>();
             foreach (var value in values)
             {
-                var expected = ProfileIds(_managed, property, value);
+                var expected = WithoutRepeats(ProfileIds(_managed, property, value));
                 var actual = ProfileIds(_native, property, value);
                 if (expected.SequenceEqual(actual) == false)
                 {
@@ -274,6 +254,17 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
                 $"{differences.Count} of {values.Count} {property} values " +
                 "differ, for example " +
                 string.Join("; ", differences.Take(5)));
+        }
+
+        /// <summary>
+        /// The ids without repeats, in their order. A profile that holds two
+        /// values spelled the same ignoring case is added to the managed
+        /// index once for each, so its list can hold an id twice, and the
+        /// comparison is of the profiles.
+        /// </summary>
+        private static List<T> WithoutRepeats<T>(IEnumerable<T> ids)
+        {
+            return ids.Distinct().ToList();
         }
 
         private static List<string> ProfileIds(
