@@ -23,15 +23,15 @@
 namespace FiftyOne.Pipeline.Web.Shared.Adapters
 {
     /// <summary>
-    /// Gives the method of a request. An <see cref="IRequestAdapter"/> that
-    /// also implements this lets the client-side endpoints answer a matching
-    /// If-None-Match header with 304 only to GET and HEAD, and with 412 to
-    /// any other method, as
+    /// Gives the method of a request. The request adapters of the two web
+    /// integrations implement this, which lets the client-side endpoints
+    /// answer a matching If-None-Match header with 304 only to GET and HEAD,
+    /// and with 412 to any other method, as
     /// <see href="https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2">RFC
-    /// 9110 section 13.1.2</see> requires. A request whose adapter does not
-    /// implement it is treated as a GET.
+    /// 9110 section 13.1.2</see> requires. Any other
+    /// <see cref="IRequestAdapter"/> is treated as a GET.
     /// </summary>
-    public interface IRequestMethodAdapter
+    internal interface IRequestMethodAdapter
     {
         /// <summary>
         /// The request method, such as GET or POST, as the request gives it.
