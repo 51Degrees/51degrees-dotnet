@@ -204,7 +204,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// <see cref="ICloudRequestEngine.PublicProperties"/> failed, which
         /// leaves this engine without property meta-data.
         /// </summary>
-        public bool PropertyListRequestFailed => _propertyListRequestFailed;
+        bool IPropertyListRequestState.PropertyListRequestFailed =>
+            _propertyListRequestFailed;
 
         private volatile bool _propertyListRequestFailed;
 

@@ -23,14 +23,16 @@
 namespace FiftyOne.Pipeline.Engines.FlowElements
 {
     /// <summary>
-    /// Implemented by a cloud aspect engine that can say whether its request
-    /// for the list of its properties failed. The missing property service
-    /// gives <see cref="Services.MissingPropertyReason.CloudRequestFailed"/>
-    /// for a property of such an engine that has no property metadata
-    /// because of it, and <see cref="Services.MissingPropertyReason.Unknown"/>
-    /// otherwise.
+    /// Implemented by the cloud aspect engine base class to say whether its
+    /// request for the list of its properties failed. The missing property
+    /// service gives
+    /// <see cref="Services.MissingPropertyReason.CloudRequestFailed"/> for a
+    /// property of such an engine that has no property metadata because of
+    /// it, and <see cref="Services.MissingPropertyReason.Unknown"/>
+    /// otherwise. It is internal, and the cloud package sees it through this
+    /// package's InternalsVisibleTo grant.
     /// </summary>
-    public interface IPropertyListRequestState
+    internal interface IPropertyListRequestState
     {
         /// <summary>
         /// True when the most recent request for the list of properties
