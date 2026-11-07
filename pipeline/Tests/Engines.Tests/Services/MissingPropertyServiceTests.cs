@@ -255,6 +255,205 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             Assert.AreEqual(MissingPropertyReason.Unknown, result.Reason);
         }
 
+        /// <summary>
+        /// A data type whose typed accessor comes from the interface it
+        /// inherits, as the device and IP data interfaces do.
+        /// </summary>
+        public interface ITestDerivedData : ITestData
+        {
+        }
+
+        /// <summary>
+        /// The metadata is matched ignoring case, as the element data
+        /// matches a name when a value is read, so the reason does not
+        /// depend on how the caller spells the property.
+        /// </summary>
+        [TestMethod]
+        [DataRow("testProperty")]
+        [DataRow("TestProperty")]
+        [DataRow("TESTPROPERTY")]
+        public void MissingPropertyService_GetReason_ExcludedIgnoresCase(
+            string propertyName)
+        {
+            Mock<IAspectEngine> engine = new Mock<IAspectEngine>();
+            engine.Setup(e => e.DataSourceTier).Returns("premium");
+            engine.Setup(e => e.HasLoadedProperties).Returns(true);
+            ConfigureProperty(engine, false);
+
+            var result = _service.GetMissingPropertyReason(
+                propertyName, engine.Object);
+
+            Assert.AreEqual(
+                MissingPropertyReason.PropertyExcludedFromEngineConfiguration,
+                result.Reason);
+        }
+
+        /// <summary>
+        /// The tiers in the message come from the metadata, which is found
+        /// ignoring case.
+        /// </summary>
+        [TestMethod]
+        public void MissingPropertyService_GetReason_UpgradeIgnoresCase()
+        {
+            Mock<IAspectEngine> engine = new Mock<IAspectEngine>();
+            engine.Setup(e => e.DataSourceTier).Returns("lite");
+            engine.Setup(e => e.HasLoadedProperties).Returns(true);
+            ConfigureProperty(engine);
+
+            var result = _service.GetMissingPropertyReason(
+                "TESTPROPERTY", engine.Object);
+
+            Assert.AreEqual(
+                MissingPropertyReason.DataFileUpgradeRequired,
+                result.Reason);
+            Assert.IsTrue(result.Description.Contains(
+                "It is available with the premium,enterprise license/data"),
+                result.Description);
+        }
+
+        /// <summary>
+        /// A cloud engine's metadata is matched ignoring case too.
+        /// </summary>
+        [TestMethod]
+        public void MissingPropertyService_GetReason_CloudExcludedIgnoresCase()
+        {
+            Mock<ICloudAspectEngine> engine = new Mock<ICloudAspectEngine>();
+            engine.SetupGet(e => e.ElementDataKey).Returns("testElement");
+            engine.SetupGet(e => e.HasLoadedProperties).Returns(true);
+            ConfigureProperty(engine.As<IAspectEngine>(), false);
+
+            var result = _service.GetMissingPropertyReason(
+                "TESTPROPERTY", engine.Object);
+
+            Assert.AreEqual(
+                MissingPropertyReason.PropertyExcludedFromEngineConfiguration,
+                result.Reason);
+        }
+
+        /// <summary>
+        /// A typed accessor the data type inherits from another interface
+        /// counts, so an on-premise engine whose metadata does not list the
+        /// property gives the upgrade reason.
+        /// </summary>
+        [TestMethod]
+        public void MissingPropertyService_GetReason_InheritedTypedAccessor()
+        {
+            var engine = new GenericEngine<ITestDerivedData>(
+                new Mock<ILogger<GenericEngine<ITestDerivedData>>>().Object,
+                "lite",
+                "test",
+                new List<IAspectPropertyMetaData>());
+
+            var result = _service.GetMissingPropertyReason(
+                "testProperty", engine);
+
+            Assert.AreEqual(
+                MissingPropertyReason.DataFileUpgradeRequired,
+                result.Reason);
+        }
+
+        /// <summary>
+        /// When the tiers are not known, because the metadata does not list
+        /// the property, the message leaves out the sentence naming them.
+        /// </summary>
+        [TestMethod]
+        public void MissingPropertyService_GetReason_UpgradeTiersNotKnown()
+        {
+            var engine = new GenericEngine<ITestData>(
+                new Mock<ILogger<GenericEngine<ITestData>>>().Object,
+                "lite",
+                "test",
+                new List<IAspectPropertyMetaData>());
+
+            var result = _service.GetMissingPropertyReason(
+                "testProperty", engine);
+
+            Assert.AreEqual(
+                MissingPropertyReason.DataFileUpgradeRequired,
+                result.Reason);
+            AssertNoTierSentence(result, "testProperty", "test");
+        }
+
+        /// <summary>
+        /// When the metadata lists the property with no tiers, the message
+        /// leaves out the sentence naming them.
+        /// </summary>
+        [TestMethod]
+        public void MissingPropertyService_GetReason_UpgradeTiersEmpty()
+        {
+            Mock<IAspectEngine> engine = new Mock<IAspectEngine>();
+            engine.Setup(e => e.DataSourceTier).Returns("lite");
+            engine.Setup(e => e.ElementDataKey).Returns("test");
+            engine.Setup(e => e.HasLoadedProperties).Returns(true);
+            engine.Setup(e => e.Properties).Returns(
+                new List<IAspectPropertyMetaData>()
+                {
+                    new AspectPropertyMetaData(
+                        engine.Object,
+                        "testProperty",
+                        typeof(string),
+                        "",
+                        new List<string>(),
+                        true)
+                });
+
+            var result = _service.GetMissingPropertyReason(
+                "testProperty", engine.Object);
+
+            Assert.AreEqual(
+                MissingPropertyReason.DataFileUpgradeRequired,
+                result.Reason);
+            AssertNoTierSentence(result, "testProperty", "test");
+        }
+
+        /// <summary>
+        /// The typed accessor is only used when the metadata does not list
+        /// the property. A property listed for the engine's own tier and
+        /// available gives no upgrade message naming the tier the engine
+        /// already has.
+        /// </summary>
+        [TestMethod]
+        public void MissingPropertyService_GetReason_ListedTypedAccessorUnused()
+        {
+            var properties = new List<IAspectPropertyMetaData>();
+            var engine = new GenericEngine<ITestData>(
+                new Mock<ILogger<GenericEngine<ITestData>>>().Object,
+                "lite",
+                "test",
+                properties);
+            properties.Add(new AspectPropertyMetaData(
+                engine,
+                "testProperty",
+                typeof(string),
+                "",
+                new List<string>() { "lite" },
+                true));
+
+            var result = _service.GetMissingPropertyReason(
+                "testProperty", engine);
+
+            Assert.AreEqual(MissingPropertyReason.Unknown, result.Reason);
+        }
+
+        private static void AssertNoTierSentence(
+            MissingPropertyResult result,
+            string propertyName,
+            string elementDataKey)
+        {
+            var start = string.Format(
+                    Messages.MissingPropertyMessagePrefix,
+                    propertyName,
+                    elementDataKey) +
+                "This is because your license or data file does not " +
+                "include this property. To see which licenses include it, " +
+                "see ";
+            Assert.IsTrue(result.Description.StartsWith(start),
+                $"The message did not start '{start}': " +
+                result.Description);
+            Assert.IsFalse(result.Description.Contains("license/data for"),
+                $"The message named tiers: {result.Description}");
+        }
+
         private void ConfigureProperty(Mock<IAspectEngine> engine)
         {
             ConfigureProperty(engine, true);
