@@ -171,6 +171,7 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
             }
 
             var differences = new List<string>();
+            var explainedByCase = 0;
             foreach (var value in values.OrderBy(v => v, StringComparer.Ordinal))
             {
                 var expected = managed.TryGetValue(value, out var ids) ?
@@ -184,16 +185,35 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
                     differences.Add(
                         $"'{value}' managed [{string.Join(",", expected)}] " +
                         $"native [{string.Join(",", actual)}]");
+
+                    // The managed index matches ignoring case, so its
+                    // answer is the profiles of every value spelled the
+                    // same ignoring case.
+                    var sameIgnoringCase = values
+                        .Where(v => string.Equals(
+                            v, value, StringComparison.OrdinalIgnoreCase))
+                        .SelectMany(v =>
+                            _native.Hash.GetProfileIdsForPropertyValue(
+                                property,
+                                v))
+                        .Distinct()
+                        .OrderBy(id => id);
+                    if (expected.SequenceEqual(sameIgnoringCase))
+                    {
+                        explainedByCase++;
+                    }
                 }
             }
 
-            Console.WriteLine(
+            var summary =
                 $"{property}: compared {values.Count} values, " +
-                $"{differences.Count} differ.");
+                $"{differences.Count} differ, and for {explainedByCase} of " +
+                "them the managed answer is the native profiles of every " +
+                "value spelled the same ignoring case.";
+            Console.WriteLine(summary);
             Assert.AreNotEqual(0, values.Count);
             Assert.IsEmpty(differences,
-                $"{differences.Count} of {values.Count} {property} values " +
-                "differ, for example " +
+                summary + " For example " +
                 string.Join("; ", differences.Take(5)));
         }
 
