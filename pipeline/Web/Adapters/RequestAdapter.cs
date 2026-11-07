@@ -32,7 +32,7 @@ namespace FiftyOne.Pipeline.Web.Adapters
     /// services into the appropriate calls for the ASP.NET Core
     /// <see cref="HttpRequest"/> implementation.
     /// </summary>
-    class RequestAdapter : IRequestAdapter
+    class RequestAdapter : IRequestAdapter, IRequestMethodAdapter
     {
         private HttpRequest _request;
 
@@ -44,6 +44,9 @@ namespace FiftyOne.Pipeline.Web.Adapters
         {
             _request = request;
         }
+
+        /// <inheritdoc/>
+        public string Method => _request.Method;
 
         /// <summary>
         /// Get the value for the specified header.
