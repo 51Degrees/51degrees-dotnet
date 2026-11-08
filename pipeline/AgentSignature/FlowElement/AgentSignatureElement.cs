@@ -656,7 +656,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                     Messages.NoValueDetailUnbound);
             }
 
-            var resolver = new FlowDataComponentResolver(data, source);
+            var resolver = new FlowDataComponentResolver(
+                data, source, _evidenceKeyFilter);
             if (SignatureBase.TryBuild(
                 candidate.CoveredComponents,
                 candidate.SignatureParams,
@@ -1155,13 +1156,18 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// evidence the pipeline holds.
         /// </summary>
         /// <remarks>
-        /// A signature may cover any request header, so the element asks
-        /// for every header rather than a fixed list. The derived
-        /// components are built from those headers and from the request
-        /// line, being the method, the path and the query string. Where an
-        /// integration supplies no request line, a signature covering
-        /// '&#64;target-uri', '&#64;method', '&#64;path' or '&#64;query' cannot be rebuilt
-        /// and reads Unverified with the ComponentUnavailable reason.
+        /// A signature may cover any request header. A header the element
+        /// accepts is read from the evidence. Any other header is read from
+        /// the evidence where the flow data holds it, and otherwise from
+        /// the web request a web integration adds as
+        /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>. The
+        /// derived components are built from the accepted headers and from
+        /// the request line, being the method, the path and the query
+        /// string. Where an integration supplies no request line, a
+        /// signature covering '&#64;target-uri', '&#64;method', '&#64;path' or
+        /// '&#64;query' cannot be rebuilt and reads Unverified with the
+        /// ComponentUnavailable reason.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/agent-signature-element.md#rebuilding-the-signature-base">Specification</see>
         /// </remarks>
         private sealed class FlowDataComponentResolver : IComponentResolver
         {
@@ -1169,10 +1175,16 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
 
             private readonly string _source;
 
-            public FlowDataComponentResolver(IFlowData data, string source)
+            private readonly IEvidenceKeyFilter _accepted;
+
+            public FlowDataComponentResolver(
+                IFlowData data,
+                string source,
+                IEvidenceKeyFilter accepted)
             {
                 _data = data;
                 _source = source;
+                _accepted = accepted;
             }
 
             public bool TryResolve(
@@ -1393,12 +1405,46 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             /// request whose caller sent no host reports instead that a
             /// component was unavailable, which says only that the check
             /// could not be made.
+            /// <para>
+            /// A web integration adds only the evidence some element in the
+            /// pipeline accepts, so a header this element does not accept
+            /// may be missing from the evidence. Where it is, it is read
+            /// from the web request under the same key. The web request is
+            /// the one the evidence describes, so the base is still built
+            /// from one request.
+            /// </para>
             /// </remarks>
             private bool GetHeader(string name, out string value)
             {
-                return GetEvidence(
-                    _source + Core.Constants.EVIDENCE_SEPERATOR + name,
-                    out value);
+                var key = _source + Core.Constants.EVIDENCE_SEPERATOR + name;
+                if (GetEvidence(key, out value))
+                {
+                    return true;
+                }
+                return _accepted.Include(key) == false &&
+                    GetFromWebRequest(key, out value);
+            }
+
+            /// <summary>
+            /// Read a value from the web request a web integration adds as
+            /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>, which
+            /// is a read only dictionary keyed as the request's values
+            /// would be as evidence.
+            /// </summary>
+            private bool GetFromWebRequest(string key, out string value)
+            {
+                if (_data.TryGetEvidence(
+                        Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
+                        out object request) &&
+                    request is IReadOnlyDictionary<string, object> values &&
+                    values.TryGetValue(key, out var raw) &&
+                    raw != null)
+                {
+                    value = raw.ToString();
+                    return true;
+                }
+                value = null;
+                return false;
             }
 
             /// <summary>
@@ -1439,25 +1485,26 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         }
 
         /// <summary>
-        /// The evidence this element asks for.
+        /// The evidence this element accepts.
         /// </summary>
         /// <remarks>
-        /// A signature names the parts of the request it covers, and it may
-        /// name any request header, so the element cannot write the list
-        /// down in advance. It accepts every header instead, together with
-        /// the protocol, which '&#64;authority' and '&#64;scheme' are built from,
-        /// and the three request line values, which '&#64;method', '&#64;path',
-        /// '&#64;query' and '&#64;target-uri' are built from. A fixed list of
-        /// headers would leave a signature covering any other header unable
-        /// to be rebuilt, because a web integration only puts evidence into
-        /// the request that some element has asked for.
+        /// The element accepts the three signature headers, the host and
+        /// the protocol, which '&#64;authority' and '&#64;scheme' are built
+        /// from, and the three request line values, which '&#64;method',
+        /// '&#64;path', '&#64;query' and '&#64;target-uri' are built from. A
+        /// pipeline's accepted evidence decides its cache keys, the ETag and
+        /// the Vary header, so only evidence that can change the result is
+        /// accepted. Any other header a signature covers is read without
+        /// being accepted, see <see cref="FlowDataComponentResolver"/>.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/agent-signature-element.md#accepted-evidence">Specification</see>
         /// <para>
-        /// The 'query' prefix is accepted as well as 'header', because a
-        /// caller's own Pipeline sends its evidence on to the cloud service
-        /// with the prefix taken off, so a header that started as
-        /// 'header.signature' reaches the cloud as 'query.signature'.
-        /// Accepting both is what lets one element serve a request that
-        /// arrived directly and one that was forwarded.
+        /// Where forwarded evidence is trusted, every key under the 'query'
+        /// prefix is accepted as well, because a caller's own Pipeline
+        /// sends its evidence on to the cloud service with the prefix taken
+        /// off, so a header that started as 'header.signature' reaches the
+        /// cloud as 'query.signature'. Accepting both is what lets one
+        /// element serve a request that arrived directly and one that was
+        /// forwarded.
         /// </para>
         /// <para>
         /// The class derives from the whitelist filter, holding the keys
@@ -1571,11 +1618,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
 
             /// <inheritdoc/>
             /// <remarks>
-            /// Any header at all is accepted beyond the named keys,
-            /// because a signature may cover one this element cannot know
-            /// in advance. The protocol, which '&#64;scheme' and the port in
-            /// '&#64;authority' are built from, is itself written as
-            /// 'header.protocol', so the test on the prefix covers it too.
+            /// The named keys are accepted, and where forwarded evidence is
+            /// trusted, every key under the query prefix as well.
             /// </remarks>
             public override bool Include(string key)
             {
@@ -1583,13 +1627,11 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 {
                     return false;
                 }
-                return key.StartsWith(
-                        _headerPrefix, StringComparison.OrdinalIgnoreCase) ||
+                return base.Include(key) ||
                     (_trustForwarded &&
                         key.StartsWith(
                             _queryPrefix,
-                            StringComparison.OrdinalIgnoreCase)) ||
-                    base.Include(key);
+                            StringComparison.OrdinalIgnoreCase));
             }
 
             /// <inheritdoc/>
