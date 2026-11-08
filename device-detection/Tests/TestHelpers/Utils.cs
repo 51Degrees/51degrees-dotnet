@@ -52,7 +52,41 @@ namespace FiftyOne.DeviceDetection.TestHelpers
 
         public static FileInfo GetFilePath(string filename)
         {
-            var fullPath = Cache.GetOrAdd(
+            var fullPath = Find(filename);
+            if (fullPath == null || fullPath.Exists == false)
+            {
+                Assert.Fail($"Expected data file " +
+                    $"'{filename}' was missing. Test not run.");
+            }
+            return fullPath;
+        }
+
+        /// <summary>
+        /// Finds a data file that only a paid licence provides. The test is
+        /// skipped, with a message saying why, when the file is missing.
+        /// </summary>
+        public static FileInfo GetPaidFilePath(string filename)
+        {
+            FileInfo fullPath = null;
+            try
+            {
+                fullPath = Find(filename);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // No data folder, so the file is missing.
+            }
+            if (fullPath == null || fullPath.Exists == false)
+            {
+                Assert.Inconclusive($"This test needs the paid data file " +
+                    $"'{filename}', which was not found. Test not run.");
+            }
+            return fullPath;
+        }
+
+        private static FileInfo Find(string filename)
+        {
+            return Cache.GetOrAdd(
                 filename,
                 (f) =>
                 {
@@ -60,12 +94,6 @@ namespace FiftyOne.DeviceDetection.TestHelpers
                         FindFile(filename, GetOnPremiseDirectory());
                     return p == null ? null : new FileInfo(p);
                 });
-            if (fullPath == null || fullPath.Exists == false)
-            {
-                Assert.Fail($"Expected data file " +
-                    $"'{filename}' was missing. Test not run.");
-            }
-            return fullPath;
         }
 
         /// <summary>

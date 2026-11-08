@@ -111,7 +111,7 @@ public class NativeMemoryTests
     /// </returns>
     private static long RunPipeline()
     {
-        var datafile = TestHelpers.Utils.GetFilePath(
+        var datafile = TestHelpers.Utils.GetPaidFilePath(
             Constants.IPI_DATA_FILE_NAME);
         using var pipeline = new IpiPipelineBuilder(
                 new NullLoggerFactory(),
