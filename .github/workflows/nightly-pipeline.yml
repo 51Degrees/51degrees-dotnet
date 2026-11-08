@@ -1,7 +1,8 @@
 name: Nightly Pipeline
 
 # Package and submodule updates, then every open pull request, then a
-# publish of every package family that changed since its last tag.
+# publish of every package family that changed since its last tag, and of
+# every family depending on one of them.
 
 on:
   workflow_dispatch:

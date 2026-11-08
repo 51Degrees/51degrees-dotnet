@@ -299,6 +299,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             var firefoxOptions = new FirefoxOptions();
             firefoxOptions.AcceptInsecureCertificates = true;
             firefoxOptions.AddArgument("--headless");
+            // A resource key with the location product gives the browser a
+            // script that asks for its position. Headless Chrome and Edge
+            // deny that at once, but headless Firefox leaves the prompt open
+            // with no one to answer it, so the client-only page never
+            // completes. Deny it here as the other browsers do.
+            firefoxOptions.SetPreference("permissions.default.geo", 2);
             // Firefox does not implement the Chrome DevTools Protocol, so the
             // network adapter uses the W3C BiDi protocol instead. Ask for the
             // BiDi WebSocket URL so AsBiDiAsync can attach.
