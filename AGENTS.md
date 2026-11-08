@@ -226,8 +226,11 @@ The root `Directory.Build.targets` turns it into one or the other from the
 tests with `Project`, so a change that crosses folders is tested together.
 When a package's dependency changes, change the item, and when a version
 changes, change the `FiftyOne*Version` property in the root
-`Directory.Build.props`. The metadata that holds the path is `ProjectPath`,
-because `Project` is the name MSBuild gives a `ProjectReference` GUID.
+`Directory.Build.props`. A package that starts to reference a family it did
+not reference before also needs that family in its own family's `DependsOn` in
+`ci/packages.json`, or a release of the family it references leaves it at the
+old requirement. The metadata that holds the path is `ProjectPath`, because
+`Project` is the name MSBuild gives a `ProjectReference` GUID.
 
 Each folder that came from a separate repository keeps its own
 `Directory.Build.props`, which imports the root one on its first line. MSBuild
@@ -279,9 +282,13 @@ projects that need `msbuild` on Windows.
 
 ## Versions
 
-Until the first release from this repository, each package family keeps the
-version its separate repository last published, held in the root
-`Directory.Build.props`.
+Each package family continues the version stream its separate repository had
+and is tagged `<family>/<version>`. A publish releases a family when a file
+under its folders changed since its last tag, and with it every family that
+depends on it, so that their packages require the new version. Only the
+patch number moves. `ci/packages.json` lists the families, their folders and
+the families each depends on, and `ci/README.md` says how the publish uses
+them.
 
 ## Pull requests
 
