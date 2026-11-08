@@ -88,15 +88,6 @@ namespace FiftyOne.DeviceDetection {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Evidence value for key &apos;{0}&apos; is not in the expected format. This should be a base 64 encoded JSON string from a JavaScript call to navigator.userAgentData.getHighEntropyValues..
-        /// </summary>
-        internal static string ExceptionUachJsUnexpectedFormat {
-            get {
-                return ResourceManager.GetString("ExceptionUachJsUnexpectedFormat", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Unrecognized filename &apos;{0}&apos;. Expected a &apos;*.hash&apos; Hash data file..
         /// </summary>
         internal static string ExceptionUnrecognizedFileExtension {
