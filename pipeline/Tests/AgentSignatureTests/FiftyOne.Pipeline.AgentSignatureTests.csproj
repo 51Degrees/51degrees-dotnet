@@ -21,6 +21,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" />
     <ProjectReference Include="..\..\AgentSignature\FiftyOne.Pipeline.AgentSignature.csproj" />
+    <!-- The read only view of a web request that the web integrations add
+         as evidence, so the tests pass the element the type it receives. -->
+    <ProjectReference Include="..\..\Web.Shared\FiftyOne.Pipeline.Web.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

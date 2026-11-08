@@ -20,8 +20,10 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.Pipeline.AgentSignature.Data;
 using FiftyOne.Pipeline.AgentSignature.Tests.Helpers;
 using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Web.Shared;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
@@ -30,35 +32,82 @@ using System.Linq;
 namespace FiftyOne.Pipeline.AgentSignature.Tests
 {
     /// <summary>
-    /// Checks the evidence the element asks for. A signature may cover any
-    /// request header, so the element cannot write down the list in advance
-    /// and asks for every header instead. The web integration only puts
-    /// evidence into a request that some element has asked for, so a header
-    /// the filter leaves out is a header no signature covering it can be
-    /// checked against.
+    /// Checks the evidence the element accepts and where it reads a covered
+    /// header from. The element accepts only the eight keys the
+    /// specification names, because a pipeline's accepted evidence decides
+    /// its cache keys, the ETag and the Vary header. Any other header a
+    /// signature covers is read from the evidence where the flow data holds
+    /// it, and otherwise from the web request a web integration adds as
+    /// 'server.http-request'.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/agent-signature-element.md#accepted-evidence">Specification</see>
     /// </summary>
     [TestClass]
     public class EvidenceKeyFilterTests
     {
         /// <summary>
-        /// The header a signature covers in the end to end test below, being
-        /// an ordinary request header rather than one of the three the
-        /// protocol names.
+        /// The header a signature covers in the tests below, being an
+        /// ordinary request header rather than one the element accepts.
         /// </summary>
         private const string OrdinaryHeaderKey = "header.content-type";
 
         /// <summary>
-        /// The value of that header.
+        /// The value of that header the signature was made over.
         /// </summary>
         private const string OrdinaryHeaderValue = "application/json";
 
         /// <summary>
-        /// Every request header is asked for, together with the protocol
-        /// that '&#64;authority' and '&#64;scheme' are built from, and nothing that
-        /// is not a header the element could be asked to rebuild.
+        /// The key a web integration adds the web request under, written
+        /// out rather than read from the package, so the tests check the
+        /// key the specification gives.
+        /// </summary>
+        private const string HttpRequestKey = "server.http-request";
+
+        /// <summary>
+        /// The eight keys the specification names, and the only ones the
+        /// element accepts.
+        /// </summary>
+        private static readonly string[] AcceptedKeys = new[]
+        {
+            "header.signature",
+            "header.signature-input",
+            "header.signature-agent",
+            "header.host",
+            "header.protocol",
+            "server.request-method",
+            "server.request-path",
+            "server.request-query",
+        };
+
+        /// <summary>
+        /// A web request as a web integration adds it, being the read only
+        /// view the integrations share, keyed as the request's values would
+        /// be as evidence.
+        /// </summary>
+        private sealed class WebRequest : RequestEvidenceView
+        {
+            private readonly IDictionary<string, object> _values;
+
+            public WebRequest(IDictionary<string, object> values)
+            {
+                _values = values;
+            }
+
+            protected override void AddValues(
+                IDictionary<string, object> values)
+            {
+                foreach (var entry in _values)
+                {
+                    values[entry.Key] = entry.Value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The element accepts the eight keys the specification names, in
+        /// any case, and nothing else.
         /// </summary>
         /// <param name="key">The evidence key.</param>
-        /// <param name="expected">Whether the element asks for it.</param>
+        /// <param name="expected">Whether the element accepts it.</param>
         /// <param name="why">Why, for the assertion message.</param>
         [DataTestMethod]
         [DataRow(
@@ -82,17 +131,38 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
             true,
             "'@authority' and '@scheme' are built from it")]
         [DataRow(
-            "header.content-type",
+            "server.request-method",
             true,
-            "a signature may cover any request header")]
+            "'@method' is built from it")]
         [DataRow(
-            "header.x-something-nobody-has-heard-of",
+            "server.request-path",
             true,
-            "a signature may cover any request header")]
+            "'@path' and '@target-uri' are built from it")]
         [DataRow(
-            "HEADER.Content-Type",
+            "server.request-query",
+            true,
+            "'@query' and '@target-uri' are built from it")]
+        [DataRow(
+            "HEADER.Signature-Input",
             true,
             "an evidence key is matched whatever its case")]
+        [DataRow(
+            "header.content-type",
+            false,
+            "a covered header beyond the eight keys is read from the " +
+            "evidence or the web request without being accepted")]
+        [DataRow(
+            "header.if-none-match",
+            false,
+            "a revalidation header would put itself into the ETag")]
+        [DataRow(
+            "header.x-something-nobody-has-heard-of",
+            false,
+            "only the keys the specification names are accepted")]
+        [DataRow(
+            HttpRequestKey,
+            false,
+            "the web request is read without being accepted")]
         [DataRow(
             "query.signature",
             false,
@@ -102,11 +172,11 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         [DataRow(
             "query.foo",
             false,
-            "a query string value is not a request header")]
+            "a query string value is not one of the eight keys")]
         [DataRow(
             "cookie.bar",
             false,
-            "a cookie is not a request header")]
+            "a cookie is not one of the eight keys")]
         [DataRow(
             "server.client-ip",
             false,
@@ -116,7 +186,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
             "headerless",
             false,
             "it only looks like a header key")]
-        public void EvidenceKeyIsAskedForOnlyWhenItIsAHeader(
+        public void EvidenceKeyIsAcceptedOnlyWhenTheSpecificationNamesIt(
             string key,
             bool expected,
             string why)
@@ -126,16 +196,37 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                 Assert.AreEqual(
                     expected,
                     harness.Element.EvidenceKeyFilter.Include(key),
-                    "The element should " + (expected ? "ask" : "not ask") +
-                    " for the evidence key '" + key + "', because " + why +
+                    "The element should " +
+                    (expected ? "accept" : "not accept") +
+                    " the evidence key '" + key + "', because " + why +
                     ".");
                 Assert.AreEqual(
                     expected,
                     harness.Element.EvidenceKeyFilter.Order(key).HasValue,
                     "The evidence key '" + key + "' should " +
                     (expected ? "be given an order, because the element " +
-                        "asks for it" : "be given no order, because the " +
-                        "element does not ask for it") + ".");
+                        "accepts it" : "be given no order, because the " +
+                        "element does not accept it") + ".");
+            }
+        }
+
+        /// <summary>
+        /// The published whitelist holds the eight keys and no others.
+        /// </summary>
+        [TestMethod]
+        public void WhitelistHoldsExactlyTheEightKeys()
+        {
+            using (var harness = ElementHarness.Create())
+            {
+                var whitelist = ((EvidenceKeyFilterWhitelist)harness.Element
+                    .EvidenceKeyFilter).Whitelist;
+
+                CollectionAssert.AreEquivalent(
+                    AcceptedKeys.Select(k => k.ToLowerInvariant()).ToList(),
+                    whitelist.Keys.Select(k => k.ToLowerInvariant()).ToList(),
+                    "Expected the eight keys the specification names, and " +
+                    "the whitelist holds '" +
+                    string.Join("', '", whitelist.Keys) + "'.");
             }
         }
 
@@ -163,89 +254,192 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         }
 
         /// <summary>
-        /// A signature covering an ordinary request header verifies, which
-        /// it could not do whilst the element asked for a fixed list of five
-        /// keys, because the web integration would then never have put that
-        /// header into evidence. The pipeline filter is checked as well as
-        /// the outcome, because the filter is what the web integration asks
-        /// before it adds a header.
+        /// A pipeline holding the element does not accept a header the
+        /// element only reads, so that header takes no part in the
+        /// pipeline's cache keys, its ETag or its Vary header. This holds
+        /// whether or not forwarded evidence is trusted.
         /// </summary>
         [TestMethod]
-        public void SignatureCoveringAnOrdinaryHeaderVerifies()
+        public void UnrelatedHeaderDoesNotReachThePipelinesAcceptedEvidence()
         {
-            using (var harness = ElementHarness.CreateWithTestKey())
+            foreach (var trusted in new[] { false, true })
             {
-                Assert.IsTrue(
-                    harness.Pipeline.EvidenceKeyFilter.Include(
-                        OrdinaryHeaderKey),
-                    "The pipeline should ask for '" + OrdinaryHeaderKey +
-                    "', because that is what the web integration reads " +
-                    "before it puts a header into evidence.");
-
-                var options = new SigningOptions();
-                options.ExtraComponents.Add(
-                    new KeyValuePair<string, string>(
-                        "\"content-type\"", OrdinaryHeaderValue));
-                var signed = RequestSigner.Sign(options);
-
-                var result = harness.Process(new Dictionary<string, string>
+                using (var harness = ElementHarness.Create(
+                    builder => builder.SetTrustForwardedEvidence(trusted)))
                 {
-                    { Constants.EVIDENCE_SIGNATURE_KEY, signed.Signature },
+                    foreach (var key in new[]
                     {
-                        Constants.EVIDENCE_SIGNATURE_INPUT_KEY,
-                        signed.SignatureInput
-                    },
+                        OrdinaryHeaderKey,
+                        "header.if-none-match",
+                        "header.user-agent",
+                        HttpRequestKey,
+                    })
                     {
-                        Constants.EVIDENCE_SIGNATURE_AGENT_KEY,
-                        signed.SignatureAgent
-                    },
-                    { Constants.EVIDENCE_HOST_KEY, "example.com" },
-                    { Core.Constants.EVIDENCE_PROTOCOL, "https" },
-                    { OrdinaryHeaderKey, OrdinaryHeaderValue },
-                });
-
-                Assert.AreEqual(
-                    Constants.STATUS_VERIFIED,
-                    result.AgentSignature.Value,
-                    "Expected Verified for a signature covering the " +
-                    "'content-type' header. The status was '" +
-                    result.AgentSignature.Value + "' with the reason '" +
-                    result.AgentSignatureReason.Value + "'.");
+                        Assert.IsFalse(
+                            harness.Pipeline.EvidenceKeyFilter.Include(key),
+                            "The pipeline should not accept '" + key +
+                            "' with forwarded evidence " +
+                            (trusted ? "trusted" : "not trusted") +
+                            ", because the agent signature element only " +
+                            "accepts the eight keys the specification " +
+                            "names.");
+                    }
+                    foreach (var key in AcceptedKeys)
+                    {
+                        Assert.IsTrue(
+                            harness.Pipeline.EvidenceKeyFilter.Include(key),
+                            "The pipeline should accept '" + key +
+                            "', because the agent signature element " +
+                            "needs it.");
+                    }
+                }
             }
         }
 
         /// <summary>
-        /// A signature covering a header that did not arrive cannot be
-        /// rebuilt, so the element says so rather than reporting a mismatch.
-        /// This is the other half of the test above, showing that the header
-        /// really is what the signature was checked against.
+        /// A signature covering an ordinary request header verifies where
+        /// the caller supplies that header as evidence, even though the
+        /// element does not accept it.
+        /// </summary>
+        [TestMethod]
+        public void SignatureCoveringAHeaderInTheEvidenceVerifies()
+        {
+            using (var harness = ElementHarness.CreateWithTestKey())
+            {
+                var result = harness.ProcessSigned(
+                    SignOverTheOrdinaryHeader(),
+                    new Dictionary<string, string>
+                    {
+                        { OrdinaryHeaderKey, OrdinaryHeaderValue },
+                    });
+
+                AssertVerified(result, "supplied as evidence");
+            }
+        }
+
+        /// <summary>
+        /// A signature covering an ordinary request header verifies where
+        /// only the web request holds that header, which is what a web
+        /// integration gives a pipeline that does not accept the header.
+        /// The header is spelled as a request would carry it, because the
+        /// web request's keys are compared without regard to case.
+        /// </summary>
+        [TestMethod]
+        public void SignatureCoveringAHeaderOnlyInTheWebRequestVerifies()
+        {
+            using (var harness = ElementHarness.CreateWithTestKey())
+            {
+                var result = harness.ProcessSignedWithWebRequest(
+                    SignOverTheOrdinaryHeader(),
+                    new WebRequest(new Dictionary<string, object>
+                    {
+                        { "header.Content-Type", OrdinaryHeaderValue },
+                    }));
+
+                AssertVerified(result, "only in the web request");
+            }
+        }
+
+        /// <summary>
+        /// Where the evidence and the web request both hold a covered
+        /// header, the value in the evidence is used, so a caller that
+        /// passes a header in directly is checked against what it passed.
+        /// </summary>
+        [TestMethod]
+        public void HeaderInTheEvidenceIsUsedBeforeTheWebRequest()
+        {
+            using (var harness = ElementHarness.CreateWithTestKey())
+            {
+                var result = harness.ProcessSignedWithWebRequest(
+                    SignOverTheOrdinaryHeader(),
+                    new WebRequest(new Dictionary<string, object>
+                    {
+                        { OrdinaryHeaderKey, "text/plain" },
+                    }),
+                    new Dictionary<string, string>
+                    {
+                        { OrdinaryHeaderKey, OrdinaryHeaderValue },
+                    });
+
+                AssertVerified(result, "in the evidence");
+            }
+        }
+
+        /// <summary>
+        /// A signature covering a header that neither the evidence nor the
+        /// web request holds cannot be rebuilt, so the element says so
+        /// rather than reporting a mismatch.
+        /// </summary>
+        [TestMethod]
+        public void SignatureCoveringAHeaderInNeitherPlaceIsUnverified()
+        {
+            using (var harness = ElementHarness.CreateWithTestKey())
+            {
+                var result = harness.ProcessSignedWithWebRequest(
+                    SignOverTheOrdinaryHeader(),
+                    new WebRequest(new Dictionary<string, object>
+                    {
+                        { "header.accept", "*/*" },
+                    }));
+
+                AssertComponentUnavailable(result);
+            }
+        }
+
+        /// <summary>
+        /// A signature covering a header that did not arrive at all, with
+        /// no web request either, cannot be rebuilt.
         /// </summary>
         [TestMethod]
         public void SignatureCoveringAHeaderThatDidNotArriveIsUnverified()
         {
             using (var harness = ElementHarness.CreateWithTestKey())
             {
-                var options = new SigningOptions();
-                options.ExtraComponents.Add(
-                    new KeyValuePair<string, string>(
-                        "\"content-type\"", OrdinaryHeaderValue));
-                var signed = RequestSigner.Sign(options);
-                var result = harness.ProcessSigned(signed);
+                var result = harness.ProcessSigned(
+                    SignOverTheOrdinaryHeader());
 
-                Assert.AreEqual(
-                    Constants.STATUS_UNVERIFIED,
-                    result.AgentSignature.Value,
-                    "Expected Unverified for a signature covering a header " +
-                    "the request did not carry. The status was '" +
-                    result.AgentSignature.Value + "' with the reason '" +
-                    result.AgentSignatureReason.Value + "'.");
-                Assert.AreEqual(
-                    Constants.REASON_COMPONENT_UNAVAILABLE,
-                    result.AgentSignatureReason.Value,
-                    "Expected the ComponentUnavailable reason, and the " +
-                    "reason was '" + result.AgentSignatureReason.Value +
-                    "'.");
+                AssertComponentUnavailable(result);
             }
+        }
+
+        private static SignedRequest SignOverTheOrdinaryHeader()
+        {
+            var options = new SigningOptions();
+            options.ExtraComponents.Add(
+                new KeyValuePair<string, string>(
+                    "\"content-type\"", OrdinaryHeaderValue));
+            return RequestSigner.Sign(options);
+        }
+
+        private static void AssertVerified(
+            IAgentSignatureData result,
+            string where)
+        {
+            Assert.AreEqual(
+                Constants.STATUS_VERIFIED,
+                result.AgentSignature.Value,
+                "Expected Verified for a signature covering the " +
+                "'content-type' header " + where + ". The status was '" +
+                result.AgentSignature.Value + "' with the reason '" +
+                result.AgentSignatureReason.Value + "'.");
+        }
+
+        private static void AssertComponentUnavailable(
+            IAgentSignatureData result)
+        {
+            Assert.AreEqual(
+                Constants.STATUS_UNVERIFIED,
+                result.AgentSignature.Value,
+                "Expected Unverified for a signature covering a header " +
+                "the request did not carry. The status was '" +
+                result.AgentSignature.Value + "' with the reason '" +
+                result.AgentSignatureReason.Value + "'.");
+            Assert.AreEqual(
+                Constants.REASON_COMPONENT_UNAVAILABLE,
+                result.AgentSignatureReason.Value,
+                "Expected the ComponentUnavailable reason, and the " +
+                "reason was '" + result.AgentSignatureReason.Value +
+                "'.");
         }
     }
 }
