@@ -79,6 +79,11 @@ data file, because the free lite file does not carry the location data they
 analyse. `LocationAnalysis-Console` runs against the lite
 file too, reporting the properties it does not carry as `NotAvailable`.
 
+`Compare-Console` takes the data file, the truth CSV file, the output path and
+the performance profile, all optional and in that order. The profile defaults
+to `LowMemory`, which keeps the data file on disk. Pass `MaxPerformance` for
+speed where the machine has as much free RAM as the data file is large.
+
 `Metrics-Console` samples the address ranges in the data file rather than
 visiting every address. Optional command line arguments follow the data file and
 output path:
@@ -88,15 +93,15 @@ output path:
 | Sample percentage        | 0.1            | Proportion of each range to sample, where 1 is 100% and analyses every address in the range. |
 | Max samples per range    | 8              | Most addresses taken from any one range. |
 | Range percentage         | 1              | Proportion of the ranges in the data file to include. |
-| Performance profile      | MaxPerformance | Profile the engine is built with. |
+| Performance profile      | LowMemory      | Profile the engine is built with. Pass MaxPerformance for speed. |
 | Max profiles without range | 100000       | Give up scanning once this many profiles in a row carry no range. 0 scans the whole file. |
 
 The per-range cap is what makes a run finish at all: a single IPv6 range holds
 more addresses than could ever be enumerated, so the sample percentage on its
 own does not limit the work.
 
-The last two arguments are what make a run over a whole enterprise data file
-take minutes rather than hours.
+Choosing `MaxPerformance` and the last argument are what make a run over a
+whole enterprise data file take minutes rather than hours.
 
 The data file holds two kinds of network profile: the ranges the example needs
 are on registration profiles carrying `IpRangeStart`, `IpRangeEnd` and who the
@@ -107,11 +112,12 @@ rather than reading through the rest. Measured on an enterprise file, that is
 601,443 ranges in the first 603,531 profiles followed by 993,628 profiles that
 can add nothing.
 
-`MaxPerformance` holds the data file in memory instead of paging it from disk,
-which the scan is far more sensitive to than detection is - reading a profile's
-values measured 166 a second against 2,013 under the two profiles. It needs as
-much free RAM as the data file is large, so drop to `Balanced` or `LowMemory`
-where that is not available.
+`LowMemory`, the default, pages the data file from disk, so the example runs on
+a machine with less free RAM than the data file is large. `MaxPerformance`
+holds the data file in memory instead. Reading a profile's values measured 166
+a second under `LowMemory` against 2,013 under `MaxPerformance`, so the scan is
+far more sensitive to the profile than detection is. Pass `MaxPerformance` for
+speed where the machine has as much free RAM as the data file is large.
 
 Lower the range percentage on top of these when an approximate analysis is
 enough. Discarding a range before its values are read takes almost all of its

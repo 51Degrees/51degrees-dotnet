@@ -92,7 +92,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                .Verifiable();
 
             // Un-set cloud URL environment variable.
-            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, "");
+            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, null);
         }
 
         /// <summary>
@@ -444,7 +444,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         public void Cleanup()
         {
             // Un-set cloud URL environment variable.
-            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, "");
+            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, null);
         }
     }
 }

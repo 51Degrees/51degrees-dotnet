@@ -232,8 +232,8 @@ namespace FiftyOne.Pipeline.Core.FlowElements
             {
                 if(ex.InnerExceptions.Count > 1)
                 {
-                    throw ex;
-                } 
+                    throw;
+                }
                 else
                 {
                     Logger.LogCritical(ex, Messages.MessagePipelineCreationFailed);
