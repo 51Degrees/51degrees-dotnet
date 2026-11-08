@@ -63,8 +63,10 @@ namespace FiftyOne.Pipeline.Engines.Services
         // System wrappers
         private IFileSystem _fileSystem;
 
-        // random number generator
-        private Random _rnd = new Random();
+        // Random number generator, which is not safe to use from several
+        // timer threads at once, so it is only used under its own lock.
+        private readonly Random _rnd = new Random();
+        private readonly object _rndLock = new object();
 
 		// All registered configurations
 		private List<AspectEngineDataFile> _configurations;
@@ -193,6 +195,16 @@ namespace FiftyOne.Pipeline.Engines.Services
 				throw new ArgumentNullException(nameof(dataFile));
 			}
 
+			// A disposed data file is never registered again. Without this a
+			// check that was running when the file was disposed would.
+			if (dataFile.TimerClosed)
+			{
+				LogDebugMessage(
+					() => "dataFile is disposed so is not registered.",
+					dataFile);
+				return;
+			}
+
 			bool alreadyRegistered = dataFile.IsRegistered;
 			bool setTimer = true;
 			dataFile.SetDataUpdateService(this);
@@ -241,7 +253,9 @@ namespace FiftyOne.Pipeline.Engines.Services
 					{
 						lock (dataFile.TimerLock)
 						{
-							if (dataFile.Timer == null)
+							// The file can be disposed after the check above.
+							if (dataFile.Timer == null &&
+								dataFile.TimerClosed == false)
 							{
 								LogInfoMessage(
 									Messages.MessageAutoUpdateCreateTimer, dataFile);
@@ -318,6 +332,11 @@ namespace FiftyOne.Pipeline.Engines.Services
 				{
 					_configurations.Remove(config);
 				}
+			}
+			// Stop the timer so that the file is not checked again.
+			if (dataFile != null)
+			{
+				ClearTimer(dataFile);
 			}
 		}
 
@@ -1553,8 +1572,12 @@ namespace FiftyOne.Pipeline.Engines.Services
 			int seconds = 0;
 			if (config.MaxRandomisationSeconds > 0)
 			{
-				seconds = (int)(_rnd.NextDouble() *
-					config.MaxRandomisationSeconds);
+				double fraction;
+				lock (_rndLock)
+				{
+					fraction = _rnd.NextDouble();
+				}
+				seconds = (int)(fraction * config.MaxRandomisationSeconds);
 			}
 			return interval.Add(TimeSpan.FromSeconds(seconds));
 		}
