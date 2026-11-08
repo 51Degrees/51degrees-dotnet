@@ -57,9 +57,9 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
     /// When Terms Document Locator (TDL) evidence is provided via the
     /// <see cref="Constants.TdlEvidenceKey"/> key, the catch-all footer
     /// is emitted as an Allow-all block with one <c>TDL:</c> line per
-    /// valid absolute URI. Invalid entries are silently dropped per the
-    /// IETF-Robots TDL specification. If no valid TDL URIs remain, the
-    /// engine falls back to the default Disallow-all catch-all.
+    /// valid absolute http or https URI. Invalid entries are silently
+    /// dropped per the IETF-Robots TDL specification. If no valid TDL URIs
+    /// remain, the engine falls back to the default Disallow-all catch-all.
     /// </para>
     /// </summary>
     public class RobotsTxtEngine :
@@ -294,7 +294,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
         /// <summary>
         /// Parses TDL URIs from evidence. Accepts a single value or a list
         /// of values joined with ',' or '|'. Each entry is treated as an
-        /// absolute URI first; if that fails and an
+        /// absolute http or https URI first; if that fails and an
         /// <see cref="ITdlSourceResolver"/> is registered, it gets a chance
         /// to resolve known short ids to URLs. Anything that ends up
         /// non-URI is silently dropped per the IETF-Robots TDL specification.
@@ -320,7 +320,12 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
 
         private Uri ResolveTdlEntry(string entry)
         {
-            if (Uri.TryCreate(entry, UriKind.Absolute, out var u))
+            // Only an http or https address is a TDL. Without the scheme
+            // check, a string starting with '/' is a file address on some
+            // systems and not an address at all on others.
+            if (Uri.TryCreate(entry, UriKind.Absolute, out var u) &&
+                (u.Scheme == Uri.UriSchemeHttp ||
+                    u.Scheme == Uri.UriSchemeHttps))
             {
                 return u;
             }

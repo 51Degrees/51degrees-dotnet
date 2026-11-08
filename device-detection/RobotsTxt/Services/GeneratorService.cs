@@ -135,7 +135,7 @@ public class GeneratorService(RobotsTxtModel _dataSet)
         {
             foreach (var tdl in tdls)
             {
-                var url = tdl.ToString();
+                var url = tdl.AbsoluteUri;
                 writer.Write("# Terms ");
                 writer.WriteLine(url);
                 writer.Write("TDL: ");
