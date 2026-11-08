@@ -402,6 +402,255 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
             }
         }
 
+        /// <summary>
+        /// With forwarded evidence trusted, the element accepts the eight
+        /// names under the query prefix, in any case, and no other query
+        /// key. With it not trusted, which is the default, the element
+        /// accepts no query key at all.
+        /// </summary>
+        [TestMethod]
+        public void ForwardedKeysAreAcceptedOnlyWhenTrustedAndOnlyTheEight()
+        {
+            foreach (var trusted in new[] { false, true })
+            {
+                using (var harness = ElementHarness.Create(
+                    builder => builder.SetTrustForwardedEvidence(trusted)))
+                {
+                    var filter = harness.Element.EvidenceKeyFilter;
+                    foreach (var key in AcceptedKeys.Select(ForwardedForm))
+                    {
+                        Assert.AreEqual(
+                            trusted,
+                            filter.Include(key),
+                            "The element should " +
+                            (trusted ? "accept" : "not accept") +
+                            " the forwarded key '" + key +
+                            "' with forwarded evidence " +
+                            (trusted ? "trusted" : "not trusted") + ".");
+                        Assert.AreEqual(
+                            trusted,
+                            filter.Order(key).HasValue,
+                            "The forwarded key '" + key + "' should " +
+                            (trusted ? "be given an order" :
+                                "be given no order") + ".");
+                    }
+                    Assert.AreEqual(
+                        trusted,
+                        filter.Include("QUERY.Request-Path"),
+                        "A forwarded key is matched whatever its case.");
+                    foreach (var key in new[]
+                    {
+                        "query.foo",
+                        "query.content-type",
+                        "query.if-none-match",
+                        "query.http-request",
+                        "query.client-ip",
+                        "query.",
+                        "query",
+                    })
+                    {
+                        Assert.IsFalse(
+                            filter.Include(key),
+                            "The element should not accept '" + key +
+                            "' with forwarded evidence " +
+                            (trusted ? "trusted" : "not trusted") +
+                            ", because it is not one of the eight names " +
+                            "under the query prefix.");
+                        Assert.IsFalse(
+                            filter.Order(key).HasValue,
+                            "The key '" + key + "' should be given no " +
+                            "order.");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// A pipeline holding the element, with forwarded evidence trusted,
+        /// accepts the eight names under the query prefix and no other
+        /// query key, so a visitor's query string parameters take no part
+        /// in the pipeline's cache keys, its ETag or its Vary header.
+        /// </summary>
+        [TestMethod]
+        public void TrustedPipelineAcceptsOnlyTheEightForwardedKeys()
+        {
+            using (var harness = ElementHarness.Create(
+                builder => builder.SetTrustForwardedEvidence(true)))
+            {
+                foreach (var key in AcceptedKeys.Select(ForwardedForm))
+                {
+                    Assert.IsTrue(
+                        harness.Pipeline.EvidenceKeyFilter.Include(key),
+                        "The pipeline should accept '" + key + "'.");
+                }
+                foreach (var key in new[]
+                {
+                    "query.foo",
+                    "query.utm_source",
+                    "query.content-type",
+                })
+                {
+                    Assert.IsFalse(
+                        harness.Pipeline.EvidenceKeyFilter.Include(key),
+                        "The pipeline should not accept '" + key +
+                        "', because it is not one of the eight names " +
+                        "under the query prefix.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// A forwarded signature covering an ordinary header verifies where
+        /// the caller supplies that header under the query prefix.
+        /// </summary>
+        [TestMethod]
+        public void ForwardedHeaderInTheEvidenceVerifies()
+        {
+            var signed = SignOverTheOrdinaryHeader();
+            using (var harness = ElementHarness.CreateWithTestKey(
+                builder => builder.SetTrustForwardedEvidence(true)))
+            {
+                var forwarded = Forwarded(signed);
+                forwarded["query.content-type"] = OrdinaryHeaderValue;
+
+                AssertVerified(
+                    harness.ProcessSignedWithWebRequest(
+                        signed,
+                        new WebRequest(new Dictionary<string, object>()),
+                        forwarded),
+                    "under the query prefix in the evidence");
+            }
+        }
+
+        /// <summary>
+        /// A forwarded signature covering an ordinary header verifies where
+        /// only the web request holds that header, whose query string
+        /// values carry the query prefix.
+        /// </summary>
+        [TestMethod]
+        public void ForwardedHeaderOnlyInTheWebRequestVerifies()
+        {
+            var signed = SignOverTheOrdinaryHeader();
+            using (var harness = ElementHarness.CreateWithTestKey(
+                builder => builder.SetTrustForwardedEvidence(true)))
+            {
+                AssertVerified(
+                    harness.ProcessSignedWithWebRequest(
+                        signed,
+                        new WebRequest(new Dictionary<string, object>
+                        {
+                            { "query.content-type", OrdinaryHeaderValue },
+                        }),
+                        Forwarded(signed)),
+                    "under the query prefix in the web request");
+            }
+        }
+
+        /// <summary>
+        /// Where the evidence and the web request both hold a covered
+        /// header under the query prefix, the value in the evidence is
+        /// used.
+        /// </summary>
+        [TestMethod]
+        public void ForwardedHeaderInTheEvidenceIsUsedBeforeTheWebRequest()
+        {
+            var signed = SignOverTheOrdinaryHeader();
+            using (var harness = ElementHarness.CreateWithTestKey(
+                builder => builder.SetTrustForwardedEvidence(true)))
+            {
+                var forwarded = Forwarded(signed);
+                forwarded["query.content-type"] = OrdinaryHeaderValue;
+
+                AssertVerified(
+                    harness.ProcessSignedWithWebRequest(
+                        signed,
+                        new WebRequest(new Dictionary<string, object>
+                        {
+                            { "query.content-type", "text/plain" },
+                        }),
+                        forwarded),
+                    "under the query prefix in both places");
+            }
+        }
+
+        /// <summary>
+        /// The two prefixes are not mixed in one signature. A forwarded
+        /// signature covering a header that only the header prefix holds
+        /// cannot be rebuilt, because the header describes the call the
+        /// service received and not the request the agent signed.
+        /// </summary>
+        [TestMethod]
+        public void ForwardedSignatureDoesNotTakeAHeaderFromTheHeaderPrefix()
+        {
+            var signed = SignOverTheOrdinaryHeader();
+            using (var harness = ElementHarness.CreateWithTestKey(
+                builder => builder.SetTrustForwardedEvidence(true)))
+            {
+                var forwarded = Forwarded(signed);
+                forwarded[OrdinaryHeaderKey] = OrdinaryHeaderValue;
+
+                AssertComponentUnavailable(
+                    harness.ProcessSignedWithWebRequest(
+                        signed,
+                        new WebRequest(new Dictionary<string, object>
+                        {
+                            { OrdinaryHeaderKey, OrdinaryHeaderValue },
+                        }),
+                        forwarded));
+            }
+        }
+
+        /// <summary>
+        /// With forwarded evidence not trusted, a query string parameter is
+        /// never read as a covered header, so a visitor cannot supply one.
+        /// </summary>
+        [TestMethod]
+        public void QueryStringValueIsNotReadAsAHeaderWhenNotTrusted()
+        {
+            var signed = SignOverTheOrdinaryHeader();
+            using (var harness = ElementHarness.CreateWithTestKey())
+            {
+                AssertComponentUnavailable(
+                    harness.ProcessSignedWithWebRequest(
+                        signed,
+                        new WebRequest(new Dictionary<string, object>
+                        {
+                            { "query.content-type", OrdinaryHeaderValue },
+                        }),
+                        new Dictionary<string, string>
+                        {
+                            { "query.content-type", OrdinaryHeaderValue },
+                        }));
+            }
+        }
+
+        /// <summary>
+        /// The name of one of the eight keys as a forwarded request
+        /// carries it, with its prefix replaced by the query prefix.
+        /// </summary>
+        private static string ForwardedForm(string key)
+        {
+            return "query." + key.Substring(key.IndexOf('.') + 1);
+        }
+
+        /// <summary>
+        /// The evidence a caller's own pipeline forwards for a signed
+        /// request, being the signature headers, the host and the protocol
+        /// under the query prefix.
+        /// </summary>
+        private static Dictionary<string, string> Forwarded(
+            SignedRequest signed)
+        {
+            return new Dictionary<string, string>
+            {
+                { "query.signature", signed.Signature },
+                { "query.signature-input", signed.SignatureInput },
+                { "query.signature-agent", signed.SignatureAgent },
+                { "query.host", "example.com" },
+                { "query.protocol", "https" },
+            };
+        }
+
         private static SignedRequest SignOverTheOrdinaryHeader()
         {
             var options = new SigningOptions();
