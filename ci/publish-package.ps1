@@ -35,7 +35,7 @@ if ($DryRun) {
 $versions = Get-FamilyVersions -RepoName $RepoName
 foreach ($family in $Families) {
     $v = $versions[$family.Name]
-    if (-not $v.Changed) { continue }
+    if (-not $v.Release) { continue }
     ./steps/update-tag.ps1 -RepoName $RepoName -OrgName $OrgName -Tag "$($family.Name)/$($v.Next)" -DryRun $DryRun
 }
 
