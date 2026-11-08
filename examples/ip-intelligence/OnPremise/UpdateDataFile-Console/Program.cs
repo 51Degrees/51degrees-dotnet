@@ -293,6 +293,9 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                         // Contact us for a license key at https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=run
                         // For testing with a custom URL, no license key is required.
                         .UseOnPremise(dataFile, licenseKey ?? string.Empty, true)
+                        // LowMemory keeps the multi-gigabyte Enterprise data
+                        // file on disk rather than loading it into memory.
+                        .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                         // Enable update on startup, the auto update system
                         // will be used to check for an update before the
                         // IP Intelligence engine is created. This will block
