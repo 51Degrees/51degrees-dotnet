@@ -480,19 +480,21 @@ public class Program
     private const double DEFAULT_RANGE_PERCENTAGE = 1;
 
     /// <summary>
-    /// The performance profile the engine is built with.
+    /// The performance profile the engine is built with, unless the sixth
+    /// command line argument names another.
     ///
     /// This example walks the profile metadata of the whole data file, which
     /// is a very different workload to detection. Reading the property values
     /// of a profile measured 166 a second under LowMemory against 2,013 a
     /// second under MaxPerformance on the same file - paging the data back
-    /// from disk dominates everything else the example does. MaxPerformance
-    /// holds the data file in memory, so it needs as much free RAM as the
-    /// file is large; drop to Balanced or LowMemory where that is not
-    /// available.
+    /// from disk dominates everything else the example does. LowMemory keeps
+    /// the data file on disk, so the example runs on a machine with less free
+    /// RAM than the file is large. Pass MaxPerformance for speed where the
+    /// machine has that much free RAM, because it holds the data file in
+    /// memory.
     /// </summary>
     private const PerformanceProfiles DEFAULT_PERFORMANCE_PROFILE =
-        PerformanceProfiles.MaxPerformance;
+        PerformanceProfiles.LowMemory;
 
     /// <summary>
     /// Give up scanning once this many profiles in a row have produced no
