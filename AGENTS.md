@@ -191,9 +191,6 @@ a paid subscription. The IP Intelligence cloud example reads its key from
 - **The IP Intelligence example without `51DEGREES_IPI_PATH`.** It searches for
   the Enterprise file name, gives up after 10 seconds and logs `Failed to find
   a IP Intelligence data file`, even when the Lite file is in place.
-- **global.json.** `pipeline` and `device-detection` each have a `global.json`
-  that asks for the .NET 8 SDK. Run `dotnet` from the repository root, as
-  above, unless .NET 8 is installed too.
 - **Project references.** `-p:FiftyOneReferences=Project`, which CI uses,
   builds the native engines from `cxx`. That needs CMake 3.24 or later, a
   C++17 compiler, PowerShell 7 and a platform such as `-p:Platform=x64`, as
@@ -274,9 +271,15 @@ at the top. `git log --follow -m` traces a file back through the import.
 
 ## Frameworks
 
-`pipeline` and `device-detection` keep a `global.json` that pins the SDK they
-were released with. `dotnet` run from the repository root uses the newest SDK
-installed, which builds every folder. The .NET Framework projects, which are
+Every package targets `net10.0` as well as the targets it had before, such as
+`netstandard2.0` or `net8.0`, so an application on .NET 10 gets a .NET 10
+build of each package. The library test projects target `net8.0` and
+`net10.0`, apart from `AgentSignatureStandardTests`, which tests the
+`netstandard2.0` build of the agent signature element on `net8.0`. Running
+every test therefore needs the .NET 8 runtime as well as the .NET 10 SDK.
+`pipeline` and `device-detection` keep a `global.json` that asks for the .NET
+10 SDK. `dotnet` run from the repository root uses the newest SDK installed,
+which builds every folder. The .NET Framework projects, which are
 the `Web.Framework` integration and the `Framework-Web` examples, are old-style
 projects that need `msbuild` on Windows.
 
