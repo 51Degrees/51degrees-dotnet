@@ -158,6 +158,40 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 		}
 
 		/// <summary>
+		/// Evidence found in the web request is part of the key, which
+		/// <see cref="ShareUsageTracker"/> makes itself. The flow data here
+		/// returns one key whatever the filter, so a tracker that took its key
+		/// from the flow data instead would treat all three requests as one.
+		/// </summary>
+		[TestMethod]
+		public void ShareUsageTracker_WebRequest_KeyHoldsTheValuesShared()
+		{
+			IFlowData Request(string value)
+			{
+				var request = new Dictionary<string, object>()
+				{
+					{ "header.x-test", value }
+				};
+				var data = MockFlowData.CreateFromEvidence(
+					new Dictionary<string, object>()
+					{
+						{ Core.Constants.EVIDENCE_HTTPREQUEST_KEY, request }
+					},
+					false);
+				data.Setup(d => d.GenerateKey(It.IsAny<IEvidenceKeyFilter>()))
+					.Returns(new DataKeyBuilder().Build());
+				return data.Object;
+			}
+
+			Assert.IsTrue(_shareUsageTracker.Track(Request("first")),
+				"New evidence was not shared.");
+			Assert.IsFalse(_shareUsageTracker.Track(Request("first")),
+				"A repeat of the web request's values was shared again.");
+			Assert.IsTrue(_shareUsageTracker.Track(Request("second")),
+				"A different web request value was not shared.");
+		}
+
+		/// <summary>
 		/// Test that the session ID is included in the evidence when session
 		/// tracking is enabled. This means that for a request containing the 
 		/// same evidence but a different session ID, both will be tracked.
