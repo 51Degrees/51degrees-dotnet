@@ -1498,12 +1498,13 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// being accepted, see <see cref="FlowDataComponentResolver"/>.
         /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/agent-signature-element.md#accepted-evidence">Specification</see>
         /// <para>
-        /// Where forwarded evidence is trusted, every key under the 'query'
-        /// prefix is accepted as well, because a caller's own Pipeline
-        /// sends its evidence on to the cloud service with the prefix taken
-        /// off, so a header that started as 'header.signature' reaches the
-        /// cloud as 'query.signature'. Accepting both is what lets one
-        /// element serve a request that arrived directly and one that was
+        /// Where forwarded evidence is trusted, the same eight names under
+        /// the 'query' prefix are accepted as well and no other 'query'
+        /// key, because a caller's own Pipeline sends its evidence on to
+        /// the cloud service with the prefix taken off, so a header that
+        /// started as 'header.signature' reaches the cloud as
+        /// 'query.signature'. Accepting both is what lets one element
+        /// serve a request that arrived directly and one that was
         /// forwarded.
         /// </para>
         /// <para>
@@ -1539,10 +1540,26 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
 
             private readonly bool _trustForwarded;
 
+            /// <summary>
+            /// The named keys under the query prefix, which are accepted
+            /// where forwarded evidence is trusted but never published.
+            /// </summary>
+            private readonly HashSet<string> _forwardedKeys;
+
             public AgentSignatureEvidenceKeyFilter(bool trustForwarded)
                 : base(NamedKeys())
             {
                 _trustForwarded = trustForwarded;
+                _forwardedKeys = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase);
+                foreach (var key in Whitelist.Keys)
+                {
+                    _forwardedKeys.Add(
+                        _queryPrefix + key.Substring(
+                            key.IndexOf(
+                                Core.Constants.EVIDENCE_SEPERATOR,
+                                StringComparison.Ordinal) + 1));
+                }
             }
 
             /// <summary>
@@ -1619,7 +1636,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             /// <inheritdoc/>
             /// <remarks>
             /// The named keys are accepted, and where forwarded evidence is
-            /// trusted, every key under the query prefix as well.
+            /// trusted, the same names under the query prefix as well.
             /// </remarks>
             public override bool Include(string key)
             {
@@ -1628,10 +1645,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                     return false;
                 }
                 return base.Include(key) ||
-                    (_trustForwarded &&
-                        key.StartsWith(
-                            _queryPrefix,
-                            StringComparison.OrdinalIgnoreCase));
+                    (_trustForwarded && _forwardedKeys.Contains(key));
             }
 
             /// <inheritdoc/>
