@@ -142,7 +142,7 @@ namespace FiftyOne.Pipeline.Engines.Tests.Data
 
         /// <summary>
         /// <see cref="IAspectDataInternal.CloudRequestFailed"/> is
-        /// <c>false</c> by default — no marker on a fresh aspect data
+        /// <c>false</c> by default, no marker on a fresh aspect data
         /// instance.
         /// </summary>
         [TestMethod]
