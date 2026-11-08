@@ -61,6 +61,9 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         // nothing and only avoids spurious timeouts under load.
         private const int TEST_TIMEOUT_MS = 30000;
         private const int LOGGER_UNLOCK_TIMEOUT_MS = 5000;
+        // The polling interval in the timer race tests, long enough that no
+        // timer fires while a test runs.
+        private const int RACE_POLLING_SECONDS = 47;
 
         private bool _didDumpLogs;
 
@@ -669,6 +672,99 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             _timerFactory.Verify(f => f(It.IsAny<TimerCallback>(),
                 It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Exactly(2));
             Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_SUCCESS, completeEventArgs.Status);
+        }
+
+        /// <summary>
+        /// A check that applies an update and starts before registration
+        /// has stored its timer must still leave the next check's timer
+        /// stored.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_UpdateFromFile_FileUpdated_CheckBeforeTimerStored()
+        {
+            using (var race = new TimerRace())
+            {
+                // Arrange
+                ConfigureTimerRace(race);
+                Mock<IOnPremiseAspectEngine> engine =
+                    new Mock<IOnPremiseAspectEngine>();
+                var config = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    FileSystemWatcherEnabled = false
+                };
+                var file = new RaceDataFile(race)
+                {
+                    Engine = engine.Object,
+                    Configuration = config
+                };
+                ConfigureFileUpdate(engine, file);
+
+                // Act
+                _dataUpdate.RegisterDataFile(file);
+                race.RegistrationReturned(file);
+                race.WaitForCheck();
+
+                // Assert
+                race.AssertOrderForced();
+                engine.Verify(e => e.RefreshData(config.Identifier),
+                    Times.Once());
+                Assert.AreEqual(2, race.TimersCreated,
+                    "Timers created." + race.Events);
+                Assert.AreSame(race.Next, file.Timer,
+                    "The timer stored is not the next check's." +
+                    race.Events);
+            }
+        }
+
+        /// <summary>
+        /// A check that finds no update and starts before registration has
+        /// stored its timer must still set the stored timer to run the next
+        /// check. A check whose download fails takes the same path, the
+        /// retry after a 429 response among them.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_UpdateFromFile_FileNotUpdated_CheckBeforeTimerStored()
+        {
+            using (var race = new TimerRace())
+            {
+                // Arrange
+                ConfigureTimerRace(race);
+                Mock<IOnPremiseAspectEngine> engine =
+                    new Mock<IOnPremiseAspectEngine>();
+                var config = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    FileSystemWatcherEnabled = false,
+                    PollingIntervalSeconds = RACE_POLLING_SECONDS,
+                    MaxRandomisationSeconds = 0
+                };
+                var file = new RaceDataFile(race)
+                {
+                    Engine = engine.Object,
+                    Configuration = config
+                };
+                ConfigureFileNoUpdate(engine, file);
+
+                // Act
+                _dataUpdate.RegisterDataFile(file);
+                race.RegistrationReturned(file);
+                race.WaitForCheck();
+
+                // Assert
+                race.AssertOrderForced();
+                engine.Verify(e => e.RefreshData(config.Identifier),
+                    Times.Never());
+                Assert.AreEqual(1, race.TimersCreated,
+                    "Timers created." + race.Events);
+                Assert.AreSame(race.First, file.Timer,
+                    "The timer stored is not the first one." + race.Events);
+                Assert.AreEqual(
+                    TimeSpan.FromSeconds(RACE_POLLING_SECONDS),
+                    GetTimerDueTime(file.Timer),
+                    "The timer stored is not set to run the next check." +
+                    race.Events);
+            }
         }
 
         /// <summary>
@@ -2111,6 +2207,243 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             field = fieldValue.GetType().GetField(dueTimeFieldName, privateFlags);
             fieldValue = field.GetValue(fieldValue);
             return TimeSpan.FromMilliseconds((uint)fieldValue);
+        }
+
+        /// <summary>
+        /// Create every timer with the race, and tell it when a check starts
+        /// and when it completes.
+        /// </summary>
+        private void ConfigureTimerRace(TimerRace race)
+        {
+            _timerFactory.Setup(f => f(
+                It.IsAny<TimerCallback>(),
+                It.IsAny<object>(),
+                It.IsAny<TimeSpan>()))
+                .Returns((TimerCallback callback, object state,
+                    TimeSpan interval) => race.Create(callback, state));
+            _dataUpdate.CheckForUpdateStarted += (sender, e) =>
+                race.CheckStarted(e.DataFile);
+            _dataUpdate.CheckForUpdateComplete += (sender, e) =>
+                race.CheckWentPastTimer(e.DataFile, "completed");
+        }
+
+        /// <summary>
+        /// Data file that tells the race when a check re-registers it, which
+        /// a check that applied an update does after clearing its timer and
+        /// before creating the next one.
+        /// </summary>
+        private sealed class RaceDataFile : AspectEngineDataFile
+        {
+            private readonly TimerRace _race;
+
+            public RaceDataFile(TimerRace race)
+            {
+                _race = race;
+            }
+
+            public override bool AutomaticUpdatesEnabled
+            {
+                get
+                {
+                    _race.CheckWentPastTimer(this, "re-registered");
+                    return base.AutomaticUpdatesEnabled;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Forces a check to reach its timer before registration has stored
+        /// it. Creating the first timer starts the check on a thread of its
+        /// own, and registration is then held until the check has gone past
+        /// the point where it reads the timer, or has been waiting for
+        /// <see cref="BlockedMilliseconds"/>. The check waits on nothing of
+        /// the test's before then, so a wait that lasts is for something
+        /// registration holds. The check is then held until registration
+        /// has returned. Every wait is bounded, so a design that deadlocks
+        /// fails rather than hangs, and each failure message lists what the
+        /// two threads did in order.
+        /// </summary>
+        private sealed class TimerRace : IDisposable
+        {
+            private const int WaitSeconds = 10;
+            // How long the check must keep waiting before registration is
+            // released, so that a brief wait elsewhere is not taken for it.
+            private const int BlockedMilliseconds = 100;
+            private const int PollMilliseconds = 10;
+
+            private readonly List<string> _events = new List<string>();
+            private readonly ManualResetEventSlim _wentPast =
+                new ManualResetEventSlim(false);
+            private readonly ManualResetEventSlim _registered =
+                new ManualResetEventSlim(false);
+            private Thread _check;
+            private int _timers;
+            private int _wentPastOnce;
+            private bool _registrationReleased;
+            private bool _registeredInTime = true;
+            private bool _checkFinished;
+
+            public Timer First { get; private set; }
+
+            public Timer Next { get; private set; }
+
+            public int TimersCreated => Volatile.Read(ref _timers);
+
+            public string Events
+            {
+                get
+                {
+                    lock (_events)
+                    {
+                        return " Events: [" +
+                            string.Join(", ", _events) + "]";
+                    }
+                }
+            }
+
+            /// <summary>
+            /// The timer factory. The first call is registration, which
+            /// starts the check and waits for it. Later calls are the check
+            /// creating the next timer. No timer created here calls the
+            /// service.
+            /// </summary>
+            public Timer Create(TimerCallback callback, object state)
+            {
+                var timer = new Timer(_ => { }, null,
+                    Timeout.Infinite, Timeout.Infinite);
+                if (Interlocked.Increment(ref _timers) > 1)
+                {
+                    Next = timer;
+                    Add("check created the next timer");
+                    return timer;
+                }
+                First = timer;
+                Add("registration created the first timer");
+                _check = new Thread(() => callback(state))
+                {
+                    IsBackground = true
+                };
+                _check.Start();
+                _registrationReleased = HoldRegistration(_check);
+                return timer;
+            }
+
+            public void CheckStarted(AspectEngineDataFile file)
+            {
+                if (Thread.CurrentThread == _check)
+                {
+                    Add($"check started with {Name(file.Timer)} stored");
+                }
+            }
+
+            /// <summary>
+            /// Called at points after the check has read the timer. The
+            /// first call on the check's thread lets registration go on,
+            /// then waits until registration has returned.
+            /// </summary>
+            public void CheckWentPastTimer(
+                AspectEngineDataFile file,
+                string what)
+            {
+                if (Thread.CurrentThread != _check ||
+                    Interlocked.Exchange(ref _wentPastOnce, 1) == 1)
+                {
+                    return;
+                }
+                Add($"check {what} with {Name(file.Timer)} stored");
+                _wentPast.Set();
+                _registeredInTime = _registered.Wait(
+                    TimeSpan.FromSeconds(WaitSeconds));
+            }
+
+            public void RegistrationReturned(AspectEngineDataFile file)
+            {
+                Add($"registration returned with {Name(file.Timer)} stored");
+                _registered.Set();
+            }
+
+            public void WaitForCheck()
+            {
+                _checkFinished = _check != null &&
+                    _check.Join(TimeSpan.FromSeconds(WaitSeconds * 3));
+            }
+
+            public void AssertOrderForced()
+            {
+                Assert.IsNotNull(_check,
+                    "Registration created no timer." + Events);
+                Assert.IsTrue(_registrationReleased,
+                    "The check neither went past the timer nor waited " +
+                    "for registration." + Events);
+                Assert.IsTrue(_registeredInTime,
+                    "Registration did not return while the check waited." +
+                    Events);
+                Assert.IsTrue(_checkFinished,
+                    "The check did not finish." + Events);
+            }
+
+            public void Dispose()
+            {
+                _registered.Set();
+                _check?.Join(TimeSpan.FromSeconds(WaitSeconds));
+                First?.Dispose();
+                Next?.Dispose();
+                _wentPast.Dispose();
+                _registered.Dispose();
+            }
+
+            /// <summary>
+            /// Wait until the check has gone past the timer, or has been
+            /// waiting for <see cref="BlockedMilliseconds"/>.
+            /// </summary>
+            private bool HoldRegistration(Thread check)
+            {
+                var deadline = DateTime.UtcNow.AddSeconds(WaitSeconds);
+                DateTime? waitingSince = null;
+                while (DateTime.UtcNow < deadline)
+                {
+                    if (_wentPast.Wait(PollMilliseconds))
+                    {
+                        return true;
+                    }
+                    if ((check.ThreadState & ThreadState.WaitSleepJoin) == 0)
+                    {
+                        waitingSince = null;
+                    }
+                    else if (waitingSince == null)
+                    {
+                        waitingSince = DateTime.UtcNow;
+                    }
+                    else if (DateTime.UtcNow - waitingSince.Value >=
+                        TimeSpan.FromMilliseconds(BlockedMilliseconds))
+                    {
+                        Add("check waited for registration");
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            private string Name(Timer timer)
+            {
+                if (timer == null)
+                {
+                    return "no timer";
+                }
+                if (timer == First)
+                {
+                    return "the first timer";
+                }
+                return timer == Next ? "the next timer" : "another timer";
+            }
+
+            private void Add(string message)
+            {
+                lock (_events)
+                {
+                    _events.Add(message);
+                }
+            }
         }
 #endregion
     }

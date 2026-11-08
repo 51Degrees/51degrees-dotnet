@@ -25,9 +25,11 @@ foreach ($built in Get-ChildItem -Path "$pwd/package-files/*" -Recurse -Director
     }
 }
 
-# Only a family that changed since its last tag is packed, at its next
-# version. Every family's version is passed so a package depends on the other
-# families at the versions being published, or at the last ones published.
+# Only the families the release plan names are packed, each at its next
+# version, which is every family that changed since its last tag and every
+# family depending on one of them. Every family's version is passed so a
+# package depends on the other families at the versions being published, or
+# at the last ones published.
 $versions = Get-FamilyVersions -RepoName $RepoName
 $properties = Get-VersionProperties -Versions $versions
 $packArgs = @(
@@ -42,8 +44,8 @@ Push-Location $RepoPath
 try {
     foreach ($family in $Families) {
         $v = $versions[$family.Name]
-        if (-not $v.Changed) {
-            Write-Host "$($family.Name) is unchanged since $($family.Name)/$($v.Last), not packed"
+        if (-not $v.Release) {
+            Write-Host "$($family.Name) stays at $($v.Last), so it is not packed"
             continue
         }
         Write-Host "::group::Packing $($family.Name) $($v.Next)"
@@ -66,7 +68,7 @@ try {
     }
     foreach ($package in $NuspecPackages) {
         $v = $versions[$package.Family]
-        if (-not $v.Changed) { continue }
+        if (-not $v.Release) { continue }
         Write-Host "::group::Packing $($package.Nuspec) $($v.Next)"
         dotnet build $package.Core -c $Configuration -p:FiftyOneReferences=Project -p:BuiltOnCI=true @properties
         msbuild $package.Framework -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=Any CPU" "-p:FiftyOneReferences=Project" "-p:BuiltOnCI=true" @properties
@@ -81,7 +83,7 @@ try {
 $packages = @(Get-ChildItem "$PackagesFolder/*.nupkg")
 if (-not $packages) {
     # The workflow uploads the folder as an artifact, which must not be empty.
-    Write-Host "No family changed, so there is nothing to publish."
+    Write-Host "No family is released, so there is nothing to publish."
     Set-Content "$PackagesFolder/dummy.txt" "No packages to publish"
     return
 }

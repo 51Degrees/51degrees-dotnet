@@ -163,6 +163,11 @@ namespace FiftyOne.Pipeline.Engines.Data
         // properties used internally by DataUpdateService.
 
         internal Timer Timer { get; set; }
+        // Held for every read and write of Timer, so a check cannot read
+        // the timer before registration has stored it. Nothing run while it
+        // is held takes the service's other locks or UpdateSyncLock, which
+        // the file watcher holds for the whole engine refresh.
+        internal object TimerLock { get; } = new object();
         internal FileSystemWatcher FileWatcher { get; set; }
         internal object UpdateSyncLock { get; } = new object();
         internal DateTime LastUpdateFileModifiedTime { get; set; }
@@ -258,9 +263,13 @@ namespace FiftyOne.Pipeline.Engines.Data
                     {
                         FileWatcher.Dispose();
                     }
-                    if (Timer != null)
+                    lock (TimerLock)
                     {
-                        Timer.Dispose();
+                        if (Timer != null)
+                        {
+                            Timer.Dispose();
+                            Timer = null;
+                        }
                     }
                 }
 
