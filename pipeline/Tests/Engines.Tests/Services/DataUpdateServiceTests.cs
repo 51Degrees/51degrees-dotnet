@@ -2304,7 +2304,8 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             /// <summary>
             /// The timer factory. The first call is registration, which
             /// starts the check and waits for it. Later calls are the check
-            /// creating the next timer. No timer created here ever fires.
+            /// creating the next timer. No timer created here calls the
+            /// service.
             /// </summary>
             public Timer Create(TimerCallback callback, object state)
             {
@@ -2336,9 +2337,9 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             }
 
             /// <summary>
-            /// Called on the check's thread at points after it has read the
-            /// timer. The first lets registration go on, then waits until
-            /// registration has returned.
+            /// Called at points after the check has read the timer. The
+            /// first call on the check's thread lets registration go on,
+            /// then waits until registration has returned.
             /// </summary>
             public void CheckWentPastTimer(
                 AspectEngineDataFile file,
