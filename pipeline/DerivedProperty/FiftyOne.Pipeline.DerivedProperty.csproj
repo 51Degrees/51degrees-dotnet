@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <!-- Following FiftyOne.Pipeline.JavaScriptBuilder, which raises the
          language version on a netstandard2.0 target. This only enables newer
          syntax and does not change the framework the package runs on. -->
