@@ -768,6 +768,156 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         }
 
         /// <summary>
+        /// Unregistering a data file must stop its update timer, so that
+        /// the file is not checked again.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_Unregister_StopsTimer()
+        {
+            var timers = ConfigureInertTimers();
+            try
+            {
+                var file = CreateAutoUpdateFile();
+                _dataUpdate.RegisterDataFile(file);
+                Assert.AreEqual(1, timers.Count, "Timers created.");
+                Assert.IsNotNull(file.Timer, "No timer after registering.");
+
+                // Act
+                _dataUpdate.UnRegisterDataFile(file);
+
+                // Assert
+                Assert.IsNull(file.Timer,
+                    "The timer is still stored after unregistering.");
+            }
+            finally
+            {
+                timers.ForEach(t => t.Dispose());
+            }
+        }
+
+        /// <summary>
+        /// A check that is running when its data file is disposed
+        /// registers the file again, which must not create a timer.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_Register_DisposedFile_CreatesNoTimer()
+        {
+            var timers = ConfigureInertTimers();
+            try
+            {
+                var file = CreateAutoUpdateFile();
+                _dataUpdate.RegisterDataFile(file);
+                file.Dispose();
+
+                // Act
+                _dataUpdate.RegisterDataFile(file);
+
+                // Assert
+                Assert.AreEqual(1, timers.Count,
+                    "A timer was created for a disposed data file.");
+                Assert.IsNull(file.Timer,
+                    "A timer is stored on a disposed data file.");
+                Assert.IsFalse(file.IsRegistered,
+                    "A disposed data file was registered again.");
+            }
+            finally
+            {
+                timers.ForEach(t => t.Dispose());
+            }
+        }
+
+        /// <summary>
+        /// The random delay added to the polling interval must be safe to
+        /// calculate on several timer threads at once. A random number
+        /// generator used unsafely returns the same value to different
+        /// threads, which is counted here as a duplicate. The delay range
+        /// is large enough that duplicates by chance are few.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_IntervalRandomisation_ThreadSafe()
+        {
+            const int threads = 4;
+            const int perThread = 50000;
+            const int allowedDuplicates = 100;
+            var randomise = (Func<TimeSpan, IDataFileConfiguration, TimeSpan>)
+                Delegate.CreateDelegate(
+                    typeof(Func<TimeSpan, IDataFileConfiguration, TimeSpan>),
+                    _dataUpdate,
+                    typeof(DataUpdateService).GetMethod(
+                        "ApplyIntervalRandomisation",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance));
+            var config = new DataFileConfiguration()
+            {
+                MaxRandomisationSeconds = int.MaxValue
+            };
+            var results = new TimeSpan[threads][];
+            using (var start = new ManualResetEventSlim(false))
+            {
+                var tasks = Enumerable.Range(0, threads).Select(t =>
+                    Task.Factory.StartNew(() =>
+                    {
+                        var values = new TimeSpan[perThread];
+                        start.Wait();
+                        for (int i = 0; i < perThread; i++)
+                        {
+                            values[i] = randomise(TimeSpan.Zero, config);
+                        }
+                        results[t] = values;
+                    }, TaskCreationOptions.LongRunning)).ToArray();
+
+                // Act
+                start.Set();
+                Assert.IsTrue(Task.WaitAll(tasks, TEST_TIMEOUT_MS),
+                    "The threads did not finish.");
+            }
+
+            // Assert
+            var all = results.SelectMany(r => r).ToArray();
+            int duplicates = all.Length - all.Distinct().Count();
+            Assert.IsTrue(duplicates <= allowedDuplicates,
+                $"{duplicates} of {all.Length} random delays repeated " +
+                $"another, where at most {allowedDuplicates} are expected " +
+                "by chance.");
+        }
+
+        /// <summary>
+        /// Make the timer factory create timers that never fire.
+        /// </summary>
+        /// <returns>The timers it creates, to be disposed by the test.</returns>
+        private List<Timer> ConfigureInertTimers()
+        {
+            var timers = new List<Timer>();
+            _timerFactory.Setup(f => f(
+                It.IsAny<TimerCallback>(),
+                It.IsAny<object>(),
+                It.IsAny<TimeSpan>()))
+                .Returns(() =>
+                {
+                    var timer = new Timer(_ => { }, null,
+                        Timeout.Infinite, Timeout.Infinite);
+                    timers.Add(timer);
+                    return timer;
+                });
+            return timers;
+        }
+
+        private static AspectEngineDataFile CreateAutoUpdateFile()
+        {
+            return new AspectEngineDataFile()
+            {
+                Engine = new Mock<IOnPremiseAspectEngine>().Object,
+                Configuration = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    FileSystemWatcherEnabled = false,
+                    PollingIntervalSeconds = RACE_POLLING_SECONDS,
+                    MaxRandomisationSeconds = 0
+                }
+            };
+        }
+
+        /// <summary>
         /// Configure the engine to have a temp path but no temp file.
         /// Therefore file system check will not occur but URL check will.
         /// Configure HTTP handler to return 'NotModified' 
