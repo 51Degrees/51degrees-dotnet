@@ -746,6 +746,31 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
+        /// A response with a top-level fodid member holds a 51Did that the
+        /// cloud service created for the one request, so it is never stored
+        /// in the results cache or served from it. Every other response is
+        /// cached.
+        /// </summary>
+        protected override bool CanCache(CloudRequestData aspectData)
+        {
+            var json = aspectData?.JsonResponse;
+            if (string.IsNullOrEmpty(json) ||
+                json.IndexOf(
+                    "fodid", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                return true;
+            }
+            try
+            {
+                return JObject.Parse(json).ContainsKey("fodid") == false;
+            }
+            catch (JsonReaderException)
+            {
+                return true;
+            }
+        }
+
+        /// <summary>
         /// Generate the Content to send in the POST request. The evidence keys
         /// e.g. 'query.' and 'header.' have an order of precedence. These are
         /// added to the evidence in reverse order, if there is conflict then 

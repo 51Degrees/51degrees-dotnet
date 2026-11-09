@@ -227,6 +227,22 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         }
 
         /// <summary>
+        /// Whether a result may be stored in the results cache and served
+        /// from it. A result that holds a value created for the one request
+        /// that asked for it must not be, because a later request with the
+        /// same Evidence would receive that value. The default is true.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/b5e7de8019646eaa1e3bc1fd2a177c4c26fae749/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
+        /// </summary>
+        /// <param name="aspectData">
+        /// The result of processing, or a result found in the cache.
+        /// </param>
+        /// <returns>True if the result may be cached.</returns>
+        protected virtual bool CanCache(T aspectData)
+        {
+            return true;
+        }
+
+        /// <summary>
         /// Private method that checks if the result is already in the cache
         /// or not.
         /// If it is then the result is added to 'data', if not then 
@@ -240,7 +256,7 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         {
             T cacheResult = default(T);
 
-            // If there is a cache then check if the result 
+            // If there is a cache then check if the result
             // is already in there.
             if (_cache != null)
             {
@@ -249,6 +265,12 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                     cacheResult = (T)_cache[data];
                 }
                 catch (InvalidCastException) { }
+                // A result that must not be served from the cache is
+                // processed again.
+                if (cacheResult != null && CanCache(cacheResult) == false)
+                {
+                    cacheResult = default(T);
+                }
             }
             // If we don't have a result from the cache then 
             // run through the normal processing.
@@ -287,7 +309,11 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                 // of processing to the cache.
                 if (_cache != null)
                 {
-                    _cache.Put(data, data.GetFromElement(this));
+                    var result = data.GetFromElement(this);
+                    if (CanCache(result))
+                    {
+                        _cache.Put(data, result);
+                    }
                 }
             }
             else
