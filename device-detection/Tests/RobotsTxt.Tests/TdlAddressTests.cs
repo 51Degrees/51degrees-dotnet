@@ -74,22 +74,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         [TestMethod]
         public void EscapedTdlIsWrittenUnchanged(bool annotations)
         {
-            var gen = new GeneratorService(new RobotsTxtModel
-            {
-                Usages = Array.Empty<UsageModel>(),
-                Crawlers = Array.Empty<CrawlerModel>(),
-            });
-            var sb = new StringBuilder();
-            using (var writer = new StringWriter(sb))
-            {
-                gen.Write(
-                    writer,
-                    new HashSet<string>(),
-                    new[] { new Uri(EscapedTdl) },
-                    annotations,
-                    CancellationToken.None);
-            }
-            var text = sb.ToString().Replace("\r\n", "\n");
+            var text = WriteTdl(EscapedTdl, annotations);
 
             Assert.Contains($"TDL: {EscapedTdl}\n", text);
             Assert.Contains($"# Terms {EscapedTdl}\n", text);
@@ -124,8 +109,33 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         [DataRow("https://example.com/a%2")]
         [DataRow("https://example.com/a%zz")]
         [DataRow("https://example.com/\u00e9")]
+        [DataRow("\\\\server\\share\\1.txt")]
         [TestMethod]
         public void EntryWithCharactersNotAllowedInAUriIsDropped(string entry)
+        {
+            Assert.IsNull(
+                ResolveEntry(entry, resolver: null),
+                $"The entry '{entry}' should be dropped.");
+        }
+
+        /// <summary>
+        /// An entry that breaks the RFC 3986 Appendix A grammar is dropped
+        /// even where every character is allowed on its own.
+        /// </summary>
+        [DataRow(":foo")]
+        [DataRow("1http://a/b")]
+        [DataRow("https://a/b#c#d")]
+        [DataRow("https://a/b[c]")]
+        [DataRow("https://a[b]/x")]
+        [DataRow("https://a/b%")]
+        [DataRow("https://[::1/x")]
+        [DataRow("https://[1:2]/x")]
+        [DataRow("https://[::1::2]/x")]
+        [DataRow("https://[g::1]/x")]
+        [DataRow("https://a:b/x")]
+        [DataRow("https://a@b@c/x")]
+        [TestMethod]
+        public void EntryThatBreaksTheUriGrammarIsDropped(string entry)
         {
             Assert.IsNull(
                 ResolveEntry(entry, resolver: null),
@@ -143,12 +153,12 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
                 "/terms/1.txt",
                 new FixedResolver("/terms/1.txt"));
 
-            Assert.AreEqual(new Uri("https://example.com/resolved"), resolved);
+            Assert.AreEqual("https://example.com/resolved", resolved);
         }
 
         /// <summary>
-        /// An entry with a scheme that parses as an absolute URI is kept,
-        /// whatever the scheme, with its escapes.
+        /// An entry that conforms to RFC 3986 section 3 and Appendix A is
+        /// kept exactly as given, whatever the scheme.
         /// </summary>
         [DataRow("https://example.com/terms-v1")]
         [DataRow("http://example.com/terms-v1")]
@@ -156,15 +166,76 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         [DataRow("ftp://example.com/terms/1.txt")]
         [DataRow("mailto:terms@example.com")]
         [DataRow("file:///terms/1.txt")]
+        [DataRow("http:")]
+        [DataRow("file:/t/1")]
+        // RFC 3986 section 3.1 allows a one letter scheme, so this is a URI.
+        [DataRow("c:/terms/1.txt")]
+        [DataRow("HTTPS://Example.COM/T")]
+        [DataRow("https://[2001:db8::1]/t")]
+        [DataRow("https://[::ffff:1.2.3.4]:8080/t")]
+        [DataRow("https://[v1.a:b]/t")]
+        [DataRow("https://user:pw@example.com:443/t")]
+        [DataRow("https://example.com/a?b=c&d=e")]
+        [DataRow("https://example.com/a#frag")]
+        [DataRow("https://example.com/a?q#frag")]
+        [DataRow("urn:isbn:0451450523")]
         [TestMethod]
         public void EntryWithSchemeIsKept(string entry)
         {
-            Assert.AreEqual(
-                entry,
-                ResolveEntry(entry, resolver: null)?.AbsoluteUri);
+            Assert.AreEqual(entry, ResolveEntry(entry, resolver: null));
         }
 
-        private static Uri ResolveEntry(
+        /// <summary>
+        /// White space around an entry is not part of the TDL.
+        /// </summary>
+        [TestMethod]
+        public void EntryIsTrimmed()
+        {
+            Assert.AreEqual(
+                "https://example.com/t",
+                ResolveEntry(" https://example.com/t ", resolver: null));
+        }
+
+        /// <summary>
+        /// A TDL is written exactly as given, because the document it
+        /// names must not change. None of these values is rewritten to a
+        /// normal form.
+        /// </summary>
+        [DataRow("https://example.com")]
+        [DataRow("HTTPS://Example.COM/T")]
+        [DataRow("https://a:443/x")]
+        [DataRow("https://a/b/../c")]
+        [DataRow("https://a/%7Eb")]
+        [TestMethod]
+        public void TdlIsWrittenExactlyAsGiven(string tdl)
+        {
+            var text = WriteTdl(tdl, annotations: true);
+
+            Assert.Contains($"# Terms {tdl}\n", text);
+            Assert.Contains($"TDL: {tdl}\n", text);
+        }
+
+        private static string WriteTdl(string tdl, bool annotations)
+        {
+            var gen = new GeneratorService(new RobotsTxtModel
+            {
+                Usages = Array.Empty<UsageModel>(),
+                Crawlers = Array.Empty<CrawlerModel>(),
+            });
+            var sb = new StringBuilder();
+            using (var writer = new StringWriter(sb))
+            {
+                gen.Write(
+                    writer,
+                    new HashSet<string>(),
+                    new[] { new Uri(tdl) },
+                    annotations,
+                    CancellationToken.None);
+            }
+            return sb.ToString().Replace("\r\n", "\n");
+        }
+
+        private static string ResolveEntry(
             string entry,
             ITdlSourceResolver resolver)
         {
@@ -176,7 +247,8 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
                 "ResolveTdlEntry",
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(method, "ResolveTdlEntry should exist.");
-            return (Uri)method.Invoke(engine, new object[] { entry });
+            var result = method.Invoke(engine, new object[] { entry });
+            return result is Uri uri ? uri.OriginalString : (string)result;
         }
     }
 }
