@@ -257,7 +257,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Services
                 eTag = GetETag(flowData, pipelineEvidenceKeyFilter);
             }
 
-            bool matched = eTag != null && IfNoneMatchMatches(
+            bool matched = IfNoneMatchMatches(
                 context.Request.GetHeaderValue("If-None-Match"), eTag);
 
             if (matched && IsGetOrHead(context.Request) == false)
@@ -520,7 +520,13 @@ namespace FiftyOne.Pipeline.Web.Shared.Services
             var field = ifNoneMatch.Trim(' ', '	');
             if (field == "*")
             {
+                // The condition is false while the origin has a current
+                // representation, whether or not an ETag can be made.
                 return true;
+            }
+            if (eTag == null)
+            {
+                return false;
             }
             var opaqueTag = eTag.Substring(WeakETagPrefix.Length);
             var matched = false;
