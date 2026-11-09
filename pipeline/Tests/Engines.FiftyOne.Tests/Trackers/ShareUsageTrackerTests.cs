@@ -30,7 +30,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 {
@@ -155,6 +157,72 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 			Assert.IsFalse(shareUsageTracker.Track(_data.Object),
 				"A repeat straight after a repeat was shared was also " +
 				"shared, so the time it was shared was not stored.");
+		}
+
+		/// <summary>
+		/// The time stored is UTC, so a change of the local time zone offset
+		/// cannot make a repeat look early or late.
+		/// </summary>
+		[TestMethod]
+		public void ShareUsageTracker_RepeatEvidence_TimeIsUtc()
+		{
+			_shareUsageTracker.Track(_data.Object);
+
+			Assert.AreEqual(
+				DateTimeKind.Utc,
+				_shareUsageTracker[_data.Object].Value.Kind);
+		}
+
+		/// <summary>
+		/// A repeat inside the interval is not shared and leaves the time
+		/// it was last shared as it was.
+		/// </summary>
+		[TestMethod]
+		public void ShareUsageTracker_RepeatEvidence_InsideIntervalKeepsTime()
+		{
+			_shareUsageTracker.Track(_data.Object);
+			var shared = _shareUsageTracker[_data.Object];
+			Thread.Sleep(20);
+
+			Assert.IsFalse(_shareUsageTracker.Track(_data.Object));
+
+			Assert.AreEqual(shared, _shareUsageTracker[_data.Object]);
+		}
+
+		/// <summary>
+		/// Evidence tracked by several threads at once is shared by one of
+		/// them only, however many reach the tracker together.
+		/// </summary>
+		[TestMethod]
+		public void ShareUsageTracker_RepeatEvidence_SharedOnceAcrossThreads()
+		{
+			const int rounds = 200;
+			const int threads = 8;
+			for (var round = 0; round < rounds; round++)
+			{
+				var key = new DataKeyBuilder();
+				key.Add(100, "header.user-agent", "agent" + round);
+				var data = MockFlowData.CreateFromEvidence(_evidenceData, false);
+				data.Setup(d => d.GenerateKey(It.IsAny<IEvidenceKeyFilter>()))
+					.Returns(key.Build());
+				using (var start = new ManualResetEventSlim(false))
+				{
+					var tasks = Enumerable.Range(0, threads)
+						.Select(_ => Task.Run(() =>
+						{
+							start.Wait();
+							return _shareUsageTracker.Track(data.Object);
+						}))
+						.ToArray();
+					start.Set();
+					Task.WaitAll(tasks);
+
+					Assert.AreEqual(
+						1,
+						tasks.Count(t => t.Result),
+						$"Round {round} shared the same evidence more than once.");
+				}
+			}
 		}
 
 		/// <summary>
