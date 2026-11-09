@@ -138,6 +138,8 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         [DataRow("123.example.com", "https://123.example.com/51dpipeline/json")]
         [DataRow("[::1]", "https://[::1]/51dpipeline/json")]
         [DataRow("[::1]:8080", "https://[::1]:8080/51dpipeline/json")]
+        [DataRow("[1:2:3:4:5:6:7:8]", "https://[1:2:3:4:5:6:7:8]/51dpipeline/json")]
+        [DataRow("[::1.2.3.4]", "https://[::1.2.3.4]/51dpipeline/json")]
         [DataRow("example.com.", "https://example.com./51dpipeline/json")]
         [DataRow("example.com/path", "https://example.com/path/51dpipeline/json")]
         [DataRow("example.com/a b", "https://example.com/a%20b/51dpipeline/json")]
@@ -187,6 +189,12 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         [DataRow("a\nb.com")]
         [DataRow(" example.com")]
         [DataRow("example.com ")]
+        [DataRow("example.com
+")]
+        [DataRow("example.com:80
+")]
+        [DataRow("[::1]
+")]
         [DataRow("example.com:8080');alert(1);//")]
         // User information, or an @ anywhere in the host value.
         [DataRow("user@example.com")]
@@ -266,6 +274,8 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         [DataRow("[::1]80")]
         [DataRow("[::1]:80x")]
         [DataRow("[::1]]")]
+        [DataRow("[1::2::3]")]
+        [DataRow("[12345::1]")]
         public void CallbackUrl_RefusesZoneOrTextAfterTheBracket(string host)
         {
             AssertInvalid(Url("https", host), $"host {host}");
@@ -297,8 +307,9 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         }
 
         /// <summary>
-        /// Each character rule 8 lists, after the host and in the endpoint, and a '%' without two hexadecimal digits
-        /// after it, even at the end.
+        /// Each character rule 8 lists, after the host and in the endpoint,
+        /// and a '%' without two hexadecimal digits after it, even at the
+        /// end.
         /// </summary>
         [TestMethod]
         public void CallbackUrl_EncodesTheCharactersRule8Lists()
