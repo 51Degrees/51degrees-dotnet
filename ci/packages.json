@@ -23,6 +23,7 @@
     "ExtraPaths": ["Directory.Build.targets"],
     "DependsOn": ["common", "caching"],
     "Publish": true,
+    "Ignore": ["**/performance-tests/**"],
     "Property": "FiftyOnePipelineVersion",
     "Solutions": [
       "pipeline/FiftyOne.Pipeline.sln",
@@ -37,6 +38,7 @@
     "ExtraPaths": ["cxx", "Directory.Build.targets"],
     "DependsOn": ["pipeline"],
     "Publish": true,
+    "Ignore": ["**/performance-tests/**"],
     "Property": "FiftyOneDeviceDetectionVersion",
     "Solutions": ["device-detection/FiftyOne.DeviceDetection.Core.slnf"],
     "Framework": ["device-detection/FiftyOne.DeviceDetection.sln"],
@@ -48,6 +50,7 @@
     "ExtraPaths": ["cxx", "Directory.Build.targets"],
     "DependsOn": ["pipeline"],
     "Publish": true,
+    "Ignore": ["**/performance-tests/**"],
     "Property": "FiftyOneIpIntelligenceVersion",
     "Solutions": ["ip-intelligence/FiftyOne.IpIntelligence.sln"],
     "Platform": true,
