@@ -777,6 +777,111 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
+        /// Sends one message built from the evidence, sharing all of it,
+        /// and returns the XML after checking it is well formed and still
+        /// holds the user agent that sits beside the evidence under test.
+        /// </summary>
+        private string ShareAllAndGetMessage(
+            params KeyValuePair<string, object>[] evidence)
+        {
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(),
+                new List<KeyValuePair<string, string>>(), shareAll: true);
+
+            var evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, "iPhone" },
+            };
+            foreach (var pair in evidence)
+            {
+                evidenceData.Add(pair.Key, pair.Value);
+            }
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            _shareUsageElement.Process(data.Object);
+            WaitForSendDataTask();
+
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+            using (XmlReader xr = XmlReader.Create(
+                new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+            Assert.Contains("<ClientIP>1.2.3.4</ClientIP>", _xmlContent[0]);
+            Assert.Contains("iPhone", _xmlContent[0]);
+            return _xmlContent[0];
+        }
+
+        /// <summary>
+        /// A key that starts with a dot has an empty prefix, so the field
+        /// after the dot names the element and the message is still written.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_KeyStartingWithDot_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(".dot", "w"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains("<dot>w</dot>", xml);
+            Assert.Contains("kept", xml);
+            Assert.DoesNotContain("BadSchema", xml);
+        }
+
+        /// <summary>
+        /// A character outside the Basic Multilingual Plane (two UTF-16 code
+        /// units) is valid and is kept beside a control character that is
+        /// replaced.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_SurrogatePairThenControlChar_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(
+                    "query.51D_Emoji", "a\U0001F600\u0001b"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains("a\U0001F600\\x0001b", xml);
+            Assert.Contains("kept", xml);
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
+        }
+
+        /// <summary>
+        /// U+FFFE and U+FFFF are not allowed in XML 1.0 (section 2.2) so each
+        /// is replaced by its four digit code and the message is written.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_NonCharacters_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(
+                    "query.51D_Fffe", "a￾b￿c"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains(@"a\xfffeb\xffffc", xml);
+            Assert.Contains("kept", xml);
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
+        }
+
+        /// <summary>
+        /// A surrogate with no partner is not allowed in XML 1.0 and is
+        /// replaced by its four digit code, so the message is written.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_LoneSurrogate_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(
+                    "query.51D_Lone", "a\uD83Db"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains(@"a\xd83db", xml);
+            Assert.Contains("kept", xml);
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
+        }
+
+        /// <summary>
         /// Test that the share usage build can handle invalid configuration for
         /// the ignoreDataEvidenceFilter.
         /// </summary>
