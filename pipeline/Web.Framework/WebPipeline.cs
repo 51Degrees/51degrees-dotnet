@@ -40,6 +40,7 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Threading;
 using System.Web;
+using System.Web.Hosting;
 
 namespace FiftyOne.Pipeline.Web.Framework
 {
@@ -191,6 +192,8 @@ namespace FiftyOne.Pipeline.Web.Framework
                 });
             }
 
+            ResolveApplicationRootPaths(_options, HostingEnvironment.MapPath);
+
             // Set up common services.
             var loggerFactory = new LoggerFactory();
             var httpClient = new System.Net.Http.HttpClient();
@@ -210,6 +213,27 @@ namespace FiftyOne.Pipeline.Web.Framework
                 .BuildFromConfiguration(_options);
         }
 
+
+        /// <summary>
+        /// Replace each data file path that starts with '~/' or '~\' with
+        /// the path returned by <paramref name="mapPath"/>. Any other path
+        /// is left as it is.
+        /// </summary>
+        /// <param name="options">
+        /// Pipeline options to update in place.
+        /// </param>
+        /// <param name="mapPath">
+        /// Maps a virtual path to a physical one, as
+        /// <see cref="HostingEnvironment.MapPath(string)"/> does.
+        /// </param>
+        internal static void ResolveApplicationRootPaths(
+            PipelineOptions options,
+            Func<string, string> mapPath)
+        {
+            ApplicationRootPaths.ResolveDataFiles(
+                options,
+                p => mapPath(p.Replace('\\', '/')));
+        }
 
         /// <summary>
         /// Populate a FlowData's evidence from the web request, and process
