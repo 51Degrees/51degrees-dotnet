@@ -39,7 +39,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
@@ -58,9 +57,9 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
     /// When Terms Document Locator (TDL) evidence is provided via the
     /// <see cref="Constants.TdlEvidenceKey"/> key, the catch-all footer
     /// is emitted as an Allow-all block with one <c>TDL:</c> line per
-    /// valid absolute URI. Invalid entries are silently dropped per the
-    /// IETF-Robots TDL specification. If no valid TDL URIs remain, the
-    /// engine falls back to the default Disallow-all catch-all.
+    /// URI that conforms to RFC 3986. Invalid entries are silently dropped
+    /// per the IETF-Robots TDL specification. If no valid TDL URIs remain,
+    /// the engine falls back to the default Disallow-all catch-all.
     /// </para>
     /// </summary>
     public class RobotsTxtEngine :
@@ -293,29 +292,14 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
         private static readonly char[] TdlSeparators = [',', '|'];
 
         /// <summary>
-        /// A URI scheme followed by ':' (RFC 3986 section 3.1).
-        /// </summary>
-        private static readonly Regex SchemePrefix = new(
-            @"\A[A-Za-z][A-Za-z0-9+.\-]*:",
-            RegexOptions.CultureInvariant);
-
-        /// <summary>
-        /// Only the characters RFC 3986 sections 2.1 to 2.3 allow, with
-        /// every '%' followed by two hex digits.
-        /// </summary>
-        private static readonly Regex UriCharacters = new(
-            @"\A(?:[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=]|%[0-9A-Fa-f]{2})*\z",
-            RegexOptions.CultureInvariant);
-
-        /// <summary>
         /// Parses TDL URIs from evidence. Accepts a single value or a list
-        /// of values joined with ',' or '|'. Each entry is treated as an
-        /// absolute URI first; if that fails and an
-        /// <see cref="ITdlSourceResolver"/> is registered, it gets a chance
-        /// to resolve known short ids to URLs. Anything that ends up
-        /// non-URI is silently dropped per the IETF-Robots TDL specification.
+        /// of values joined with ',' or '|'. An entry that conforms to
+        /// RFC 3986 is kept as given (trimmed). Any other entry is offered
+        /// to the <see cref="ITdlSourceResolver"/>, if one is registered, to
+        /// resolve known short ids to URLs. Anything left is silently
+        /// dropped per the IETF-Robots TDL specification.
         /// </summary>
-        private IReadOnlyList<Uri> GetTdls(IFlowData data)
+        private IReadOnlyList<string> GetTdls(IFlowData data)
         {
             if (data.TryGetEvidence<string>(
                     Constants.TdlEvidenceKey,
@@ -334,29 +318,26 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
                 .ToArray();
         }
 
-        private Uri ResolveTdlEntry(string entry)
+        private string ResolveTdlEntry(string entry)
         {
-            // A URI starts with a scheme and holds only the characters RFC
-            // 3986 allows. The raw text is checked because .NET parses a
-            // string starting with '/' as a file path on some systems, and
-            // escapes characters such as a space instead of refusing them.
+            // The text is checked and written as given. Parsing it with
+            // Uri would accept values that are not URIs (a string starting
+            // with '/' is a file path on some systems), refuse some that
+            // are, and rewrite the address.
             var value = entry?.Trim();
-            if (value != null &&
-                SchemePrefix.IsMatch(value) &&
-                UriCharacters.IsMatch(value) &&
-                Uri.TryCreate(value, UriKind.Absolute, out var u))
+            if (Rfc3986.IsUri(value))
             {
-                return u;
+                return value;
             }
             if (_tdlResolver?.IsKnown(entry) == true)
             {
-                return _tdlResolver.Resolve(entry);
+                return _tdlResolver.Resolve(entry)?.OriginalString;
             }
             return null;
         }
 
         private IEnumerable<KeyValuePair<string, object>>
-            GetValues(HashSet<string> allowed, IReadOnlyList<Uri> tdls)
+            GetValues(HashSet<string> allowed, IReadOnlyList<string> tdls)
         {
             if (IsRequired(nameof(RobotsTxtData.PlainText)))
             {
@@ -381,7 +362,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
 
         private IAspectPropertyValue<string> GetValue(
             HashSet<string> allowed,
-            IReadOnlyList<Uri> tdls,
+            IReadOnlyList<string> tdls,
             bool annotations)
         {
             var sb = new StringBuilder();

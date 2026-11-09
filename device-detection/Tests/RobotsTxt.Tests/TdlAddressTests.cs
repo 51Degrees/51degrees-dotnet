@@ -228,7 +228,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
                 gen.Write(
                     writer,
                     new HashSet<string>(),
-                    new[] { new Uri(tdl) },
+                    new[] { tdl },
                     annotations,
                     CancellationToken.None);
             }

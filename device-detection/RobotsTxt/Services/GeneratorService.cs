@@ -47,10 +47,10 @@ public class GeneratorService(RobotsTxtModel _dataSet)
     /// <see cref="Constants.NotApplicableUsage"/> is among them.
     /// </param>
     /// <param name="tdls">
-    /// Terms Document Locator URIs. When non-empty, each URI is emitted as a
-    /// TDL line (with a "# Terms ..." comment) inside the wildcard Allow
-    /// block. When empty or null, the wildcard Allow block is emitted with
-    /// no TDL lines.
+    /// Terms Document Locator URIs, written exactly as given. When
+    /// non-empty, each URI is emitted as a TDL line (with a "# Terms ..."
+    /// comment) inside the wildcard Allow block. When empty or null, the
+    /// wildcard Allow block is emitted with no TDL lines.
     /// </param>
     /// <param name="annotations">
     /// True if the resulting file should include annotations, otherwise false.
@@ -59,7 +59,7 @@ public class GeneratorService(RobotsTxtModel _dataSet)
     public void Write(
         TextWriter writer,
         HashSet<string> allowed,
-        IReadOnlyList<Uri> tdls,
+        IReadOnlyList<string> tdls,
         bool annotations,
         CancellationToken stopToken)
     {
@@ -116,7 +116,7 @@ public class GeneratorService(RobotsTxtModel _dataSet)
     private void WriteWildcardBlock(
         TextWriter writer,
         IReadOnlyList<CrawlerModel> allowedCrawlers,
-        IReadOnlyList<Uri> tdls,
+        IReadOnlyList<string> tdls,
         bool annotations)
     {
         writer.WriteLine("User-Agent: *");
@@ -135,7 +135,7 @@ public class GeneratorService(RobotsTxtModel _dataSet)
         {
             foreach (var tdl in tdls)
             {
-                var url = tdl.AbsoluteUri;
+                var url = tdl;
                 writer.Write("# Terms ");
                 writer.WriteLine(url);
                 writer.Write("TDL: ");
