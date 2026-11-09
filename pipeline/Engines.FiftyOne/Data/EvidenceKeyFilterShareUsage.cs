@@ -218,18 +218,6 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         }
 
         /// <summary>
-        /// Check if the specified evidence key is included by this filter.
-        /// </summary>
-        /// <param name="key">
-        /// The key to check
-        /// </param>
-        /// <returns>
-        /// True if the key is included and false if not.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown if the supplied key is null
-        /// </exception>
-        /// <summary>
         /// True if the key is the asp.net session cookie and the filter
         /// was given the setting to include the session.
         /// </summary>
@@ -245,6 +233,18 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                     StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Check if the specified evidence key is included by this filter.
+        /// </summary>
+        /// <param name="key">
+        /// The key to check
+        /// </param>
+        /// <returns>
+        /// True if the key is included and false if not.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if the supplied key is null
+        /// </exception>
         public virtual bool Include(string key)
         {
             if(key == null)
