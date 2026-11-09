@@ -411,13 +411,22 @@ namespace FiftyOne.Pipeline.Web.Framework
             /// <see cref="RequestView"/>.
             /// </summary>
             /// <param name="values">The dictionary to add values to.</param>
-            public EvidenceFiller(IDictionary<string, object> values)
+            internal EvidenceFiller(IDictionary<string, object> values)
             {
                 _flowData = null;
                 _evidenceKeyFilter = null;
                 _values = values;
                 _errors = null;
             }
+
+            /// <summary>
+            /// A filler that keeps every value in the dictionary.
+            /// </summary>
+            /// <param name="values">The dictionary to add values to.</param>
+            /// <returns>The filler.</returns>
+            public static EvidenceFiller ForValues(
+                IDictionary<string, object> values) =>
+                new EvidenceFiller(values);
 
             /// <summary>
             /// True if a value for the key would be kept.

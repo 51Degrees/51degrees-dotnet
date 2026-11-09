@@ -261,7 +261,7 @@ namespace FiftyOne.Pipeline.Web.Framework.Tests
             session["secret"].Returns("value");
             var values = new Dictionary<string, object>();
 
-            var filler = new WebPipeline.EvidenceFiller(values);
+            var filler = WebPipeline.EvidenceFiller.ForValues(values);
             filler.AddSessionToEvidence(session);
 
             CollectionAssert.AreEquivalent(
