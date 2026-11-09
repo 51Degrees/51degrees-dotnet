@@ -123,25 +123,151 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
-        /// A sequence number that is not a number records an error against
-        /// the element, which the pipeline throws once processing ends, and
-        /// leaves the evidence as it was.
+        /// A sequence that is not a whole number, or is a string with
+        /// anything but decimal digits, counts as absent. So the sequence
+        /// is 1, no error is recorded, and the evidence and the element
+        /// data hold the same two values.
         /// </summary>
         [TestMethod]
-        public void SequenceElement_SequenceNotANumber_RecordsError()
+        [DataRow("not a number")]
+        [DataRow("")]
+        [DataRow(" 3")]
+        [DataRow("-1")]
+        [DataRow("1.5")]
+        [DataRow("\u0663")]
+        [DataRow(1.5)]
+        [DataRow(-4)]
+        public void SequenceElement_InvalidSequence_TreatedAsAbsent(
+            object sequence)
+        {
+            var session = Guid.NewGuid().ToString();
+            using (var data = _pipeline.CreateFlowData())
+            {
+                data.AddEvidence(Constants.EVIDENCE_SESSIONID, session);
+                data.AddEvidence(Constants.EVIDENCE_SEQUENCE, sequence);
+                data.Process();
+
+                AssertOutputs(data, session, 1);
+                Assert.IsEmpty(data.Errors ?? Enumerable.Empty<IFlowError>().ToList());
+            }
+        }
+
+        /// <summary>
+        /// A sequence that one more would not fit in an int counts as
+        /// absent, and the largest that does fit is incremented.
+        /// </summary>
+        [TestMethod]
+        [DataRow(int.MaxValue, 1)]
+        [DataRow("2147483647", 1)]
+        [DataRow("2147483648", 1)]
+        [DataRow("99999999999999999999", 1)]
+        [DataRow(2147483648L, 1)]
+        [DataRow(int.MaxValue - 1, int.MaxValue)]
+        [DataRow("2147483646", int.MaxValue)]
+        [DataRow("0", 1)]
+        [DataRow("007", 8)]
+        [DataRow(5L, 6)]
+        public void SequenceElement_SequenceAtLimit_IncrementsOrStartsAgain(
+            object sequence, int expected)
+        {
+            var session = Guid.NewGuid().ToString();
+            using (var data = _pipeline.CreateFlowData())
+            {
+                data.AddEvidence(Constants.EVIDENCE_SESSIONID, session);
+                data.AddEvidence(Constants.EVIDENCE_SEQUENCE, sequence);
+                data.Process();
+
+                AssertOutputs(data, session, expected);
+            }
+        }
+
+        /// <summary>
+        /// A session id that is not a string, or is empty, counts as
+        /// absent, so a new one is made.
+        /// </summary>
+        [TestMethod]
+        [DataRow(5)]
+        [DataRow("")]
+        public void SequenceElement_InvalidSessionId_NewSessionMade(
+            object sessionId)
         {
             using (var data = _pipeline.CreateFlowData())
             {
-                data.AddEvidence(Constants.EVIDENCE_SESSIONID, Guid.NewGuid().ToString());
-                data.AddEvidence(Constants.EVIDENCE_SEQUENCE, "not a number");
+                data.AddEvidence(Constants.EVIDENCE_SESSIONID, sessionId);
+                data.AddEvidence(Constants.EVIDENCE_SEQUENCE, "3");
+                data.Process();
 
-                Assert.ThrowsExactly<AggregateException>(() => data.Process());
-
-                Assert.AreEqual("not a number",
-                    data.GetEvidence().AsDictionary()[Constants.EVIDENCE_SEQUENCE]);
-                Assert.HasCount(1, data.Errors);
-                Assert.IsInstanceOfType<SequenceElement>(data.Errors[0].FlowElement);
+                var evidence = data.GetEvidence().AsDictionary();
+                var made = (string)evidence[Constants.EVIDENCE_SESSIONID];
+                Assert.IsTrue(Guid.TryParse(made, out _));
+                AssertOutputs(data, made, 4);
             }
+        }
+
+        /// <summary>
+        /// A sequence with no session id gets a new session id and is
+        /// incremented.
+        /// </summary>
+        [TestMethod]
+        public void SequenceElement_SequenceWithoutSessionId_NewSessionMade()
+        {
+            using (var data = _pipeline.CreateFlowData())
+            {
+                data.AddEvidence(Constants.EVIDENCE_SEQUENCE, 6);
+                data.Process();
+
+                var evidence = data.GetEvidence().AsDictionary();
+                var made = (string)evidence[Constants.EVIDENCE_SESSIONID];
+                Assert.IsTrue(Guid.TryParse(made, out _));
+                AssertOutputs(data, made, 7);
+            }
+        }
+
+        /// <summary>
+        /// A session id with no sequence is kept and the sequence is 1.
+        /// </summary>
+        [TestMethod]
+        public void SequenceElement_SessionIdWithoutSequence_SequenceIsOne()
+        {
+            var session = Guid.NewGuid().ToString();
+            using (var data = _pipeline.CreateFlowData())
+            {
+                data.AddEvidence(Constants.EVIDENCE_SESSIONID, session);
+                data.Process();
+
+                AssertOutputs(data, session, 1);
+            }
+        }
+
+        /// <summary>
+        /// A session id of "0" is a string, so it is kept.
+        /// </summary>
+        [TestMethod]
+        public void SequenceElement_SessionIdZero_Kept()
+        {
+            using (var data = _pipeline.CreateFlowData())
+            {
+                data.AddEvidence(Constants.EVIDENCE_SESSIONID, "0");
+                data.AddEvidence(Constants.EVIDENCE_SEQUENCE, "1");
+                data.Process();
+
+                AssertOutputs(data, "0", 2);
+            }
+        }
+
+        /// <summary>
+        /// The evidence and the element data hold the same session id and
+        /// sequence.
+        /// </summary>
+        private static void AssertOutputs(
+            IFlowData data, string sessionId, int sequence)
+        {
+            var evidence = data.GetEvidence().AsDictionary();
+            var elementData = data.Get(SequenceElement.DEFAULT_ELEMENT_DATA_KEY);
+            Assert.AreEqual(sessionId, evidence[Constants.EVIDENCE_SESSIONID]);
+            Assert.AreEqual(sequence, evidence[Constants.EVIDENCE_SEQUENCE]);
+            Assert.AreEqual(sessionId, elementData["session-id"]);
+            Assert.AreEqual(sequence, elementData["sequence"]);
         }
 
         /// <summary>
