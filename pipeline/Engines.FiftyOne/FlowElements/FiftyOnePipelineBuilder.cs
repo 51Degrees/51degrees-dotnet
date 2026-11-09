@@ -111,10 +111,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// </summary>
         protected override void OnPreBuild()
         {
-            // Add the sequence element if it doe not exist already, make sure
-            // it is added at the beginning as some engines depend on it.
+            // Add the sequence element if it does not exist already, make
+            // sure it is added at the beginning as some engines depend on it.
             if (_sequenceElementEnabled &&
-                FlowElements.Any(e => e.GetType() == typeof(SequenceElement)) == false)
+                FlowElements.Any(
+                    e => e.GetType() == typeof(SequenceElement)) == false)
             {
 #pragma warning disable CA2000 // Dispose objects before losing scope
                 // Element lifetimes are managed by the Pipeline

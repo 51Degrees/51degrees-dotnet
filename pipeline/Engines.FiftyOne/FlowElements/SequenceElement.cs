@@ -27,6 +27,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 {
@@ -49,7 +50,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// Constructor.
         /// </summary>
         /// <param name="logger"></param>
-        public SequenceElement(ILogger<FlowElementBase<IElementData, IElementPropertyMetaData>> logger)
+        public SequenceElement(
+            ILogger<FlowElementBase<IElementData, IElementPropertyMetaData>> logger)
             : this(logger, null)
         {
         }
@@ -110,11 +112,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Process method checks for presence of a session id and sequence 
-        /// number. If they do not exist then they are initialized in evidence.
-        /// If they do exist in evidence then the sequence number is incremented
-        /// and added back to the evidence.
-        /// Both values are also written to the element data.
+        /// Process method checks for a session id and a sequence number in
+        /// the evidence. A value that is absent or not valid is made new, as
+        /// a new id or as 1. A valid sequence number is incremented. Both
+        /// values are written to the evidence and to the element data.
         /// </summary>
         /// <param name="data">
         /// The <see cref="IFlowData"/> instance to process.
@@ -130,47 +131,72 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             }
 
             var evidence = data.GetEvidence().AsDictionary();
+
+            // A session id that is absent, empty or not a string counts as
+            // absent, so a new one is made.
+            evidence.TryGetValue(
+                Constants.EVIDENCE_SESSIONID,
+                out object sessionValue);
+            var sessionId = sessionValue is string existing &&
+                existing.Length > 0 ?
+                existing :
+                GetNewSessionId();
+
+            // A sequence that is absent or not a number the sequence can
+            // be incremented from counts as absent, which gives 1.
+            evidence.TryGetValue(
+                Constants.EVIDENCE_SEQUENCE,
+                out object sequenceValue);
+            var sequence = TryGetSequence(sequenceValue, out int current) ?
+                current + 1 :
+                1;
+
+            // Evidence and Element Data hold the same two values.
+            data.AddEvidence(Constants.EVIDENCE_SESSIONID, sessionId);
+            data.AddEvidence(Constants.EVIDENCE_SEQUENCE, sequence);
             var elementData = data.GetOrAdd(
                 ElementDataKeyTyped,
                 CreateElementData);
-
-            // If the evidence does not contain a session id then create a new one.
-            string sessionId;
-            if (evidence.TryGetValue(Constants.EVIDENCE_SESSIONID, out object existingSessionId) == false)
-            {
-                sessionId = GetNewSessionId();
-                data.AddEvidence(Constants.EVIDENCE_SESSIONID, sessionId);
-            }
-            else
-            {
-                sessionId = existingSessionId?.ToString();
-            }
             elementData[Constants.EVIDENCE_SESSIONID_SUFFIX] = sessionId;
+            elementData[Constants.EVIDENCE_SEQUENCE_SUFIX] = sequence;
+        }
 
-            // If the evidence does not have a sequence then add one. Otherwise
-            // increment it.
-            if (evidence.ContainsKey(Constants.EVIDENCE_SEQUENCE) == false)
+        /// <summary>
+        /// Gets the sequence from a whole number or a string of decimal
+        /// digits. The value must be at least 1 and must be one that can
+        /// have 1 added without leaving the range of an int.
+        /// </summary>
+        private static bool TryGetSequence(object value, out int sequence)
+        {
+            sequence = 0;
+            long number;
+            switch (value)
             {
-                data.AddEvidence(Constants.EVIDENCE_SEQUENCE, 1);
-                elementData[Constants.EVIDENCE_SEQUENCE_SUFIX] = 1;
+                case int i: number = i; break;
+                case long l: number = l; break;
+                case short sh: number = sh; break;
+                case byte by: number = by; break;
+                case uint ui: number = ui; break;
+                case string text:
+                    if (int.TryParse(
+                        text,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out int parsed) == false)
+                    {
+                        return false;
+                    }
+                    number = parsed;
+                    break;
+                default:
+                    return false;
             }
-            else if (evidence.TryGetValue(Constants.EVIDENCE_SEQUENCE, out object sequence))
+            if (number < 1 || number >= int.MaxValue)
             {
-                if (sequence is int result || (sequence is string seq && int.TryParse(seq, out result)))
-                {
-                    data.AddEvidence(Constants.EVIDENCE_SEQUENCE, result + 1);
-                    elementData[Constants.EVIDENCE_SEQUENCE_SUFIX] = result + 1;
-                }
-                else
-                {
-                    data.AddError(new Exception(Messages.MessageFailSequenceNumberParse), this);
-                    Logger.LogError(Messages.MessageFailSequenceNumberIncrement);
-                }
+                return false;
             }
-            else
-            {
-                Logger.LogError(Messages.MessageFailSequenceNumberRetreive);
-            }
+            sequence = (int)number;
+            return true;
         }
 
         /// <summary>
