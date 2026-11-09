@@ -123,6 +123,9 @@
   <data name="ExceptionNoConfiguration" xml:space="preserve">
     <value>Could not find pipeline configuration information</value>
   </data>
+  <data name="ExceptionNoSequenceElement" xml:space="preserve">
+    <value>Client-side evidence needs the SequenceElement, but SequenceElementEnabled is false and the SequenceElement is not in the configured elements. To resolve this error, either disable client-side evidence or add the SequenceElement to your Pipeline.</value>
+  </data>
   <data name="ExceptionNoJavaScriptBuilder" xml:space="preserve">
     <value>Client-side JavaScript has been requested from the Pipeline. However, the JavaScriptBuilderElement is not present. To resolve this error, either disable client-side evidence or ensure the JavaScriptBuilderElement is added to your Pipeline.</value>
   </data>
