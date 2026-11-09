@@ -400,7 +400,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Services
         }
 
         /// <summary>
-        /// The ETag for the evidence the filter takes from the flow data,
+        /// The ETag for the evidence the filter takes from the request,
         /// being a weak entity tag holding a 64 bit FNV-1a hash of each
         /// evidence name, in lower case, and value, in the order of the
         /// names. The hash has no per-process seed, unlike
@@ -412,7 +412,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Services
             IEvidenceKeyFilter filter)
         {
             var entries = new List<KeyValuePair<string, object>>();
-            foreach (var entry in flowData.GetEvidence().AsDictionary())
+            foreach (var entry in GetSuppliedEvidence(flowData))
             {
                 if (filter.Include(entry.Key))
                 {
@@ -436,6 +436,20 @@ namespace FiftyOne.Pipeline.Web.Shared.Services
             }
             return WeakETagPrefix + "\"" +
                 hash.ToString("x16", CultureInfo.InvariantCulture) + "\"";
+        }
+
+        /// <summary>
+        /// The evidence the request supplied. A Flow Element can add or
+        /// replace evidence while processing, as the Sequence Element does
+        /// with a new session id, so the evidence after processing differs
+        /// on every request and a revalidation would never match.
+        /// </summary>
+        private static IReadOnlyDictionary<string, object> GetSuppliedEvidence(
+            IFlowData flowData)
+        {
+            return flowData is FlowData supplied ?
+                supplied.GetSuppliedEvidence() :
+                flowData.GetEvidence().AsDictionary();
         }
 
         /// <summary>
