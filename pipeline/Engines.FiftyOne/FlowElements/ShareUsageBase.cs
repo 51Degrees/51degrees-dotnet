@@ -745,9 +745,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             // Only attempt a final flush if there is something to send. This avoids
             // a needless network round-trip (and a logged error when offline) when
             // the pipeline is disposed without any usage. See issue #224.
-            if (EvidenceCollection.Count > 0)
+            // A message holds at most twice the minimum entries, so send
+            // messages until the queue is empty.
+            while (EvidenceCollection.Count > 0)
             {
                 TrySendData();
+                SendDataTask?.Wait();
             }
             if (IsRunning)
             {
