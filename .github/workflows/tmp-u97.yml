@@ -1,0 +1,24 @@
+name: Temporary usage sharing tests
+
+on:
+  push:
+    branches:
+      - 'tmp/u97-**'
+
+jobs:
+  Test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submodules
+        run: git submodule update --init pipeline/Core/Configuration/Validation pipeline/JavaScriptBuilderElement/Templates pipeline/DerivedProperty/Scripts pipeline/owid-dotnet
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Test
+        run: >
+          dotnet test pipeline/Tests/Engines.FiftyOne.Tests/FiftyOne.Pipeline.Engines.FiftyOne.Tests.csproj
+          -c Release --filter "FullyQualifiedName~ShareUsage"
+          -p:FiftyOneReferences=Project
