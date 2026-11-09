@@ -22,6 +22,7 @@
 
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using FiftyOne.Pipeline.JavaScriptBuilder.Data;
 using FiftyOne.Pipeline.JavaScriptBuilder.FlowElement;
 using FiftyOne.Pipeline.JsonBuilder.Data;
@@ -383,6 +384,94 @@ namespace FiftyOne.Pipeline.Web.Tests
 
             Assert.AreEqual(200, context.Response.StatusCode);
             Assert.AreEqual(JS_CONTENT, Body(context));
+        }
+
+        /// <summary>
+        /// The ETag is made from the evidence the request supplied. The
+        /// Sequence Element adds a new session id during processing, so a
+        /// hash of the evidence after processing differs on every request
+        /// and a revalidation never gets a 304.
+        /// </summary>
+        [DataTestMethod]
+        [DataRow(true)]
+        [DataRow(false)]
+        public void SequenceElement_RevalidationGetsNotModified(
+            bool javaScript)
+        {
+            var pipeline = BuildSequencePipeline();
+
+            var first = ServeProcessed(pipeline, javaScript, null);
+            var eTag = Header(first, "ETag");
+            var second = ServeProcessed(pipeline, javaScript, eTag);
+
+            Assert.AreEqual(200, first.Response.StatusCode);
+            Assert.AreNotEqual(string.Empty, eTag);
+            Assert.AreEqual(304, second.Response.StatusCode);
+        }
+
+        /// <summary>
+        /// The supplied values still take part in the ETag, so a different
+        /// sequence in the request gives a different ETag.
+        /// </summary>
+        [TestMethod]
+        public void SequenceElement_SuppliedEvidenceChangesETag()
+        {
+            var pipeline = BuildSequencePipeline();
+
+            var one = ServeProcessed(pipeline, false, null, "1");
+            var two = ServeProcessed(pipeline, false, null, "2");
+
+            Assert.AreNotEqual(Header(one, "ETag"), Header(two, "ETag"));
+        }
+
+        private static IPipeline BuildSequencePipeline()
+        {
+            return new PipelineBuilder(NullLoggerFactory.Instance)
+                .AddFlowElement(
+                    new SequenceElementBuilder(NullLoggerFactory.Instance)
+                        .Build())
+                .AddFlowElement(
+                    new JsonBuilderElementBuilder(NullLoggerFactory.Instance)
+                        .Build())
+                .AddFlowElement(
+                    new JavaScriptBuilderElementBuilder(
+                        NullLoggerFactory.Instance).Build())
+                .Build();
+        }
+
+        private static HttpContext ServeProcessed(
+            IPipeline pipeline,
+            bool javaScript,
+            string ifNoneMatch,
+            string sequence = null)
+        {
+            var flowData = pipeline.CreateFlowData();
+            if (sequence != null)
+            {
+                flowData.AddEvidence("query.sequence", sequence);
+            }
+            flowData.Process();
+
+            var context = new DefaultHttpContext();
+            context.Request.Method = "GET";
+            if (ifNoneMatch != null)
+            {
+                context.Request.Headers["If-None-Match"] = ifNoneMatch;
+            }
+            context.Response.Body = new MemoryStream();
+            var service = new ClientsidePropertyService(
+                pipeline,
+                NullLogger<ClientsidePropertyService>.Instance);
+            var adapter = new ContextAdapter(context);
+            if (javaScript)
+            {
+                service.ServeJavascript(adapter, flowData);
+            }
+            else
+            {
+                service.ServeJson(adapter, flowData);
+            }
+            return context;
         }
 
         private void AddError()
