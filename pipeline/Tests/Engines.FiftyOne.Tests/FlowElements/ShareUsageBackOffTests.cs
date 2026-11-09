@@ -33,10 +33,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
     [TestClass]
     public class ShareUsageBackOffTests
     {
-        private static readonly DateTime Start =
-            new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        private static DateTime At(double seconds) => Start.AddSeconds(seconds);
+        private static TimeSpan At(double seconds) =>
+            TimeSpan.FromSeconds(1000 + seconds);
 
         private static TimeSpan Seconds(double seconds) =>
             TimeSpan.FromSeconds(seconds);
