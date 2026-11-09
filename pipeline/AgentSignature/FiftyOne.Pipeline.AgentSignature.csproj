@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>
     <Platforms>AnyCPU</Platforms>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -39,9 +39,10 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
-    <!-- The key directory and the agent card are JSON. The net8.0 build
-         reads them with System.Text.Json from the base library, and this
-         build reads them with Newtonsoft. See JsonReader.cs. The package
+    <!-- The key directory and the agent card are JSON. The net8.0 and
+         net10.0 builds read them with System.Text.Json from the base
+         library, and this build reads them with Newtonsoft. See
+         JsonReader.cs. The package
          is named here rather than being taken from the engines project,
          so that this project keeps compiling and keeps asking for what it
          needs whatever the engines project depends on later. -->

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <AssemblyName>FiftyOne.Did</AssemblyName>
     <RootNamespace>FiftyOne.Did</RootNamespace>
     <Platforms>AnyCPU</Platforms>

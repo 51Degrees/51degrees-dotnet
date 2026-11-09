@@ -18,7 +18,7 @@
   <ItemGroup>
     <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
     <FiftyOneReference Include="FiftyOne.Did.Cloud" ProjectPath="..\..\..\..\pipeline\Did.Cloud\FiftyOne.Did.Cloud.csproj" Version="$(FiftyOnePipelineVersion)" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.33" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.14" />
   </ItemGroup>
 
   <!-- The device detection cloud engine comes from the shared example base,

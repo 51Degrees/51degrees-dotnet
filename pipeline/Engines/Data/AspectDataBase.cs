@@ -40,7 +40,8 @@ namespace FiftyOne.Pipeline.Engines.Data
     /// <see cref="IAspectEngine"/>.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/conceptual-overview.md#aspect-data">Specification</see>
     /// </summary>
-    public abstract class AspectDataBase : ElementDataBase, IAspectData
+    public abstract class AspectDataBase :
+        ElementDataBase, IAspectData, IAspectDataInternal
     {
         private List<Task> _processTasks = new List<Task>();
         private List<IAspectEngine> _engines;
@@ -62,7 +63,7 @@ namespace FiftyOne.Pipeline.Engines.Data
         /// surface it on <see cref="DataBase.AsDictionary"/> and leak it
         /// into JSON output produced by <c>JsonBuilderElement</c>.
         /// </remarks>
-        internal bool CloudRequestFailed => _cloudRequestFailed;
+        bool IAspectDataInternal.CloudRequestFailed => _cloudRequestFailed;
 
         /// <summary>
         /// The <see cref="IMissingPropertyService"/> instance to be queried
@@ -185,7 +186,7 @@ namespace FiftyOne.Pipeline.Engines.Data
             MissingPropertyService = missingPropertyService;
         }
 
-        internal void AddEngine(IAspectEngine engine)
+        void IAspectDataInternal.AddEngine(IAspectEngine engine)
         {
             lock (Engines)
             {
@@ -203,7 +204,7 @@ namespace FiftyOne.Pipeline.Engines.Data
         /// to decide what reason to surface; this base class does not
         /// interpret it.
         /// </summary>
-        internal void MarkCloudRequestFailed()
+        void IAspectDataInternal.MarkCloudRequestFailed()
         {
             _cloudRequestFailed = true;
         }
@@ -215,7 +216,7 @@ namespace FiftyOne.Pipeline.Engines.Data
         /// tasks have completed.
         /// </summary>
         /// <param name="processTask"></param>
-        internal void AddProcessTask(Task processTask)
+        void IAspectDataInternal.AddProcessTask(Task processTask)
         {
             lock (_processTasks)
             {
@@ -224,9 +225,9 @@ namespace FiftyOne.Pipeline.Engines.Data
         }
 
         /// <summary>
-        /// Set if this instance is a 
+        /// Record that this instance came from the results cache.
         /// </summary>
-        internal void SetCacheHit()
+        void IAspectDataInternal.SetCacheHit()
         {
             _cacheHit = true;
         }
