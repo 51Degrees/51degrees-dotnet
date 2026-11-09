@@ -22,15 +22,17 @@
 
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines.FiftyOne.Data;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Collections.Generic;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 {
     /// <summary>
-    /// Sequence element establishes session and sequence evidence in the 
-    /// pipeline.
+    /// Sequence element establishes session and sequence evidence in the
+    /// pipeline, and holds the same two values as element data.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/sequence-element.md">Specification</see>
     /// </summary>
     public class SequenceElement : FlowElementBase<IElementData, IElementPropertyMetaData>
@@ -41,14 +43,38 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 Constants.EVIDENCE_SEQUENCE
             });
 
-        private IList<IElementPropertyMetaData> _properties = new List<IElementPropertyMetaData>();
+        private IList<IElementPropertyMetaData> _properties;
 
         /// <summary>
         /// Constructor.
         /// </summary>
         /// <param name="logger"></param>
-        public SequenceElement(ILogger<FlowElementBase<IElementData, IElementPropertyMetaData>> logger) : base(logger)
+        public SequenceElement(ILogger<FlowElementBase<IElementData, IElementPropertyMetaData>> logger)
+            : this(logger, null)
         {
+        }
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="logger"></param>
+        /// <param name="dataLogger">
+        /// Used for logging by the element data this element creates.
+        /// </param>
+        public SequenceElement(
+            ILogger<FlowElementBase<IElementData, IElementPropertyMetaData>> logger,
+            ILogger<SequenceData> dataLogger)
+            : base(logger, (pipeline, element) => new SequenceData(
+                dataLogger ?? NullLogger<SequenceData>.Instance,
+                pipeline))
+        {
+            _properties = new List<IElementPropertyMetaData>()
+            {
+                new ElementPropertyMetaData(this,
+                    Constants.EVIDENCE_SESSIONID_SUFFIX, typeof(string), true),
+                new ElementPropertyMetaData(this,
+                    Constants.EVIDENCE_SEQUENCE_SUFIX, typeof(int), true)
+            };
         }
 
         /// <summary>
@@ -88,6 +114,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// number. If they do not exist then they are initialized in evidence.
         /// If they do exist in evidence then the sequence number is incremented
         /// and added back to the evidence.
+        /// Both values are also written to the element data.
         /// </summary>
         /// <param name="data">
         /// The <see cref="IFlowData"/> instance to process.
@@ -103,24 +130,36 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             }
 
             var evidence = data.GetEvidence().AsDictionary();
+            var elementData = data.GetOrAdd(
+                ElementDataKeyTyped,
+                CreateElementData);
 
             // If the evidence does not contain a session id then create a new one.
-            if (evidence.ContainsKey(Constants.EVIDENCE_SESSIONID) == false)
+            string sessionId;
+            if (evidence.TryGetValue(Constants.EVIDENCE_SESSIONID, out object existingSessionId) == false)
             {
-                data.AddEvidence(Constants.EVIDENCE_SESSIONID, GetNewSessionId());
+                sessionId = GetNewSessionId();
+                data.AddEvidence(Constants.EVIDENCE_SESSIONID, sessionId);
             }
+            else
+            {
+                sessionId = existingSessionId?.ToString();
+            }
+            elementData[Constants.EVIDENCE_SESSIONID_SUFFIX] = sessionId;
 
             // If the evidence does not have a sequence then add one. Otherwise
             // increment it.
             if (evidence.ContainsKey(Constants.EVIDENCE_SEQUENCE) == false)
             {
                 data.AddEvidence(Constants.EVIDENCE_SEQUENCE, 1);
+                elementData[Constants.EVIDENCE_SEQUENCE_SUFIX] = 1;
             }
             else if (evidence.TryGetValue(Constants.EVIDENCE_SEQUENCE, out object sequence))
             {
                 if (sequence is int result || (sequence is string seq && int.TryParse(seq, out result)))
                 {
                     data.AddEvidence(Constants.EVIDENCE_SEQUENCE, result + 1);
+                    elementData[Constants.EVIDENCE_SEQUENCE_SUFIX] = result + 1;
                 }
                 else
                 {
