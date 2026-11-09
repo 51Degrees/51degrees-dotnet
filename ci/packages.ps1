@@ -1,33 +1,49 @@
 # Shared by the scripts in this folder, which dot-source it. Paths are
 # relative to the repository root.
 
+# Which families a publish releases, and at which version, is worked out by
+# common-ci's steps/release-plan.ps1 from packages.json. common-ci runs these
+# scripts from its own root, with this repository checked out inside it. A
+# checkout of common-ci beside this repository is found too, or one elsewhere
+# can be named with COMMON_CI. Only the publish asks for the plan, so a build
+# or a test runs without it.
+$releasePlan = @(
+    $env:COMMON_CI,
+    (Join-Path $PSScriptRoot '..' '..'),
+    (Join-Path $PSScriptRoot '..' '..' 'common-ci')) |
+    Where-Object { $_ } |
+    ForEach-Object { Join-Path $_ 'steps' 'release-plan.ps1' } |
+    Where-Object { Test-Path $_ } |
+    Select-Object -First 1
+if ($releasePlan) {
+    . $releasePlan
+}
+Remove-Variable releasePlan
+
 # Each package family keeps the version stream its own repository had, and is
 # published from here at the next version of that stream. A family's release
 # is the tag '<family>/<version>', for example 'pipeline/4.5.129'.
 #
-#   Name       the family, which is also the tag prefix
+# packages.json lists the families in the order they build, each after the
+# families it depends on. Name, Path, ExtraPaths, DependsOn and Publish are
+# the fields common-ci's release plan reads. Path is the family's folder.
+# ExtraPaths holds the root Directory.Build.targets, which every package
+# builds with, and the cxx submodule the on-premise engines compile. The root
+# Directory.Build.props is left out, because the publish records the released
+# versions there, which would otherwise count as a change to every family.
+# DependsOn names the families whose packages the family's packages reference
+# through FiftyOneReference items. The other fields are this repository's:
+#
 #   Property   the MSBuild property in the root Directory.Build.props that
 #              holds the last published version, and which Package mode and
 #              the examples restore against
-#   Paths      the paths a change in which means the family has changed since
-#              its last tag, so a new version is published
 #   Solutions  what dotnet builds and packs for the family, in dependency order
 #   Framework  the .NET Framework solutions, which need msbuild on Windows
 #   Platform   whether the solutions take a Platform (the on-premise engines).
 #              The others build as Any CPU, which is all their solutions define.
 #   NotOn      the architectures the family is not built for. IP Intelligence
 #              ships no x86 library, as its own repository never did.
-$Families = @(
-    @{ Name = 'common';           Property = 'FiftyOneCommonVersion';          Paths = @('common');                 Solutions = @('common/FiftyOne.Common.sln') }
-    @{ Name = 'caching';          Property = 'FiftyOneCachingVersion';         Paths = @('caching');                Solutions = @('caching/FiftyOne.Caching.sln') }
-    @{ Name = 'pipeline';         Property = 'FiftyOnePipelineVersion';        Paths = @('pipeline');               Solutions = @('pipeline/FiftyOne.Pipeline.sln', 'pipeline/FiftyOne.Pipeline.Elements.sln', 'pipeline/FiftyOne.CloudRequestEngine.sln'); Framework = @('pipeline/FiftyOne.Pipeline.Web.sln') }
-    @{ Name = 'device-detection'; Property = 'FiftyOneDeviceDetectionVersion'; Paths = @('device-detection', 'cxx'); Solutions = @('device-detection/FiftyOne.DeviceDetection.Core.slnf'); Framework = @('device-detection/FiftyOne.DeviceDetection.sln'); Platform = $true }
-    @{ Name = 'ip-intelligence';  Property = 'FiftyOneIpIntelligenceVersion';  Paths = @('ip-intelligence', 'cxx');  Solutions = @('ip-intelligence/FiftyOne.IpIntelligence.sln'); Platform = $true; NotOn = @('x86') }
-    @{ Name = 'location';         Property = 'FiftyOneGeoLocationVersion';     Paths = @('location');               Solutions = @('location/FiftyOne.GeoLocation.sln') }
-)
-
-# A change to a root build file is a change to every family.
-$RootPaths = @('Directory.Build.targets')
+$Families = @(Get-Content -Raw "$PSScriptRoot/packages.json" | ConvertFrom-Json)
 
 # The example solutions, built and tested but never packed.
 $ExampleSolutions = @(
@@ -47,37 +63,42 @@ $NuspecPackages = @(
     @{ Nuspec = 'pipeline/FiftyOne.Pipeline.Web.nuspec'; Family = 'pipeline'; Core = 'pipeline/Web/FiftyOne.Pipeline.Web.csproj'; Framework = 'pipeline/FiftyOne.Pipeline.Web.sln' }
 )
 
-# Returns, for every family, the last published version, the next version and
-# whether anything in the family changed since the last tag. Deterministic for
-# a commit, so every job of a run computes the same answer.
-#
-# A family with no tag yet is published at the version after the one the root
-# Directory.Build.props records, which is the last version its own repository
-# published. After that the tag is the record.
+# Returns, for every family, the last published version, the version this
+# publish gives it, whether it is released and why. The released families are
+# common-ci's release plan, which is every family that changed since its last
+# tag and every family depending on one of them, so that the dependent's
+# packages require the new version. The others keep their last version, which
+# the released packages then require. Deterministic for a commit, so every job
+# of a run computes the same answer.
 function Get-FamilyVersions {
     param ([Parameter(Mandatory)][string]$RepoName)
-    $props = Get-Content "$RepoName/Directory.Build.props" -Raw
-    $tags = @(git -C $RepoName tag --list)
+    if (-not (Get-Command Get-ReleasePlan -ErrorAction SilentlyContinue)) {
+        throw "common-ci's steps/release-plan.ps1 was not found, so the " +
+            "release cannot be planned. Set COMMON_CI to a checkout of common-ci."
+    }
+    $plan = @(Get-ReleasePlan $RepoName $Families)
     $versions = [ordered]@{}
     foreach ($family in $Families) {
-        $released = @($tags |
-            Where-Object { $_ -match "^$($family.Name)/(\d+\.\d+\.\d+)$" } |
-            ForEach-Object { [version]$Matches[1] } |
-            Sort-Object)
-        if ($released) {
-            $last = $released[-1]
-            $tag = "$($family.Name)/$last"
-            $changes = @(git -C $RepoName log --oneline "$tag..HEAD" -- @($family.Paths + $RootPaths))
-            $changed = $changes.Count -gt 0
+        $release = $plan | Where-Object Name -eq $family.Name
+        if ($release) {
+            $last = $release.Previous
+            $next = $release.Version
+            $reason = $release.Reason
         } else {
-            if ($props -notmatch "<$($family.Property)>(\d+\.\d+\.\d+)</$($family.Property)>") {
-                throw "Directory.Build.props has no $($family.Property)"
+            $last = @(Get-ReleasedVersions $RepoName $family.Name)[-1]
+            if ($null -eq $last) {
+                throw "$($family.Name) has no '$($family.Name)/<version>' tag."
             }
-            $last = [version]$Matches[1]
-            $changed = $true
+            $next = $last
+            $reason = 'unchanged, as is every family it depends on'
         }
-        $next = $changed ? [version]"$($last.Major).$($last.Minor).$($last.Build + 1)" : $last
-        $versions[$family.Name] = @{ Last = "$last"; Next = "$next"; Changed = $changed; Property = $family.Property }
+        $versions[$family.Name] = @{
+            Last = "$last"
+            Next = "$next"
+            Release = $null -ne $release
+            Reason = $reason
+            Property = $family.Property
+        }
     }
     return $versions
 }

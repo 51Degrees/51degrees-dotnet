@@ -119,6 +119,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// it.
         /// </para>
         /// <para>
+        /// 'header.cookie' is the Cookie header, which carries every cookie
+        /// including the ones the cookie rule leaves out. The cookies
+        /// starting 51D_ are shared as their own 'cookie.' keys.
+        /// </para>
+        /// <para>
         /// An element that needs either value still receives it in evidence,
         /// because this filter governs only what usage sharing sends, not
         /// what a pipeline collects.
@@ -130,6 +135,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
             "id.salt",
             "request-query",
             "request-path",
+            "header.cookie",
         };
 
         /// <summary>
@@ -260,7 +266,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                     string firstPart = key.Remove(firstSeperator);
                     string lastPart = key.Substring(firstSeperator + 1);
 
-                    if (firstPart == Core.Constants.EVIDENCE_HTTPHEADER_PREFIX)
+                    if (string.Equals(firstPart, Core.Constants.EVIDENCE_HTTPHEADER_PREFIX,
+                        StringComparison.OrdinalIgnoreCase))
                     {
                         // Add the header to the list if the header name does not 
                         // appear in the list of blocked headers.
@@ -270,7 +277,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                             .Contains(lastPart.ToLowerInvariant()) == false;
 #pragma warning restore CA1308 // Normalize strings to uppercase
                     }
-                    else if (firstPart == Core.Constants.EVIDENCE_COOKIE_PREFIX)
+                    else if (string.Equals(firstPart, Core.Constants.EVIDENCE_COOKIE_PREFIX,
+                        StringComparison.OrdinalIgnoreCase))
                     {
                         // Only add cookies that start with the 51Degrees cookie 
                         // prefix.
@@ -279,14 +287,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                             (_includeSession && lastPart.Equals(_aspSessionCookieName,
                                 StringComparison.OrdinalIgnoreCase));
                     }
-                    else if (firstPart == Core.Constants.EVIDENCE_SESSION_PREFIX)
+                    else if (string.Equals(firstPart, Core.Constants.EVIDENCE_SESSION_PREFIX,
+                        StringComparison.OrdinalIgnoreCase))
                     {
                         // Only add session values that start with the 51Degrees
                         // cookie prefix.
                         result = lastPart.StartsWith(Engines.Constants.FIFTYONE_COOKIE_PREFIX,
                             StringComparison.OrdinalIgnoreCase);
                     }
-                    else if (firstPart == Core.Constants.EVIDENCE_QUERY_PREFIX)
+                    else if (string.Equals(firstPart, Core.Constants.EVIDENCE_QUERY_PREFIX,
+                        StringComparison.OrdinalIgnoreCase))
                     {
                         // If no query string parameter filter was specified 
                         // then share all of them.

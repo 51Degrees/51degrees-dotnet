@@ -107,11 +107,15 @@ namespace FiftyOne.DeviceDetection.Shared.Services
 
             return _profileIdToComponentId.GetOrAdd(profileId, pid =>
             {
+                // Reading every profile is slow, so walk them once. Two
+                // matches are enough to know the answer is null.
                 var matches = _engines.SelectMany(e => e.Profiles)
-                    .Where(c => c.ProfileId == pid);
-                if (matches.Count() == 1)
+                    .Where(c => c.ProfileId == pid)
+                    .Take(2)
+                    .ToList();
+                if (matches.Count == 1)
                 {
-                    return matches.Single().Component.ComponentId;
+                    return matches[0].Component.ComponentId;
                 }
                 return null;
             });

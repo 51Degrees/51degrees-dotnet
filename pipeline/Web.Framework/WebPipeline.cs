@@ -334,8 +334,7 @@ namespace FiftyOne.Pipeline.Web.Framework
             filler.CheckAndAddAll("query.", request.QueryString, (query, k) => query[k]);
             if (request.RequestContext.HttpContext.Session is HttpSessionStateBase session)
             {
-                filler.CheckAndAdd("session", new AspFrameworkSession(session));
-                filler.CheckAndAddAll("", session.Keys, (k) => session[k]);
+                filler.AddSessionToEvidence(session);
             }
 
             // Add form parameters to the evidence.
@@ -421,6 +420,15 @@ namespace FiftyOne.Pipeline.Web.Framework
             }
 
             /// <summary>
+            /// A filler that keeps every value in the dictionary.
+            /// </summary>
+            /// <param name="values">The dictionary to add values to.</param>
+            /// <returns>The filler.</returns>
+            public static EvidenceFiller ForValues(
+                IDictionary<string, object> values) =>
+                new EvidenceFiller(values);
+
+            /// <summary>
             /// True if a value for the key would be kept.
             /// </summary>
             private bool Wants(string key) =>
@@ -457,6 +465,23 @@ namespace FiftyOne.Pipeline.Web.Framework
                     }
                     _errors.Add(ex);
                 }
+            }
+
+            /// <summary>
+            /// Add the session object and each session value. A filler that
+            /// keeps every value names them with the 'session' prefix, so
+            /// the usage sharing rule for session values applies to them.
+            /// A filler for a flow data keeps the names it has always used.
+            /// </summary>
+            /// <param name="session">The session to read.</param>
+            public void AddSessionToEvidence(HttpSessionStateBase session)
+            {
+                var prefix = _values != null ?
+                    Core.Constants.EVIDENCE_SESSION_PREFIX +
+                        Core.Constants.EVIDENCE_SEPERATOR :
+                    "";
+                CheckAndAdd(prefix + "session", new AspFrameworkSession(session));
+                CheckAndAddAll(prefix, session.Keys, (k) => session[k]);
             }
 
             /// <summary>

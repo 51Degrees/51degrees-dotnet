@@ -247,6 +247,53 @@ namespace FiftyOne.Pipeline.Web.Framework.Tests
         }
 
         /// <summary>
+        /// The request kept for usage sharing names session values with the
+        /// 'session' prefix, so the rule that shares only the values
+        /// starting 51D_ applies to them, and the session object is not
+        /// named as an unprefixed key.
+        /// </summary>
+        [TestMethod]
+        public void SessionForUsageSharing_UsesTheSessionPrefix()
+        {
+            var session = Substitute.For<System.Web.HttpSessionStateBase>();
+            session.Keys.Returns(new System.Collections.Specialized
+                .NameValueCollection { { "secret", "x" } }.Keys);
+            session["secret"].Returns("value");
+            var values = new Dictionary<string, object>();
+
+            var filler = WebPipeline.EvidenceFiller.ForValues(values);
+            filler.AddSessionToEvidence(session);
+
+            CollectionAssert.AreEquivalent(
+                new[] { "session.secret", "session.session" },
+                values.Keys.ToArray());
+            Assert.AreEqual("value", values["session.secret"]);
+        }
+
+        /// <summary>
+        /// Where an element asks for session values, they keep the keys
+        /// they have always had.
+        /// </summary>
+        [TestMethod]
+        public void SessionForEvidence_KeepsItsKeys()
+        {
+            var filter = Substitute.For<IEvidenceKeyFilter>();
+            filter.Include(Arg.Any<string>()).Returns(true);
+            var fakeData = Substitute.For<IFlowData>();
+            fakeData.EvidenceKeyFilter.Returns(filter);
+            var session = Substitute.For<System.Web.HttpSessionStateBase>();
+            session.Keys.Returns(new System.Collections.Specialized
+                .NameValueCollection { { "secret", "x" } }.Keys);
+            session["secret"].Returns("value");
+
+            var filler = new WebPipeline.EvidenceFiller(fakeData);
+            filler.AddSessionToEvidence(session);
+
+            fakeData.Received(1).AddEvidence("secret", "value");
+            fakeData.Received(1).AddEvidence("session", Arg.Any<object>());
+        }
+
+        /// <summary>
         /// Where no element asks for the request line, none of it is added
         /// and none of it is worked out. This is what keeps the values out
         /// of every pipeline that holds no element needing them.

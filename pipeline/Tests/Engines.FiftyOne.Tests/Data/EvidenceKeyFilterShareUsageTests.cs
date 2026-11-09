@@ -186,9 +186,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
 
         /// <summary>
         /// The Cookie header carries every cookie, including the ones the
-        /// cookie rule leaves out, so it is not shared unless all evidence
-        /// is. The cookies starting 51D_ are still shared as their own
-        /// 'cookie.' evidence.
+        /// cookie rule leaves out, so it is never shared, even when all
+        /// evidence is. The cookies starting 51D_ are still shared as their
+        /// own 'cookie.' evidence.
         /// </summary>
         [TestMethod]
         public void Filtered_TheCookieHeaderIsNotShared()
@@ -206,7 +206,30 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
 
             var shareAll = new EvidenceKeyFilterShareUsage();
 
-            Assert.IsTrue(shareAll.Include("header.cookie"));
+            Assert.IsFalse(shareAll.Include("header.cookie"));
+            Assert.IsFalse(shareAll.Include("header.Cookie"));
+            Assert.IsTrue(shareAll.Include("header.user-agent"));
+            Assert.IsTrue(shareAll.Include("cookie.51d_screenpixelswidth"));
+        }
+
+        /// <summary>
+        /// Keys are compared without regard to case, so a prefix written in
+        /// capitals gets the same answer as the prefix in lower case.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_PrefixIsCaseInsensitive()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("COOKIE.other"));
+            Assert.IsTrue(filter.Include("COOKIE.51D_ScreenPixelsWidth"));
+            Assert.IsFalse(filter.Include("Header.Cookie"));
+            Assert.IsFalse(filter.Include("SESSION.other"));
+            Assert.IsTrue(filter.Include("HEADER.user-agent"));
         }
     }
 }
