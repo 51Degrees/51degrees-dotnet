@@ -1,0 +1,50 @@
+name: Temporary targeted tests for the ETag
+
+on:
+  push:
+    branches:
+      - 'tmp/etag-red2'
+      - 'tmp/etag-green2'
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  tests:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Web
+            project: pipeline/Tests/Web.Tests/FiftyOne.Pipeline.Web.Tests.csproj
+          - name: Web Shared
+            project: pipeline/Tests/Web.Shared.Tests/FiftyOne.Pipeline.Web.Shared.Tests.csproj
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the submodules the pipeline tests need
+        run: >
+          git submodule update --init --depth 1
+          pipeline/Core/Configuration/Validation
+          pipeline/JavaScriptBuilderElement/Templates
+          pipeline/DerivedProperty/Scripts
+          pipeline/owid-dotnet
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Test
+        run: >
+          dotnet test "${{ matrix.project }}" -c Release
+          -p:FiftyOneReferences=Project
+          --logger "console;verbosity=normal"
