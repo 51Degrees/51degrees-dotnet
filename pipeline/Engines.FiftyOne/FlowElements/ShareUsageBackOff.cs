@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 {
@@ -31,7 +32,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
     /// send after a pause multiplies the delay, up to the maximum, and a
     /// successful send ends the back-off. Only sending pauses, so evidence
     /// is still queued while paused.
-    /// Each method takes the time from the caller.
+    /// Each method takes the time from the caller, as the time elapsed on a
+    /// monotonic clock (see <see cref="Now"/>), so a change to the system
+    /// clock cannot lengthen or skip a pause.
     /// </summary>
     internal sealed class ShareUsageBackOff
     {
@@ -46,7 +49,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// When each recent failed send happened, oldest first. Empty
         /// while backing off.
         /// </summary>
-        private readonly Queue<DateTime> _failures = new Queue<DateTime>();
+        private readonly Queue<TimeSpan> _failures = new Queue<TimeSpan>();
 
         /// <summary>
         /// The length of the current pause, or zero when not backing off.
@@ -56,7 +59,15 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// <summary>
         /// When sending may start again.
         /// </summary>
-        private DateTime _resumeAt = DateTime.MinValue;
+        private TimeSpan _resumeAt = TimeSpan.MinValue;
+
+        /// <summary>
+        /// The time elapsed on a monotonic clock, for the caller to pass to
+        /// the other methods.
+        /// </summary>
+        internal static TimeSpan Now =>
+            TimeSpan.FromSeconds(
+                Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency);
 
         internal ShareUsageBackOff(
             int failuresToEnterRecovery,
@@ -126,7 +137,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// The time left before sending may start again, or zero if it may
         /// start now.
         /// </summary>
-        internal TimeSpan Remaining(DateTime now)
+        internal TimeSpan Remaining(TimeSpan now)
         {
             lock (_lock)
             {
@@ -141,7 +152,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// The new pause if this failure started or lengthened one,
         /// otherwise zero.
         /// </returns>
-        internal TimeSpan Failed(DateTime now)
+        internal TimeSpan Failed(TimeSpan now)
         {
             lock (_lock)
             {
@@ -188,7 +199,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                     return false;
                 }
                 _delay = TimeSpan.Zero;
-                _resumeAt = DateTime.MinValue;
+                _resumeAt = TimeSpan.MinValue;
                 return true;
             }
         }

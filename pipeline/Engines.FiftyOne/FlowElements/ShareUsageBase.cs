@@ -915,7 +915,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             var queued = EvidenceCollection.Count;
             if (queued > 0)
             {
-                if (_backOff.Remaining(DateTime.UtcNow) > TimeSpan.Zero)
+                if (_backOff.Remaining(ShareUsageBackOff.Now) > TimeSpan.Zero)
                 {
                     Logger.LogInformation(string.Format(
                         CultureInfo.InvariantCulture,
@@ -1135,7 +1135,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 do
                 {
                     TimeSpan pause;
-                    while ((pause = _backOff.Remaining(DateTime.UtcNow)) >
+                    while ((pause = _backOff.Remaining(ShareUsageBackOff.Now)) >
                         TimeSpan.Zero)
                     {
                         await Task.Delay(
@@ -1182,7 +1182,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 
             if (_sendFailed)
             {
-                var pause = _backOff.Failed(DateTime.UtcNow);
+                var pause = _backOff.Failed(ShareUsageBackOff.Now);
                 if (pause > TimeSpan.Zero)
                 {
                     Logger.LogWarning(string.Format(
