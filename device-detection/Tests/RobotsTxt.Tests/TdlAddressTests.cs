@@ -114,6 +114,25 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         }
 
         /// <summary>
+        /// A TDL may hold only the characters RFC 3986 sections 2.1 to 2.3
+        /// allow, with every '%' followed by two hex digits. Any other entry
+        /// is dropped even where .NET would escape it and accept it.
+        /// </summary>
+        [DataRow("C:\\terms\\1.txt")]
+        [DataRow("https://example.com/a b")]
+        [DataRow("https://example.com/a\\b")]
+        [DataRow("https://example.com/a%2")]
+        [DataRow("https://example.com/a%zz")]
+        [DataRow("https://example.com/\u00e9")]
+        [TestMethod]
+        public void EntryWithCharactersNotAllowedInAUriIsDropped(string entry)
+        {
+            Assert.IsNull(
+                ResolveEntry(entry, resolver: null),
+                $"The entry '{entry}' should be dropped.");
+        }
+
+        /// <summary>
         /// An entry that is not a URI is passed to the resolver, which can
         /// still recognise it, on every system.
         /// </summary>
