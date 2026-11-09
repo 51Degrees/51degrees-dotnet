@@ -1036,8 +1036,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                             entry.Key.Substring(
                                 Core.Constants.EVIDENCE_SEPERATOR.Length) :
                             entry.Key;
-                        writer.WriteElementString(EncodeInvalidXMLChars(name, ref flagBadSchema),
-                            EncodeInvalidXMLChars(entry.Value, ref flagBadSchema));
+                        writer.WriteElementString(
+                            EncodeInvalidXMLChars(name, ref flagBadSchema),
+                            EncodeInvalidXMLChars(
+                                entry.Value, ref flagBadSchema));
                     }
                 }
             }
