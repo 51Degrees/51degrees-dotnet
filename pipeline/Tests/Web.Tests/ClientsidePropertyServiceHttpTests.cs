@@ -474,6 +474,41 @@ namespace FiftyOne.Pipeline.Web.Tests
             return context;
         }
 
+        /// <summary>
+        /// "*" is false only when the origin has no current representation
+        /// (RFC 9110 section 13.1.2), so it matches even when the
+        /// pipeline's filter could not be read and no ETag can be made.
+        /// </summary>
+        [DataTestMethod]
+        [DataRow("GET", 304)]
+        [DataRow("HEAD", 304)]
+        [DataRow("POST", 412)]
+        public void IfNoneMatchStar_NoFilter_StillMatches(
+            string method, int status)
+        {
+            _pipeline.Setup(p => p.EvidenceKeyFilter)
+                .Throws(new InvalidOperationException("No filter."));
+
+            var context = Serve(true, method, "*");
+
+            Assert.AreEqual(status, context.Response.StatusCode);
+            Assert.IsFalse(context.Response.Headers.ContainsKey("ETag"));
+            Assert.AreEqual(NOT_CACHED, Header(context, "Cache-Control"));
+        }
+
+        /// <summary>
+        /// A flow data that is not a FlowData has no copy of the supplied
+        /// evidence, so the ETag falls back to the evidence it holds.
+        /// </summary>
+        [TestMethod]
+        public void NotAFlowData_ETagFromCurrentEvidence()
+        {
+            var context = Serve(true, "GET");
+
+            Assert.IsNotInstanceOfType(_flowData.Object, typeof(FlowData));
+            Assert.AreEqual(EXPECTED_ETAG, Header(context, "ETag"));
+        }
+
         private void AddError()
         {
             _errors.Add(new FlowError(
