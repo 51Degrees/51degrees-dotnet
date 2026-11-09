@@ -82,10 +82,10 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
             @"\A[A-Za-z0-9_-]+\z", RegexOptions.CultureInvariant);
 
         /// <summary>
-        /// A port as it follows the host, being ':' and any number of digits.
+        /// A port as it follows the host, being ':' and at least one digit.
         /// </summary>
         private static readonly Regex Port = new Regex(
-            @"\A:[0-9]*\z", RegexOptions.CultureInvariant);
+            @"\A:[0-9]+\z", RegexOptions.CultureInvariant);
 
         /// <summary>
         /// One group of an IPv6 address.
@@ -248,7 +248,7 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         /// not valid. The host is an IPv6 address in brackets, or a name of
         /// labels separated by dots with a dot allowed at the end, which
         /// must be an IPv4 address when its last label is a number. The port
-        /// is ':' followed by digits up to 65535, or by nothing.
+        /// is ':' followed by digits up to 65535.
         /// </summary>
         private static string CheckedHostPort(string hostPort)
         {
@@ -323,7 +323,7 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
 
         /// <summary>
         /// Whether the text is ':' followed by digits whose value is no more
-        /// than 65535, or by nothing.
+        /// than 65535.
         /// </summary>
         private static bool IsPort(string text)
         {
