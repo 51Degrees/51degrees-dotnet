@@ -1,0 +1,26 @@
+name: Temporary object name tests
+
+on:
+  push:
+    branches:
+      - 'tmp/objname-dotnet-*'
+
+jobs:
+  Test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Show head
+        run: git log -1 --format=%H
+      - name: Test
+        run: >
+          dotnet test pipeline/Tests/JavaScriptBuilderElementTests
+          --framework net8.0 --filter "FullyQualifiedName~ObjectNameTests"
+          -c Release
