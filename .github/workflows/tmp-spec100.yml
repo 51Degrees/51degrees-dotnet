@@ -1,0 +1,35 @@
+name: tmp spec 100 tests
+
+on:
+  push:
+    branches: ['tmp/spec100-*']
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Engines.FiftyOne.Tests
+        shell: bash
+        run: dotnet test pipeline/Tests/Engines.FiftyOne.Tests/FiftyOne.Pipeline.Engines.FiftyOne.Tests.csproj -c Release --nologo -p:FiftyOneReferences=Project -f net8.0 --logger 'console;verbosity=normal'
+      - name: Web.Tests
+        shell: bash
+        run: dotnet test pipeline/Tests/Web.Tests/FiftyOne.Pipeline.Web.Tests.csproj -c Release --nologo -p:FiftyOneReferences=Project -f net8.0 --logger 'console;verbosity=normal'
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: .NET Framework web tests
+        shell: pwsh
+        run: ./.github/tmp-run-framework-tests.ps1

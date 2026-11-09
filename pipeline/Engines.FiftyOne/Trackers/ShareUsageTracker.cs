@@ -124,7 +124,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
                 {
                     throw new ArgumentNullException(nameof(data));
                 }
-                return _sharedTimes[GenerateKey(data)]?.Time;
+                return _sharedTimes[data.GenerateKey(GetFilter())]?.Time;
             }
         }
 
@@ -143,7 +143,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
             {
                 throw new ArgumentNullException(nameof(data));
             }
-            var key = GenerateKey(data);
+            var key = data.GenerateKey(GetFilter());
             var existing = _sharedTimes[key];
             if (existing == null)
             {
