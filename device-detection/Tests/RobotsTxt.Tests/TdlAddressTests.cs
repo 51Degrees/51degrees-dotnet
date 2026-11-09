@@ -215,6 +215,44 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
             Assert.Contains($"TDL: {tdl}\n", text);
         }
 
+        /// <summary>
+        /// The overload that takes <see cref="Uri"/> values, kept for
+        /// callers of the published API, writes each address as it was
+        /// given and does not normalise it.
+        /// </summary>
+        [TestMethod]
+        public void UriOverloadWritesEachAddressAsGiven()
+        {
+            IReadOnlyList<Uri> tdls = new[]
+            {
+                new Uri("https://example.com"),
+                new Uri("HTTPS://Example.COM/T"),
+                new Uri("https://a/%7Eb"),
+            };
+            var gen = new GeneratorService(new RobotsTxtModel
+            {
+                Usages = Array.Empty<UsageModel>(),
+                Crawlers = Array.Empty<CrawlerModel>(),
+            });
+            var sb = new StringBuilder();
+            using (var writer = new StringWriter(sb))
+            {
+                gen.Write(
+                    writer,
+                    new HashSet<string>(),
+                    tdls,
+                    true,
+                    CancellationToken.None);
+            }
+            var text = sb.ToString().Replace("\r\n", "\n");
+
+            foreach (var tdl in tdls)
+            {
+                Assert.Contains($"TDL: {tdl.OriginalString}\n", text);
+                Assert.Contains($"# Terms {tdl.OriginalString}\n", text);
+            }
+        }
+
         private static string WriteTdl(string tdl, bool annotations)
         {
             var gen = new GeneratorService(new RobotsTxtModel
@@ -247,8 +285,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
                 "ResolveTdlEntry",
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(method, "ResolveTdlEntry should exist.");
-            var result = method.Invoke(engine, new object[] { entry });
-            return result is Uri uri ? uri.OriginalString : (string)result;
+            return (string)method.Invoke(engine, new object[] { entry });
         }
     }
 }
