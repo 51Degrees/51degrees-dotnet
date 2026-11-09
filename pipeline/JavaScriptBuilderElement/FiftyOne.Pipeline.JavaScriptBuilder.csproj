@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <!-- The vendored Stubble.Core source (compiled in below) uses C# 9 features, matching
          Stubble's own LangVersion=latest. This only enables newer syntax; it does not
          change the netstandard2.0 target. -->

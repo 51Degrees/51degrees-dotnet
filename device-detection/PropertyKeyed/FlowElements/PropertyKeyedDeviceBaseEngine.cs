@@ -25,6 +25,7 @@ using FiftyOne.DeviceDetection.PropertyKeyed.Data;
 using FiftyOne.DeviceDetection.PropertyKeyed.Services;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines.FiftyOne.Data;
 using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
@@ -46,6 +47,13 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.FlowElements
         private readonly string _elementDataKeyValue;
         private readonly object _dataSetLock = new object();
         private volatile bool _isDataSetInitialized;
+
+        /// <summary>
+        /// The Hash engine whose data set indexes some properties itself,
+        /// and the names of those properties.
+        /// </summary>
+        private DeviceDetectionHashEngine _hashEngine;
+        private HashSet<string> _nativelyIndexed;
 
         /// <inheritdoc/>
         public override string ElementDataKey => _elementDataKeyValue;
@@ -151,6 +159,10 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.FlowElements
                 {
                     if (_isDataSetInitialized == false)
                     {
+                        _hashEngine = pipeline.GetDeviceDetectionHashEngine();
+                        _nativelyIndexed = new HashSet<string>(
+                            _hashEngine.IndexedProperties,
+                            StringComparer.Ordinal);
                         DataSet = _dataSetService.BuildDataSet(
                             this, 
                             pipeline);
@@ -158,6 +170,26 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.FlowElements
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Get the profiles from the Hash engine's data set when it indexes
+        /// the property, because that index is built when the data set loads
+        /// and again when it refreshes. Otherwise get them from the index the
+        /// data set service built.
+        /// </summary>
+        protected override IEnumerable<uint> GetProfileIds(
+            PropertyKeyedIndex propertyIndex,
+            string value)
+        {
+            if (propertyIndex == null)
+            {
+                throw new ArgumentNullException(nameof(propertyIndex));
+            }
+            var name = propertyIndex.MetaData.Name;
+            return _nativelyIndexed != null && _nativelyIndexed.Contains(name)
+                ? _hashEngine.GetProfileIdsForPropertyValue(name, value)
+                : base.GetProfileIds(propertyIndex, value);
         }
 
         /// <inheritdoc/>
