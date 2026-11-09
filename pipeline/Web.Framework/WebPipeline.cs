@@ -468,19 +468,19 @@ namespace FiftyOne.Pipeline.Web.Framework
             }
 
             /// <summary>
-            /// Add the session object and each session value. A filler that
-            /// keeps every value names them with the 'session' prefix, so
-            /// the usage sharing rule for session values applies to them.
-            /// A filler for a flow data keeps the names it has always used.
+            /// Add the session object and each session value, named with
+            /// the 'session' prefix so the usage sharing rule for session
+            /// values applies to them.
             /// </summary>
             /// <param name="session">The session to read.</param>
             public void AddSessionToEvidence(HttpSessionStateBase session)
             {
-                var prefix = _values != null ?
+                const string prefix =
                     Core.Constants.EVIDENCE_SESSION_PREFIX +
-                        Core.Constants.EVIDENCE_SEPERATOR :
-                    "";
-                CheckAndAdd(prefix + "session", new AspFrameworkSession(session));
+                    Core.Constants.EVIDENCE_SEPERATOR;
+                CheckAndAdd(
+                    Core.Constants.EVIDENCE_SESSION_KEY,
+                    new AspFrameworkSession(session));
                 CheckAndAddAll(prefix, session.Keys, (k) => session[k]);
             }
 

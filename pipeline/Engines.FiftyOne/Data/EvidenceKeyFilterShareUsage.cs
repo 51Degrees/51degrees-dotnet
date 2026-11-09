@@ -163,8 +163,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// If this value is null, all query string parameters are shared.
         /// </param>
         /// <param name="includeSession">
-        /// If true then the asp.net session cookie will be included in
-        /// the filter.
+        /// If true then the repeat tracker's filter, which derives from
+        /// this one, keys on the asp.net session cookie. This filter does
+        /// not share the cookie either way, because only cookies starting
+        /// 51D_ are shared.
         /// </param>
         /// <param name="aspSessionCookieName">
         /// The name of the cookie that contains the asp.net session id.
@@ -227,6 +229,22 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// <exception cref="ArgumentNullException">
         /// Thrown if the supplied key is null
         /// </exception>
+        /// <summary>
+        /// True if the key is the asp.net session cookie and the filter
+        /// was given the setting to include the session.
+        /// </summary>
+        /// <param name="key">The evidence key.</param>
+        /// <returns>True for the session cookie when it is included.</returns>
+        protected bool IsIncludedSessionCookie(string key)
+        {
+            return _includeSession &&
+                key.Equals(
+                    Core.Constants.EVIDENCE_COOKIE_PREFIX +
+                        Core.Constants.EVIDENCE_SEPERATOR +
+                        _aspSessionCookieName,
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
         public virtual bool Include(string key)
         {
             if(key == null)
@@ -283,9 +301,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                         // Only add cookies that start with the 51Degrees cookie 
                         // prefix.
                         result = lastPart.StartsWith(Engines.Constants.FIFTYONE_COOKIE_PREFIX,
-                            StringComparison.OrdinalIgnoreCase) ||
-                            (_includeSession && lastPart.Equals(_aspSessionCookieName,
-                                StringComparison.OrdinalIgnoreCase));
+                            StringComparison.OrdinalIgnoreCase);
                     }
                     else if (string.Equals(firstPart, Core.Constants.EVIDENCE_SESSION_PREFIX,
                         StringComparison.OrdinalIgnoreCase))
