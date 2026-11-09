@@ -300,6 +300,14 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
             RegexOptions.CultureInvariant);
 
         /// <summary>
+        /// Only the characters RFC 3986 sections 2.1 to 2.3 allow, with
+        /// every '%' followed by two hex digits.
+        /// </summary>
+        private static readonly Regex UriCharacters = new(
+            @"\A(?:[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=]|%[0-9A-Fa-f]{2})*\z",
+            RegexOptions.CultureInvariant);
+
+        /// <summary>
         /// Parses TDL URIs from evidence. Accepts a single value or a list
         /// of values joined with ',' or '|'. Each entry is treated as an
         /// absolute URI first; if that fails and an
@@ -328,12 +336,14 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
 
         private Uri ResolveTdlEntry(string entry)
         {
-            // A URI starts with a scheme (RFC 3986 section 3). The raw text
-            // is checked because some systems parse a string starting with
-            // '/' as a file path, which has no scheme.
+            // A URI starts with a scheme and holds only the characters RFC
+            // 3986 allows. The raw text is checked because .NET parses a
+            // string starting with '/' as a file path on some systems, and
+            // escapes characters such as a space instead of refusing them.
             var value = entry?.Trim();
             if (value != null &&
                 SchemePrefix.IsMatch(value) &&
+                UriCharacters.IsMatch(value) &&
                 Uri.TryCreate(value, UriKind.Absolute, out var u))
             {
                 return u;
