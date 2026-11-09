@@ -189,12 +189,9 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         [DataRow("a\nb.com")]
         [DataRow(" example.com")]
         [DataRow("example.com ")]
-        [DataRow("example.com
-")]
-        [DataRow("example.com:80
-")]
-        [DataRow("[::1]
-")]
+        [DataRow("example.com\n")]
+        [DataRow("example.com:80\n")]
+        [DataRow("[::1]\n")]
         [DataRow("example.com:8080');alert(1);//")]
         // User information, or an @ anywhere in the host value.
         [DataRow("user@example.com")]
