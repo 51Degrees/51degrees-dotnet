@@ -814,6 +814,25 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
+        /// Check whether a field name is one the engine sends from its own
+        /// configuration, being the Resource Key, License Key and Requested
+        /// Properties.
+        /// </summary>
+        /// <param name="name">The field name, without any prefix.</param>
+        /// <returns>True if Evidence must not supply the field.</returns>
+        private static bool IsReservedField(string name)
+        {
+            return name.Equals("resource",
+                    StringComparison.InvariantCultureIgnoreCase) ||
+                name.Equals("license",
+                    StringComparison.InvariantCultureIgnoreCase) ||
+                name.Equals("licence",
+                    StringComparison.InvariantCultureIgnoreCase) ||
+                name.Equals("values",
+                    StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        /// <summary>
         /// Add query data to the evidence.
         /// </summary>
         /// <param name="queryData">
@@ -843,6 +862,12 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 var suffix = separatorIndex >= 0
                     ? item.Key.Substring(separatorIndex + 1)
                     : item.Key;
+
+                // Evidence never supplies the request's own fields.
+                if (IsReservedField(suffix))
+                {
+                    continue;
+                }
 
                 // Check and add the evidence to the query parameters.
                 if (queryData.ContainsKey(suffix) == false)
