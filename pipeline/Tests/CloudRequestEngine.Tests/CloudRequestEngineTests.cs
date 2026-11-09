@@ -1497,6 +1497,93 @@ cloudEx.Message, "Exception message did not contain the expected text.");
         }
 
         /// <summary>
+        /// A response with a top-level fodid member holds a 51Did created for
+        /// that one request, so it is never stored in the cache or served from
+        /// it. Two requests with the same Evidence each go to the cloud service
+        /// and each receive the 51Did it created.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/b5e7de8019646eaa1e3bc1fd2a177c4c26fae749/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
+        /// </summary>
+        [TestMethod]
+        public void Cache_ResponseWithFodid_NeverStoredOrServed()
+        {
+            ConfigureMockedClient(r => true);
+            var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
+                .SetResourceKey("resource_key")
+                .SetCacheSize(10)
+                .SetCacheHitOrMiss(true)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build();
+
+            _jsonResponse = "{'device':{'ismobile':true},'fodid':'first'}";
+            using (var first = pipeline.CreateFlowData())
+            {
+                first.AddEvidence("query.User-Agent", "iPhone");
+                first.Process();
+                Assert.IsFalse(first.GetFromElement(engine).CacheHit);
+                StringAssert.Contains(
+                    first.GetFromElement(engine).JsonResponse, "first");
+            }
+
+            _jsonResponse = "{'device':{'ismobile':true},'fodid':'second'}";
+            using (var second = pipeline.CreateFlowData())
+            {
+                second.AddEvidence("query.User-Agent", "iPhone");
+                second.Process();
+                Assert.IsFalse(second.GetFromElement(engine).CacheHit,
+                    "A response with a 51Did must not be served from the cache.");
+                var json = second.GetFromElement(engine).JsonResponse;
+                StringAssert.Contains(json, "second");
+                Assert.IsFalse(json.Contains("first"));
+            }
+
+            VerifyJsonRequests(Times.Exactly(2));
+        }
+
+        /// <summary>
+        /// A response without a top-level fodid member is cached as before,
+        /// including one with a fodid member further down.
+        /// </summary>
+        [TestMethod]
+        [DataRow("{'device':{'ismobile':true}}")]
+        [DataRow("{'device':{'fodid':'nested'}}")]
+        public void Cache_ResponseWithoutTopLevelFodid_StillCached(string response)
+        {
+            ConfigureMockedClient(r => true);
+            var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
+                .SetResourceKey("resource_key")
+                .SetCacheSize(10)
+                .SetCacheHitOrMiss(true)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build();
+
+            _jsonResponse = response;
+            for (int i = 0; i < 2; i++)
+            {
+                using (var data = pipeline.CreateFlowData())
+                {
+                    data.AddEvidence("query.User-Agent", "iPhone");
+                    data.Process();
+                    Assert.AreEqual(i == 1, data.GetFromElement(engine).CacheHit);
+                }
+            }
+
+            VerifyJsonRequests(Times.Once());
+        }
+
+        private void VerifyJsonRequests(Times times)
+        {
+            _handlerMock.Protected().Verify(
+                "SendAsync",
+                times,
+                ItExpr.Is<HttpRequestMessage>(req =>
+                    req.Method == HttpMethod.Post &&
+                    req.RequestUri.AbsolutePath.ToLower().EndsWith("json")),
+                ItExpr.IsAny<CancellationToken>());
+        }
+
+        /// <summary>
         /// Check that a cache hit must short-circuit the
         /// HTTP call entirely. Two identical Process() calls must result in
         /// exactly ONE request reaching the cloud json endpoint. A refactor that
