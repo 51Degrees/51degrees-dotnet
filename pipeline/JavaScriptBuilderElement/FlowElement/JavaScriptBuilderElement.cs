@@ -134,9 +134,11 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         /// <summary>
         /// Words that match the identifier pattern but cannot be the name
         /// of the object. These are the reserved words of the language,
-        /// including those reserved only in strict mode, and the three
-        /// global values a top level var cannot replace (undefined, NaN and
-        /// Infinity), where the object would never be created. The last
+        /// including those reserved only in strict mode, the three global
+        /// values a top level var cannot replace (undefined, NaN and
+        /// Infinity), eval, and the properties of the browser's Window
+        /// object that a top level var cannot replace or that navigate the
+        /// page away, where the object would never be created. The last
         /// entry is the constructor the script defines and calls to create
         /// the object, so that name would clash with it. The other language
         /// builders use the same list.
@@ -152,6 +154,15 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
             "protected", "public", "return", "static", "super", "switch",
             "this", "throw", "true", "try", "typeof", "var", "void",
             "while", "with", "yield", "Infinity", "NaN", "undefined",
+            "eval", "arguments",
+            "window", "document", "top", "name", "status", "history",
+            "navigator", "closed", "location", "frameElement",
+            "isSecureContext", "crossOriginIsolated", "trustedTypes",
+            "crypto", "indexedDB", "localStorage", "sessionStorage",
+            "caches", "cookieStore", "speechSynthesis", "styleMedia",
+            "crashReport", "credentialless", "customElements",
+            "documentPictureInPicture", "fence", "launchQueue",
+            "originAgentCluster",
             "fiftyoneDegreesManager",
         };
 
