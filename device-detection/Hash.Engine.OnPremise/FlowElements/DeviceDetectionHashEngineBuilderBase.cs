@@ -253,6 +253,38 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         }
 
         /// <summary>
+        /// Set the properties whose values the data set indexes to the
+        /// profiles holding them when it loads the data file, so that
+        /// <see cref="DeviceDetectionHashEngine.GetProfileIdsForPropertyValue"/>
+        /// finds the profiles for a value without reading every profile. A
+        /// refresh indexes the same properties. The TAC and NativeModel
+        /// engines use the index for the property they are keyed on when it
+        /// is named here, for example
+        /// <c>SetIndexedProperties("NativeModel", "TAC")</c>. Names are matched
+        /// exactly, as the data file spells them. By default none are.
+        /// </summary>
+        /// <param name="properties">Names of the properties to index</param>
+        /// <returns>This builder</returns>
+        [CodeConfigOnly]
+        public DeviceDetectionHashEngineBuilderBase<TEngine>
+            SetIndexedProperties(params string[] properties)
+        {
+            if (properties == null)
+            {
+                throw new ArgumentNullException(nameof(properties));
+            }
+            var names = properties.ToList();
+            _configSettings.Add(c =>
+            {
+                using (var vector = new VectorStringSwig(names))
+                {
+                    c.setIndexedProperties(vector);
+                }
+            });
+            return this;
+        }
+
+        /// <summary>
         /// Set the performance profile to use when constructing the data set.
         /// </summary>
         /// <param name="profileName">Name of the profile to use</param>

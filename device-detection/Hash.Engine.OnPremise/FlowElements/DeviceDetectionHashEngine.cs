@@ -193,6 +193,63 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         }
 
         /// <summary>
+        /// The properties whose values the data set indexes to the profiles
+        /// holding them, as named with
+        /// <see cref="DeviceDetectionHashEngineBuilderBase{TEngine}.SetIndexedProperties"/>.
+        /// </summary>
+        internal IReadOnlyList<string> IndexedProperties
+        {
+            get
+            {
+                if (_indexedProperties == null)
+                {
+                    using (var names = Config?.getIndexedProperties())
+                    {
+                        _indexedProperties = names == null ?
+                            (IReadOnlyList<string>)Array.Empty<string>() :
+                            names.ToList().AsReadOnly();
+                    }
+                }
+                return _indexedProperties;
+            }
+        }
+
+        private IReadOnlyList<string> _indexedProperties;
+
+        /// <summary>
+        /// Get the ids of the profiles holding a value of a property, such
+        /// as a NativeModel or a TAC, in ascending profile id. Both names are
+        /// matched exactly. A property in <see cref="IndexedProperties"/> is
+        /// found from the data set's index, and any other by reading every
+        /// profile, which gives the same ids.
+        /// </summary>
+        /// <param name="propertyName">Name of the property</param>
+        /// <param name="valueName">Name of the value</param>
+        /// <returns>
+        /// The ids of the profiles holding the value, which is empty when
+        /// none does
+        /// </returns>
+        internal IReadOnlyList<uint> GetProfileIdsForPropertyValue(
+            string propertyName,
+            string valueName)
+        {
+            if (propertyName == null)
+            {
+                throw new ArgumentNullException(nameof(propertyName));
+            }
+            if (valueName == null)
+            {
+                throw new ArgumentNullException(nameof(valueName));
+            }
+            using (var ids = _engine.getProfileIdsForPropertyValue(
+                propertyName,
+                valueName))
+            {
+                return new List<uint>(ids);
+            }
+        }
+
+        /// <summary>
         /// Get the meta-data for profiles that may be returned by this
         /// engine.
         /// </summary>
