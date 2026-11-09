@@ -1345,10 +1345,14 @@ sendCount, $"Expected at least 2 HTTP sends (initial + recovery), but got {sendC
             Assert.IsNotEmpty(_xmlContent,
                 "Expected data to be sent after queue recovery, but no XML content was captured");
 
-            // Verify no errors or warnings were logged (the original complaint
-            // was log flooding with overflow messages).
+            // Verify no errors were logged, and that the full queue was
+            // reported once, not for each entry discarded (the original
+            // complaint was log flooding with overflow messages).
             _logger.AssertMaxErrors(0);
-            _logger.AssertMaxWarnings(0);
+            var warnings = _logger.WarningEntries.ToList();
+            Assert.IsTrue(
+                warnings.Count <= 1 && warnings.All(w => w.Contains("is full")),
+                "Unexpected warnings: " + string.Join("; ", warnings));
 
             Console.WriteLine($"Total HTTP sends: {sendCount}");
             Console.WriteLine($"XML batches after recovery: {_xmlContent.Count}");
