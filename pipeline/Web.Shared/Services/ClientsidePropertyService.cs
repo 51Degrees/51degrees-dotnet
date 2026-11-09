@@ -489,32 +489,92 @@ namespace FiftyOne.Pipeline.Web.Shared.Services
         }
 
         /// <summary>
-        /// True when the If-None-Match header matches the ETag, being "*" or
-        /// a list holding an entity tag whose opaque tag is the ETag's,
-        /// weak or not, as the weak comparison of RFC 9110 sections 8.8.3.2
-        /// and 13.1.2 requires.
+        /// True when the If-None-Match header matches the ETag. The field is
+        /// either "*" or a comma separated list of entity tags, and a list
+        /// matches when one tag's quoted part equals the ETag's, weak or not
+        /// (RFC 9110 sections 8.8.3.2 and 13.1.2). A field that is neither
+        /// is not a valid If-None-Match, so the condition is true and the
+        /// response is the full one (section 13.1.2, and section 13.2.2
+        /// step 3).
         /// </summary>
         private static bool IfNoneMatchMatches(string ifNoneMatch, string eTag)
         {
-            if (string.IsNullOrEmpty(ifNoneMatch))
+            if (string.IsNullOrWhiteSpace(ifNoneMatch))
             {
                 return false;
             }
-            var opaqueTag = eTag.Substring(WeakETagPrefix.Length);
-            foreach (var candidate in ifNoneMatch.Split(','))
+            var field = ifNoneMatch.Trim(' ', '	');
+            if (field == "*")
             {
-                var tag = candidate.Trim();
-                if (tag == "*")
+                return true;
+            }
+            var opaqueTag = eTag.Substring(WeakETagPrefix.Length);
+            var matched = false;
+            var needComma = false;
+            var position = 0;
+            while (true)
+            {
+                while (position < field.Length &&
+                    (field[position] == ' ' || field[position] == '	'))
                 {
+                    position++;
+                }
+                if (position == field.Length)
+                {
+                    return matched;
+                }
+                if (field[position] == ',')
+                {
+                    position++;
+                    needComma = false;
+                    continue;
+                }
+                if (needComma ||
+                    TryReadEntityTag(field, ref position, out var tag) == false)
+                {
+                    return false;
+                }
+                matched = matched ||
+                    string.Equals(tag, opaqueTag, StringComparison.Ordinal);
+                needComma = true;
+            }
+        }
+
+        /// <summary>
+        /// Reads the entity tag at the position, being an optional "W/" and
+        /// a quoted string of etagc characters (RFC 9110 section 8.8.3),
+        /// and moves the position past it. The tag returned is the quoted
+        /// part without "W/".
+        /// </summary>
+        private static bool TryReadEntityTag(
+            string field,
+            ref int position,
+            out string tag)
+        {
+            tag = null;
+            var start = position;
+            if (string.CompareOrdinal(
+                field, start, WeakETagPrefix, 0, WeakETagPrefix.Length) == 0)
+            {
+                start += WeakETagPrefix.Length;
+            }
+            if (start >= field.Length || field[start] != '"')
+            {
+                return false;
+            }
+            for (var i = start + 1; i < field.Length; i++)
+            {
+                var c = field[i];
+                if (c == '"')
+                {
+                    tag = field.Substring(start, i + 1 - start);
+                    position = i + 1;
                     return true;
                 }
-                if (tag.StartsWith(WeakETagPrefix, StringComparison.Ordinal))
+                // etagc is %x21, %x23-7E or obs-text (%x80-FF).
+                if (c != 0x21 && (c < 0x23 || c == 0x7f || c > 0xFF))
                 {
-                    tag = tag.Substring(WeakETagPrefix.Length);
-                }
-                if (string.Equals(tag, opaqueTag, StringComparison.Ordinal))
-                {
-                    return true;
+                    return false;
                 }
             }
             return false;
