@@ -91,6 +91,12 @@
     <FiftyOneNativeArch Condition="'$(FiftyOneNativeArch)' == '' and '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">ARM64</FiftyOneNativeArch>
     <FiftyOneNativeArch Condition="'$(FiftyOneNativeArch)' == '' and '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X86'">x86</FiftyOneNativeArch>
     <FiftyOneNativeArch Condition="'$(FiftyOneNativeArch)' == ''">x64</FiftyOneNativeArch>
+    <!--
+      The same architecture as a runtime identifier uses it, in lower case,
+      so a package packed directly puts the library in a runtimes folder
+      that NuGet and the .targets file read.
+    -->
+    <FiftyOneNativeRidArch>$(FiftyOneNativeArch.ToLowerInvariant())</FiftyOneNativeRidArch>
   </PropertyGroup>
 
   <ItemGroup>
@@ -163,21 +169,21 @@
       <PackagePath>runtimes\osx-arm64\native</PackagePath>
     </_PackageFiles>
 
-    <!-- Direct pack -->
-    <!-- Copy the Windows x64 native DLL -->
+    <!-- Direct pack, the native DLL built for FiftyOneNativeArch -->
+    <!-- Copy the Windows native DLL -->
     <_PackageFiles Include="$(OutputPath)\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('Windows')) AND !$(BuiltOnCI)">
       <BuildAction>None</BuildAction>
-      <PackagePath>runtimes\win-x$(Platform)\native</PackagePath>
+      <PackagePath>runtimes\win-$(FiftyOneNativeRidArch)\native</PackagePath>
     </_PackageFiles>
-    <!-- Copy the Linux x64 native DLL -->
+    <!-- Copy the Linux native DLL -->
     <_PackageFiles Include="$(OutputPath)\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('Linux')) AND !$(BuiltOnCI)">
       <BuildAction>None</BuildAction>
-      <PackagePath>runtimes\linux-$(Platform)\native</PackagePath>
+      <PackagePath>runtimes\linux-$(FiftyOneNativeRidArch)\native</PackagePath>
     </_PackageFiles>
-    <!-- Copy the Mac x64/arm64 native DLL -->
+    <!-- Copy the Mac native DLL -->
     <_PackageFiles Include="$(OutputPath)\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('OSX')) AND !$(BuiltOnCI)">
       <BuildAction>None</BuildAction>
-      <PackagePath>runtimes\osx-$(Platform)\native</PackagePath>
+      <PackagePath>runtimes\osx-$(FiftyOneNativeRidArch)\native</PackagePath>
     </_PackageFiles>
   </ItemGroup>
 

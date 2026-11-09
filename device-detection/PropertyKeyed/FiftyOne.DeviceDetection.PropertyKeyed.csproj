@@ -13,11 +13,11 @@
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.DeviceDetection.PropertyKeyed</PackageId>
 	  <Title>51Degrees Device Detection – Property Keyed Engines</Title>
-	  <Description>51Degrees Device Detection engines that use property-keyed lookups (TAC, NativeModel) against on-premise hash data files.</Description>
+	  <Description>Device Detection engines for .NET and C# that look up a device by Type Allocation Code (TAC) or native model name in an on-premise 51Degrees Hash data file, for the 51Degrees Pipeline API. An alternative to UAParser.js, DeviceAtlas, and WURFL.</Description>
 	  <Authors>51Degrees Engineering</Authors>
     <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
 	  <Copyright>51Degrees Mobile Experts Limited</Copyright>
-	  <PackageTags>51degrees;pipeline;data;device;detection;tac;nativemodel</PackageTags>
+	  <PackageTags>51degrees;device-detection;mobile-detection;pipeline;data;device;detection;tac;nativemodel;wurfl;deviceatlas;uaparser</PackageTags>
 	  <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
 	  <PackageProjectUrl>https://51degrees.com/device-detection?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection.propertykeyed&amp;utm_term=packageprojecturl</PackageProjectUrl>
 	  <RepositoryType>git</RepositoryType>
