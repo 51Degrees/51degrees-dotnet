@@ -493,10 +493,7 @@ namespace FiftyOne.Pipeline.Web.Tests
 
             Assert.AreEqual(status, context.Response.StatusCode);
             Assert.IsFalse(context.Response.Headers.ContainsKey("ETag"));
-            if (status == 304)
-            {
-                Assert.AreEqual(NOT_CACHED, Header(context, "Cache-Control"));
-            }
+            Assert.AreEqual(NOT_CACHED, Header(context, "Cache-Control"));
         }
 
         /// <summary>
