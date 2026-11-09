@@ -145,6 +145,58 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
+        /// The session id and sequence are in the element data as well as
+        /// the evidence, being the outputs the specification lists.
+        /// </summary>
+        [TestMethod]
+        public void SequenceElement_NoEvidence_WritesElementData()
+        {
+            using (var data = _pipeline.CreateFlowData())
+            {
+                data.Process();
+
+                var elementData = data.Get(SequenceElement.DEFAULT_ELEMENT_DATA_KEY);
+                var evidence = data.GetEvidence().AsDictionary();
+                Assert.AreEqual(
+                    evidence[Constants.EVIDENCE_SESSIONID],
+                    elementData["session-id"]);
+                Assert.AreEqual(1, elementData["sequence"]);
+            }
+        }
+
+        /// <summary>
+        /// A request that carries a session keeps its session id in the
+        /// element data and has the incremented sequence there.
+        /// </summary>
+        [TestMethod]
+        public void SequenceElement_SessionEvidence_WritesElementData()
+        {
+            var session = Guid.NewGuid().ToString();
+            using (var data = _pipeline.CreateFlowData())
+            {
+                data.AddEvidence(Constants.EVIDENCE_SESSIONID, session);
+                data.AddEvidence(Constants.EVIDENCE_SEQUENCE, "4");
+                data.Process();
+
+                var elementData = data.Get(SequenceElement.DEFAULT_ELEMENT_DATA_KEY);
+                Assert.AreEqual(session, elementData["session-id"]);
+                Assert.AreEqual(5, elementData["sequence"]);
+            }
+        }
+
+        /// <summary>
+        /// The element declares the two properties it writes.
+        /// </summary>
+        [TestMethod]
+        public void SequenceElement_Properties_AreSessionIdAndSequence()
+        {
+            var element = new SequenceElementBuilder(_loggerFactory).Build();
+            CollectionAssert.AreEquivalent(
+                new[] { "session-id", "sequence" },
+                element.Properties.Select(p => p.Name).ToArray());
+        }
+
+        /// <summary>
         /// The element accepts only the session id and sequence evidence.
         /// </summary>
         [TestMethod]
