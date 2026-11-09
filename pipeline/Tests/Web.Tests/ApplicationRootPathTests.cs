@@ -54,7 +54,8 @@ public class ApplicationRootPathTests
     private class FakeEnvironment : IWebHostEnvironment
     {
         public string ContentRootPath { get; set; } = ContentRoot;
-        public string ApplicationName { get; set; } = "test";
+        public string ApplicationName { get; set; } =
+            typeof(ApplicationRootPathTests).Assembly.GetName().Name;
         public IFileProvider ContentRootFileProvider { get; set; }
         public string EnvironmentName { get; set; } = "Test";
         public string WebRootPath { get; set; }
