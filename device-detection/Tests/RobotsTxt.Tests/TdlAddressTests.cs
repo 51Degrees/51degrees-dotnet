@@ -97,19 +97,16 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         }
 
         /// <summary>
-        /// Only an http or https address is a TDL, so an entry that .NET
-        /// reads as a file path on one system and refuses on another is
-        /// dropped on all of them.
+        /// A TDL must be a URI (RFC 3986 section 3), which begins with a
+        /// scheme. An entry without one is dropped on every system, even
+        /// where .NET reads it as a file path.
         /// </summary>
         [DataRow("/terms/1.txt")]
         [DataRow("/terms")]
         [DataRow("terms/1.txt")]
-        [DataRow("file:///terms/1.txt")]
-        [DataRow("ftp://example.com/terms/1.txt")]
-        [DataRow("mailto:terms@example.com")]
         [DataRow("not a uri")]
         [TestMethod]
-        public void EntryThatIsNotHttpOrHttpsIsDropped(string entry)
+        public void EntryWithoutSchemeIsDropped(string entry)
         {
             Assert.IsNull(
                 ResolveEntry(entry, resolver: null),
@@ -117,11 +114,11 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         }
 
         /// <summary>
-        /// An entry that is not an http or https address is passed to the
-        /// resolver, which can still recognise it, on every system.
+        /// An entry that is not a URI is passed to the resolver, which can
+        /// still recognise it, on every system.
         /// </summary>
         [TestMethod]
-        public void EntryThatIsNotHttpOrHttpsGoesToTheResolver()
+        public void EntryThatIsNotAUriGoesToTheResolver()
         {
             var resolved = ResolveEntry(
                 "/terms/1.txt",
@@ -131,13 +128,17 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         }
 
         /// <summary>
-        /// An http or https address is kept, with its escapes.
+        /// An entry with a scheme that parses as an absolute URI is kept,
+        /// whatever the scheme, with its escapes.
         /// </summary>
         [DataRow("https://example.com/terms-v1")]
         [DataRow("http://example.com/terms-v1")]
         [DataRow(EscapedTdl)]
+        [DataRow("ftp://example.com/terms/1.txt")]
+        [DataRow("mailto:terms@example.com")]
+        [DataRow("file:///terms/1.txt")]
         [TestMethod]
-        public void HttpAndHttpsEntriesAreKept(string entry)
+        public void EntryWithSchemeIsKept(string entry)
         {
             Assert.AreEqual(
                 entry,
