@@ -1280,13 +1280,13 @@ namespace FiftyOne.Pipeline.Engines.Services
 
 				// Get data file published date from meta-data.
 				// If it's not been set for some reason then use the 
-				// creation date of the file instead.
+				// last write time of the file instead.
 				DateTime publishDate = dataFile.DataPublishedDateTime;
 				if (dataFile.DataPublishedDateTime <= DateTime.MinValue &&
 					string.IsNullOrEmpty(dataFile.DataFilePath) == false &&
 					 _fileSystem.File.Exists(dataFile.DataFilePath))
 				{
-					publishDate = _fileSystem.File.GetCreationTimeUtc(dataFile.DataFilePath);
+					publishDate = _fileSystem.File.GetLastWriteTimeUtc(dataFile.DataFilePath);
 				}
 
 				// Set last-modified header to ensure that a file will only

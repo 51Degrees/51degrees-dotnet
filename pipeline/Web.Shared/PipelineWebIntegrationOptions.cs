@@ -37,13 +37,28 @@ namespace FiftyOne.Pipeline.Web.Shared
             ClientSideEvidenceEnabled = true;
             UseAsyncScript = true;
             UseSetHeaderProperties = true;
+            SequenceElementEnabled = true;
+            SetHeadersElementEnabled = true;
         }
+
+        /// <summary>
+        /// The default value of <see cref="JavaScriptPath"/>.
+        /// </summary>
+        public const string DefaultJavaScriptPath = "/51Degrees.core.js";
+
+        /// <summary>
+        /// The default value of <see cref="JsonPath"/>.
+        /// </summary>
+        public const string DefaultJsonPath = "/51dpipeline/json";
+
+        private string _javaScriptPath = DefaultJavaScriptPath;
+        private string _jsonPath = DefaultJsonPath;
 
         /// <summary>
         /// True if client-side properties should be enabled. If enabled
         /// (and the JavaScriptBundlerElement added to the Pipeline), a
-        /// client-side JavaScript file will be served at the URL
-        /// */51Degrees.core.js.
+        /// client-side JavaScript file will be served at the path
+        /// <see cref="JavaScriptPath"/>.
         /// </summary>
         public bool ClientSideEvidenceEnabled { get; set; }
 
@@ -61,5 +76,54 @@ namespace FiftyOne.Pipeline.Web.Shared
         /// Defaults to true.
         /// </summary>
         public bool UseSetHeaderProperties { get; set; }
+
+        /// <summary>
+        /// True to add the Sequence Element to the Pipeline when it is
+        /// not already in the configured elements. If false, the web
+        /// integration does not add it. The JSON Builder Element needs the
+        /// sequence, so set <see cref="ClientSideEvidenceEnabled"/> to
+        /// false as well, or list the Sequence Element in the elements.
+        /// Defaults to true.
+        /// </summary>
+        public bool SequenceElementEnabled { get; set; }
+
+        /// <summary>
+        /// True to add the Set Headers Element to the Pipeline when it is
+        /// not already in the configured elements. If false, the web
+        /// integration does not add it. This differs from
+        /// <see cref="UseSetHeaderProperties"/>, which stops the headers
+        /// being written to the response.
+        /// Defaults to true.
+        /// </summary>
+        public bool SetHeadersElementEnabled { get; set; }
+
+        /// <summary>
+        /// The path of the request that is answered with the client-side
+        /// JavaScript. A request whose path ends with this value is
+        /// intercepted. A blank value gives the default, which is
+        /// /51Degrees.core.js.
+        /// </summary>
+        public string JavaScriptPath
+        {
+            get => _javaScriptPath;
+            set => _javaScriptPath = string.IsNullOrWhiteSpace(value) ?
+                DefaultJavaScriptPath : value;
+        }
+
+        /// <summary>
+        /// The path of the request that is answered with the client-side
+        /// JSON. A request whose path ends with this value is intercepted.
+        /// When the web integration adds the JavaScript Builder Element
+        /// itself, the script calls back to this path. A JavaScript Builder
+        /// Element listed in the configured elements needs its Endpoint
+        /// set to the same value. A blank value gives the default, which is
+        /// /51dpipeline/json.
+        /// </summary>
+        public string JsonPath
+        {
+            get => _jsonPath;
+            set => _jsonPath = string.IsNullOrWhiteSpace(value) ?
+                DefaultJsonPath : value;
+        }
     }
 }

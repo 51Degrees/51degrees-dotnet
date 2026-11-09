@@ -25,8 +25,11 @@ Remove-Variable releasePlan
 # is the tag '<family>/<version>', for example 'pipeline/4.5.129'.
 #
 # packages.json lists the families in the order they build, each after the
-# families it depends on. Name, Path, ExtraPaths, DependsOn and Publish are
-# the fields common-ci's release plan reads. Path is the family's folder.
+# families it depends on. Name, Path, ExtraPaths, DependsOn, Publish and
+# Ignore are the fields common-ci's release plan reads. Path is the family's
+# folder. Ignore holds the globs of files whose change releases nothing, on top
+# of the documentation, test and example folders the plan always leaves out.
+# It names the performance test projects, which are never packed.
 # ExtraPaths holds the root Directory.Build.targets, which every package
 # builds with, and the cxx submodule the on-premise engines compile. The root
 # Directory.Build.props is left out, because the publish records the released

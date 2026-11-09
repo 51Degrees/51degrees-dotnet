@@ -64,6 +64,18 @@ namespace FiftyOne.Pipeline.Web.Framework
         public bool SetHeaderPropertiesEnabled => _options.UseSetHeaderProperties;
 
         /// <summary>
+        /// The path of the request that is answered with the client-side
+        /// JavaScript.
+        /// </summary>
+        public string JavaScriptPath => _options.JavaScriptPath;
+
+        /// <summary>
+        /// The path of the request that is answered with the client-side
+        /// JSON.
+        /// </summary>
+        public string JsonPath => _options.JsonPath;
+
+        /// <summary>
         /// Extra pipeline options which only apply to an implementation in a
         /// web server.
         /// </summary>
@@ -126,12 +138,21 @@ namespace FiftyOne.Pipeline.Web.Framework
                     StringComparison.OrdinalIgnoreCase) >= 0);
             if (sequenceConfig.Any() == false)
             {
-                // The sequence element is not included so add it.
-                // Make sure it's added as the first element.
-                _options.Elements.Insert(0, new ElementOptions()
+                if (_options.SequenceElementEnabled)
                 {
-                    BuilderName = nameof(SequenceElement)
-                });
+                    // The sequence element is not included so add it.
+                    // Make sure it's added as the first element.
+                    _options.Elements.Insert(0, new ElementOptions()
+                    {
+                        BuilderName = nameof(SequenceElement)
+                    });
+                }
+                else if (ClientSideEvidenceEnabled)
+                {
+                    // The JSON builder fails without a sequence number.
+                    throw new PipelineConfigurationException(
+                        Messages.ExceptionNoSequenceElement);
+                }
             }
 
             if (ClientSideEvidenceEnabled)
@@ -171,10 +192,19 @@ namespace FiftyOne.Pipeline.Web.Framework
                 if (jsIndex == -1)
                 {
                     // The javascript builder is not included so add it.
-                    _options.Elements.Add(new ElementOptions()
+                    var javaScriptOptions = new ElementOptions()
                     {
                         BuilderName = nameof(JavaScriptBuilderElement)
-                    });
+                    };
+                    // The script must call back to the path that is
+                    // intercepted.
+                    if (JsonPath !=
+                        PipelineWebIntegrationOptions.DefaultJsonPath)
+                    {
+                        javaScriptOptions.BuildParameters["Endpoint"] =
+                            JsonPath;
+                    }
+                    _options.Elements.Add(javaScriptOptions);
                 }
             }
 
@@ -182,7 +212,8 @@ namespace FiftyOne.Pipeline.Web.Framework
             var setHeadersConfig = _options.Elements.Where(e =>
                 e.BuilderName.IndexOf(nameof(SetHeadersElement),
                     StringComparison.OrdinalIgnoreCase) >= 0);
-            if (setHeadersConfig.Any() == false)
+            if (setHeadersConfig.Any() == false &&
+                _options.SetHeadersElementEnabled)
             {
                 // The set headers element is not included, so add it.
                 // Make sure it's added as the last element.
