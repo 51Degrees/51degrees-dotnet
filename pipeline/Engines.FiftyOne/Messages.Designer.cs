@@ -169,6 +169,15 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The usage sharing queue is full at {0} entries, so usage data is being discarded..
+        /// </summary>
+        internal static string MessageShareUsageQueueFull {
+            get {
+                return ResourceManager.GetString("MessageShareUsageQueueFull", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Usage sharing paused for {0} seconds after failed sends. Usage data is still queued, up to the maximum queue size, and sending starts again when the pause ends..
         /// </summary>
         internal static string MessageShareUsagePaused {

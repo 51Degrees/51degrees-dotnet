@@ -140,6 +140,19 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         private readonly ShareUsageBackOff _backOff;
 
         /// <summary>
+        /// While the queue is full, a message is logged for the first
+        /// request that finds it full and then for every this many more,
+        /// never for each request.
+        /// </summary>
+        private const int QueueFullLogEvery = 1000;
+
+        /// <summary>
+        /// The requests that have found the queue full since it last had
+        /// room.
+        /// </summary>
+        private long _discarded;
+
+        /// <summary>
         /// Cancelled when the element closes, to end any pause at once.
         /// </summary>
         private readonly CancellationTokenSource _closing =
@@ -963,6 +976,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             // existing data, but don't accept new evidence.
             if (EvidenceCollection.Count >= EvidenceCollection.BoundedCapacity)
             {
+                RecordDiscard();
                 TrySendData();
                 return;
             }
@@ -984,6 +998,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 GetDataFromEvidence(data.GetEvidence()),
                 _addTimeout))
             {
+                Interlocked.Exchange(ref _discarded, 0);
                 // If the collection has enough entries then start
                 // taking data from it to be sent.
                 if (EvidenceCollection.Count >= MinEntriesPerMessage)
@@ -994,7 +1009,26 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             else
             {
                 // Queue was full, try to drain it.
+                RecordDiscard();
                 TrySendData();
+            }
+        }
+
+        /// <summary>
+        /// Logs that evidence is being discarded because the queue is full,
+        /// for the first request that finds it full and then every
+        /// <see cref="QueueFullLogEvery"/> requests, so a busy server does
+        /// not flood its log.
+        /// </summary>
+        private void RecordDiscard()
+        {
+            var discarded = Interlocked.Increment(ref _discarded);
+            if (discarded == 1 || discarded % QueueFullLogEvery == 0)
+            {
+                Logger.LogWarning(string.Format(
+                    CultureInfo.InvariantCulture,
+                    Messages.MessageShareUsageQueueFull,
+                    EvidenceCollection.BoundedCapacity));
             }
         }
 

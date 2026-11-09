@@ -153,6 +153,9 @@
   <data name="MessageShareUsageNotSentWhilePaused" xml:space="preserve">
     <value>{0} usage sharing entries were not sent, as sending was paused after failed sends when usage sharing closed.</value>
   </data>
+  <data name="MessageShareUsageQueueFull" xml:space="preserve">
+    <value>The usage sharing queue is full at {0} entries, so usage data is being discarded.</value>
+  </data>
   <data name="MessageShareUsagePaused" xml:space="preserve">
     <value>Usage sharing paused for {0} seconds after failed sends. Usage data is still queued, up to the maximum queue size, and sending starts again when the pause ends.</value>
   </data>
