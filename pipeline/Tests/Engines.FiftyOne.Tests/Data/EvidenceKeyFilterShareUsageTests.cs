@@ -213,6 +213,61 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
         }
 
         /// <summary>
+        /// A cookie that does not start 51D_ is not shared unless all
+        /// evidence is, whatever the session setting, so the ASP.NET
+        /// session cookie is not shared by the filter that decides what is
+        /// sent.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_TheSessionCookieIsNotShared()
+        {
+            foreach (var includeSession in new[] { false, true })
+            {
+                var filter = new EvidenceKeyFilterShareUsage(
+                    new List<string>(),
+                    new List<string>(),
+                    includeSession,
+                    "asp.net_sessionid");
+
+                Assert.IsFalse(
+                    filter.Include("cookie.asp.net_sessionid"),
+                    "includeSession=" + includeSession);
+                Assert.IsFalse(filter.Include("cookie.other"));
+                Assert.IsTrue(filter.Include("cookie.51d_screenpixelswidth"));
+            }
+
+            var shareAll = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsTrue(shareAll.Include("cookie.asp.net_sessionid"));
+        }
+
+        /// <summary>
+        /// The session setting still lets the tracker tell visitors apart,
+        /// so the filter that makes the repeat tracker's key includes the
+        /// session cookie when the setting is on and leaves it out when it
+        /// is off. That filter decides nothing about what is sent.
+        /// </summary>
+        [TestMethod]
+        public void Tracker_TheSessionCookieIsKeyedOnlyWhenSessionIsTracked()
+        {
+            var tracked = new EvidenceKeyFilterShareUsageTracker(
+                new List<string>(),
+                new List<string>(),
+                true,
+                "asp.net_sessionid");
+            var untracked = new EvidenceKeyFilterShareUsageTracker(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsTrue(tracked.Include("cookie.asp.net_sessionid"));
+            Assert.IsTrue(tracked.Include("cookie.ASP.NET_SessionId"));
+            Assert.IsFalse(tracked.Include("cookie.other"));
+            Assert.IsFalse(untracked.Include("cookie.asp.net_sessionid"));
+        }
+
+        /// <summary>
         /// Keys are compared without regard to case, so a prefix written in
         /// capitals gets the same answer as the prefix in lower case.
         /// </summary>
