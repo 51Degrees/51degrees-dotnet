@@ -325,6 +325,54 @@ namespace FiftyOne.Pipeline.Web.Tests
         }
 
         /// <summary>
+        /// A list separated by optional whitespace, tabs included, matches
+        /// (RFC 9110 section 5.6.1).
+        /// </summary>
+        [TestMethod]
+        public void IfNoneMatch_ListWithTab_NotModified()
+        {
+            var eTag = Header(Serve(true, "GET"), "ETag");
+            var value = "\"other\",	" + eTag;
+
+            var context = Serve(true, "GET", value);
+
+            Assert.AreEqual(304, context.Response.StatusCode,
+                $"'{value}' did not match the ETag '{eTag}'.");
+        }
+
+        /// <summary>
+        /// A field value that is neither "*" nor a comma separated list of
+        /// entity tags is not a valid If-None-Match, so the condition is
+        /// true and the response is the full 200 (RFC 9110 section 13.1.2
+        /// and section 13.2.2 step 3). A valid list of other tags, and an
+        /// empty value, also get the 200.
+        /// </summary>
+        [DataTestMethod]
+        [DataRow("{0}, other", DisplayName = "tag then a non-tag")]
+        [DataRow("\"other\" {0}", DisplayName = "two tags, no comma")]
+        [DataRow("other, {0}", DisplayName = "non-tag then the tag")]
+        [DataRow("\"oth er\", {0}", DisplayName = "space inside quotes")]
+        [DataRow("\"other\", *", DisplayName = "star in a list")]
+        [DataRow("w/{0}", DisplayName = "lower case weak prefix")]
+        [DataRow("UNQUOTED", DisplayName = "unquoted tag")]
+        [DataRow("W/\"other\"", DisplayName = "other tag")]
+        [DataRow("\"other\", W/\"another\"", DisplayName = "other tags")]
+        [DataRow("", DisplayName = "empty value")]
+        public void IfNoneMatch_NotMatchingOrInvalid_Ok(string format)
+        {
+            var eTag = Header(Serve(true, "GET"), "ETag");
+            var value = format == "UNQUOTED" ?
+                eTag.Substring("W/".Length).Trim('"') :
+                format.Replace("{0}", eTag);
+
+            var context = Serve(true, "GET", value);
+
+            Assert.AreEqual(200, context.Response.StatusCode,
+                $"'{value}' gave a response other than 200.");
+            Assert.AreEqual(JS_CONTENT, Body(context));
+        }
+
+        /// <summary>
         /// An If-None-Match that holds a different ETag gets the full
         /// response.
         /// </summary>
