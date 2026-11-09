@@ -856,7 +856,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         {
             var xml = ShareAllAndGetMessage(
                 new KeyValuePair<string, object>(
-                    "query.51D_Fffe", "aFFFEbFFFFc"),
+                    "query.51D_Fffe", "a\uFFFEb\uFFFFc"),
                 new KeyValuePair<string, object>("query.51D_Other", "kept"));
 
             Assert.Contains(@"a\xfffeb\xffffc", xml);
