@@ -124,7 +124,6 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         [TestMethod]
         [DataRow("EXAMPLE.com", "https://example.com/51dpipeline/json")]
         [DataRow("example.com:8080", "https://example.com:8080/51dpipeline/json")]
-        [DataRow("example.com:", "https://example.com:/51dpipeline/json")]
         [DataRow("example.com:65535", "https://example.com:65535/51dpipeline/json")]
         [DataRow("a_b.com", "https://a_b.com/51dpipeline/json")]
         [DataRow("-ab.com", "https://-ab.com/51dpipeline/json")]
@@ -216,6 +215,12 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         [DataRow("example.com?")]
         [DataRow("example.com#")]
         [DataRow("example.com:8080?x")]
+        // A port that is present but empty.
+        [DataRow("example.com:")]
+        [DataRow("example.com:/path")]
+        [DataRow("[::1]:")]
+        [DataRow("https://example.com")]
+        [DataRow("http://example.com")]
         [DataRow("[::1]#x")]
         [DataRow("example.com/path?x")]
         [DataRow("example.com/path#x")]
@@ -502,6 +507,7 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         [DataRow("user:pa?ss@example.com", "\"https://***@example.com/json\"")]
         [DataRow("exa mple.com/a@b", "\"https://***@b/json\"")]
         [DataRow("example.123", "\"https://example.123/json\"")]
+        [DataRow("https://example.com", "\"https://https://example.com/json\"")]
         public void Element_RefusedHost_HasNoCallbackAndIsLoggedOnce(
             string host, string logged)
         {
