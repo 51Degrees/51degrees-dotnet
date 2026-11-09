@@ -231,6 +231,44 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
+        /// On disposal every entry still queued is sent, in as many messages
+        /// as it takes, each holding at most twice the minimum entries.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/rc/pipeline-specification/pipeline-elements/usage-sharing-element.md#cleanup">Specification</see>
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_SendsEveryRemainingEntry()
+        {
+            const int minimumEntries = 2;
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, minimumEntries, 100, _tracker.Object);
+            element.AddPipeline(_pipeline.Object);
+            var clientIps = Enumerable.Range(1, 11)
+                .Select(i => $"10.2.0.{i}")
+                .ToList();
+            foreach (var ip in clientIps)
+            {
+                element.Enqueue(ip);
+            }
+
+            element.Dispose();
+
+            var sent = _xmlContent
+                .SelectMany(xml => Regex.Matches(xml, "<ClientIP>([^<]+)</ClientIP>")
+                    .Cast<System.Text.RegularExpressions.Match>()
+                    .Select(m => m.Groups[1].Value))
+                .ToList();
+            CollectionAssert.AreEquivalent(clientIps, sent,
+                $"Queued {clientIps.Count} entries and sent {sent.Count} " +
+                $"in {_xmlContent.Count} message(s).");
+            foreach (var xml in _xmlContent)
+            {
+                Assert.IsLessThanOrEqualTo(minimumEntries * 2, CountDeviceNodes(xml),
+                    "A message held more than twice the minimum entries.");
+            }
+            Assert.AreEqual(0, element.Queued);
+        }
+
+        /// <summary>
         /// Test that the ShareUsageElement behaves as expected when it is 
         /// configured to send data after a single event.
         /// Check that client IP and headers from the evidence are included
@@ -1408,7 +1446,7 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
                 _shareUsageElement.Process(data.Object);
             }
             // Wait for the first send to finish, then dispose to flush
-            // one more message from the remaining entries.
+            // the remaining entries.
             WaitForSendDataTask();
             _shareUsageElement.Dispose();
             Thread.Sleep(200);
@@ -1421,10 +1459,11 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
                 Assert.IsLessThanOrEqualTo(maximumEntries, CountDeviceNodes(xml),
                     $"A message held more than {maximumEntries} entries");
             }
-            // The final flush had more than the maximum queued, so it must
-            // have been capped at exactly the maximum.
-            Assert.AreEqual(maximumEntries, CountDeviceNodes(_xmlContent[_xmlContent.Count - 1]),
-                "The final message was not capped at the maximum entries");
+            // Disposal sends everything still queued, so every entry that
+            // was queued has been sent.
+            Assert.AreEqual(maximumEntries * 3,
+                _xmlContent.Sum(xml => CountDeviceNodes(xml)),
+                "Entries were left unsent on disposal");
         }
 
         /// <summary>
