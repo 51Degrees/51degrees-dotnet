@@ -23,6 +23,13 @@
 				<dependency id="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" version="6.0.15" />
 				<dependency id="Microsoft.Extensions.FileProviders.Embedded" version="6.0.15" />
 			</group>
+			<group targetFramework="net10.0">
+				<dependency id="FiftyOne.Pipeline.Engines.FiftyOne" version="$version$" />
+				<dependency id="FiftyOne.Pipeline.Web.Shared" version="$version$" />
+				<dependency id="FiftyOne.Pipeline.JavaScriptBuilder" version="$version$" />
+				<dependency id="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" version="10.0.14" />
+				<dependency id="Microsoft.Extensions.FileProviders.Embedded" version="10.0.14" />
+			</group>
 			<group targetFramework="net462">
 				<dependency id="FiftyOne.Pipeline.Engines.FiftyOne" version="$version$" />
 				<dependency id="FiftyOne.Pipeline.Web.Shared" version="$version$" />
@@ -34,12 +41,14 @@
 		</dependencies>
         <frameworkAssemblies>
             <frameworkAssembly assemblyName="Microsoft.AspNetCore.App" targetFramework="net8.0"/>
+            <frameworkAssembly assemblyName="Microsoft.AspNetCore.App" targetFramework="net10.0"/>
         </frameworkAssemblies>
     </metadata>
 	<files>
 		<file src="images\51d-logo.png" target="images\" />
 		<file src="README.md" target="docs\" />
     <file src="Web\bin\$config$\net8.0\FiftyOne.Pipeline.Web.dll" target="lib\net8.0" />
+    <file src="Web\bin\$config$\net10.0\FiftyOne.Pipeline.Web.dll" target="lib\net10.0" />
 		<file src="Web.Framework\bin\$config$\FiftyOne.Pipeline.Web.Framework.dll" target="lib\net462" />
 		<file src="Web.Framework\Web.config.transform" target="content/net462/Web.config.transform" />
 		<file src="Web.Framework\51Degrees.json" target="content/net462/App_Data/51Degrees.json" />

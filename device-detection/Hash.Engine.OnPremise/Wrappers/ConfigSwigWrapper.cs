@@ -109,6 +109,16 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Wrappers
             _object.setTempDirectories(dirs);
         }
 
+        public void setIndexedProperties(VectorStringSwig names)
+        {
+            _object.setIndexedProperties(names);
+        }
+
+        public VectorStringSwig getIndexedProperties()
+        {
+            return _object.getIndexedProperties();
+        }
+
         public void setUseTempFile(bool useTemp)
         {
             _object.setUseTempFile(useTemp);

@@ -359,7 +359,10 @@ namespace FiftyOne.Common.Tests
                     // progress, then complete the first.
                     result2 = limiter.GetAsync("http://51degrees.com", CancellationToken.None);
                     token.Cancel();
-                    Thread.Sleep(10);
+                    // The first request finishes, and the limiter frees its
+                    // place, before the third is made.
+                    result1.Wait();
+                    AssertNoRemainingRequests(limiter);
                     result3 = limiter.GetAsync("http://51degrees.com", CancellationToken.None);
                     break;
                 case "POST":
@@ -368,7 +371,10 @@ namespace FiftyOne.Common.Tests
                     // progress, then complete the first.
                     result2 = limiter.PostAsync("http://51degrees.com", null, CancellationToken.None);
                     token.Cancel();
-                    Thread.Sleep(10);
+                    // The first request finishes, and the limiter frees its
+                    // place, before the third is made.
+                    result1.Wait();
+                    AssertNoRemainingRequests(limiter);
                     result3 = limiter.PostAsync("http://51degrees.com", null, CancellationToken.None);
                     break;
             }

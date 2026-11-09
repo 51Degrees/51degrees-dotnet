@@ -54,10 +54,16 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         /// <summary>
         /// The settings for the native configuration. Each engine gets a new
         /// configuration with these applied, which it owns and frees when it
-        /// is disposed, so a builder can build more than one engine.
+        /// is disposed, so a builder can build more than one engine. The
+        /// first is the Balanced performance profile, the default the
+        /// specification gives, so that a profile the caller sets is applied
+        /// after it and replaces it.
         /// </summary>
         private readonly List<Action<IConfigSwigWrapper>> _configSettings =
-            new List<Action<IConfigSwigWrapper>>();
+            new List<Action<IConfigSwigWrapper>>()
+            {
+                c => c.setBalanced()
+            };
 
         #endregion
 
@@ -115,6 +121,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         /// </summary>
         /// <param name="profileName">Name of the profile to use</param>
         /// <returns>This builder</returns>
+        [DefaultValue("Balanced")]
         public IpiOnPremiseEngineBuilderBase<TEngine> SetPerformanceProfile(
             string profileName)
         {
