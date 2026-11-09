@@ -41,20 +41,15 @@ namespace FiftyOne.Pipeline.Web.Framework.Tests
 
         private static string Resolve(string dataFile)
         {
-            var options = new PipelineOptions
+            var options = new PipelineOptions();
+            options.Elements.Add(new ElementOptions
             {
-                Elements = new List<ElementOptions>
+                BuilderName = "Engine",
+                BuildParameters = new Dictionary<string, object>
                 {
-                    new ElementOptions
-                    {
-                        BuilderName = "Engine",
-                        BuildParameters = new Dictionary<string, object>
-                        {
-                            { "DataFile", dataFile },
-                        },
-                    },
+                    { "DataFile", dataFile },
                 },
-            };
+            });
             WebPipeline.ResolveApplicationRootPaths(options, MapPath);
             return (string)options.Elements[0].BuildParameters["DataFile"];
         }
