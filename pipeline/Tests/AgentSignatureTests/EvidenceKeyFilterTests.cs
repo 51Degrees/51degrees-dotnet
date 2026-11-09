@@ -35,11 +35,11 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
     /// Checks the evidence the element accepts and where it reads a covered
     /// header from. The element accepts only the eight keys the
     /// specification names, because a pipeline's accepted evidence decides
-    /// its cache keys, the ETag and the Vary header. Any other header a
-    /// signature covers is read from the evidence where the flow data holds
-    /// it, and otherwise from the web request a web integration adds as
-    /// 'server.http-request'.
-    /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/agent-signature-element.md#accepted-evidence">Specification</see>
+    /// its cache keys, the ETag and the Vary header. A signature covering
+    /// any other header reports Unverified with the ComponentUnavailable
+    /// reason, and that header is not read from other evidence or from the
+    /// web request a web integration adds as 'server.http-request'.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/4612778babd00c032a69ad41608e5c6fed38dc33/pipeline-specification/pipeline-elements/agent-signature-element.md#accepted-evidence">Specification</see>
     /// </summary>
     [TestClass]
     public class EvidenceKeyFilterTests
@@ -297,12 +297,12 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         }
 
         /// <summary>
-        /// A signature covering an ordinary request header verifies where
-        /// the caller supplies that header as evidence, even though the
-        /// element does not accept it.
+        /// A signature covering an ordinary request header is Unverified
+        /// where the caller supplies that header as evidence, because the
+        /// element does not accept the header and so does not read it.
         /// </summary>
         [TestMethod]
-        public void SignatureCoveringAHeaderInTheEvidenceVerifies()
+        public void SignatureCoveringAHeaderInOtherEvidenceIsUnverified()
         {
             using (var harness = ElementHarness.CreateWithTestKey())
             {
@@ -313,19 +313,18 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                         { OrdinaryHeaderKey, OrdinaryHeaderValue },
                     });
 
-                AssertVerified(result, "supplied as evidence");
+                AssertComponentUnavailable(result);
             }
         }
 
         /// <summary>
-        /// A signature covering an ordinary request header verifies where
-        /// only the web request holds that header, which is what a web
-        /// integration gives a pipeline that does not accept the header.
-        /// The header is spelled as a request would carry it, because the
-        /// web request's keys are compared without regard to case.
+        /// A signature covering an ordinary request header is Unverified
+        /// where only the web request holds that header, because the
+        /// element does not read a header it does not accept from the web
+        /// request. The header is spelled as a request would carry it.
         /// </summary>
         [TestMethod]
-        public void SignatureCoveringAHeaderOnlyInTheWebRequestVerifies()
+        public void SignatureCoveringAHeaderOnlyInTheWebRequestIsUnverified()
         {
             using (var harness = ElementHarness.CreateWithTestKey())
             {
@@ -336,17 +335,16 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                         { "header.Content-Type", OrdinaryHeaderValue },
                     }));
 
-                AssertVerified(result, "only in the web request");
+                AssertComponentUnavailable(result);
             }
         }
 
         /// <summary>
         /// Where the evidence and the web request both hold a covered
-        /// header, the value in the evidence is used, so a caller that
-        /// passes a header in directly is checked against what it passed.
+        /// header the element does not accept, neither is read.
         /// </summary>
         [TestMethod]
-        public void HeaderInTheEvidenceIsUsedBeforeTheWebRequest()
+        public void HeaderInBothEvidenceAndTheWebRequestIsUnverified()
         {
             using (var harness = ElementHarness.CreateWithTestKey())
             {
@@ -361,7 +359,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                         { OrdinaryHeaderKey, OrdinaryHeaderValue },
                     });
 
-                AssertVerified(result, "in the evidence");
+                AssertComponentUnavailable(result);
             }
         }
 
@@ -500,11 +498,12 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         }
 
         /// <summary>
-        /// A forwarded signature covering an ordinary header verifies where
-        /// the caller supplies that header under the query prefix.
+        /// A forwarded signature covering an ordinary header is Unverified
+        /// where the caller supplies that header under the query prefix,
+        /// because the header is not one of the eight names.
         /// </summary>
         [TestMethod]
-        public void ForwardedHeaderInTheEvidenceVerifies()
+        public void ForwardedHeaderInTheEvidenceIsUnverified()
         {
             var signed = SignOverTheOrdinaryHeader();
             using (var harness = ElementHarness.CreateWithTestKey(
@@ -513,46 +512,43 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                 var forwarded = Forwarded(signed);
                 forwarded["query.content-type"] = OrdinaryHeaderValue;
 
-                AssertVerified(
+                AssertComponentUnavailable(
                     harness.ProcessSignedWithWebRequest(
                         signed,
                         new WebRequest(new Dictionary<string, object>()),
-                        forwarded),
-                    "under the query prefix in the evidence");
+                        forwarded));
             }
         }
 
         /// <summary>
-        /// A forwarded signature covering an ordinary header verifies where
-        /// only the web request holds that header, whose query string
+        /// A forwarded signature covering an ordinary header is Unverified
+        /// where only the web request holds that header, whose query string
         /// values carry the query prefix.
         /// </summary>
         [TestMethod]
-        public void ForwardedHeaderOnlyInTheWebRequestVerifies()
+        public void ForwardedHeaderOnlyInTheWebRequestIsUnverified()
         {
             var signed = SignOverTheOrdinaryHeader();
             using (var harness = ElementHarness.CreateWithTestKey(
                 builder => builder.SetTrustForwardedEvidence(true)))
             {
-                AssertVerified(
+                AssertComponentUnavailable(
                     harness.ProcessSignedWithWebRequest(
                         signed,
                         new WebRequest(new Dictionary<string, object>
                         {
                             { "query.content-type", OrdinaryHeaderValue },
                         }),
-                        Forwarded(signed)),
-                    "under the query prefix in the web request");
+                        Forwarded(signed)));
             }
         }
 
         /// <summary>
         /// Where the evidence and the web request both hold a covered
-        /// header under the query prefix, the value in the evidence is
-        /// used.
+        /// header under the query prefix, neither is read.
         /// </summary>
         [TestMethod]
-        public void ForwardedHeaderInTheEvidenceIsUsedBeforeTheWebRequest()
+        public void ForwardedHeaderInBothEvidenceAndTheWebRequestIsUnverified()
         {
             var signed = SignOverTheOrdinaryHeader();
             using (var harness = ElementHarness.CreateWithTestKey(
@@ -561,15 +557,14 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                 var forwarded = Forwarded(signed);
                 forwarded["query.content-type"] = OrdinaryHeaderValue;
 
-                AssertVerified(
+                AssertComponentUnavailable(
                     harness.ProcessSignedWithWebRequest(
                         signed,
                         new WebRequest(new Dictionary<string, object>
                         {
                             { "query.content-type", "text/plain" },
                         }),
-                        forwarded),
-                    "under the query prefix in both places");
+                        forwarded));
             }
         }
 
@@ -658,19 +653,6 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                 new KeyValuePair<string, string>(
                     "\"content-type\"", OrdinaryHeaderValue));
             return RequestSigner.Sign(options);
-        }
-
-        private static void AssertVerified(
-            IAgentSignatureData result,
-            string where)
-        {
-            Assert.AreEqual(
-                Constants.STATUS_VERIFIED,
-                result.AgentSignature.Value,
-                "Expected Verified for a signature covering the " +
-                "'content-type' header " + where + ". The status was '" +
-                result.AgentSignature.Value + "' with the reason '" +
-                result.AgentSignatureReason.Value + "'.");
         }
 
         private static void AssertComponentUnavailable(
