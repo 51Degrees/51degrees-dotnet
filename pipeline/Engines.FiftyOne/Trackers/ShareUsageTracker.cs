@@ -96,12 +96,56 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
             CacheConfiguration configuration,
 			TimeSpan interval,
             IEvidenceKeyFilter filter) 
-            : base(configuration)
+            : base(Smallest(configuration))
         {
 			_interval = interval;
             _filter = filter;
             _sharedTimes = configuration.Builder.Build<DataKey, SharedTime>(
                 configuration.Size) as IPutCache<DataKey, SharedTime>;
+        }
+
+        /// <summary>
+        /// The base class builds a cache that this tracker never reads, as
+        /// the times are held in the shared times field, so it is given
+        /// the smallest cache.
+        /// </summary>
+        private static CacheConfiguration Smallest(
+            CacheConfiguration configuration)
+        {
+            if (configuration == null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
+            return new CacheConfiguration()
+            {
+                Builder = configuration.Builder,
+                Size = 1
+            };
+        }
+
+        /// <summary>
+        /// Keeps the check of a repeat and the storing of the time it is
+        /// shared as one step, so that evidence tracked by several threads
+        /// at once is shared once.
+        /// </summary>
+        private readonly object _trackLock = new object();
+
+        /// <summary>
+        /// Track the specified <see cref="IFlowData"/> instance.
+        /// </summary>
+        /// <param name="data">
+        /// The <see cref="IFlowData"/> to track.
+        /// </param>
+        /// <returns>
+        /// True if the evidence is new or was last shared at least the
+        /// interval ago, false otherwise.
+        /// </returns>
+        public override bool Track(IFlowData data)
+        {
+            lock (_trackLock)
+            {
+                return base.Track(data);
+            }
         }
 
         /// <summary>
@@ -181,7 +225,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
         /// </returns>
         protected override bool Match(IFlowData data, DateTime? value)
         {
-			var now = DateTime.Now;
+			var now = DateTime.UtcNow;
 			if (value <= (now - _interval))
 			{
 				Put(data, now);
@@ -203,7 +247,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
         /// </returns>
         protected override DateTime? NewValue(IFlowData data)
         {
-            return DateTime.Now;
+            return DateTime.UtcNow;
         }
 
         /// <summary>
