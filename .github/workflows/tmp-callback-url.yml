@@ -1,0 +1,46 @@
+name: Temporary callback URL tests
+
+on:
+  push:
+    branches:
+      - 'tmp/callback-url'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Callback URL tests, ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the submodules the test project builds from
+        shell: pwsh
+        run: |
+          git submodule update --init pipeline/Core/Configuration/Validation pipeline/JavaScriptBuilderElement/Templates pipeline/owid-dotnet pipeline/DerivedProperty/Scripts
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Run the callback URL tests
+        shell: pwsh
+        run: |
+          git log --oneline -1
+          node --version
+          $project = 'pipeline/Tests/JavaScriptBuilderElementTests/FiftyOne.Pipeline.JavaScriptBuilderElementTests.csproj'
+          dotnet test $project -c Release --nologo -p:FiftyOneReferences=Project `
+            --filter 'FullyQualifiedName~CallbackUrlTests' `
+            --logger 'trx;LogFileName=callback.trx' `
+            --logger 'console;verbosity=normal'
+          $code = $LASTEXITCODE
+          Get-ChildItem -Recurse -Filter callback.trx | ForEach-Object {
+            Select-String -Path $_.FullName -Pattern 'outcome="Failed"' -SimpleMatch:$false |
+              Select-Object -First 400 | ForEach-Object { $_.Line.Substring(0, [Math]::Min(300, $_.Line.Length)) }
+          }
+          if ($code -ne 0) { exit 1 }
