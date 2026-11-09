@@ -656,8 +656,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                     Messages.NoValueDetailUnbound);
             }
 
-            var resolver = new FlowDataComponentResolver(
-                data, source, _evidenceKeyFilter);
+            var resolver = new FlowDataComponentResolver(data, source);
             if (SignatureBase.TryBuild(
                 candidate.CoveredComponents,
                 candidate.SignatureParams,
@@ -1156,35 +1155,46 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// evidence the pipeline holds.
         /// </summary>
         /// <remarks>
-        /// A signature may cover any request header. A header the element
-        /// accepts is read from the evidence. Any other header is read from
-        /// the evidence where the flow data holds it, and otherwise from
-        /// the web request a web integration adds as
-        /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>. The
+        /// A header the element accepts is read from the evidence. A
+        /// signature covering any other header cannot be rebuilt, and that
+        /// header is not read from other evidence or from the web request
+        /// a web integration adds as
+        /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>, because a
+        /// header outside the accepted evidence is outside the cache keys,
+        /// the ETag and the Vary header. The
         /// derived components are built from the accepted headers and from
         /// the request line, being the method, the path and the query
         /// string. Where an integration supplies no request line, a
         /// signature covering '&#64;target-uri', '&#64;method', '&#64;path' or
         /// '&#64;query' cannot be rebuilt and reads Unverified with the
         /// ComponentUnavailable reason.
-        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/agent-signature-element.md#rebuilding-the-signature-base">Specification</see>
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/4612778babd00c032a69ad41608e5c6fed38dc33/pipeline-specification/pipeline-elements/agent-signature-element.md#rebuilding-the-signature-base">Specification</see>
         /// </remarks>
         private sealed class FlowDataComponentResolver : IComponentResolver
         {
+            /// <summary>
+            /// The headers the element accepts as evidence, being the
+            /// header names among the eight accepted keys.
+            /// </summary>
+            private static readonly string[] AcceptedHeaderNames =
+            {
+                "signature",
+                "signature-input",
+                "signature-agent",
+                "host",
+                "protocol",
+            };
+
             private readonly IFlowData _data;
 
             private readonly string _source;
 
-            private readonly IEvidenceKeyFilter _accepted;
-
             public FlowDataComponentResolver(
                 IFlowData data,
-                string source,
-                IEvidenceKeyFilter accepted)
+                string source)
             {
                 _data = data;
                 _source = source;
-                _accepted = accepted;
             }
 
             public bool TryResolve(
@@ -1207,7 +1217,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 {
                     return false;
                 }
-                if (GetHeader(name, out var header) == false)
+                if (IsAcceptedHeader(name) == false ||
+                    GetHeader(name, out var header) == false)
                 {
                     return false;
                 }
@@ -1391,6 +1402,21 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             }
 
             /// <summary>
+            /// True if the name is a header whose evidence key the
+            /// element accepts. A covered header with any other name
+            /// cannot be rebuilt.
+            /// </summary>
+            private static bool IsAcceptedHeader(string name)
+            {
+                return Array.Exists(
+                    AcceptedHeaderNames,
+                    accepted => string.Equals(
+                        accepted,
+                        name,
+                        StringComparison.OrdinalIgnoreCase));
+            }
+
+            /// <summary>
             /// Read a header by name from the prefix the signature came
             /// from, and from no other.
             /// </summary>
@@ -1405,46 +1431,12 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             /// request whose caller sent no host reports instead that a
             /// component was unavailable, which says only that the check
             /// could not be made.
-            /// <para>
-            /// A web integration adds only the evidence some element in the
-            /// pipeline accepts, so a header this element does not accept
-            /// may be missing from the evidence. Where it is, it is read
-            /// from the web request under the same key. The web request is
-            /// the one the evidence describes, so the base is still built
-            /// from one request.
-            /// </para>
             /// </remarks>
             private bool GetHeader(string name, out string value)
             {
-                var key = _source + Core.Constants.EVIDENCE_SEPERATOR + name;
-                if (GetEvidence(key, out value))
-                {
-                    return true;
-                }
-                return _accepted.Include(key) == false &&
-                    GetFromWebRequest(key, out value);
-            }
-
-            /// <summary>
-            /// Read a value from the web request a web integration adds as
-            /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>, which
-            /// is a read only dictionary keyed as the request's values
-            /// would be as evidence.
-            /// </summary>
-            private bool GetFromWebRequest(string key, out string value)
-            {
-                if (_data.TryGetEvidence(
-                        Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
-                        out object request) &&
-                    request is IReadOnlyDictionary<string, object> values &&
-                    values.TryGetValue(key, out var raw) &&
-                    raw != null)
-                {
-                    value = raw.ToString();
-                    return true;
-                }
-                value = null;
-                return false;
+                return GetEvidence(
+                    _source + Core.Constants.EVIDENCE_SEPERATOR + name,
+                    out value);
             }
 
             /// <summary>
