@@ -32,8 +32,8 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
     /// protocol and host usually come from the request, and the script holds
     /// the URL in a single-quoted string, so the URL is checked before it is
     /// written into the script. A URL that is not valid, including one whose
-    /// protocol is not http or https, is refused. In anything after the host
-    /// and port, and in the endpoint, the characters a URL cannot hold or
+    /// protocol is not http or https, is refused. In anything after the
+    /// authority, and in the endpoint, the characters a URL cannot hold or
     /// that could end the string or the script are percent-encoded.
     /// The rules are applied to the text given, and not to the result of
     /// parsing it, because <see cref="Uri"/> accepts hosts the rules refuse
