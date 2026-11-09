@@ -191,30 +191,39 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 
 		/// <summary>
 		/// Evidence tracked by several threads at once is shared by one of
-		/// them only, however many reach the tracker together.
+		/// them only. Each thread waits for the others after it starts to
+		/// track, so that all of them look for the evidence together.
 		/// </summary>
 		[TestMethod]
 		public void ShareUsageTracker_RepeatEvidence_SharedOnceAcrossThreads()
 		{
-			const int rounds = 200;
+			const int rounds = 3;
 			const int threads = 8;
+			var waitForOthers = TimeSpan.FromMilliseconds(100);
 			for (var round = 0; round < rounds; round++)
 			{
 				var key = new DataKeyBuilder();
 				key.Add(100, "header.user-agent", "agent" + round);
+				var built = key.Build();
 				var data = MockFlowData.CreateFromEvidence(_evidenceData, false);
-				data.Setup(d => d.GenerateKey(It.IsAny<IEvidenceKeyFilter>()))
-					.Returns(key.Build());
-				using (var start = new ManualResetEventSlim(false))
+				using (var arrived = new ThreadLocal<bool>())
+				using (var together = new Barrier(threads))
 				{
-					var tasks = Enumerable.Range(0, threads)
-						.Select(_ => Task.Run(() =>
+					data.Setup(d => d.GenerateKey(It.IsAny<IEvidenceKeyFilter>()))
+						.Returns(() =>
 						{
-							start.Wait();
-							return _shareUsageTracker.Track(data.Object);
-						}))
+							if (arrived.Value == false)
+							{
+								arrived.Value = true;
+								together.SignalAndWait(waitForOthers);
+							}
+							return built;
+						});
+					var tasks = Enumerable.Range(0, threads)
+						.Select(_ => Task.Factory.StartNew(
+							() => _shareUsageTracker.Track(data.Object),
+							TaskCreationOptions.LongRunning))
 						.ToArray();
-					start.Set();
 					Task.WaitAll(tasks);
 
 					Assert.AreEqual(
