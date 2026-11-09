@@ -39,6 +39,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
@@ -57,9 +58,9 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
     /// When Terms Document Locator (TDL) evidence is provided via the
     /// <see cref="Constants.TdlEvidenceKey"/> key, the catch-all footer
     /// is emitted as an Allow-all block with one <c>TDL:</c> line per
-    /// valid absolute http or https URI. Invalid entries are silently
-    /// dropped per the IETF-Robots TDL specification. If no valid TDL URIs
-    /// remain, the engine falls back to the default Disallow-all catch-all.
+    /// valid absolute URI. Invalid entries are silently dropped per the
+    /// IETF-Robots TDL specification. If no valid TDL URIs remain, the
+    /// engine falls back to the default Disallow-all catch-all.
     /// </para>
     /// </summary>
     public class RobotsTxtEngine :
@@ -292,9 +293,16 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
         private static readonly char[] TdlSeparators = [',', '|'];
 
         /// <summary>
+        /// A URI scheme followed by ':' (RFC 3986 section 3.1).
+        /// </summary>
+        private static readonly Regex SchemePrefix = new(
+            @"\A[A-Za-z][A-Za-z0-9+.\-]*:",
+            RegexOptions.CultureInvariant);
+
+        /// <summary>
         /// Parses TDL URIs from evidence. Accepts a single value or a list
         /// of values joined with ',' or '|'. Each entry is treated as an
-        /// absolute http or https URI first; if that fails and an
+        /// absolute URI first; if that fails and an
         /// <see cref="ITdlSourceResolver"/> is registered, it gets a chance
         /// to resolve known short ids to URLs. Anything that ends up
         /// non-URI is silently dropped per the IETF-Robots TDL specification.
@@ -320,12 +328,13 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
 
         private Uri ResolveTdlEntry(string entry)
         {
-            // Only an http or https address is a TDL. Without the scheme
-            // check, a string starting with '/' is a file address on some
-            // systems and not an address at all on others.
-            if (Uri.TryCreate(entry, UriKind.Absolute, out var u) &&
-                (u.Scheme == Uri.UriSchemeHttp ||
-                    u.Scheme == Uri.UriSchemeHttps))
+            // A URI starts with a scheme (RFC 3986 section 3). The raw text
+            // is checked because some systems parse a string starting with
+            // '/' as a file path, which has no scheme.
+            var value = entry?.Trim();
+            if (value != null &&
+                SchemePrefix.IsMatch(value) &&
+                Uri.TryCreate(value, UriKind.Absolute, out var u))
             {
                 return u;
             }
