@@ -25,89 +25,90 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace FiftyOne.Pipeline.Web.Shared;
-
-/// <summary>
-/// Replaces a leading tilde (~) in the data file paths of a pipeline
-/// configuration with the root of the web application.
-/// </summary>
-internal static class ApplicationRootPaths
+namespace FiftyOne.Pipeline.Web.Shared
 {
     /// <summary>
-    /// The build parameter that holds an engine's data file path.
+    /// Replaces a leading tilde (~) in the data file paths of a pipeline
+    /// configuration with the root of the web application.
     /// </summary>
-    internal const string DataFileParameter = "DataFile";
-
-    /// <summary>
-    /// Replace each data file path that starts with '~/' or '~\' in the
-    /// elements of the options, including nested sub elements. Any other
-    /// path is left as it is.
-    /// </summary>
-    /// <param name="options">
-    /// Pipeline options to update in place.
-    /// </param>
-    /// <param name="resolve">
-    /// Maps a path starting with '~/' or '~\' to a full path.
-    /// </param>
-    internal static void ResolveDataFiles(
-        PipelineOptions options,
-        Func<string, string> resolve)
+    internal static class ApplicationRootPaths
     {
-        if (options?.Elements != null)
-        {
-            ResolveDataFiles(options.Elements, resolve);
-        }
-    }
+        /// <summary>
+        /// The build parameter that holds an engine's data file path.
+        /// </summary>
+        internal const string DataFileParameter = "DataFile";
 
-    private static void ResolveDataFiles(
-        IEnumerable<ElementOptions> elements,
-        Func<string, string> resolve)
-    {
-        foreach (var element in elements)
+        /// <summary>
+        /// Replace each data file path that starts with '~/' or '~\' in the
+        /// elements of the options, including nested sub elements. Any other
+        /// path is left as it is.
+        /// </summary>
+        /// <param name="options">
+        /// Pipeline options to update in place.
+        /// </param>
+        /// <param name="resolve">
+        /// Maps a path starting with '~/' or '~\' to a full path.
+        /// </param>
+        internal static void ResolveDataFiles(
+            PipelineOptions options,
+            Func<string, string> resolve)
         {
-            var parameters = element.BuildParameters;
-            if (parameters != null)
+            if (options?.Elements != null)
             {
-                var keys = parameters.Keys.Where(k => string.Equals(
-                    k,
-                    DataFileParameter,
-                    StringComparison.OrdinalIgnoreCase)).ToList();
-                foreach (var key in keys)
+                ResolveDataFiles(options.Elements, resolve);
+            }
+        }
+
+        private static void ResolveDataFiles(
+            IEnumerable<ElementOptions> elements,
+            Func<string, string> resolve)
+        {
+            foreach (var element in elements)
+            {
+                var parameters = element.BuildParameters;
+                if (parameters != null)
                 {
-                    if (parameters[key] is string path &&
-                        IsApplicationRootPath(path))
+                    var keys = parameters.Keys.Where(k => string.Equals(
+                        k,
+                        DataFileParameter,
+                        StringComparison.OrdinalIgnoreCase)).ToList();
+                    foreach (var key in keys)
                     {
-                        parameters[key] = resolve(path);
+                        if (parameters[key] is string path &&
+                            IsApplicationRootPath(path))
+                        {
+                            parameters[key] = resolve(path);
+                        }
                     }
                 }
-            }
-            if (element.SubElements != null)
-            {
-                ResolveDataFiles(element.SubElements, resolve);
+                if (element.SubElements != null)
+                {
+                    ResolveDataFiles(element.SubElements, resolve);
+                }
             }
         }
-    }
 
-    /// <summary>
-    /// True if the path starts with '~/' or '~\'.
-    /// </summary>
-    internal static bool IsApplicationRootPath(string path)
-    {
-        return path != null &&
-            path.Length > 1 &&
-            path[0] == '~' &&
-            (path[1] == '/' || path[1] == '\\');
-    }
+        /// <summary>
+        /// True if the path starts with '~/' or '~\'.
+        /// </summary>
+        internal static bool IsApplicationRootPath(string path)
+        {
+            return path != null &&
+                path.Length > 1 &&
+                path[0] == '~' &&
+                (path[1] == '/' || path[1] == '\\');
+        }
 
-    /// <summary>
-    /// Combine a root directory with the part of a '~/' or '~\' path that
-    /// follows the tilde, using the separator of the current platform.
-    /// </summary>
-    internal static string CombineWithRoot(string root, string path)
-    {
-        var relative = path.Substring(2)
-            .Replace('/', System.IO.Path.DirectorySeparatorChar)
-            .Replace('\\', System.IO.Path.DirectorySeparatorChar);
-        return System.IO.Path.Combine(root, relative);
+        /// <summary>
+        /// Combine a root directory with the part of a '~/' or '~\' path that
+        /// follows the tilde, using the separator of the current platform.
+        /// </summary>
+        internal static string CombineWithRoot(string root, string path)
+        {
+            var relative = path.Substring(2)
+                .Replace('/', System.IO.Path.DirectorySeparatorChar)
+                .Replace('\\', System.IO.Path.DirectorySeparatorChar);
+            return System.IO.Path.Combine(root, relative);
+        }
     }
 }
