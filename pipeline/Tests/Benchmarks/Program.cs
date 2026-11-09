@@ -32,6 +32,15 @@ namespace FiftyOne.Pipeline.Benchmarks
     {
         static void Main(string[] args)
         {
+            // With arguments, run the benchmarks they name, for example
+            // --filter '*FlowDataBenchmarks*', and report without limits.
+            if (args.Length > 0)
+            {
+                BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly)
+                    .Run(args);
+                return;
+            }
+
             var report = BenchmarkRunner.Run<AccessEvidenceBenchmarks>(
                 ManualConfig.Create(DefaultConfig.Instance)
                     .WithOptions(ConfigOptions.DisableOptimizationsValidator));
