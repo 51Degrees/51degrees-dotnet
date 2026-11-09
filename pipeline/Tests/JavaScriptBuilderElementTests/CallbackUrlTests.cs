@@ -129,16 +129,20 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         [DataRow("a_b.com", "https://a_b.com/51dpipeline/json")]
         [DataRow("-ab.com", "https://-ab.com/51dpipeline/json")]
         [DataRow("127.0.0.1:80", "https://127.0.0.1:80/51dpipeline/json")]
+        [DataRow("example.com", "https://example.com/51dpipeline/json")]
+        [DataRow("1.2.3.4", "https://1.2.3.4/51dpipeline/json")]
+        [DataRow("1.2.3.4:8080", "https://1.2.3.4:8080/51dpipeline/json")]
+        [DataRow("1.2.3.4/path", "https://1.2.3.4/path/51dpipeline/json")]
+        [DataRow("0.0.0.0", "https://0.0.0.0/51dpipeline/json")]
+        [DataRow("101.2.3.4", "https://101.2.3.4/51dpipeline/json")]
+        [DataRow("example.co1", "https://example.co1/51dpipeline/json")]
+        [DataRow("123.example.com", "https://123.example.com/51dpipeline/json")]
         [DataRow("[::1]", "https://[::1]/51dpipeline/json")]
         [DataRow("[::1]:8080", "https://[::1]:8080/51dpipeline/json")]
-        [DataRow("[fe80::1%25eth0]", "https://[fe80::1%25eth0]/51dpipeline/json")]
-        [DataRow("user:pw@example.com", "https://user:pw@example.com/51dpipeline/json")]
-        [DataRow("u x@example.com", "https://u%20x@example.com/51dpipeline/json")]
-        [DataRow("u\tx@example.com", "https://u%09x@example.com/51dpipeline/json")]
         [DataRow("example.com.", "https://example.com./51dpipeline/json")]
         [DataRow("example.com/path", "https://example.com/path/51dpipeline/json")]
-        [DataRow("example.com?x", "https://example.com?x/51dpipeline/json")]
         [DataRow("example.com/a b", "https://example.com/a%20b/51dpipeline/json")]
+        [DataRow("example.com/a\"b", "https://example.com/a%22b/51dpipeline/json")]
         [DataRow("example.com/a%zzb", "https://example.com/a%25zzb/51dpipeline/json")]
         [DataRow("example.com/a%41b", "https://example.com/a%41b/51dpipeline/json")]
         [DataRow("example.com/\u00fc", "https://example.com/%C3%BC/51dpipeline/json")]
@@ -185,19 +189,71 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         [DataRow(" example.com")]
         [DataRow("example.com ")]
         [DataRow("example.com:8080');alert(1);//")]
+        // User information, or an @ anywhere in the host value.
+        [DataRow("user@example.com")]
+        [DataRow("user:pw@example.com")]
+        [DataRow("@example.com")]
+        [DataRow(":@example.com")]
+        [DataRow("user@example.com:8080")]
+        [DataRow("user@[::1]")]
+        [DataRow("user@example.com/path")]
+        [DataRow("u%41@example.com")]
+        [DataRow("u x@example.com")]
+        [DataRow("u\tx@example.com")]
+        [DataRow("u\"x@example.com")]
+        [DataRow("u'x@example.com")]
+        [DataRow("u\\x@example.com")]
+        [DataRow("u\nx@example.com")]
+        [DataRow("u\u0001x@example.com")]
+        [DataRow("example.com/a@b")]
+        [DataRow("user:12/ss@example.com")]
+        [DataRow("user:pa/ss@example.com")]
+        [DataRow("user:pa?ss@example.com")]
+        [DataRow("exa mple.com/a@b")]
+        // A query or fragment.
+        [DataRow("example.com?x")]
+        [DataRow("example.com#x")]
+        [DataRow("example.com?")]
+        [DataRow("example.com#")]
+        [DataRow("example.com:8080?x")]
+        [DataRow("[::1]#x")]
+        [DataRow("example.com/path?x")]
+        [DataRow("example.com/path#x")]
+        [DataRow("example.com?');alert(1);//")]
+        [DataRow("example.com#');alert(1);//")]
+        // A name whose last label is a number must be an IPv4 address.
+        [DataRow("example.123")]
+        [DataRow("example.0x1f")]
+        [DataRow("example.0X")]
+        [DataRow("1.2.3.999")]
+        [DataRow("1.2.3")]
+        [DataRow("127.1")]
+        [DataRow("0x7f.0.0.1")]
+        [DataRow("01.2.3.4")]
+        [DataRow("example.123.")]
+        [DataRow("1.2.3.4.")]
+        [DataRow("1.2.3.4.5")]
+        [DataRow("1")]
+        [DataRow("300.1.1.1")]
+        [DataRow("0x7f.1")]
         public void CallbackUrl_RefusesHost(string host)
         {
             AssertInvalid(Url("https", host), $"host {host}");
         }
 
         /// <summary>
-        /// Inside the brackets only an IPv6 address, optionally followed by
-        /// '%25' and a zone of unreserved characters, and after them only a
-        /// port. The zone check is what keeps a quote out of the script for
-        /// a bracketed host.
+        /// Inside the brackets only an IPv6 address, so a zone identifier is
+        /// refused, and after them only a port.
         /// </summary>
         [TestMethod]
         [DataRow("[fe80::1%25]")]
+        [DataRow("[fe80::1%25eth0]")]
+        [DataRow("[fe80::1%25eth0]:8080")]
+        [DataRow("[FE80::1%25ETH0]")]
+        [DataRow("[fe80::1%251]")]
+        [DataRow("[::1%25lo]")]
+        [DataRow("[fe80::1%]")]
+        [DataRow("[fe80::1%25eth0]/path")]
         [DataRow("[fe80::1%25'+alert(1)+']")]
         [DataRow("[fe80::1%eth0]")]
         [DataRow("[fe80::1%25eth%0]")]
@@ -208,15 +264,6 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         public void CallbackUrl_RefusesZoneOrTextAfterTheBracket(string host)
         {
             AssertInvalid(Url("https", host), $"host {host}");
-        }
-
-        [TestMethod]
-        public void CallbackUrl_AcceptsZoneFollowedByPort()
-        {
-            AssertValid(
-                "https://[fe80::1%25eth0]:8080/51dpipeline/json",
-                Url("https", "[fe80::1%25eth0]:8080"),
-                "host [fe80::1%25eth0]:8080");
         }
 
         /// <summary>
@@ -245,18 +292,16 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         }
 
         /// <summary>
-        /// Each character rule 8 lists, in the user information, after the
-        /// host and in the endpoint, and a '%' without two hexadecimal digits
+        /// Each character rule 8 lists, after the host and in the endpoint, and a '%' without two hexadecimal digits
         /// after it, even at the end.
         /// </summary>
         [TestMethod]
         public void CallbackUrl_EncodesTheCharactersRule8Lists()
         {
             AssertValid(
-                "https://u%22%5E%60%7B%7C%7D@example.com/%22%5E%60%7B%7C%7D" +
-                    "/j%22%5E%60%7B%7C%7D",
+                "https://example.com/%22%5E%60%7B%7C%7D/j%22%5E%60%7B%7C%7D",
                 CallbackUrl.Of(
-                    "https", "u\"^`{|}@example.com/\"^`{|}", "/j\"^`{|}"),
+                    "https", "example.com/\"^`{|}", "/j\"^`{|}"),
                 "rule 8 characters");
             AssertValid(
                 "https://example.com/a%25/51dpipeline/json",
@@ -274,6 +319,41 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
                 "https://example.com/json%25",
                 CallbackUrl.Of("https", "example.com", "/json%"),
                 "endpoint /json%");
+        }
+
+        /// <summary>
+        /// The URL kept for the log shows <c>***</c> in place of everything
+        /// in the host value before its last '@'.
+        /// </summary>
+        [TestMethod]
+        [DataRow("user:secret@example.com", "https://***@example.com/51dpipeline/json")]
+        [DataRow("a@b@example.com", "https://***@example.com/51dpipeline/json")]
+        [DataRow("u@[::1]:80x", "https://***@[::1]:80x/51dpipeline/json")]
+        [DataRow("user:pa/ss@example.com", "https://***@example.com/51dpipeline/json")]
+        [DataRow("user:pa?ss@example.com", "https://***@example.com/51dpipeline/json")]
+        [DataRow("exa mple.com/a@b", "https://***@b/51dpipeline/json")]
+        [DataRow("@example.com", "https://***@example.com/51dpipeline/json")]
+        public void CallbackUrl_RefusedUrlForTheLogHasNoUserInformation(
+            string host, string expected)
+        {
+            var url = Url("https", host);
+            AssertInvalid(url, $"host {host}");
+            Assert.AreEqual(expected, url.Url, $"host {host}");
+        }
+
+        /// <summary>
+        /// A configured protocol made only of white space is not empty, so
+        /// it is refused when the element is built.
+        /// </summary>
+        [TestMethod]
+        [DataRow(" ")]
+        [DataRow("\t")]
+        [DataRow("\u00a0")]
+        public void ConfiguredProtocol_WhiteSpace_IsRefused(string protocol)
+        {
+            Assert.ThrowsExactly<PipelineConfigurationException>(() =>
+                new JavaScriptBuilderElementBuilder(_loggerFactory)
+                    .SetProtocol(protocol));
         }
 
         [TestMethod]
@@ -333,10 +413,7 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         /// </summary>
         [TestMethod]
         [DataRow("example.com/');alert(1);//")]
-        [DataRow("example.com?');alert(1);//")]
-        [DataRow("example.com#');alert(1);//")]
-        [DataRow("u'x@example.com")]
-        [DataRow("u\\x@example.com")]
+        [DataRow("example.com/a\"b")]
         [DataRow("example.com/a\\b")]
         [DataRow("example.com/</script>")]
         public void CallbackUrl_NothingGivenCanEndTheString(string host)
@@ -399,9 +476,6 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         [DataRow("[::1]", "https://[::1]/json")]
         [DataRow("example.com/a b", "https://example.com/a%20b/json")]
         [DataRow("example.com/'", "https://example.com/%27/json")]
-        [DataRow("example.com?'", "https://example.com?%27/json")]
-        [DataRow("example.com#'", "https://example.com#%27/json")]
-        [DataRow("u'x@example.com", "https://u%27x@example.com/json")]
         [DataRow("example.com/');x=1;//", "https://example.com/%27);x=1;//json")]
         public void Element_WritesTheCheckedUrl(string host, string expected)
         {
@@ -421,6 +495,13 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         [DataRow("a\u2028b.com", "\"https://a\\u2028b.com/json\"")]
         [DataRow("example.com:65536", "\"https://example.com:65536/json\"")]
         [DataRow("[fe80::1%25'+alert(1)+']", "\"https://[fe80::1%25'+alert(1)+']/json\"")]
+        [DataRow("user:secret@example.com", "\"https://***@example.com/json\"")]
+        [DataRow("a@b@example.com", "\"https://***@example.com/json\"")]
+        [DataRow("u@[::1]:80x", "\"https://***@[::1]:80x/json\"")]
+        [DataRow("user:pa/ss@example.com", "\"https://***@example.com/json\"")]
+        [DataRow("user:pa?ss@example.com", "\"https://***@example.com/json\"")]
+        [DataRow("exa mple.com/a@b", "\"https://***@b/json\"")]
+        [DataRow("example.123", "\"https://example.123/json\"")]
         public void Element_RefusedHost_HasNoCallbackAndIsLoggedOnce(
             string host, string logged)
         {
