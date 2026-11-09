@@ -330,5 +330,32 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 "Evidence processed when the queue was full was sent.");
             _loggerFactory.AssertMaxWarnings(3);
         }
+
+        /// <summary>
+        /// Evidence discarded because the queue is full is logged, but not
+        /// with a message for each entry discarded.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_FullQueue_LogsWithoutAMessagePerEntry()
+        {
+            _element = Build(1, 2, 2, 4);
+            Process();
+            WaitFor(() => _handler.Count == 1 && _element.IsRunning == false,
+                "The first send was not made.");
+
+            foreach (var i in Enumerable.Range(0, 14))
+            {
+                Process();
+            }
+
+            var full = _loggerFactory.Loggers
+                .SelectMany(l => l.WarningEntries)
+                .Where(w => w.Contains("full"))
+                .ToList();
+            Assert.IsGreaterThanOrEqualTo(1, full.Count,
+                "Discarding evidence was not logged.");
+            Assert.IsLessThan(6, full.Count,
+                "A message was logged for each entry discarded.");
+        }
     }
 }
