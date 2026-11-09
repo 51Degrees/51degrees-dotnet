@@ -32,6 +32,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace FiftyOne.Pipeline.Web.Tests;
 
@@ -84,7 +85,8 @@ public class ApplicationRootPathTests
 
         services.BuildServiceProvider().GetRequiredService<IPipeline>();
 
-        return (string)capture.Options.Elements[0]
+        return (string)capture.Options.Elements
+            .Single(e => e.BuilderName == "EmptyEngine")
             .BuildParameters["DataFile"];
     }
 
