@@ -57,7 +57,7 @@ using Microsoft.Extensions.DependencyInjection;
 ///           "DataFile": "51Degrees-LiteV4.1.hash",
 ///           "CreateTempDataCopy": false,
 ///           "AutoUpdate": false,
-///           "PerformanceProfile": "LowMemory",
+///           "PerformanceProfile": "MaxPerformance",
 ///           "DataFileSystemWatcher": false,
 ///           "DataUpdateOnStartUp": false
 ///         }

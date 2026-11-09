@@ -93,10 +93,6 @@ Each property value is set to the default for that property.*/
         }
       },
       {
-        "BuilderName": "UachJsConversionElementBuilder",
-        "BuildParameters": {}
-      },
-      {
         "BuilderName": "CloudRequestEngineBuilder",
         "BuildParameters": {
           /*See FiftyOne.Pipeline.CloudRequestEngine.FlowElements.CloudRequestEngineBuilder.SetEndPoint(String)*/

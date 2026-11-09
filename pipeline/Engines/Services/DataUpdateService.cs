@@ -234,27 +234,36 @@ namespace FiftyOne.Pipeline.Engines.Services
 
 					// Only create an automatic update timer if auto updates are 
 					// enabled for this engine and there is not already an associated 
-					// timer.
-					if (dataFile.AutomaticUpdatesEnabled &&
-						dataFile.Timer == null)
-                    {
-                        LogInfoMessage(Messages.MessageAutoUpdateCreateTimer, dataFile);
+					// timer. The timer lock is held from that check until the timer
+					// is stored, because the timer can fire as soon as it is
+					// created and its check must find it.
+					if (dataFile.AutomaticUpdatesEnabled)
+					{
+						lock (dataFile.TimerLock)
+						{
+							if (dataFile.Timer == null)
+							{
+								LogInfoMessage(
+									Messages.MessageAutoUpdateCreateTimer, dataFile);
 
-                        TimeSpan timeToUpdate = GetInterval(dataFile.Configuration);
-                        if (dataFile.UpdateAvailableTime > DateTime.UtcNow)
-                        {
-                            timeToUpdate = dataFile.UpdateAvailableTime
-                                .Subtract(DateTime.UtcNow);
-                            timeToUpdate = ApplyIntervalRandomisation(
-                                timeToUpdate, dataFile.Configuration);
-                        }
-						// Create a timer that will go off when the engine expects
-						// updated data to be available.
-						var timer = _timerFactory(
-							CheckForUpdate,
-							dataFile,
-							timeToUpdate);
-						dataFile.Timer = timer;
+								TimeSpan timeToUpdate = GetInterval(
+									dataFile.Configuration);
+								if (dataFile.UpdateAvailableTime > DateTime.UtcNow)
+								{
+									timeToUpdate = dataFile.UpdateAvailableTime
+										.Subtract(DateTime.UtcNow);
+									timeToUpdate = ApplyIntervalRandomisation(
+										timeToUpdate, dataFile.Configuration);
+								}
+								// Create a timer that will go off when the engine
+								// expects updated data to be available.
+								var timer = _timerFactory(
+									CheckForUpdate,
+									dataFile,
+									timeToUpdate);
+								dataFile.Timer = timer;
+							}
+						}
 					}
 
 					// If file system watcher is enabled then set it up.
@@ -891,12 +900,17 @@ namespace FiftyOne.Pipeline.Engines.Services
 					// the timer to check again after the configured interval.
 					// This will repeat until an update is applied.
 					if (manualUpdate == false &&
-						dataFile != null &&
-						dataFile.Timer != null)
+						dataFile != null)
 					{
-						dataFile.Timer.Change(
-							GetInterval(dataFile.Configuration),
-							TimeSpan.FromMilliseconds(-1));
+						lock (dataFile.TimerLock)
+						{
+							if (dataFile.Timer != null)
+							{
+								dataFile.Timer.Change(
+									GetInterval(dataFile.Configuration),
+									TimeSpan.FromMilliseconds(-1));
+							}
+						}
 					}
 				}
 
@@ -1154,10 +1168,8 @@ namespace FiftyOne.Pipeline.Engines.Services
 
 		/// <summary>
 		/// Called when a data update is available and the file at 
-		/// engine.DataFilePath contains this new data.
-		/// 1. Refresh the engine.
-		/// 2. Dispose of the existing update timer if there is one.
-		/// 3. Re-register the engine with the update service.
+		/// engine.DataFilePath contains this new data. Refreshes the engine,
+		/// trying up to 10 times, and leaves the update timer alone.
 		/// </summary>
 		/// <param name="dataFile"></param>
 		/// <returns></returns>
@@ -1219,12 +1231,17 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// </summary>
 		private static void ClearTimer(AspectEngineDataFile dataFile)
 		{
-			if (dataFile != null &&
-				dataFile.Timer != null)
+			if (dataFile != null)
 			{
-				// Dispose of the old timer object
-				dataFile.Timer.Dispose();
-				dataFile.Timer = null;
+				lock (dataFile.TimerLock)
+				{
+					if (dataFile.Timer != null)
+					{
+						// Dispose of the old timer object
+						dataFile.Timer.Dispose();
+						dataFile.Timer = null;
+					}
+				}
 			}
 		}
 

@@ -43,14 +43,16 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
         private static readonly Mock<ILogger<AspectDataBase>> _logger =
             new Mock<ILogger<AspectDataBase>>();
 
-        private static readonly Mock<IMissingPropertyService> _missingPropertyService =
-            new Mock<IMissingPropertyService>();
+        // One for each test, because the tests run in parallel and each
+        // sets the mock up.
+        private Mock<IMissingPropertyService> _missingPropertyService;
 
         [TestInitialize]
         public override void Init()
         {
             base.Init();
             InitWrapperAndUserAgents(PerformanceProfiles.HighPerformance);
+            _missingPropertyService = new Mock<IMissingPropertyService>();
             var reason = new MissingPropertyResult();
             reason.Description = "test description";
             reason.Reason = MissingPropertyReason.PropertyExcludedFromEngineConfiguration;
