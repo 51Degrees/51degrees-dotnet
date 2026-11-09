@@ -36,6 +36,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
     public class FiftyOnePipelineBuilder : PipelineBuilder
     {
         private bool _shareUsageEnabled = Constants.SHARE_USAGE_DEFAULT_ENABLED;
+        private bool _sequenceElementEnabled =
+            Constants.SEQUENCE_ELEMENT_DEFAULT_ENABLED;
 
         /// <summary>
         /// Default constructor
@@ -87,13 +89,33 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
+        /// Set whether the sequence element is added when the pipeline
+        /// does not already have one.
+        /// Defaults to enabled.
+        /// </summary>
+        /// <param name="enabled">
+        /// true to add the sequence element. False to leave it out.
+        /// </param>
+        /// <returns>
+        /// This builder instance.
+        /// </returns>
+        [DefaultValue(Constants.SEQUENCE_ELEMENT_DEFAULT_ENABLED)]
+        public FiftyOnePipelineBuilder SetSequenceElement(bool enabled)
+        {
+            _sequenceElementEnabled = enabled;
+            return this;
+        }
+
+        /// <summary>
         /// Called just before the pipeline is built.
         /// </summary>
         protected override void OnPreBuild()
         {
-            // Add the sequence element if it doe not exist already, make sure 
-            // it is added at the beginning as some engines depend on it.
-            if (FlowElements.Any(e => e.GetType() == typeof(SequenceElement)) == false)
+            // Add the sequence element if it does not exist already, make
+            // sure it is added at the beginning as some engines depend on it.
+            if (_sequenceElementEnabled &&
+                FlowElements.Any(
+                    e => e.GetType() == typeof(SequenceElement)) == false)
             {
 #pragma warning disable CA2000 // Dispose objects before losing scope
                 // Element lifetimes are managed by the Pipeline

@@ -461,6 +461,25 @@ namespace FiftyOne.Pipeline.JsonBuilderElementTests
         }
 
         /// <summary>
+        /// The Sequence Element's data is an Element Data like any other,
+        /// and the specification excludes only the Set Headers Element,
+        /// the Cloud Request Engine and the Usage Sharing Element, so the
+        /// JSON has a top level entry for it.
+        /// </summary>
+        [TestMethod]
+        public void JsonBuilder_SequenceElement_HasTopLevelEntry()
+        {
+            var json = ProcessWithWarnings(
+                new JsonBuilderElementBuilder(_loggerFactory).Build());
+
+            var sequence = JObject.Parse(json)["sequence"];
+            Assert.IsNotNull(sequence, "expected a sequence entry");
+            Assert.IsTrue(Guid.TryParse(
+                sequence["session-id"].ToString(), out _));
+            Assert.AreEqual(1, (int)sequence["sequence"]);
+        }
+
+        /// <summary>
         /// With nothing to report there must be no warnings entry, so the
         /// response shape does not change for the normal case.
         /// </summary>
