@@ -36,7 +36,7 @@ namespace FiftyOne.Pipeline.Web.Framework.Tests
         private static string MapPath(string virtualPath)
         {
             return ApplicationRoot +
-                virtualPath.Substring(1).Replace('/', '\');
+                virtualPath.Substring(1).Replace('/', '\\');
         }
 
         private static string Resolve(string dataFile)

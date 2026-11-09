@@ -89,7 +89,7 @@ public class ApplicationRootPathTests
 
     [TestMethod]
     [DataRow("~/App_Data/data.hash")]
-    [DataRow("~\App_Data\data.hash")]
+    [DataRow("~\\App_Data\\data.hash")]
     public void TildePathResolvesUnderContentRoot(string configured)
     {
         Assert.AreEqual(
