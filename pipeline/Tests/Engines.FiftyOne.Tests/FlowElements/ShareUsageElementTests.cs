@@ -197,6 +197,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             public int Queued => EvidenceCollection.Count;
 
             public Task SendAsync() => BuildAndSendXmlAsync();
+
+            public void StartSending() => TrySendData();
         }
 
         /// <summary>
@@ -312,6 +314,51 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                     "Expected one warning that entries were not sent.");
                 var warning = _logger.WarningEntries.First(w => w.Contains("not sent"));
                 StringAssert.Contains(warning, "7 ");
+            }
+        }
+
+        /// <summary>
+        /// The same timeout covers a send already running when disposal
+        /// starts, so an endpoint that never answers it cannot hold disposal
+        /// up, and no further message is sent once that send returns.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_RunningSendNeverAnswers_Bounded()
+        {
+            const int boundMilliseconds = 500;
+            using (var release = new ManualResetEventSlim(false))
+            using (var started = new ManualResetEventSlim(false))
+            {
+                _httpHandler.SetupResponse(request =>
+                {
+                    started.Set();
+                    release.Wait(TimeSpan.FromSeconds(20));
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
+                });
+                var element = new QueueOpenShareUsageElement(
+                    _logger, _httpClient, 2, 100, _tracker.Object,
+                    boundMilliseconds);
+                element.AddPipeline(_pipeline.Object);
+                for (int i = 1; i <= 7; i++)
+                {
+                    element.Enqueue($"10.5.0.{i}");
+                }
+                element.StartSending();
+                Assert.IsTrue(started.Wait(TimeSpan.FromSeconds(10)),
+                    "The first send did not start.");
+
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                element.Dispose();
+                watch.Stop();
+                release.Set();
+                Thread.Sleep(1000);
+
+                Assert.IsLessThan(boundMilliseconds * 6, watch.ElapsedMilliseconds,
+                    "Disposal was held up by a running send that never answers.");
+                Assert.AreEqual(1, _httpHandler.SendCallCount,
+                    "A message was sent after disposal had given up.");
+                var warning = _logger.WarningEntries.First(w => w.Contains("not sent"));
+                StringAssert.Contains(warning, "3 ");
             }
         }
 
