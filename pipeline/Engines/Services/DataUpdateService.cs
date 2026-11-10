@@ -354,7 +354,6 @@ namespace FiftyOne.Pipeline.Engines.Services
 			var dataFile = engine.GetDataFileMetaData(dataFileIdentifier);
 			if(dataFile != null)
 			{ 
-				dataFile.Configuration.AutomaticUpdatesEnabled = false;
 				result = CheckForUpdate(dataFile, true);
 			}
 			else
