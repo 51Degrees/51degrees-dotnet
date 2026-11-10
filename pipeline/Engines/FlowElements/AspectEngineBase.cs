@@ -231,6 +231,10 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         /// from it. A result that holds a value created for the one request
         /// that asked for it must not be, because a later request with the
         /// same Evidence would receive that value. The default is true.
+        /// With lazy loading this runs inside the processing task, so an
+        /// override must read the result without waiting for lazy loading,
+        /// for example with <c>TryGet</c>, or it waits for the task it runs
+        /// in.
         /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
         /// </summary>
         /// <param name="aspectData">
