@@ -1507,7 +1507,7 @@ cloudEx.Message, "Exception message did not contain the expected text.");
         /// that one request, so it is never stored in the cache or served from
         /// it. Two requests with the same Evidence each go to the cloud service
         /// and each receive the 51Did it created.
-        /// See the <see href="https://github.com/51Degrees/specifications/blob/b5e7de8019646eaa1e3bc1fd2a177c4c26fae749/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
         /// </summary>
         [TestMethod]
         [DataRow("fodid")]

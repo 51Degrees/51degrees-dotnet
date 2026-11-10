@@ -746,14 +746,16 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// A response with a top-level fodid member holds a 51Did that the
-        /// cloud service created for the one request, so it is never stored
-        /// in the results cache or served from it. Every other response is
-        /// cached.
+        /// A response with a top-level fodid member, in any letter case,
+        /// holds a 51Did that the cloud service created for the one request,
+        /// so it is never stored in the results cache or served from it.
+        /// Every other response is cached. The response is read without
+        /// waiting, because under lazy loading this runs inside the
+        /// processing task.
         /// </summary>
         protected override bool CanCache(CloudRequestData aspectData)
         {
-            var json = aspectData?.JsonResponse;
+            var json = aspectData?.JsonResponseIfSet;
             if (string.IsNullOrEmpty(json) ||
                 json.IndexOf(
                     "fodid", StringComparison.OrdinalIgnoreCase) < 0)
@@ -762,7 +764,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             }
             try
             {
-                return JObject.Parse(json).ContainsKey("fodid") == false;
+                return JObject.Parse(json).Properties().Any(p =>
+                    string.Equals(
+                        p.Name,
+                        "fodid",
+                        StringComparison.OrdinalIgnoreCase)) == false;
             }
             catch (JsonReaderException)
             {

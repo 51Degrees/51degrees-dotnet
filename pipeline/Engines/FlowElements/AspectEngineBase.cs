@@ -231,7 +231,7 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         /// from it. A result that holds a value created for the one request
         /// that asked for it must not be, because a later request with the
         /// same Evidence would receive that value. The default is true.
-        /// See the <see href="https://github.com/51Degrees/specifications/blob/b5e7de8019646eaa1e3bc1fd2a177c4c26fae749/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
         /// </summary>
         /// <param name="aspectData">
         /// The result of processing, or a result found in the cache.
@@ -240,6 +240,22 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         protected virtual bool CanCache(T aspectData)
         {
             return true;
+        }
+
+        /// <summary>
+        /// Add the result of processing to the cache, if there is a cache and
+        /// the result may be cached.
+        /// </summary>
+        private void AddToCache(IFlowData data)
+        {
+            if (_cache != null)
+            {
+                var result = data.GetFromElement(this);
+                if (CanCache(result))
+                {
+                    _cache.Put(data, result);
+                }
+            }
         }
 
         /// <summary>
@@ -293,10 +309,14 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                     // to do the processing and assign the task to the
                     // aspect data property. The data is checked first, so
                     // no task starts for data that cannot hold one.
+                    // Whether the result is cached is decided in the
+                    // task, once processing has finished, so that Process
+                    // still returns at once.
                     var aspectDataInternal = Internal(aspectData);
                     var task = Task.Run(() =>
                     {
                         ProcessEngine(data, aspectData);
+                        AddToCache(data);
                     });
                     aspectDataInternal.AddProcessTask(task);
                 }
@@ -304,16 +324,7 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                 {
                     // If not lazy loading, just start processing.
                     ProcessEngine(data, aspectData);
-                }
-                // If there is a cache then add the result 
-                // of processing to the cache.
-                if (_cache != null)
-                {
-                    var result = data.GetFromElement(this);
-                    if (CanCache(result))
-                    {
-                        _cache.Put(data, result);
-                    }
+                    AddToCache(data);
                 }
             }
             else
