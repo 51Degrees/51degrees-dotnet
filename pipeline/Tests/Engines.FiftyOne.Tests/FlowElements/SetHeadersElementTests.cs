@@ -622,7 +622,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// that request no headers. Once a retry has fetched the list, the
         /// next request gets its SetHeader* properties, because the
         /// configuration built from the incomplete list is not kept.
-        /// See the <see href="https://github.com/51Degrees/specifications/blob/rc/pipeline-specification/pipeline-elements/cloud-request-engine.md">Specification</see>
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/5bad4133a88878a5fc8b3034190c53952014b35b/pipeline-specification/pipeline-elements/cloud-request-engine.md#consequences-for-consumers-of-the-engine">Specification</see>
         /// </summary>
         [TestMethod]
         public void SetHeadersElement_PropertiesLoadedAfterFirstRequest_HeadersFromNextRequest()
