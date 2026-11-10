@@ -753,15 +753,39 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             // Only attempt a final flush if there is something to send. This avoids
             // a needless network round-trip (and a logged error when offline) when
             // the pipeline is disposed without any usage. See issue #224.
-            if (EvidenceCollection.Count > 0)
+            // A message holds at most twice the minimum entries, so send
+            // messages until the queue is empty. One timeout bounds the
+            // whole of it, so an endpoint that does not answer cannot hold
+            // disposal up.
+            using (var stop = new CancellationTokenSource())
             {
-                TrySendData();
-            }
-            if (IsRunning)
-            {
-                SendDataTask.Wait();
+                var flush = Task.Run(() =>
+                {
+                    while (EvidenceCollection.Count > 0 &&
+                        stop.IsCancellationRequested == false)
+                    {
+                        TrySendData();
+                        SendDataTask?.Wait();
+                    }
+                });
+                if (flush.Wait(DisposeTimeoutMilliseconds) == false)
+                {
+                    stop.Cancel();
+                    Logger.LogWarning(string.Format(
+                        CultureInfo.InvariantCulture,
+                        Messages.MessageShareUsageNotSentOnClose,
+                        EvidenceCollection.Count,
+                        DisposeTimeoutMilliseconds));
+                }
             }
         }
+
+        /// <summary>
+        /// The time in milliseconds that disposal may spend sending the
+        /// entries still queued.
+        /// </summary>
+        internal virtual int DisposeTimeoutMilliseconds =>
+            Constants.SHARE_USAGE_DISPOSE_TIMEOUT_MILLISECONDS;
 
         /// <summary>
         /// Clean up any unmanaged resources.
