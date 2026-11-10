@@ -227,6 +227,42 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         }
 
         /// <summary>
+        /// Whether a result may be stored in the results cache and served
+        /// from it. A result that holds a value created for the one request
+        /// that asked for it must not be, because a later request with the
+        /// same Evidence would receive that value. The default is true.
+        /// With lazy loading this runs inside the processing task, so an
+        /// override must read the result without waiting for lazy loading,
+        /// for example with <c>TryGet</c>, or it waits for the task it runs
+        /// in.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
+        /// </summary>
+        /// <param name="aspectData">
+        /// The result of processing, or a result found in the cache.
+        /// </param>
+        /// <returns>True if the result may be cached.</returns>
+        protected virtual bool CanCache(T aspectData)
+        {
+            return true;
+        }
+
+        /// <summary>
+        /// Add the result of processing to the cache, if there is a cache and
+        /// the result may be cached.
+        /// </summary>
+        private void AddToCache(IFlowData data)
+        {
+            if (_cache != null)
+            {
+                var result = data.GetFromElement(this);
+                if (CanCache(result))
+                {
+                    _cache.Put(data, result);
+                }
+            }
+        }
+
+        /// <summary>
         /// Private method that checks if the result is already in the cache
         /// or not.
         /// If it is then the result is added to 'data', if not then 
@@ -240,7 +276,7 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         {
             T cacheResult = default(T);
 
-            // If there is a cache then check if the result 
+            // If there is a cache then check if the result
             // is already in there.
             if (_cache != null)
             {
@@ -249,6 +285,12 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                     cacheResult = (T)_cache[data];
                 }
                 catch (InvalidCastException) { }
+                // A result that must not be served from the cache is
+                // processed again.
+                if (cacheResult != null && CanCache(cacheResult) == false)
+                {
+                    cacheResult = default(T);
+                }
             }
             // If we don't have a result from the cache then 
             // run through the normal processing.
@@ -271,10 +313,14 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                     // to do the processing and assign the task to the
                     // aspect data property. The data is checked first, so
                     // no task starts for data that cannot hold one.
+                    // Whether the result is cached is decided in the
+                    // task, once processing has finished, so that Process
+                    // still returns at once.
                     var aspectDataInternal = Internal(aspectData);
                     var task = Task.Run(() =>
                     {
                         ProcessEngine(data, aspectData);
+                        AddToCache(data);
                     });
                     aspectDataInternal.AddProcessTask(task);
                 }
@@ -282,12 +328,7 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                 {
                     // If not lazy loading, just start processing.
                     ProcessEngine(data, aspectData);
-                }
-                // If there is a cache then add the result 
-                // of processing to the cache.
-                if (_cache != null)
-                {
-                    _cache.Put(data, data.GetFromElement(this));
+                    AddToCache(data);
                 }
             }
             else

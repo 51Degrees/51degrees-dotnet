@@ -24,6 +24,7 @@ using FiftyOne.Common.TestHelpers;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -51,6 +52,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
 
         private string _jsonResponse = "{'device':{'value':'1'}}";
         private HttpStatusCode _jsonResponseStatus = HttpStatusCode.OK;
+        // When set, the mocked JSON answer waits for it, so a test can
+        // hold the cloud service's answer back.
+        private ManualResetEventSlim _jsonResponseGate;
+        private const int JsonResponseGateMs = 10000;
+        private const int ProcessReturnMs = 2000;
         private string _evidenceKeysResponse = "['query.User-Agent']";
         private HttpStatusCode _evidenceKeysResponseStatus = HttpStatusCode.OK;
         private string _accessiblePropertiesResponse =
@@ -1758,6 +1764,153 @@ cloudEx.Message, "Exception message did not contain the expected text.");
         }
 
         /// <summary>
+        /// A response with a top-level fodid member holds a 51Did created for
+        /// that one request, so it is never stored in the cache or served from
+        /// it. Two requests with the same Evidence each go to the cloud service
+        /// and each receive the 51Did it created.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
+        /// </summary>
+        [TestMethod]
+        [DataRow("fodid")]
+        [DataRow("FODID")]
+        [DataRow("Fodid")]
+        public void Cache_ResponseWithFodid_NeverStoredOrServed(
+            string member)
+        {
+            ConfigureMockedClient(r => true);
+            var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
+                .SetResourceKey("resource_key")
+                .SetCacheSize(10)
+                .SetCacheHitOrMiss(true)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build();
+
+            _jsonResponse =
+                $"{{'device':{{'ismobile':true}},'{member}':'first'}}";
+            using (var first = pipeline.CreateFlowData())
+            {
+                first.AddEvidence("query.User-Agent", "iPhone");
+                first.Process();
+                Assert.IsFalse(first.GetFromElement(engine).CacheHit);
+                StringAssert.Contains(
+                    first.GetFromElement(engine).JsonResponse, "first");
+            }
+
+            _jsonResponse =
+                $"{{'device':{{'ismobile':true}},'{member}':'second'}}";
+            using (var second = pipeline.CreateFlowData())
+            {
+                second.AddEvidence("query.User-Agent", "iPhone");
+                second.Process();
+                Assert.IsFalse(second.GetFromElement(engine).CacheHit,
+                    "A response with a 51Did must not be served from the cache.");
+                var json = second.GetFromElement(engine).JsonResponse;
+                StringAssert.Contains(json, "second");
+                Assert.IsFalse(json.Contains("first"));
+            }
+
+            VerifyJsonRequests(Times.Exactly(2));
+        }
+
+        /// <summary>
+        /// A response without a top-level fodid member is cached as before,
+        /// including one with a fodid member further down.
+        /// </summary>
+        [TestMethod]
+        [DataRow("{'device':{'ismobile':true}}")]
+        [DataRow("{'device':{'fodid':'nested'}}")]
+        public void Cache_ResponseWithoutTopLevelFodid_StillCached(string response)
+        {
+            ConfigureMockedClient(r => true);
+            var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
+                .SetResourceKey("resource_key")
+                .SetCacheSize(10)
+                .SetCacheHitOrMiss(true)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build();
+
+            _jsonResponse = response;
+            for (int i = 0; i < 2; i++)
+            {
+                using (var data = pipeline.CreateFlowData())
+                {
+                    data.AddEvidence("query.User-Agent", "iPhone");
+                    data.Process();
+                    Assert.AreEqual(i == 1, data.GetFromElement(engine).CacheHit);
+                }
+            }
+
+            VerifyJsonRequests(Times.Once());
+        }
+
+        /// <summary>
+        /// With lazy loading and a results cache, Process returns before the
+        /// cloud service answers, and whether the result is cached is decided
+        /// once the answer has arrived. A response without a 51Did is then
+        /// served from the cache, and one with a 51Did is not.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/advanced-features/lazy-loading.md">Specification</see>
+        /// </summary>
+        [TestMethod]
+        [DataRow("{'device':{'ismobile':true}}", true)]
+        [DataRow("{'device':{'ismobile':true},'fodid':'one'}", false)]
+        public void Cache_LazyLoading_ProcessReturnsBeforeTheAnswer(
+            string response, bool hit)
+        {
+            ConfigureMockedClient(r => true);
+            var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
+                .SetResourceKey("resource_key")
+                .SetCacheSize(10)
+                .SetCacheHitOrMiss(true)
+                .SetLazyLoading(new LazyLoadingConfiguration(JsonResponseGateMs))
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build();
+
+            _jsonResponse = response;
+            using (var gate = new ManualResetEventSlim(false))
+            using (var first = pipeline.CreateFlowData())
+            {
+                _jsonResponseGate = gate;
+                first.AddEvidence("query.User-Agent", "iPhone");
+                var process = Task.Run(() => first.Process());
+                var returned = process.Wait(ProcessReturnMs);
+                gate.Set();
+                Assert.IsTrue(returned,
+                    "Process must return before the cloud service answers.");
+                Assert.IsTrue(first.GetFromElement(engine).ProcessTask
+                    .Wait(JsonResponseGateMs));
+                StringAssert.Contains(
+                    first.GetFromElement(engine).JsonResponse, "ismobile");
+            }
+            _jsonResponseGate = null;
+
+            using (var second = pipeline.CreateFlowData())
+            {
+                second.AddEvidence("query.User-Agent", "iPhone");
+                second.Process();
+                Assert.IsTrue(second.GetFromElement(engine).ProcessTask
+                    .Wait(JsonResponseGateMs));
+                Assert.AreEqual(hit, second.GetFromElement(engine).CacheHit,
+                    $"cache hit {(hit ? "should" : "shouldn't")} occur.");
+            }
+
+            VerifyJsonRequests(hit ? Times.Once() : Times.Exactly(2));
+        }
+
+        private void VerifyJsonRequests(Times times)
+        {
+            _handlerMock.Protected().Verify(
+                "SendAsync",
+                times,
+                ItExpr.Is<HttpRequestMessage>(req =>
+                    req.Method == HttpMethod.Post &&
+                    req.RequestUri.AbsolutePath.ToLower().EndsWith("json")),
+                ItExpr.IsAny<CancellationToken>());
+        }
+
+        /// <summary>
         /// Check that a cache hit must short-circuit the
         /// HTTP call entirely. Two identical Process() calls must result in
         /// exactly ONE request reaching the cloud json endpoint. A refactor that
@@ -2559,10 +2712,14 @@ cloudEx.Message, "Exception message did not contain the expected text.");
             else 
             { 
                // Prepare the expected response of the mocked http call
-               setup.ReturnsAsync(() => new HttpResponseMessage()
+               setup.ReturnsAsync(() =>
                 {
-                    StatusCode = _jsonResponseStatus,
-                    Content = new StringContent(_jsonResponse),
+                    _jsonResponseGate?.Wait(JsonResponseGateMs);
+                    return new HttpResponseMessage()
+                    {
+                        StatusCode = _jsonResponseStatus,
+                        Content = new StringContent(_jsonResponse),
+                    };
                 })
                .Verifiable();
             }

@@ -766,6 +766,37 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
+        /// A response with a top-level fodid member, in any letter case,
+        /// holds a 51Did that the cloud service created for the one request,
+        /// so it is never stored in the results cache or served from it.
+        /// Every other response is cached. The response is read without
+        /// waiting, because under lazy loading this runs inside the
+        /// processing task.
+        /// </summary>
+        protected override bool CanCache(CloudRequestData aspectData)
+        {
+            var json = aspectData?.JsonResponseIfSet;
+            if (string.IsNullOrEmpty(json) ||
+                json.IndexOf(
+                    "fodid", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                return true;
+            }
+            try
+            {
+                return JObject.Parse(json).Properties().Any(p =>
+                    string.Equals(
+                        p.Name,
+                        "fodid",
+                        StringComparison.OrdinalIgnoreCase)) == false;
+            }
+            catch (JsonReaderException)
+            {
+                return true;
+            }
+        }
+
+        /// <summary>
         /// The cloud service can repeat a license key in the text of an
         /// answer. A license key must not appear in full in a log entry or
         /// an error message, so this masks it in text from the answer.

@@ -132,6 +132,16 @@ namespace FiftyOne.Did.Cloud.FlowElements
             aspectData.PopulateFrom(device);
         }
 
+        /// <summary>
+        /// Every result holds a 51Did created for one request, so no result
+        /// is stored in a results cache or served from one.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
+        /// </summary>
+        protected override bool CanCache(I51DidData aspectData)
+        {
+            return false;
+        }
+
         /// <inheritdoc/>
         protected override Type GetPropertyType(
             PropertyMetaData propertyMetaData,
