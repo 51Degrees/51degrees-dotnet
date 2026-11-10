@@ -771,12 +771,15 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             var evidence = data.GetEvidence().AsDictionary();
 
             // Add evidence in reverse alphabetical order, excluding special
-            // keys. 
+            // keys, and the web request a web integration adds for usage
+            // sharing, which is an object rather than a value to send.
             AddQueryData(queryData, evidence, evidence
                 .Where(e =>
                     KeyHasPrefix(e, Core.Constants.EVIDENCE_QUERY_PREFIX) == false &&
                     KeyHasPrefix(e, Core.Constants.EVIDENCE_HTTPHEADER_PREFIX) == false &&
-                    KeyHasPrefix(e, Core.Constants.EVIDENCE_COOKIE_PREFIX) == false)
+                    KeyHasPrefix(e, Core.Constants.EVIDENCE_COOKIE_PREFIX) == false &&
+                    string.Equals(e.Key, Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
+                        StringComparison.OrdinalIgnoreCase) == false)
                 .OrderByDescending(e => e.Key));
             // Add cookie evidence.
             AddQueryData(queryData, evidence, evidence
