@@ -1,0 +1,23 @@
+name: Temporary cloud request engine tests
+
+on:
+  push:
+    branches: ['tmp/lko-**']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Test the cloud request engine
+        run: >
+          dotnet test
+          pipeline/Tests/CloudRequestEngine.Tests/FiftyOne.Pipeline.CloudRequestEngine.Tests.csproj
+          -c Release --nologo --logger 'console;verbosity=normal'
