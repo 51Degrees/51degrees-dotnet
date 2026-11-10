@@ -32,7 +32,7 @@ namespace FiftyOne.Pipeline.Web.Shared
     /// evidence, for example 'header.user-agent', which a web integration
     /// adds to evidence as
     /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>.
-    /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/web-integration.md#populating-evidence">Specification</see>
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/features/web-integration.md#populating-evidence">Specification</see>
     /// </summary>
     /// <remarks>
     /// The values are read from the request the first time the view is

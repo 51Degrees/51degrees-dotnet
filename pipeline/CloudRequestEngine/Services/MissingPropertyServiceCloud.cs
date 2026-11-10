@@ -90,8 +90,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Services
 
         private static bool IsCloudRequestFailed(IAspectData aspectData)
         {
-            return aspectData is AspectDataBase aspectDataBase
-                && aspectDataBase.CloudRequestFailed;
+            return aspectData is IAspectDataInternal aspectDataInternal
+                && aspectDataInternal.CloudRequestFailed;
         }
 
         private static MissingPropertyResult BuildCloudRequestFailedResult(string propertyName, IAspectEngine engine)

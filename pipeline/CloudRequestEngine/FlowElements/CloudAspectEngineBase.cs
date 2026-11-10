@@ -30,10 +30,13 @@ using FiftyOne.Pipeline.Engines.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Reflection;
+using System.Threading;
 
 namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 {
@@ -138,6 +141,51 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         private IList<IAspectPropertyMetaData> _aspectProperties;
         private object _aspectPropertiesLock = new object();
         private string _dataSourceTier;
+
+        /// <summary>
+        /// The name-keyed dictionary <see cref="CreateAPVDictionary"/> last
+        /// built, with the meta-data it was built from. Callers pass the
+        /// same meta-data for every request, often as a new copy of
+        /// <see cref="Properties"/>, so the entries are compared rather than
+        /// the list.
+        /// </summary>
+        private Tuple<IElementPropertyMetaData[],
+            Dictionary<string, IElementPropertyMetaData>> _metaDataByName;
+
+        /// <summary>
+        /// What <see cref="CreateAPVDictionary"/> needs to know about each
+        /// property type, worked out by reflection once for each type.
+        /// </summary>
+        private static readonly ConcurrentDictionary<Type, ValueTypeInfo>
+            _valueTypes = new ConcurrentDictionary<Type, ValueTypeInfo>();
+
+        /// <summary>
+        /// A property type's <see cref="AspectPropertyValue{T}"/> type, the
+        /// type of its value, and the setter for its no value message.
+        /// <c>IsAspectPropertyValue</c> is false, and the rest null,
+        /// for a type whose values are not wrapped.
+        /// </summary>
+        private sealed class ValueTypeInfo
+        {
+            public readonly bool IsAspectPropertyValue;
+            public readonly Type GenericType;
+            public readonly Type ValueType;
+            public readonly PropertyInfo NoValueMessage;
+
+            public ValueTypeInfo(Type type)
+            {
+                IsAspectPropertyValue =
+                    typeof(IAspectPropertyValue).IsAssignableFrom(type);
+                if (IsAspectPropertyValue)
+                {
+                    var arguments = type.GetGenericArguments();
+                    GenericType = typeof(AspectPropertyValue<>)
+                        .MakeGenericType(arguments);
+                    ValueType = arguments[0];
+                    NoValueMessage = GenericType.GetProperty("NoValueMessage");
+                }
+            }
+        }
 
         /// <summary>
         /// The 'tier' of the source data used to service this request.
@@ -256,19 +304,23 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 dictionary.Count > 0 &&
                 dictionary.ContainsKey(ElementDataKey))
             {
-                _aspectProperties = new List<IAspectPropertyMetaData>();
-                _dataSourceTier = dictionary[ElementDataKey].DataTier;
-
+                // The list is filled before it is assigned, because
+                // Properties returns the field without the lock, and a
+                // projection cached against a list that was still being
+                // filled would stay partial.
+                var properties = new List<IAspectPropertyMetaData>();
                 foreach (var item in dictionary[ElementDataKey].Properties)
                 {
                     var property = LoadProperty(item);
                     if (property != null)
                     {
-                        _aspectProperties.Add(property);
+                        properties.Add(property);
                     }
                 }
+                _dataSourceTier = dictionary[ElementDataKey].DataTier;
+                _aspectProperties = properties;
 
-                return _aspectProperties.Count > 0;
+                return properties.Count > 0;
             }
             else
             {
@@ -415,9 +467,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 // accesses see CloudRequestFailed instead of the
                 // misleading reasons MissingPropertyService would
                 // otherwise return for missing cloud properties.
-                if (aspectData is AspectDataBase aspectDataBase)
+                if (aspectData is IAspectDataInternal aspectDataInternal)
                 {
-                    aspectDataBase.MarkCloudRequestFailed();
+                    aspectDataInternal.MarkCloudRequestFailed();
                 }
 
                 // Record a non-throwing, non-logging FlowError so the
@@ -496,36 +548,42 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             IReadOnlyList<IElementPropertyMetaData> propertyMetaData)
         {
             if (cloudData == null) throw new ArgumentNullException(nameof(cloudData));
+            if (propertyMetaData == null)
+            {
+                throw new ArgumentNullException(nameof(propertyMetaData));
+            }
 
-            // Convert the meta-data to a dictionary for faster access.
-            var metaDataDictionary = propertyMetaData.ToDictionary(
-                p => p.Name, p => p, 
-                StringComparer.OrdinalIgnoreCase);
+            var metaDataDictionary = GetMetaDataByName(propertyMetaData);
 
             Dictionary<string, object> result = new Dictionary<string, object>();
             // Iterate through all entries in the source data where the
             // key is not suffixed with 'nullreason'.
-            foreach (var property in cloudData
-                .Where(kvp => kvp.Key.EndsWith("nullreason", 
-                    StringComparison.OrdinalIgnoreCase) == false))
+            foreach (var property in cloudData)
             {
+                if (property.Key.EndsWith("nullreason",
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
                 var outputValue = property.Value;
 
                 if (metaDataDictionary.TryGetValue(property.Key, out IElementPropertyMetaData metaData) == true)
                 {
-                    if (typeof(IAspectPropertyValue).IsAssignableFrom(metaData.Type))
+                    var typeInfo = _valueTypes.GetOrAdd(
+                        metaData.Type, t => new ValueTypeInfo(t));
+                    if (typeInfo.IsAspectPropertyValue)
                     {
                         // If this property has a type of AspectPropertyValue
                         // then create a new instance and populate it.
-                        var apvType = typeof(AspectPropertyValue<>);
-                        var genericType = apvType.MakeGenericType(metaData.Type.GetGenericArguments());
+                        var genericType = typeInfo.GenericType;
                         object obj = Activator.CreateInstance(genericType);
                         var apv = obj as IAspectPropertyValue;
                         if (property.Value != null)
                         {
                             var newValue = property.Value;
                             // TODO - Replace this with a more generalized type factory.
-                            var valueType = metaData.Type.GetGenericArguments()[0];
+                            var valueType = typeInfo.ValueType;
                             if (valueType == typeof(JavaScript))
                             {
                                 newValue = new JavaScript(newValue.ToString());
@@ -543,7 +601,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                             // We need to set the no value message with 
                             // reflection as the property is read only 
                             // through the interface.
-                            var messageProperty = genericType.GetProperty("NoValueMessage");
+                            var messageProperty = typeInfo.NoValueMessage;
                             if (cloudData.TryGetValue(property.Key + "nullreason", out object nullreason))
                             {
                                 messageProperty.SetValue(apv, nullreason);
@@ -565,6 +623,49 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 result.Add(property.Key, outputValue);
             }
             return result;
+        }
+
+        /// <summary>
+        /// The meta-data keyed by name, ignoring case, made again only when
+        /// the entries differ from the last call's.
+        /// </summary>
+        /// <param name="propertyMetaData">The meta-data.</param>
+        /// <returns>A dictionary that must not be changed.</returns>
+        private Dictionary<string, IElementPropertyMetaData> GetMetaDataByName(
+            IReadOnlyList<IElementPropertyMetaData> propertyMetaData)
+        {
+            var cached = Volatile.Read(ref _metaDataByName);
+            if (cached != null && SameEntries(cached.Item1, propertyMetaData))
+            {
+                return cached.Item2;
+            }
+            var entries = propertyMetaData.ToArray();
+            var byName = entries.ToDictionary(
+                p => p.Name, p => p,
+                StringComparer.OrdinalIgnoreCase);
+            Volatile.Write(ref _metaDataByName, Tuple.Create(entries, byName));
+            return byName;
+        }
+
+        /// <summary>
+        /// True if the list holds the same instances, in the same order.
+        /// </summary>
+        private static bool SameEntries(
+            IElementPropertyMetaData[] entries,
+            IReadOnlyList<IElementPropertyMetaData> list)
+        {
+            if (entries.Length != list.Count)
+            {
+                return false;
+            }
+            for (var i = 0; i < entries.Length; i++)
+            {
+                if (ReferenceEquals(entries[i], list[i]) == false)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /// <summary>

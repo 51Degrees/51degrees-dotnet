@@ -63,6 +63,18 @@ namespace FiftyOne.Pipeline.Web.Framework
         public bool SetHeaderPropertiesEnabled => _options.UseSetHeaderProperties;
 
         /// <summary>
+        /// The path of the request that is answered with the client-side
+        /// JavaScript.
+        /// </summary>
+        public string JavaScriptPath => _options.JavaScriptPath;
+
+        /// <summary>
+        /// The path of the request that is answered with the client-side
+        /// JSON.
+        /// </summary>
+        public string JsonPath => _options.JsonPath;
+
+        /// <summary>
         /// Extra pipeline options which only apply to an implementation in a
         /// web server.
         /// </summary>
@@ -125,12 +137,21 @@ namespace FiftyOne.Pipeline.Web.Framework
                     StringComparison.OrdinalIgnoreCase) >= 0);
             if (sequenceConfig.Any() == false)
             {
-                // The sequence element is not included so add it.
-                // Make sure it's added as the first element.
-                _options.Elements.Insert(0, new ElementOptions()
+                if (_options.SequenceElementEnabled)
                 {
-                    BuilderName = nameof(SequenceElement)
-                });
+                    // The sequence element is not included so add it.
+                    // Make sure it's added as the first element.
+                    _options.Elements.Insert(0, new ElementOptions()
+                    {
+                        BuilderName = nameof(SequenceElement)
+                    });
+                }
+                else if (ClientSideEvidenceEnabled)
+                {
+                    // The JSON builder fails without a sequence number.
+                    throw new PipelineConfigurationException(
+                        Messages.ExceptionNoSequenceElement);
+                }
             }
 
             if (ClientSideEvidenceEnabled)
@@ -170,10 +191,19 @@ namespace FiftyOne.Pipeline.Web.Framework
                 if (jsIndex == -1)
                 {
                     // The javascript builder is not included so add it.
-                    _options.Elements.Add(new ElementOptions()
+                    var javaScriptOptions = new ElementOptions()
                     {
                         BuilderName = nameof(JavaScriptBuilderElement)
-                    });
+                    };
+                    // The script must call back to the path that is
+                    // intercepted.
+                    if (JsonPath !=
+                        PipelineWebIntegrationOptions.DefaultJsonPath)
+                    {
+                        javaScriptOptions.BuildParameters["Endpoint"] =
+                            JsonPath;
+                    }
+                    _options.Elements.Add(javaScriptOptions);
                 }
             }
 
@@ -181,7 +211,8 @@ namespace FiftyOne.Pipeline.Web.Framework
             var setHeadersConfig = _options.Elements.Where(e =>
                 e.BuilderName.IndexOf(nameof(SetHeadersElement),
                     StringComparison.OrdinalIgnoreCase) >= 0);
-            if (setHeadersConfig.Any() == false)
+            if (setHeadersConfig.Any() == false &&
+                _options.SetHeadersElementEnabled)
             {
                 // The set headers element is not included, so add it.
                 // Make sure it's added as the last element.
@@ -468,19 +499,19 @@ namespace FiftyOne.Pipeline.Web.Framework
             }
 
             /// <summary>
-            /// Add the session object and each session value. A filler that
-            /// keeps every value names them with the 'session' prefix, so
-            /// the usage sharing rule for session values applies to them.
-            /// A filler for a flow data keeps the names it has always used.
+            /// Add the session object and each session value, named with
+            /// the 'session' prefix so the usage sharing rule for session
+            /// values applies to them.
             /// </summary>
             /// <param name="session">The session to read.</param>
             public void AddSessionToEvidence(HttpSessionStateBase session)
             {
-                var prefix = _values != null ?
+                const string prefix =
                     Core.Constants.EVIDENCE_SESSION_PREFIX +
-                        Core.Constants.EVIDENCE_SEPERATOR :
-                    "";
-                CheckAndAdd(prefix + "session", new AspFrameworkSession(session));
+                    Core.Constants.EVIDENCE_SEPERATOR;
+                CheckAndAdd(
+                    Core.Constants.EVIDENCE_SESSION_KEY,
+                    new AspFrameworkSession(session));
                 CheckAndAddAll(prefix, session.Keys, (k) => session[k]);
             }
 

@@ -50,6 +50,22 @@
         "UseSetHeaderProperties": {
             "type": "boolean",
             "description": "Enable/Disable automatic setting of HTTP header properties (web integration only)"
+        },
+        "SequenceElementEnabled": {
+            "type": "boolean",
+            "description": "Add the Sequence Element when it is not in the elements (web integration only)"
+        },
+        "SetHeadersElementEnabled": {
+            "type": "boolean",
+            "description": "Add the Set Headers Element when it is not in the elements (web integration only)"
+        },
+        "JavaScriptPath": {
+            "type": "string",
+            "description": "Path that is answered with the client-side JavaScript. Defaults to /51Degrees.core.js (web integration only)"
+        },
+        "JsonPath": {
+            "type": "string",
+            "description": "Path that is answered with the client-side JSON. Defaults to /51dpipeline/json (web integration only)"
         }
       },
       "required": [ "Elements" ],

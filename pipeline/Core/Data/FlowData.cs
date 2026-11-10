@@ -67,9 +67,11 @@ namespace FiftyOne.Pipeline.Core.Data
         private ILogger<FlowData> _logger;
 
         /// <summary>
-        /// Lock to use when adding element data.
+        /// Lock to use when adding element data. Created only for a
+        /// concurrent pipeline, which is also when <see cref="_data"/> is
+        /// the concurrent map, and null otherwise.
         /// </summary>
-        private object _dataLock = new object();
+        private readonly object _dataLock;
 
         /// <summary>
         /// The errors that have occurred during processing
@@ -117,14 +119,37 @@ namespace FiftyOne.Pipeline.Core.Data
         /// </summary>
         public bool Stop
         {
-            get => _stopTokenSource.IsCancellationRequested;
+            get => Volatile.Read(ref _stop) != 0 ||
+                _cancellationToken.IsCancellationRequested;
             set
             {
                 // Cancellation is one-way; setting false is a no-op.
                 if (value && disposedValue == false)
                 {
-                    CancelStopSource();
+                    SetStop();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Sets the stop flag, then cancels the stop token source if one
+        /// has been created.
+        /// </summary>
+        /// <remarks>
+        /// The source is created the first time <see cref="StopToken"/> is
+        /// read, which can be on another thread at the same moment. This
+        /// thread writes the flag and then reads the source, and that one
+        /// publishes the source and then reads the flag. Both writes are
+        /// full fences, so at least one thread sees the other's write and
+        /// cancels the source.
+        /// </remarks>
+        private void SetStop()
+        {
+            Interlocked.Exchange(ref _stop, 1);
+            var source = Volatile.Read(ref _stopTokenSource);
+            if (source != null)
+            {
+                CancelStopSource(source);
             }
         }
 
@@ -134,11 +159,11 @@ namespace FiftyOne.Pipeline.Core.Data
         /// the window after the dispose guard was checked. Stopping a disposed
         /// flow data is a no-op rather than an error.
         /// </summary>
-        private void CancelStopSource()
+        private static void CancelStopSource(CancellationTokenSource source)
         {
             try
             {
-                _stopTokenSource.Cancel();
+                source.Cancel();
             }
             catch (ObjectDisposedException)
             {
@@ -147,30 +172,81 @@ namespace FiftyOne.Pipeline.Core.Data
         }
 
         /// <summary>
-        /// Source for the cancellation token that stops processing of this
-        /// flow data. Linked to the token passed to the constructor.
+        /// The token passed to the constructor.
         /// </summary>
-        private readonly CancellationTokenSource _stopTokenSource;
+        private readonly CancellationToken _cancellationToken;
 
         /// <summary>
-        /// Cancellation token captured from <see cref="_stopTokenSource"/>.
-        /// Captured in the constructor so it stays readable (and truthful)
-        /// after the source has been disposed.
+        /// 1 once this flow data has been told to stop, by
+        /// <see cref="Stop"/> or by a token given to
+        /// <see cref="SetStopToken"/>. Read with <see cref="Volatile"/> and
+        /// written with <see cref="Interlocked"/>.
         /// </summary>
-        private readonly CancellationToken _stopToken;
+        private int _stop;
+
+        /// <summary>
+        /// Source for <see cref="StopToken"/>, linked to the token passed to
+        /// the constructor. Created the first time the token is read,
+        /// because most flow data never reads it.
+        /// </summary>
+        private CancellationTokenSource _stopTokenSource;
 
         /// <summary>
         /// Registration created by <see cref="SetStopToken"/> so it can be
         /// disposed with this flow data, preventing a leak / callback into a
-        /// disposed token source when an external token is later cancelled.
+        /// disposed flow data when an external token is later cancelled.
         /// </summary>
         private CancellationTokenRegistration _stopTokenRegistration;
 
         /// <summary>
         /// The token that is cancelled when processing of this flow data
-        /// should stop.
+        /// should stop. It stays readable after this flow data is disposed,
+        /// and is cancelled then if the flow data had been stopped.
         /// </summary>
-        public CancellationToken StopToken => _stopToken;
+        public CancellationToken StopToken
+        {
+            get
+            {
+                var source = Volatile.Read(ref _stopTokenSource);
+                if (source != null)
+                {
+                    return source.Token;
+                }
+                if (disposedValue)
+                {
+                    // A source created now could never be disposed.
+                    return Stop
+                        ? new CancellationToken(true)
+                        : CancellationToken.None;
+                }
+                return CreateStopTokenSource().Token;
+            }
+        }
+
+        /// <summary>
+        /// Creates and publishes the source for <see cref="StopToken"/>, or
+        /// returns the one another thread published first. See
+        /// <see cref="SetStop"/> for why the flag is read after publishing.
+        /// </summary>
+        private CancellationTokenSource CreateStopTokenSource()
+        {
+            var created = _cancellationToken.CanBeCanceled
+                ? CancellationTokenSource.CreateLinkedTokenSource(
+                    _cancellationToken)
+                : new CancellationTokenSource();
+            var published = Interlocked.CompareExchange(
+                ref _stopTokenSource, created, null);
+            if (published != null)
+            {
+                created.Dispose();
+                return published;
+            }
+            if (Volatile.Read(ref _stop) != 0)
+            {
+                CancelStopSource(created);
+            }
+            return created;
+        }
 
         /// <summary>
         /// Get a filter that will only include the evidence keys that can 
@@ -209,10 +285,11 @@ namespace FiftyOne.Pipeline.Core.Data
         {
             _logger = logger;
             PipelineInternal = pipeline;
-            _data = new TypedKeyMap(pipeline?.IsConcurrent ?? false);
+            var concurrent = pipeline?.IsConcurrent ?? false;
+            _data = new TypedKeyMap(concurrent);
+            _dataLock = concurrent ? new object() : null;
             _evidence = evidence;
-            _stopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            _stopToken = _stopTokenSource.Token;
+            _cancellationToken = cancellationToken;
 
             if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
             {
@@ -229,8 +306,7 @@ namespace FiftyOne.Pipeline.Core.Data
         /// <param name="stopToken">The token that triggers the stop.</param>
         public void SetStopToken(CancellationToken stopToken)
         {
-            // Guard against dispose so this never throws
-            // ObjectDisposedException from Cancel().
+            // Stopping a disposed flow data does nothing.
             if (disposedValue)
             {
                 return;
@@ -241,14 +317,15 @@ namespace FiftyOne.Pipeline.Core.Data
             _stopTokenRegistration = default;
             if (stopToken.IsCancellationRequested)
             {
-                CancelStopSource();
+                SetStop();
                 return;
             }
             // Keep the registration so it can be disposed with this flow data.
             // Without this, cancelling a long-lived external token after this
-            // flow data is disposed would call back into the disposed source.
+            // flow data is disposed would call back into the disposed flow
+            // data.
             _stopTokenRegistration = stopToken.Register(
-                o => ((CancellationTokenSource)o).Cancel(), _stopTokenSource);
+                o => ((FlowData)o).SetStop(), this);
         }
 
         /// <summary>
@@ -450,16 +527,17 @@ namespace FiftyOne.Pipeline.Core.Data
                     foreach (var property in
                         element.Properties.Where(predicate).Where(i =>
                             i.Available &&
-                            // Check if the property is actually present in 
+                            // Check if the property is actually present in
                             // the element data before trying to access it.
                             elementDataDictionary.ContainsKey(i.Name)))
                     {
 #pragma warning disable CA1308 // Normalize strings to uppercase
-                        // Pipeline specification is for keys to be lower-case.      
-                        yield return new KeyValuePair<string, object>(
-                            element.ElementDataKey + "." + property.Name.ToLowerInvariant(),
-                            elementDataDictionary[property.Name.ToLowerInvariant()]);
+                        // Pipeline specification is for keys to be lower-case.
+                        var name = property.Name.ToLowerInvariant();
 #pragma warning restore CA1308 // Normalize strings to uppercase
+                        yield return new KeyValuePair<string, object>(
+                            element.ElementDataKey + "." + name,
+                            elementDataDictionary[name]);
                     }
                 }
             }
@@ -862,7 +940,7 @@ namespace FiftyOne.Pipeline.Core.Data
             object data;
             if (_data.AsStringKeyDictionary().TryGetValue(elementDataKey, out data) == false)
             {
-                if (Pipeline.IsConcurrent == true)
+                if (_dataLock != null)
                 {
                     lock (_dataLock)
                     {
@@ -924,7 +1002,7 @@ namespace FiftyOne.Pipeline.Core.Data
             T data = default(T);
             if (_data.TryGetValue(key, out data) == false)
             {
-                if (Pipeline.IsConcurrent == true)
+                if (_dataLock != null)
                 {
                     lock (_dataLock)
                     {
@@ -990,16 +1068,69 @@ namespace FiftyOne.Pipeline.Core.Data
                 throw new ArgumentNullException(nameof(filter));
             }
 
+            // The included evidence, sorted in one list by the filter's
+            // order and then by key. Entries that still compare equal keep
+            // the order they were found in.
             var evidence = _evidence.AsDictionary();
-            // We could use DataKeyBuilder here but instead use Linq
-            // directly for better performance.
-            return new DataKey(evidence
-                .Where(e => filter.Include(e.Key))
-                .OrderBy(e => filter.Order(e.Key))
-                    .ThenBy(e => e.Key)
-                .Select(e => e.Value)
-                .ToList());
+            var entries = new List<KeyEntry>(evidence.Count);
+            foreach (var entry in evidence)
+            {
+                if (filter.Include(entry.Key))
+                {
+                    entries.Add(new KeyEntry(
+                        filter.Order(entry.Key),
+                        entry.Key,
+                        entry.Value,
+                        entries.Count));
+                }
+            }
+            entries.Sort(CompareKeyEntries);
+            var values = new List<object>(entries.Count);
+            foreach (var entry in entries)
+            {
+                values.Add(entry.Value);
+            }
+            return new DataKey(values);
         }
+
+        /// <summary>
+        /// One evidence entry included in a key, with its place in the key's
+        /// order.
+        /// </summary>
+        private struct KeyEntry
+        {
+            public readonly int? Order;
+            public readonly string Key;
+            public readonly object Value;
+            public readonly int Index;
+
+            public KeyEntry(int? order, string key, object value, int index)
+            {
+                Order = order;
+                Key = key;
+                Value = value;
+                Index = index;
+            }
+        }
+
+        /// <summary>
+        /// Orders entries as OrderBy on the filter's order then ThenBy on
+        /// the key does, with the default comparers those use.
+        /// </summary>
+        private static readonly Comparison<KeyEntry> CompareKeyEntries =
+            (a, b) =>
+            {
+                var result = Nullable.Compare(a.Order, b.Order);
+                if (result == 0)
+                {
+                    result = Comparer<string>.Default.Compare(a.Key, b.Key);
+                }
+                if (result == 0)
+                {
+                    result = a.Index.CompareTo(b.Index);
+                }
+                return result;
+            };
 
         /// <summary>
         /// Dispose
@@ -1027,7 +1158,7 @@ namespace FiftyOne.Pipeline.Core.Data
                     // Unregister from the external token (if any) before
                     // disposing the source it would call back into.
                     _stopTokenRegistration.Dispose();
-                    _stopTokenSource.Dispose();
+                    Volatile.Read(ref _stopTokenSource)?.Dispose();
                 }
 
                 disposedValue = true;

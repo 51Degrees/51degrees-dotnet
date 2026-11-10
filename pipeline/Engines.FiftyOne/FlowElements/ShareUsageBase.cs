@@ -266,7 +266,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// the evidence and the values of the web request that a web
         /// integration adds as
         /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>.
-        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
         /// </summary>
         public override IEvidenceKeyFilter EvidenceKeyFilter
         {
@@ -1037,8 +1037,19 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                     }
                     else
                     {
-                        writer.WriteElementString(EncodeInvalidXMLChars(entry.Key, ref flagBadSchema),
-                            EncodeInvalidXMLChars(entry.Value, ref flagBadSchema));
+                        // A key starting with the separator has an empty prefix,
+                        // so the field after it names the element, as an
+                        // element name cannot start with a '.'.
+                        var name = entry.Key.StartsWith(
+                            Core.Constants.EVIDENCE_SEPERATOR,
+                            StringComparison.Ordinal) ?
+                            entry.Key.Substring(
+                                Core.Constants.EVIDENCE_SEPERATOR.Length) :
+                            entry.Key;
+                        writer.WriteElementString(
+                            EncodeInvalidXMLChars(name, ref flagBadSchema),
+                            EncodeInvalidXMLChars(
+                                entry.Value, ref flagBadSchema));
                     }
                 }
             }
@@ -1156,18 +1167,29 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             {
                 flagBadSchema = true;
                 var tmp = new StringBuilder();
-                foreach (var c in text)
+                for (var i = 0; i < text.Length; i++)
                 {
-                    if (XmlConvert.IsXmlChar(c))
+                    var c = text[i];
+                    if (char.IsHighSurrogate(c) &&
+                        i + 1 < text.Length &&
+                        char.IsLowSurrogate(text[i + 1]))
+                    {
+                        // A surrogate pair is one allowed character.
+                        tmp.Append(c);
+                        tmp.Append(text[++i]);
+                    }
+                    else if (XmlConvert.IsXmlChar(c))
                     {
                         tmp.Append(c);
                     }
                     else
                     {
-                        tmp.Append("\\x" + Convert.ToByte(c).ToString("x4", 
+                        // Control characters, U+FFFE, U+FFFF and surrogates
+                        // with no partner, as four lowercase hex digits.
+                        tmp.Append("\\x" + ((int)c).ToString("x4",
                             CultureInfo.InvariantCulture));
                     }
-                };
+                }
 
                 return tmp.ToString();
             }

@@ -25,6 +25,7 @@ using FiftyOne.Pipeline.Core.FailHandling.Facade;
 using FiftyOne.Pipeline.Core.FailHandling.Recovery;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Core.Services;
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FlowElements;
 using Microsoft.Extensions.Logging;
@@ -589,7 +590,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     catch (Exception ex)
                     when (!(ex is CloudRequestEngineTemporarilyUnavailableException))
                     {
-                        requestScope.RecordFailure(ex);
+                        if (CountsTowardsRecovery(ex))
+                        {
+                            requestScope.RecordFailure(ex);
+                        }
                         throw;
                     }
                 }
@@ -599,6 +603,22 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             {
                 throw ResurfaceCloudException(originalCloudException, ex);
             }
+        }
+
+        /// <summary>
+        /// Whether a failure says the cloud service is in trouble, so that
+        /// it counts towards the recovery period every request shares. A
+        /// request that did not complete, a status of 500 or more, a 429
+        /// and a success status with a body that could not be used all do.
+        /// Any other status from 400 to 499 answers the content of that
+        /// one request, so it does not.
+        /// </summary>
+        private static bool CountsTowardsRecovery(Exception exception)
+        {
+            return !(exception is CloudRequestException cloudException &&
+                cloudException.HttpStatusCode >= 400 &&
+                cloudException.HttpStatusCode <= 499 &&
+                cloudException.HttpStatusCode != 429);
         }
 
         private CloudRequestException ResurfaceCloudException(
@@ -680,8 +700,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 if (hasErrors)
                 {
                     var errors = jObj.Value<JArray>("errors");
-                    messages.AddRange(errors.Children<JValue>().Select(t => 
-                        t.Value.ToString()));
+                    messages.AddRange(errors.Children<JValue>().Select(t =>
+                        MaskLicenseKey(t.Value.ToString())));
                 }
 
                 // Log any warnings that were returned.
@@ -689,7 +709,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 {
                     var warnings = jObj.Value<JArray>("warnings");
                     foreach (var warning in warnings.Children<JValue>()
-                        .Select(t => t.Value.ToString()))
+                        .Select(t => MaskLicenseKey(t.Value.ToString())))
                     {
                         Logger?.LogWarning(warning);
                     }
@@ -716,7 +736,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     Messages.MessageErrorCodeReturned,
                     _endpointsAndKeys.DataEndpoint,
                     response.StatusCode,
-                    jsonResult);
+                    MaskLicenseKey(jsonResult));
                 messages.Add(msg);
             }
 
@@ -744,6 +764,16 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
             return jsonResult;
         }
+
+        /// <summary>
+        /// The cloud service can repeat a license key in the text of an
+        /// answer. A license key must not appear in full in a log entry or
+        /// an error message, so this masks it in text from the answer.
+        /// The key is sent in the body of the request and not in a URL, so
+        /// the messages of the HTTP library hold no key.
+        /// </summary>
+        private string MaskLicenseKey(string text) =>
+            LicenseKeyMask.MaskText(text, new[] { _endpointsAndKeys.LicenseKey });
 
         /// <summary>
         /// Generate the Content to send in the POST request. The evidence keys

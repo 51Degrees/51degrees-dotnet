@@ -188,18 +188,39 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 {
                     if (Validate(value, data))
                     {
-                        if (propertyIndex.ValueData.TryGetValue(
-                            value,
-                            out var results))
+                        foreach (var result in GetProfileIds(
+                            propertyIndex,
+                            value))
                         {
-                            foreach (var result in results)
-                            {
-                                ProcessProfileMatch(data, aspectData, result);
-                            }
+                            ProcessProfileMatch(data, aspectData, result);
                         }
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Get the ids of the profiles holding a value of an indexed
+        /// property. By default they come from the index in
+        /// <see cref="DataSet"/>.
+        /// </summary>
+        /// <param name="propertyIndex">The index of the property</param>
+        /// <param name="value">The value of the property</param>
+        /// <returns>
+        /// The ids of the profiles holding the value, which is empty when
+        /// none does
+        /// </returns>
+        protected virtual IEnumerable<uint> GetProfileIds(
+            PropertyKeyedIndex propertyIndex,
+            string value)
+        {
+            if (propertyIndex == null)
+            {
+                throw new ArgumentNullException(nameof(propertyIndex));
+            }
+            return propertyIndex.ValueData.TryGetValue(value, out var results)
+                ? (IEnumerable<uint>)results
+                : Array.Empty<uint>();
         }
 
         /// <inheritdoc/>

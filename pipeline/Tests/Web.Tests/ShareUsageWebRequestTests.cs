@@ -49,7 +49,7 @@ namespace FiftyOne.Pipeline.Web.Tests;
 /// usage sharing element, which accepts no evidence itself, so the
 /// client-side endpoint's ETag does not depend on headers such as
 /// If-None-Match.
-/// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/web-integration.md#populating-evidence">Specification</see>
+/// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/features/web-integration.md#populating-evidence">Specification</see>
 /// </summary>
 [TestClass]
 public class ShareUsageWebRequestTests
