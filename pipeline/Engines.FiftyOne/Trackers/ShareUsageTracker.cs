@@ -20,6 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.Caching;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Engines.Configuration;
 using FiftyOne.Pipeline.Engines.FiftyOne.Data;
@@ -31,9 +32,41 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
     /// <summary>
     /// A tracker used by share usage to attempt to avoid repeatedly 
     /// sending data relating to the same user session.
+    /// Evidence that matches an entry is shared again once the interval
+    /// has passed since it was last shared, so a repeat is shared at most
+    /// once in each interval.
     /// </summary>
     public class ShareUsageTracker : TrackerBase<DateTime?>
     {
+        /// <summary>
+        /// When evidence was last shared. The cache keeps the first value
+        /// it is given for a key, so the time is held here and changed in
+        /// place when a repeat is shared.
+        /// </summary>
+        private sealed class SharedTime
+        {
+            /// <summary>
+            /// A boxed time or null, so that reads and writes are atomic.
+            /// </summary>
+            private volatile object _time;
+
+            internal SharedTime(DateTime? time)
+            {
+                _time = time;
+            }
+
+            internal DateTime? Time
+            {
+                get => (DateTime?)_time;
+                set => _time = value;
+            }
+        }
+
+        /// <summary>
+        /// The time each entry was last shared.
+        /// </summary>
+        private readonly IPutCache<DataKey, SharedTime> _sharedTimes;
+
         /// <summary>
         /// The filter that defines which evidence keys to use in the 
         /// tracker.
@@ -41,7 +74,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
         private IEvidenceKeyFilter _filter;
 
 		/// <summary>
-		/// 
+		/// How long after evidence is shared a repeat is not shared.
 		/// </summary>
 		private TimeSpan _interval;
 
@@ -57,18 +90,113 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
         /// values to use when creating a key from an <see cref="IFlowData"/>.
         /// </param>
         /// <param name="interval">
-        /// The tracker will return a match and update the matching entry 
-        /// if it is younger than this time interval.
-        /// If it is older then it will not return a match.
+        /// How long after evidence is shared a repeat of it is not shared.
+        /// A repeat after this interval is shared, and starts a new one.
         /// </param>
         public ShareUsageTracker(
             CacheConfiguration configuration,
 			TimeSpan interval,
             IEvidenceKeyFilter filter) 
-            : base(configuration)
+            : base(Smallest(configuration))
         {
 			_interval = interval;
             _filter = filter;
+            _sharedTimes = configuration.Builder.Build<DataKey, SharedTime>(
+                configuration.Size) as IPutCache<DataKey, SharedTime>;
+        }
+
+        /// <summary>
+        /// The base class builds a cache that this tracker never reads, as
+        /// the times are held in the shared times field, so it is given
+        /// the smallest cache.
+        /// </summary>
+        private static CacheConfiguration Smallest(
+            CacheConfiguration configuration)
+        {
+            if (configuration == null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
+            return new CacheConfiguration()
+            {
+                Builder = configuration.Builder,
+                Size = 1
+            };
+        }
+
+        /// <summary>
+        /// Keeps the check of a repeat and the storing of the time it is
+        /// shared as one step, so that evidence tracked by several threads
+        /// at once is shared once.
+        /// </summary>
+        private readonly object _trackLock = new object();
+
+        /// <summary>
+        /// Track the specified <see cref="IFlowData"/> instance.
+        /// </summary>
+        /// <param name="data">
+        /// The <see cref="IFlowData"/> to track.
+        /// </param>
+        /// <returns>
+        /// True if the evidence is new or was last shared at least the
+        /// interval ago, false otherwise.
+        /// </returns>
+        public override bool Track(IFlowData data)
+        {
+            lock (_trackLock)
+            {
+                return base.Track(data);
+            }
+        }
+
+        /// <summary>
+        /// Get the time the evidence in the supplied data was last shared.
+        /// </summary>
+        /// <param name="data">
+        /// The <see cref="IFlowData"/> to use as a key.
+        /// </param>
+        /// <returns>
+        /// The time, or null if the evidence is not in the tracker.
+        /// </returns>
+#pragma warning disable CA1043 // Use Integral Or String Argument For Indexers
+        public override DateTime? this[IFlowData data]
+#pragma warning restore CA1043 // Use Integral Or String Argument For Indexers
+        {
+            get
+            {
+                if (data == null)
+                {
+                    throw new ArgumentNullException(nameof(data));
+                }
+                return _sharedTimes[GenerateKey(data)]?.Time;
+            }
+        }
+
+        /// <summary>
+        /// Set the time the evidence in the supplied data was last shared.
+        /// </summary>
+        /// <param name="data">
+        /// The <see cref="IFlowData"/> to use as a key.
+        /// </param>
+        /// <param name="value">
+        /// The time to store.
+        /// </param>
+        public override void Put(IFlowData data, DateTime? value)
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+            var key = GenerateKey(data);
+            var existing = _sharedTimes[key];
+            if (existing == null)
+            {
+                _sharedTimes.Put(key, new SharedTime(value));
+            }
+            else
+            {
+                existing.Time = value;
+            }
         }
 
         /// <summary>
@@ -126,18 +254,19 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
         /// The flow data
         /// </param>
         /// <param name="value">
-        /// The meta-data value associated with the flow data in the tracker.
+        /// The time the evidence was last shared.
         /// </param>
         /// <returns>
-        /// Boolean - if tracked values age is less than the period set by 
-        /// <see cref="_interval"/> then return true and update. Else if older 
-        /// then consider new and return false.
+        /// True if the interval has passed since the evidence was last
+        /// shared, in which case the time it is shared now is stored.
+        /// False otherwise.
         /// </returns>
         protected override bool Match(IFlowData data, DateTime? value)
         {
-			var now = DateTime.Now;
+			var now = DateTime.UtcNow;
 			if (value <= (now - _interval))
 			{
+				Put(data, now);
 				return true;
 			}
 			else
@@ -152,12 +281,27 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
         /// The <see cref="IFlowData"/> that is being added to the tracker.
         /// </param>
         /// <returns>
-        /// True as the meta-data holds no extra detail for this tracker.
+        /// The time now, as the evidence is about to be shared.
         /// </returns>
         protected override DateTime? NewValue(IFlowData data)
         {
-            // Stored meta-data values for this tracker are always true.
-            return DateTime.Now;
+            return DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// Dispose of the caches holding the entries.
+        /// </summary>
+        /// <param name="disposing">
+        /// True if this is called from the Dispose method.
+        /// False if it is called from the finalizer.
+        /// </param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _sharedTimes.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }
