@@ -24,6 +24,7 @@ using FiftyOne.Pipeline.Core.Configuration;
 using FiftyOne.Pipeline.Core.Exceptions;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace FiftyOne.Pipeline.Web.Shared
@@ -88,9 +89,12 @@ namespace FiftyOne.Pipeline.Web.Shared
                             if (string.IsNullOrEmpty(resolved))
                             {
                                 throw new PipelineConfigurationException(
-                                    "The web application root could not " +
-                                    $"be applied to '{path}', the value " +
-                                    $"of '{key}'.");
+                                    string.Format(
+                                        CultureInfo.InvariantCulture,
+                                        Messages
+                                        .ExceptionApplicationRootNotApplied,
+                                        path,
+                                        key));
                             }
                             parameters[key] = resolved;
                         }
