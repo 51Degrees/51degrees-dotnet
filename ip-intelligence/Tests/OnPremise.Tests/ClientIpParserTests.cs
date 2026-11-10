@@ -42,10 +42,6 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests
         [DataRow("1.2.3.4", "1.2.3.4", "1.2.3.4")]
         [DataRow("2001:db8::1", "2001:db8::1", "2001:db8::1")]
         [DataRow("2001:DB8::1", "2001:db8::1", "2001:db8::1")]
-        // A shape .NET accepts but the native engine's parser rejects: the
-        // canonical text is what keeps it usable. The zone index is
-        // stripped, as it has no meaning to a lookup.
-        [DataRow("fe80::1%1", "fe80::1", "fe80::1")]
         // IPv4 with a port.
         [DataRow("82.132.237.238:34947", "82.132.237.238", "82.132.237.238")]
         [DataRow("1.2.3.4:0", "1.2.3.4", "1.2.3.4")]
@@ -53,12 +49,6 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests
         // Bracketed IPv6, with and without a port.
         [DataRow("[2001:db8::1]:443", "2001:db8::1", "2001:db8::1")]
         [DataRow("[2001:db8::1]", "2001:db8::1", "2001:db8::1")]
-        // Forwarded list - first entry, trimmed.
-        [DataRow("1.2.3.4, 5.6.7.8", "1.2.3.4", "1.2.3.4")]
-        [DataRow(" 2001:db8::1 , 5.6.7.8", "2001:db8::1", "2001:db8::1")]
-        [DataRow("82.132.237.238:34947, 10.0.0.1", "82.132.237.238", "82.132.237.238")]
-        // Surrounding whitespace.
-        [DataRow(" 1.2.3.4 ", "1.2.3.4", "1.2.3.4")]
         public void TryParse_ValidValue_ReturnsAddress(
             string rawValue,
             string expectedAddress,
@@ -110,9 +100,31 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests
         [DataRow("[::ffff:8.8.8.8]443")]
         [DataRow("[::ffff:8.8.8.8]:")]
         [DataRow("[::ffff:8.8.8.8]:65536")]
-        // A list whose first entry is empty is not rescued by later entries;
-        // the first entry is the client, and it is missing.
+        // A list is not one address, and no entry of it is read.
         [DataRow(", 1.2.3.4")]
+        [DataRow("1.2.3.4, 5.6.7.8")]
+        [DataRow("203.0.113.1, 198.51.100.7")]
+        [DataRow(" 2001:db8::1 , 5.6.7.8")]
+        [DataRow("82.132.237.238:34947, 10.0.0.1")]
+        [DataRow("::ffff:8.8.8.8, 5.6.7.8")]
+        [DataRow("[::ffff:8.8.8.8]:443, 5.6.7.8")]
+        // A space, tab or line ending before or after the address.
+        [DataRow(" 1.2.3.4 ")]
+        [DataRow("203.0.113.1 ")]
+        [DataRow(" 203.0.113.1")]
+        [DataRow("203.0.113.1\t")]
+        [DataRow("203.0.113.1\r\n")]
+        [DataRow(" ::ffff:8.8.8.8 , 2001:db8::1")]
+        // Text after the address, and a prefix length.
+        [DataRow("203.0.113.1 x")]
+        [DataRow("203.0.113.0/24")]
+        // A zone index, in any form, is refused whole.
+        [DataRow("fe80::1%1")]
+        [DataRow("fe80::1%eth0")]
+        [DataRow("[fe80::1%eth0]:80")]
+        [DataRow("[fe80::1%25eth0]")]
+        [DataRow("::ffff:8.8.8.8%1")]
+        [DataRow("[::ffff:8.8.8.8%1]:443")]
         public void TryParse_InvalidValue_ReturnsFalseAndNulls(string rawValue)
         {
             var parsed = ClientIpParser.TryParse(
@@ -139,13 +151,6 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests
         [DataRow("[::ffff:8.8.8.8]", "8.8.8.8")]
         [DataRow("[::ffff:8.8.8.8]:443", "8.8.8.8")]
         [DataRow("[0:0:0:0:0:ffff:808:808]:443", "8.8.8.8")]
-        // A zone index goes with the IPv6 form.
-        [DataRow("::ffff:8.8.8.8%1", "8.8.8.8")]
-        [DataRow("[::ffff:8.8.8.8%1]:443", "8.8.8.8")]
-        // A forwarded list, where the first entry is the client.
-        [DataRow("::ffff:8.8.8.8, 5.6.7.8", "8.8.8.8")]
-        [DataRow(" ::ffff:8.8.8.8 , 2001:db8::1", "8.8.8.8")]
-        [DataRow("[::ffff:8.8.8.8]:443, 5.6.7.8", "8.8.8.8")]
         // The ends of the IPv4 range, and a private address.
         [DataRow("::ffff:0.0.0.0", "0.0.0.0")]
         [DataRow("::ffff:0:0", "0.0.0.0")]
