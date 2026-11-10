@@ -170,19 +170,26 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// </summary>
         private class QueueOpenShareUsageElement : ShareUsageElement
         {
+            private readonly int _disposeTimeoutMilliseconds;
+
             public QueueOpenShareUsageElement(
                 ILogger<ShareUsageBase> logger,
                 HttpClient httpClient,
                 int minimumEntriesPerMessage,
                 int maximumQueueSize,
-                ITracker tracker)
+                ITracker tracker,
+                int disposeTimeoutMilliseconds = 5000)
                 : base(logger, httpClient, 1, minimumEntriesPerMessage,
                       maximumQueueSize, 100, 100, 1, true,
                       "http://51Degrees.com/test", new List<string>(),
                       new List<string>(), new List<KeyValuePair<string, string>>(),
                       Engines.Constants.DEFAULT_ASP_COOKIE_NAME, tracker, false)
             {
+                _disposeTimeoutMilliseconds = disposeTimeoutMilliseconds;
             }
+
+            internal override int DisposeTimeoutMilliseconds =>
+                _disposeTimeoutMilliseconds;
 
             public void Enqueue(string clientIp) =>
                 EvidenceCollection.Add(new ShareUsageData() { ClientIP = clientIp });
@@ -228,6 +235,84 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 $"in {_xmlContent.Count} message(s). " +
                 $"Never sent: {string.Join(", ", neverSent)}");
             CollectionAssert.AreEquivalent(clientIps, sent);
+        }
+
+        /// <summary>
+        /// On disposal every entry still queued is sent, in as many messages
+        /// as it takes, each holding at most twice the minimum entries.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/rc/pipeline-specification/pipeline-elements/usage-sharing-element.md#cleanup">Specification</see>
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_SendsEveryRemainingEntry()
+        {
+            const int minimumEntries = 2;
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, minimumEntries, 100, _tracker.Object);
+            element.AddPipeline(_pipeline.Object);
+            var clientIps = Enumerable.Range(1, 11)
+                .Select(i => $"10.2.0.{i}")
+                .ToList();
+            foreach (var ip in clientIps)
+            {
+                element.Enqueue(ip);
+            }
+
+            element.Dispose();
+
+            var sent = _xmlContent
+                .SelectMany(xml => Regex.Matches(xml, "<ClientIP>([^<]+)</ClientIP>")
+                    .Cast<System.Text.RegularExpressions.Match>()
+                    .Select(m => m.Groups[1].Value))
+                .ToList();
+            CollectionAssert.AreEquivalent(clientIps, sent,
+                $"Queued {clientIps.Count} entries and sent {sent.Count} " +
+                $"in {_xmlContent.Count} message(s).");
+            foreach (var xml in _xmlContent)
+            {
+                Assert.IsLessThanOrEqualTo(minimumEntries * 2, CountDeviceNodes(xml),
+                    "A message held more than twice the minimum entries.");
+            }
+            Assert.AreEqual(0, element.Queued);
+        }
+
+        /// <summary>
+        /// One timeout bounds the whole of disposal, so an endpoint that
+        /// never answers cannot hold it up. Disposal returns when the time is
+        /// up, and logs a warning that says how many entries were not sent.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_EndpointNeverAnswers_Bounded()
+        {
+            const int boundMilliseconds = 500;
+            using (var release = new ManualResetEventSlim(false))
+            {
+                _httpHandler.SetupResponse(request =>
+                {
+                    release.Wait(TimeSpan.FromSeconds(60));
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
+                });
+                var element = new QueueOpenShareUsageElement(
+                    _logger, _httpClient, 2, 100, _tracker.Object,
+                    boundMilliseconds);
+                element.AddPipeline(_pipeline.Object);
+                for (int i = 1; i <= 11; i++)
+                {
+                    element.Enqueue($"10.3.0.{i}");
+                }
+
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                element.Dispose();
+                watch.Stop();
+                release.Set();
+
+                Assert.IsLessThan(boundMilliseconds * 6, watch.ElapsedMilliseconds,
+                    "Disposal was held up by an endpoint that never answers.");
+                Assert.AreEqual(1, _logger.WarningEntries.Count(
+                    w => w.Contains("not sent")),
+                    "Expected one warning that entries were not sent.");
+                var warning = _logger.WarningEntries.First(w => w.Contains("not sent"));
+                StringAssert.Contains(warning, "7 ");
+            }
         }
 
         /// <summary>
@@ -1517,7 +1602,7 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
                 _shareUsageElement.Process(data.Object);
             }
             // Wait for the first send to finish, then dispose to flush
-            // one more message from the remaining entries.
+            // the remaining entries.
             WaitForSendDataTask();
             _shareUsageElement.Dispose();
             Thread.Sleep(200);
@@ -1530,10 +1615,11 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
                 Assert.IsLessThanOrEqualTo(maximumEntries, CountDeviceNodes(xml),
                     $"A message held more than {maximumEntries} entries");
             }
-            // The final flush had more than the maximum queued, so it must
-            // have been capped at exactly the maximum.
-            Assert.AreEqual(maximumEntries, CountDeviceNodes(_xmlContent[_xmlContent.Count - 1]),
-                "The final message was not capped at the maximum entries");
+            // Disposal sends everything still queued, so every entry that
+            // was queued has been sent.
+            Assert.AreEqual(maximumEntries * 3,
+                _xmlContent.Sum(xml => CountDeviceNodes(xml)),
+                "Entries were left unsent on disposal");
         }
 
         /// <summary>

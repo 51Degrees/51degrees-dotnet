@@ -60,7 +60,7 @@ namespace FiftyOne.Pipeline.Web.Framework.Tests
         [ExpectedException(typeof(NullReferenceException))] // pass through (not explicitly handled)
         public void TestConstructor_Error_OnNullData()
         {
-            var filler = new WebPipeline.EvidenceFiller(null);
+            var filler = new WebPipeline.EvidenceFiller((IFlowData)null);
         }
 
         [TestMethod]

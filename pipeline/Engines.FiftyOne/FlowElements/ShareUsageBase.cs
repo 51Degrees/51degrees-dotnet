@@ -952,6 +952,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
+        /// The time in milliseconds that disposal may spend sending the
+        /// entries still queued.
+        /// </summary>
+        internal virtual int DisposeTimeoutMilliseconds =>
+            Constants.SHARE_USAGE_DISPOSE_TIMEOUT_MILLISECONDS;
+
+        /// <summary>
         /// Clean up any unmanaged resources.
         /// </summary>
         protected override void UnmanagedResourcesCleanup()

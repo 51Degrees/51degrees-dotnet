@@ -160,6 +160,15 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {0} usage sharing entries were not sent, because sending did not finish within {1} ms when closing down..
+        /// </summary>
+        internal static string MessageShareUsageNotSentOnClose {
+            get {
+                return ResourceManager.GetString("MessageShareUsageNotSentOnClose", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to {0} usage sharing entries were not sent, as sending was paused after failed sends when usage sharing closed..
         /// </summary>
         internal static string MessageShareUsageNotSentWhilePaused {

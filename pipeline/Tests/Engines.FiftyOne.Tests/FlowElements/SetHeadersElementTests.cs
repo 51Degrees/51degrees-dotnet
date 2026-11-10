@@ -29,6 +29,7 @@ using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FlowElements;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using FiftyOne.Pipeline.Engines.FiftyOne.Data;
 using System.Linq;
@@ -215,6 +216,34 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 // we intentionally do NOT call PopulateFrom, mirroring
                 // how on-premise engines work.
             }
+        }
+
+        /// <summary>
+        /// Simulates an engine that builds its properties from a list it
+        /// fetches from a service, such as a cloud engine. Until the list has
+        /// been fetched the properties cannot be read, as when the fetch at
+        /// build failed and a retry has not yet worked.
+        /// </summary>
+        private class LateLoadingSourceElement : LazyLoadedSourceElement
+        {
+            public bool Loaded { get; set; }
+
+            public LateLoadingSourceElement(
+                ILogger<AspectEngineBase<LazyLoadedSourceData, IAspectPropertyMetaData>> logger,
+                Func<IPipeline, FlowElementBase<LazyLoadedSourceData, IAspectPropertyMetaData>, LazyLoadedSourceData> elementDataFactory,
+                Dictionary<string, object> propertyValuesToReturn,
+                IReadOnlyCollection<string> properties)
+                : base(logger, elementDataFactory, propertyValuesToReturn, properties)
+            {
+            }
+
+            public override bool HasLoadedProperties => Loaded;
+
+            public override IList<IAspectPropertyMetaData> Properties =>
+                Loaded ?
+                base.Properties :
+                throw new PropertiesNotYetLoadedException(
+                    "The properties have not been fetched yet.");
         }
         #endregion
 
@@ -585,6 +614,93 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 _loggerFactory.Loggers.SelectMany(i => i.WarningEntries),
                 "No warnings should be logged when values are available " +
                 "through lazy loading.");
+        }
+
+        /// <summary>
+        /// An engine whose properties could not be read when the first
+        /// request arrived, because the fetch of its list failed, gives
+        /// that request no headers. Once a retry has fetched the list, the
+        /// next request gets its SetHeader* properties, because the
+        /// configuration built from the incomplete list is not kept.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/5bad4133a88878a5fc8b3034190c53952014b35b/pipeline-specification/pipeline-elements/cloud-request-engine.md#consequences-for-consumers-of-the-engine">Specification</see>
+        /// </summary>
+        [TestMethod]
+        public void SetHeadersElement_PropertiesLoadedAfterFirstRequest_HeadersFromNextRequest()
+        {
+            var propertyValues = new Dictionary<string, object>()
+            {
+                { "SetHeaderBrowserAccept-CH", "Sec-CH-UA" }
+            };
+            var lateElement = new LateLoadingSourceElement(
+                _loggerFactory.CreateLogger<LateLoadingSourceElement>(),
+                (pipeline, element) => new LazyLoadedSourceData(
+                    _loggerFactory.CreateLogger<LazyLoadedSourceData>(),
+                    pipeline,
+                    (IAspectEngine)element,
+                    propertyValues),
+                propertyValues,
+                propertyValues.Keys);
+            _element = new SetHeadersElementBuilder(_loggerFactory).Build();
+            _pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(lateElement)
+                .AddFlowElement(_element)
+                .Build();
+
+            using (var first = _pipeline.CreateFlowData())
+            {
+                first.Process();
+                Assert.IsEmpty(GetFromFlowData(first).ResponseHeaderDictionary,
+                    "No headers are known while the properties are missing.");
+            }
+
+            lateElement.Loaded = true;
+
+            using (var second = _pipeline.CreateFlowData())
+            {
+                second.Process();
+                var headers = GetFromFlowData(second).ResponseHeaderDictionary;
+                Assert.HasCount(1, headers);
+                Assert.AreEqual("Sec-CH-UA", headers["Accept-CH"]);
+            }
+        }
+
+        /// <summary>
+        /// When every engine has its properties from the first request, the
+        /// headers are produced on that request and on the next.
+        /// </summary>
+        [TestMethod]
+        public void SetHeadersElement_PropertiesLoaded_ConfigurationKept()
+        {
+            var propertyValues = new Dictionary<string, object>()
+            {
+                { "SetHeaderBrowserAccept-CH", "Sec-CH-UA" }
+            };
+            var lateElement = new LateLoadingSourceElement(
+                _loggerFactory.CreateLogger<LateLoadingSourceElement>(),
+                (pipeline, element) => new LazyLoadedSourceData(
+                    _loggerFactory.CreateLogger<LazyLoadedSourceData>(),
+                    pipeline,
+                    (IAspectEngine)element,
+                    propertyValues),
+                propertyValues,
+                propertyValues.Keys)
+            {
+                Loaded = true
+            };
+            _element = new SetHeadersElementBuilder(_loggerFactory).Build();
+            _pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(lateElement)
+                .AddFlowElement(_element)
+                .Build();
+
+            for (int i = 0; i < 2; i++)
+            {
+                using (var data = _pipeline.CreateFlowData())
+                {
+                    data.Process();
+                    Assert.HasCount(1, GetFromFlowData(data).ResponseHeaderDictionary);
+                }
+            }
         }
 
         private SetHeadersData GetFromFlowData(IFlowData data)
