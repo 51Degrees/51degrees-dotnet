@@ -25,6 +25,7 @@ using FiftyOne.Pipeline.Engines.Configuration;
 using FiftyOne.Pipeline.Engines.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 
 namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
@@ -59,11 +60,12 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// </summary>
         protected string EvidenceKeysEndpoint { get; set; } = string.Empty;
         /// <summary>
-        /// The resource key used to access the cloud service. This is required.
+        /// The resource key used to access the cloud service. Required
+        /// unless a license key and requested properties are set.
         /// </summary>
         protected string ResourceKey { get; set; } = string.Empty;
         /// <summary>
-        /// Optional license keys for additional products.
+        /// The license key, used alone or to add products to a resource key.
         /// </summary>
         protected string LicenceKey { get; set; } = string.Empty;
 
@@ -183,17 +185,40 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// Set the license key or keys to be used when querying the cloud 
-        /// service. This is an optional method to pass additional license keys
-        /// not configured when obtaining a resource key.
+        /// Set the license key to authenticate with. A license key alone
+        /// needs <see cref="SetRequestedProperties"/> to name the
+        /// properties wanted. Beside a resource key it adds the requested
+        /// properties the license grants to what the resource key carries.
         /// </summary>
         /// <param name="key"></param>
         /// <returns>This builder</returns>
-        [Obsolete("License key is no longer used directly. " +
-            "Use a resource key instead.")]
         public TBuilder SetLicenseKey(string key)
         {
             LicenceKey = key;
+            return this as TBuilder;
+        }
+
+        /// <summary>
+        /// The fully qualified properties to ask the cloud service for.
+        /// </summary>
+        protected List<string> RequestedProperties { get; } =
+            new List<string>();
+
+        /// <summary>
+        /// Name the properties the cloud service should return, as fully
+        /// qualified names such as 'device.ismobile'. Required with a
+        /// license key alone. Beside a resource key the cloud service adds
+        /// them to the properties the resource key carries.
+        /// </summary>
+        /// <param name="properties">The property names.</param>
+        /// <returns>This builder</returns>
+        public TBuilder SetRequestedProperties(IEnumerable<string> properties)
+        {
+            if (properties == null)
+            {
+                throw new ArgumentNullException(nameof(properties));
+            }
+            RequestedProperties.AddRange(properties);
             return this as TBuilder;
         }
 
@@ -291,11 +316,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             }
             if (string.IsNullOrEmpty(LicenceKey) == false)
             {
-#pragma warning disable CS0618 // Type or member is obsolete
-                // Retained for backward compatibility
                 cloudRequestEngineBuilder.SetLicenseKey(LicenceKey);
-#pragma warning restore CS0618 // Type or member is obsolete
             }
+            cloudRequestEngineBuilder.SetProperties(RequestedProperties);
             if (string.IsNullOrEmpty(CloudRequestOrigin) == false)
             {
                 cloudRequestEngineBuilder.SetCloudRequestOrigin(CloudRequestOrigin);

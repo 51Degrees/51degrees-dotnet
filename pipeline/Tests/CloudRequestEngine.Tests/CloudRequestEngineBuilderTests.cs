@@ -165,14 +165,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         [TestMethod]
         public void BuildEngine_ResourceKeyAndLicenseKey_Builds()
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            // SetLicenseKey is obsolete but the combination remains valid.
             var engine = new CloudRequestEngineBuilder(
                     new LoggerFactory(),
                     new HttpClient(_handlerMock.Object))
                 .SetResourceKey("abcdefgh")
                 .SetLicenseKey("licensekey")
-#pragma warning restore CS0618 // Type or member is obsolete
                 .Build();
 
             Assert.IsNotNull(engine);
