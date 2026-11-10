@@ -77,6 +77,19 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests
         [DataRow("1.2.3")]
         [DataRow("012.1.2.3")]
         [DataRow("12345:80")]
+        // A leading zero in any part of an IPv4 address, including the IPv4
+        // part of an IPv6 address, which .NET reads in the last part.
+        [DataRow("1.2.3.04")]
+        [DataRow("1.02.3.4")]
+        [DataRow("00.0.0.0")]
+        [DataRow("::ffff:1.2.3.04")]
+        [DataRow("::ffff:01.2.3.4")]
+        [DataRow("::ffff:1.02.3.4")]
+        [DataRow("::1.2.3.04")]
+        [DataRow("64:ff9b::8.8.8.08")]
+        [DataRow("[::ffff:1.2.3.04]")]
+        [DataRow("[::ffff:1.2.3.04]:443")]
+        [DataRow("1.2.3.04:8080")]
         // Port out of range, signed, or empty.
         [DataRow("1.2.3.4:65536")]
         [DataRow("1.2.3.4:-1")]
