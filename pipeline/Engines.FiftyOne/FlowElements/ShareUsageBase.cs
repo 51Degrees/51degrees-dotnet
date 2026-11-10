@@ -927,18 +927,19 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             {
                 _closing.Cancel();
             }
-            SendDataTask?.Wait();
 
-            // A message holds at most twice the minimum entries, so send
-            // messages until the queue is empty. Nothing is sent while
-            // paused, and the pause is checked before every send because a
-            // failed send can start one. One timeout bounds the whole of
-            // it, so an endpoint that does not answer cannot hold disposal
-            // up. Nothing is sent when nothing is queued.
+            // Wait for a send already running, then send messages until the
+            // queue is empty, as a message holds at most twice the minimum
+            // entries. Nothing is sent while paused, and the pause is
+            // checked before every send because a failed send can start
+            // one. One timeout bounds the whole of it, so an endpoint that
+            // does not answer cannot hold disposal up. Nothing is sent when
+            // nothing is queued.
             using (var stop = new CancellationTokenSource())
             {
                 var flush = Task.Run(() =>
                 {
+                    SendDataTask?.Wait();
                     while (EvidenceCollection.Count > 0 &&
                         stop.IsCancellationRequested == false)
                     {
@@ -1193,7 +1194,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// queue drains when a pause ends without more requests arriving.
         /// </summary>
         /// <param name="closing">
-        /// Cancelled when the element closes, which ends a pause at once.
+        /// Cancelled when the element closes, which ends a pause at once
+        /// and stops further sends, as closing sends what remains.
         /// </param>
         private async Task SendWhileQueuedAsync(CancellationToken closing)
         {
@@ -1209,7 +1211,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                             pause < LongestWait ? pause : LongestWait,
                             closing).ConfigureAwait(false);
                     }
-                    if (EvidenceCollection.Count == 0)
+                    if (EvidenceCollection.Count == 0 ||
+                        closing.IsCancellationRequested)
                     {
                         break;
                     }
