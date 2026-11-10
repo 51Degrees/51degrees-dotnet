@@ -170,19 +170,26 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// </summary>
         private class QueueOpenShareUsageElement : ShareUsageElement
         {
+            private readonly int _disposeTimeoutMilliseconds;
+
             public QueueOpenShareUsageElement(
                 ILogger<ShareUsageBase> logger,
                 HttpClient httpClient,
                 int minimumEntriesPerMessage,
                 int maximumQueueSize,
-                ITracker tracker)
+                ITracker tracker,
+                int disposeTimeoutMilliseconds = 5000)
                 : base(logger, httpClient, 1, minimumEntriesPerMessage,
                       maximumQueueSize, 100, 100, 1, true,
                       "http://51Degrees.com/test", new List<string>(),
                       new List<string>(), new List<KeyValuePair<string, string>>(),
                       Engines.Constants.DEFAULT_ASP_COOKIE_NAME, tracker, false)
             {
+                _disposeTimeoutMilliseconds = disposeTimeoutMilliseconds;
             }
+
+            internal override int DisposeTimeoutMilliseconds =>
+                _disposeTimeoutMilliseconds;
 
             public void Enqueue(string clientIp) =>
                 EvidenceCollection.Add(new ShareUsageData() { ClientIP = clientIp });
@@ -266,6 +273,46 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                     "A message held more than twice the minimum entries.");
             }
             Assert.AreEqual(0, element.Queued);
+        }
+
+        /// <summary>
+        /// One timeout bounds the whole of disposal, so an endpoint that
+        /// never answers cannot hold it up. Disposal returns when the time is
+        /// up, and logs a warning that says how many entries were not sent.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_EndpointNeverAnswers_Bounded()
+        {
+            const int boundMilliseconds = 500;
+            using (var release = new ManualResetEventSlim(false))
+            {
+                _httpHandler.SetupResponse(request =>
+                {
+                    release.Wait(TimeSpan.FromSeconds(60));
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
+                });
+                var element = new QueueOpenShareUsageElement(
+                    _logger, _httpClient, 2, 100, _tracker.Object,
+                    boundMilliseconds);
+                element.AddPipeline(_pipeline.Object);
+                for (int i = 1; i <= 11; i++)
+                {
+                    element.Enqueue($"10.3.0.{i}");
+                }
+
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                element.Dispose();
+                watch.Stop();
+                release.Set();
+
+                Assert.IsLessThan(boundMilliseconds * 6, watch.ElapsedMilliseconds,
+                    "Disposal was held up by an endpoint that never answers.");
+                Assert.AreEqual(1, _logger.WarningEntries.Count(
+                    w => w.Contains("not sent")),
+                    "Expected one warning that entries were not sent.");
+                var warning = _logger.WarningEntries.First(w => w.Contains("not sent"));
+                StringAssert.Contains(warning, "7 ");
+            }
         }
 
         /// <summary>
