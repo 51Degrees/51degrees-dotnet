@@ -1259,7 +1259,7 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             // Assert
             // Make sure that refresh is called on the engine.
             engine.Verify(e => e.RefreshData(config.Identifier), Times.Once());
-            // Automatic updates stay on after a manual check, so the data 
+            // Automatic updates stay on after a manual check, so the data
             // file is registered again with one timer for the next check.
             _timerFactory.Verify(f => f(It.IsAny<TimerCallback>(),
                 It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Once());
@@ -2027,7 +2027,7 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         /// data file still has automatic updates on and the one polling timer
         /// that registering it created, and no second timer is created, whether
         /// the check finds no newer data, fails, or finds an update.
-        /// See the <see href="https://github.com/51Degrees/specifications/blob/rc/pipeline-specification/features/data-updates.md#automatic-update-master-switch">Specification</see>
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/features/data-updates.md#automatic-update-master-switch">Specification</see>
         /// </summary>
         [TestMethod]
         [DataRow(System.Net.HttpStatusCode.NotModified, false)]
