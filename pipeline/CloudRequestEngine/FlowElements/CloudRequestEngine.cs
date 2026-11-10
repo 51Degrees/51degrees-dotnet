@@ -815,21 +815,22 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
         /// <summary>
         /// Check whether a field name is one the engine sends from its own
-        /// configuration, being the Resource Key, License Key and Requested
-        /// Properties.
+        /// configuration, being the Resource Key and License Key, or one the
+        /// cloud also reads as a key or a property list. Letter case is
+        /// ignored.
         /// </summary>
         /// <param name="name">The field name, without any prefix.</param>
         /// <returns>True if Evidence must not supply the field.</returns>
         private static bool IsReservedField(string name)
         {
             return name.Equals("resource",
-                    StringComparison.InvariantCultureIgnoreCase) ||
+                    StringComparison.OrdinalIgnoreCase) ||
                 name.Equals("license",
-                    StringComparison.InvariantCultureIgnoreCase) ||
+                    StringComparison.OrdinalIgnoreCase) ||
                 name.Equals("licence",
-                    StringComparison.InvariantCultureIgnoreCase) ||
+                    StringComparison.OrdinalIgnoreCase) ||
                 name.Equals("values",
-                    StringComparison.InvariantCultureIgnoreCase);
+                    StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
