@@ -32,9 +32,7 @@ if ($env:FIFTYONE_TEST_FILTER) {
     -BlameHangTimeout "20m" `
     -Filter $Filter `
     -OutputFolder "unit"
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
+$LaneExit = $LASTEXITCODE
 
 if ($BuildMethod -eq "msbuild" -and -not $env:FIFTYONE_TEST_FILTER) {
     ./dotnet/run-unit-tests.ps1 `
@@ -46,4 +44,5 @@ if ($BuildMethod -eq "msbuild" -and -not $env:FIFTYONE_TEST_FILTER) {
         -BlameHangTimeout "20m" `
         -Filter $OldStyle
 }
+if ($LaneExit -ne 0) { exit $LaneExit }
 exit $LASTEXITCODE
