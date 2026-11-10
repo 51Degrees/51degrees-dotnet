@@ -35,7 +35,11 @@ using FiftyOne.Pipeline.Engines.TestHelpers;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Performance
 {
+    /// <summary>
+    /// The tests measure time, so they do not run alongside others.
+    /// </summary>
     [TestClass]
+    [DoNotParallelize]
     public class ShareUsageOverheadTests
     {
         private IPipeline _pipeline;
