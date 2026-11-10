@@ -60,6 +60,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne
         internal const int SHARE_USAGE_DEFAULT_TAKE_TIMEOUT = 100;
 
         /// <summary>
+        /// The time in milliseconds that disposing the usage sharing element
+        /// may spend sending the entries still queued.
+        /// </summary>
+        internal const int SHARE_USAGE_DISPOSE_TIMEOUT_MILLISECONDS = 5000;
+
+        /// <summary>
         /// The default repeat evidence interval in minutes.
         /// This is the maximum time to consider a set of evidence as a 
         /// match for another (and thus, prevent it from being shared)

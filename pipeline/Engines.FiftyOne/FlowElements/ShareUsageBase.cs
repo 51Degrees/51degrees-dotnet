@@ -746,17 +746,38 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             // a needless network round-trip (and a logged error when offline) when
             // the pipeline is disposed without any usage. See issue #224.
             // A message holds at most twice the minimum entries, so send
-            // messages until the queue is empty.
-            while (EvidenceCollection.Count > 0)
+            // messages until the queue is empty. One timeout bounds the
+            // whole of it, so an endpoint that does not answer cannot hold
+            // disposal up.
+            using (var stop = new CancellationTokenSource())
             {
-                TrySendData();
-                SendDataTask?.Wait();
-            }
-            if (IsRunning)
-            {
-                SendDataTask.Wait();
+                var flush = Task.Run(() =>
+                {
+                    while (EvidenceCollection.Count > 0 &&
+                        stop.IsCancellationRequested == false)
+                    {
+                        TrySendData();
+                        SendDataTask?.Wait();
+                    }
+                });
+                if (flush.Wait(DisposeTimeoutMilliseconds) == false)
+                {
+                    stop.Cancel();
+                    Logger.LogWarning(
+                        $"{EvidenceCollection.Count} usage sharing entries " +
+                        "were not sent, because sending did not finish " +
+                        $"within {DisposeTimeoutMilliseconds} ms when " +
+                        "closing down.");
+                }
             }
         }
+
+        /// <summary>
+        /// The time in milliseconds that disposal may spend sending the
+        /// entries still queued.
+        /// </summary>
+        internal virtual int DisposeTimeoutMilliseconds =>
+            Constants.SHARE_USAGE_DISPOSE_TIMEOUT_MILLISECONDS;
 
         /// <summary>
         /// Clean up any unmanaged resources.
