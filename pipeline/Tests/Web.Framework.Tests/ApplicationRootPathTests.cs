@@ -21,7 +21,9 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.Core.Configuration;
+using FiftyOne.Pipeline.Core.Exceptions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections.Generic;
 
 namespace FiftyOne.Pipeline.Web.Framework.Tests
@@ -39,7 +41,10 @@ namespace FiftyOne.Pipeline.Web.Framework.Tests
                 virtualPath.Substring(1).Replace('/', '\\');
         }
 
-        private static string Resolve(string dataFile)
+        private static string Resolve(
+            string key,
+            string value,
+            Func<string, string> mapPath = null)
         {
             var options = new PipelineOptions();
             options.Elements.Add(new ElementOptions
@@ -47,31 +52,50 @@ namespace FiftyOne.Pipeline.Web.Framework.Tests
                 BuilderName = "Engine",
                 BuildParameters = new Dictionary<string, object>
                 {
-                    { "DataFile", dataFile },
+                    { key, value },
                 },
             });
-            WebPipeline.ResolveApplicationRootPaths(options, MapPath);
-            return (string)options.Elements[0].BuildParameters["DataFile"];
+            WebPipeline.ResolveApplicationRootPaths(
+                options,
+                mapPath ?? MapPath);
+            return (string)options.Elements[0].BuildParameters[key];
         }
 
         [TestMethod]
-        [DataRow("~/App_Data/data.hash")]
-        [DataRow(@"~\App_Data\data.hash")]
-        public void TildePathResolvesUnderApplicationRoot(string configured)
+        [DataRow("DataFile", "~/App_Data/data.hash", @"App_Data\data.hash")]
+        [DataRow("DataFile", @"~\App_Data\data.hash", @"App_Data\data.hash")]
+        [DataRow("TempDirPath", "~/App_Data/tmp", @"App_Data\tmp")]
+        [DataRow("TempDirPath", @"~\App_Data\tmp", @"App_Data\tmp")]
+        public void TildePathResolvesUnderApplicationRoot(
+            string key,
+            string configured,
+            string expectedTail)
         {
             Assert.AreEqual(
-                @"C:\inetpub\site\App_Data\data.hash",
-                Resolve(configured));
+                ApplicationRoot + @"\" + expectedTail,
+                Resolve(key, configured));
         }
 
         [TestMethod]
-        [DataRow("App_Data/data.hash")]
-        [DataRow("data.hash")]
-        [DataRow("~data.hash")]
-        [DataRow(@"D:\data\data.hash")]
-        public void OtherPathsAreUnchanged(string configured)
+        [DataRow("DataFile", "App_Data/data.hash")]
+        [DataRow("DataFile", "data.hash")]
+        [DataRow("DataFile", "~data.hash")]
+        [DataRow("DataFile", @"D:\data\data.hash")]
+        [DataRow("TempDirPath", "App_Data/tmp")]
+        [DataRow("TempDirPath", "~tmp")]
+        public void OtherPathsAreUnchanged(string key, string configured)
         {
-            Assert.AreEqual(configured, Resolve(configured));
+            Assert.AreEqual(configured, Resolve(key, configured));
+        }
+
+        [TestMethod]
+        [DataRow("DataFile")]
+        [DataRow("TempDirPath")]
+        public void UnmappablePathIsAnError(string key)
+        {
+            var ex = Assert.ThrowsException<PipelineConfigurationException>(
+                () => Resolve(key, "~/App_Data/x", p => null));
+            StringAssert.Contains(ex.Message, "~/App_Data/x");
         }
     }
 }

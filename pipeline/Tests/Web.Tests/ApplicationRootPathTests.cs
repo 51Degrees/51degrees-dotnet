@@ -63,13 +63,12 @@ public class ApplicationRootPathTests
         public IFileProvider WebRootFileProvider { get; set; }
     }
 
-    private static string BuildAndGetDataFile(string dataFile)
+    private static string BuildAndGetParameter(string key, string value)
     {
         var testConfig = new Dictionary<string, string>
         {
             ["PipelineOptions:Elements:0:BuilderName"] = "EmptyEngine",
-            ["PipelineOptions:Elements:0:BuildParameters:DataFile"] =
-                dataFile,
+            ["PipelineOptions:Elements:0:BuildParameters:" + key] = value,
         };
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(testConfig)
@@ -87,26 +86,33 @@ public class ApplicationRootPathTests
 
         return (string)capture.Options.Elements
             .Single(e => e.BuilderName == "EmptyEngine")
-            .BuildParameters["DataFile"];
+            .BuildParameters[key];
     }
 
     [TestMethod]
-    [DataRow("~/App_Data/data.hash")]
-    [DataRow("~\\App_Data\\data.hash")]
-    public void TildePathResolvesUnderContentRoot(string configured)
+    [DataRow("DataFile", "~/App_Data/data.hash")]
+    [DataRow("DataFile", "~\\App_Data\\data.hash")]
+    [DataRow("TempDirPath", "~/App_Data/tmp")]
+    [DataRow("TempDirPath", "~\\App_Data\\tmp")]
+    public void TildePathResolvesUnderContentRoot(string key, string configured)
     {
+        var tail = configured.Substring(2)
+            .Replace('/', Path.DirectorySeparatorChar)
+            .Replace('\\', Path.DirectorySeparatorChar);
         Assert.AreEqual(
-            Path.Combine(ContentRoot, "App_Data", "data.hash"),
-            BuildAndGetDataFile(configured));
+            Path.Combine(ContentRoot, tail),
+            BuildAndGetParameter(key, configured));
     }
 
     [TestMethod]
-    [DataRow("App_Data/data.hash")]
-    [DataRow("data.hash")]
-    [DataRow("~data.hash")]
-    [DataRow("/var/data/data.hash")]
-    public void OtherPathsAreUnchanged(string configured)
+    [DataRow("DataFile", "App_Data/data.hash")]
+    [DataRow("DataFile", "data.hash")]
+    [DataRow("DataFile", "~data.hash")]
+    [DataRow("DataFile", "/var/data/data.hash")]
+    [DataRow("TempDirPath", "App_Data/tmp")]
+    [DataRow("TempDirPath", "~tmp")]
+    public void OtherPathsAreUnchanged(string key, string configured)
     {
-        Assert.AreEqual(configured, BuildAndGetDataFile(configured));
+        Assert.AreEqual(configured, BuildAndGetParameter(key, configured));
     }
 }
