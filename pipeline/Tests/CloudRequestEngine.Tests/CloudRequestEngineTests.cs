@@ -440,6 +440,65 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         }
 
         /// <summary>
+        /// A license key that the cloud service repeats in an error answer
+        /// never appears in full in the exception or the log entries.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/c9939a787cc71f711e3c82755308482fc1cf63ce/pipeline-specification/features/logging.md#license-keys">Specification</see>
+        /// </summary>
+        [TestMethod]
+        [DataRow("{'errors':['The license key ABCDEFGH12345678 is not valid']}", HttpStatusCode.BadRequest)]
+        [DataRow("{'detail':'License ABCDEFGH12345678 refused'}", HttpStatusCode.InternalServerError)]
+        [DataRow("{'warnings':['Key ABCDEFGH12345678 expires soon'],'device':{'value':'1'}}", HttpStatusCode.OK)]
+        public void Process_LicenseKeyInErrorAnswer_OnlyMaskedFormAppears(
+            string answer,
+            HttpStatusCode status)
+        {
+            const string licenseKey = "ABCDEFGH12345678";
+            const string masked = "************5678";
+            _jsonResponse = answer;
+            _jsonResponseStatus = status;
+            ConfigureMockedClient(r => true);
+            var loggerFactory = new TestLoggerFactory();
+            var engine = new CloudRequestEngineBuilder(
+                loggerFactory,
+                _httpClient)
+                .SetResourceKey("resource_key")
+                .SetLicenseKey(licenseKey)
+                .Build();
+
+            var text = new System.Text.StringBuilder();
+            using (var pipeline = new PipelineBuilder(loggerFactory)
+                .AddFlowElement(engine).Build())
+            {
+                var data = pipeline.CreateFlowData();
+                data.AddEvidence("query.User-Agent", "iPhone");
+                try
+                {
+                    data.Process();
+                }
+                catch (Exception ex)
+                {
+                    text.AppendLine(ex.ToString());
+                }
+            }
+            foreach (var logger in loggerFactory.Loggers)
+            {
+                foreach (var entry in logger.ExtendedEntries)
+                {
+                    text.AppendLine(entry.Message);
+                    text.AppendLine(entry.Exception?.ToString());
+                }
+            }
+
+            var all = text.ToString();
+            Assert.IsFalse(all.Contains(licenseKey),
+                "The key appears in full in:" + Environment.NewLine + all);
+            Assert.IsFalse(all.Contains("ABCDEFGH"),
+                "The start of the key appears in:" + Environment.NewLine + all);
+            Assert.IsTrue(all.Contains(masked),
+                "The masked key is missing from:" + Environment.NewLine + all);
+        }
+
+        /// <summary>
         /// Test cloud request engine adds correct information to post request
         /// and returns the response in the ElementData
         /// </summary>
