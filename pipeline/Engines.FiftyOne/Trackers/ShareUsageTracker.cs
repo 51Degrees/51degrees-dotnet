@@ -22,6 +22,7 @@
 
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Engines.Configuration;
+using FiftyOne.Pipeline.Engines.FiftyOne.Data;
 using FiftyOne.Pipeline.Engines.Trackers;
 using System;
 
@@ -79,6 +80,43 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
         protected override IEvidenceKeyFilter GetFilter()
         {
             return _filter;
+        }
+
+        /// <summary>
+        /// The key for the supplied <see cref="IFlowData"/>, made from the
+        /// values usage sharing would share, which include the values of
+        /// the web request where the evidence holds it.
+        /// </summary>
+        /// <param name="data">
+        /// The <see cref="IFlowData"/> to make the key from.
+        /// </param>
+        /// <returns>
+        /// The key.
+        /// </returns>
+        protected override DataKey GenerateKey(IFlowData data)
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+            var evidence = data.GetEvidence()?.AsDictionary();
+            if (evidence == null || evidence.ContainsKey(
+                Core.Constants.EVIDENCE_HTTPREQUEST_KEY) == false)
+            {
+                return base.GenerateKey(data);
+            }
+            var builder = new DataKeyBuilder();
+            foreach (var entry in ShareUsageEvidence.Find(evidence))
+            {
+                if (_filter.Include(entry.Key))
+                {
+                    builder.Add(
+                        _filter.Order(entry.Key) ?? int.MinValue,
+                        entry.Key,
+                        entry.Value);
+                }
+            }
+            return builder.Build();
         }
 
         /// <summary>
