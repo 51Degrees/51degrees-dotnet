@@ -129,6 +129,41 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         private volatile object _lock = new object();
 
         /// <summary>
+        /// The longest single wait during a pause. Longer pauses are waited
+        /// out in parts, as a delay cannot be longer than about 24 days.
+        /// </summary>
+        private static readonly TimeSpan LongestWait = TimeSpan.FromDays(1);
+
+        /// <summary>
+        /// Decides when sending may happen after failed sends.
+        /// </summary>
+        private readonly ShareUsageBackOff _backOff;
+
+        /// <summary>
+        /// While the queue is full, a message is logged for the first
+        /// request that finds it full and then for every this many more,
+        /// never for each request.
+        /// </summary>
+        private const int QueueFullLogEvery = 1000;
+
+        /// <summary>
+        /// The requests that have found the queue full since it last had
+        /// room.
+        /// </summary>
+        private long _discarded;
+
+        /// <summary>
+        /// Cancelled when the element closes, to end any pause at once.
+        /// </summary>
+        private readonly CancellationTokenSource _closing =
+            new CancellationTokenSource();
+
+        /// <summary>
+        /// Set when the message being sent was not accepted.
+        /// </summary>
+        private volatile bool _sendFailed;
+
+        /// <summary>
         /// Timeout to use when adding to the queue.
         /// </summary>
         private int _addTimeout;
@@ -607,6 +642,136 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             ITracker tracker,
             bool shareAllEvidence,
             IFailHandler failHandler = null)
+            : this(logger,
+                  httpClient,
+                  sharePercentage,
+                  minimumEntriesPerMessage,
+                  maximumQueueSize,
+                  addTimeout,
+                  takeTimeout,
+                  repeatEvidenceIntervalMinutes,
+                  trackSession,
+                  shareUsageUrl,
+                  blockedHttpHeaders,
+                  includedQueryStringParameters,
+                  ignoreDataEvidenceFilter,
+                  aspSessionCookieName,
+                  tracker,
+                  shareAllEvidence,
+                  Constants.SHARE_USAGE_FAILURES_TO_ENTER_RECOVERY_DEFAULT,
+                  Constants.SHARE_USAGE_FAILURES_WINDOW_SECONDS_DEFAULT,
+                  Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_INITIAL_DELAY_SECONDS_DEFAULT,
+                  Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MAX_DELAY_SECONDS_DEFAULT,
+                  Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MULTIPLIER_DEFAULT)
+        {
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="logger">
+        /// The logger to use.
+        /// </param>
+        /// <param name="httpClient">
+        /// <see cref="HttpClient"/> to use when sending request data.
+        /// </param>
+        /// <param name="sharePercentage">
+        /// The approximate proportion of requests to share.
+        /// 1 = 100%, 0.5 = 50%, etc.
+        /// </param>
+        /// <param name="minimumEntriesPerMessage">
+        /// The minimum number of request entries per message sent to 51Degrees.
+        /// </param>
+        /// <param name="maximumQueueSize">
+        /// The maximum number of items to hold in the queue at one time. This
+        /// must be larger than minimum entries.
+        /// </param>
+        /// <param name="addTimeout">
+        /// The timeout in milliseconds to allow when attempting to add an
+        /// item to the queue. If this timeout is exceeded then the item is
+        /// not shared.
+        /// </param>
+        /// <param name="takeTimeout">
+        /// The timeout in milliseconds to allow when attempting to take an
+        /// item to the queue.
+        /// </param>
+        /// <param name="repeatEvidenceIntervalMinutes">
+        /// The interval (in minutes) which is used to decide if repeat
+        /// evidence is old enough to consider a new session.
+        /// </param>
+        /// <param name="trackSession">
+        /// Set if the tracker should consider sessions in share usage.
+        /// </param>
+        /// <param name="shareUsageUrl">
+        /// The URL to send data to
+        /// </param>
+        /// <param name="blockedHttpHeaders">
+        /// A list of the names of the HTTP headers that share usage should
+        /// not send to 51Degrees.
+        /// </param>
+        /// <param name="includedQueryStringParameters">
+        /// A list of the names of query string parameters that share
+        /// usage should send to 51Degrees.
+        /// If this value is null, all query string parameters are shared.
+        /// </param>
+        /// <param name="ignoreDataEvidenceFilter"></param>
+        /// <param name="aspSessionCookieName">
+        /// The name of the cookie that contains the asp.net session id.
+        /// </param>
+        /// <param name="tracker">
+        /// The <see cref="ITracker"/> to use to determine if a given
+        /// <see cref="IFlowData"/> instance should be shared or not.
+        /// </param>
+        /// <param name="shareAllEvidence">
+        /// If true, all evidence will be shared and
+        /// the blockedHttpHeaders and includedQueryStringParameters
+        /// parameters will be ignored.
+        /// </param>
+        /// <param name="failuresToEnterRecovery">
+        /// The number of failed sends within the failures window that
+        /// pauses sending.
+        /// </param>
+        /// <param name="failuresWindowSeconds">
+        /// The time in seconds over which failed sends are counted.
+        /// </param>
+        /// <param name="initialRecoveryDelaySeconds">
+        /// The length in seconds of the first pause.
+        /// </param>
+        /// <param name="maxRecoveryDelaySeconds">
+        /// The longest a pause can be, in seconds.
+        /// </param>
+        /// <param name="recoveryMultiplier">
+        /// What the pause is multiplied by each time the send tried when a
+        /// pause ends fails.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if certain arguments are null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if certain argument values are invalid.
+        /// </exception>
+        protected ShareUsageBase(
+            ILogger<ShareUsageBase> logger,
+            HttpClient httpClient,
+            double sharePercentage,
+            int minimumEntriesPerMessage,
+            int maximumQueueSize,
+            int addTimeout,
+            int takeTimeout,
+            int repeatEvidenceIntervalMinutes,
+            bool trackSession,
+            string shareUsageUrl,
+            List<string> blockedHttpHeaders,
+            List<string> includedQueryStringParameters,
+            List<KeyValuePair<string, string>> ignoreDataEvidenceFilter,
+            string aspSessionCookieName,
+            ITracker tracker,
+            bool shareAllEvidence,
+            int failuresToEnterRecovery,
+            int failuresWindowSeconds,
+            double initialRecoveryDelaySeconds,
+            double maxRecoveryDelaySeconds,
+            double recoveryMultiplier)
             : base(logger)
         {
             if (blockedHttpHeaders == null)
@@ -625,6 +790,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             }
 
             _httpClient = httpClient;
+            _backOff = new ShareUsageBackOff(
+                failuresToEnterRecovery,
+                failuresWindowSeconds,
+                initialRecoveryDelaySeconds,
+                maxRecoveryDelaySeconds,
+                recoveryMultiplier);
             EvidenceCollection = new BlockingCollection<ShareUsageData>(maximumQueueSize);
 
             _addTimeout = addTimeout;
@@ -750,22 +921,40 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// </summary>
         protected override void ManagedResourcesCleanup()
         {
-            // Only attempt a final flush if there is something to send. This avoids
-            // a needless network round-trip (and a logged error when offline) when
-            // the pipeline is disposed without any usage. See issue #224.
-            // A message holds at most twice the minimum entries, so send
-            // messages until the queue is empty. One timeout bounds the
-            // whole of it, so an endpoint that does not answer cannot hold
-            // disposal up.
+            // Ends any pause at once, so closing never waits for one, and
+            // stops new sends starting.
+            lock (_lock)
+            {
+                _closing.Cancel();
+            }
+
+            // Wait for a send already running, then send messages until the
+            // queue is empty, as a message holds at most twice the minimum
+            // entries. Nothing is sent while paused, and the pause is
+            // checked before every send because a failed send can start
+            // one. One timeout bounds the whole of it, so an endpoint that
+            // does not answer cannot hold disposal up. Nothing is sent when
+            // nothing is queued.
             using (var stop = new CancellationTokenSource())
             {
                 var flush = Task.Run(() =>
                 {
+                    SendDataTask?.Wait();
                     while (EvidenceCollection.Count > 0 &&
                         stop.IsCancellationRequested == false)
                     {
-                        TrySendData();
-                        SendDataTask?.Wait();
+                        if (_backOff.Remaining(ShareUsageBackOff.Now) >
+                            TimeSpan.Zero)
+                        {
+                            Logger.LogInformation(string.Format(
+                                CultureInfo.InvariantCulture,
+                                Messages.MessageShareUsageNotSentWhilePaused,
+                                EvidenceCollection.Count));
+                            return;
+                        }
+                        // Already on the thread pool, so the send runs
+                        // here and takes its entries at once.
+                        SendOnceAsync().GetAwaiter().GetResult();
                     }
                 });
                 if (flush.Wait(DisposeTimeoutMilliseconds) == false)
@@ -778,6 +967,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                         DisposeTimeoutMilliseconds));
                 }
             }
+            _closing.Dispose();
         }
 
         /// <summary>
@@ -820,6 +1010,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             // existing data, but don't accept new evidence.
             if (EvidenceCollection.Count >= EvidenceCollection.BoundedCapacity)
             {
+                RecordDiscard();
                 TrySendData();
                 return;
             }
@@ -842,6 +1033,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                     data.GetEvidence().AsDictionary())),
                 _addTimeout))
             {
+                Interlocked.Exchange(ref _discarded, 0);
                 // If the collection has enough entries then start
                 // taking data from it to be sent.
                 if (EvidenceCollection.Count >= MinEntriesPerMessage)
@@ -852,7 +1044,26 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             else
             {
                 // Queue was full, try to drain it.
+                RecordDiscard();
                 TrySendData();
+            }
+        }
+
+        /// <summary>
+        /// Logs that evidence is being discarded because the queue is full,
+        /// for the first request that finds it full and then every
+        /// <see cref="QueueFullLogEvery"/> requests, so a busy server does
+        /// not flood its log.
+        /// </summary>
+        private void RecordDiscard()
+        {
+            var discarded = Interlocked.Increment(ref _discarded);
+            if (discarded == 1 || discarded % QueueFullLogEvery == 0)
+            {
+                Logger.LogWarning(string.Format(
+                    CultureInfo.InvariantCulture,
+                    Messages.MessageShareUsageQueueFull,
+                    EvidenceCollection.BoundedCapacity));
             }
         }
 
@@ -947,7 +1158,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 
         /// <summary>
         /// Attempt to send the data to the remote service. This only happens
-        /// if there is not a task already running.
+        /// if there is not a task already running. The task sends until
+        /// fewer than the minimum entries per message are queued, waiting
+        /// out any pause after failed sends first.
         /// </summary>
         protected void TrySendData()
         {
@@ -955,23 +1168,104 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             {
                 lock (_lock)
                 {
-                    if (IsRunning == false)
+                    if (IsRunning == false &&
+                        _closing.IsCancellationRequested == false)
                     {
-                        SendDataTask = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                await BuildAndSendXmlAsync();
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.LogError(
-                                    ex,
-                                    Messages.MessageShareUsageUnexpectedFailure);
-                            }
-                        });
+                        var closing = _closing.Token;
+                        SendDataTask = Task.Run(
+                            () => SendWhileQueuedAsync(closing));
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Called by <see cref="BuildAndSendXmlAsync"/> when the remote
+        /// service does not accept a message, so that the failure counts
+        /// towards pausing sends. An exception thrown from
+        /// BuildAndSendXmlAsync counts without this being called.
+        /// </summary>
+        protected void RecordSendFailure()
+        {
+            _sendFailed = true;
+        }
+
+        /// <summary>
+        /// Sends messages while at least the minimum entries per message
+        /// are queued. Before each send it waits out any pause, so the
+        /// queue drains when a pause ends without more requests arriving.
+        /// </summary>
+        /// <param name="closing">
+        /// Cancelled when the element closes, which ends a pause at once
+        /// and stops further sends, as closing sends what remains.
+        /// </param>
+        private async Task SendWhileQueuedAsync(CancellationToken closing)
+        {
+            try
+            {
+                do
+                {
+                    TimeSpan pause;
+                    while ((pause = _backOff.Remaining(ShareUsageBackOff.Now)) >
+                        TimeSpan.Zero)
+                    {
+                        await Task.Delay(
+                            pause < LongestWait ? pause : LongestWait,
+                            closing).ConfigureAwait(false);
+                    }
+                    if (EvidenceCollection.Count == 0 ||
+                        closing.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    await SendOnceAsync().ConfigureAwait(false);
+                }
+                while (EvidenceCollection.Count >= MinEntriesPerMessage);
+            }
+            catch (OperationCanceledException)
+            {
+                // Closing ended a pause. Closing decides what is sent.
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(
+                    ex,
+                    Messages.MessageShareUsageUnexpectedFailure);
+            }
+        }
+
+        /// <summary>
+        /// Sends one message and records whether it was accepted.
+        /// </summary>
+        private async Task SendOnceAsync()
+        {
+            _sendFailed = false;
+            try
+            {
+                await BuildAndSendXmlAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _sendFailed = true;
+                Logger.LogError(
+                    ex,
+                    Messages.MessageShareUsageUnexpectedFailure);
+            }
+
+            if (_sendFailed)
+            {
+                var pause = _backOff.Failed(ShareUsageBackOff.Now);
+                if (pause > TimeSpan.Zero)
+                {
+                    Logger.LogWarning(string.Format(
+                        CultureInfo.InvariantCulture,
+                        Messages.MessageShareUsagePaused,
+                        pause.TotalSeconds));
+                }
+            }
+            else if (_backOff.Succeeded())
+            {
+                Logger.LogInformation(Messages.MessageShareUsageResumed);
             }
         }
 
