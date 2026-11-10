@@ -64,7 +64,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 			_aspSessionCookieName = Engines.Constants.DEFAULT_ASP_COOKIE_NAME;
 
 			_interval = new TimeSpan(0, 0, 0, 0, 50);
-			_evidenceKeyFilter = new EvidenceKeyFilterShareUsage(
+			_evidenceKeyFilter = new EvidenceKeyFilterShareUsageTracker(
 				_blockedHttpHeaders, _includedQueryStringParameters, true, _aspSessionCookieName);
 			_shareUsageTracker = new ShareUsageTracker(new CacheConfiguration()
 				{
@@ -279,7 +279,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 		[TestMethod]
 		public void ShareUsageTracker_Session_DoNotTrack()
 		{
-			var evidenceKeyFilter = new EvidenceKeyFilterShareUsage(
+			var evidenceKeyFilter = new EvidenceKeyFilterShareUsageTracker(
 				_blockedHttpHeaders, _includedQueryStringParameters, false, _aspSessionCookieName);
 			var shareUsageTracker = new ShareUsageTracker(new CacheConfiguration()
 			{
