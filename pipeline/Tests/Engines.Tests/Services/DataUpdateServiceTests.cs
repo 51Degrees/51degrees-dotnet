@@ -1259,10 +1259,10 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             // Assert
             // Make sure that refresh is called on the engine.
             engine.Verify(e => e.RefreshData(config.Identifier), Times.Once());
-            // Verify that timer factory has not been called to 
-            // set up a new timer.
+            // Automatic updates stay on after a manual check, so the data 
+            // file is registered again with one timer for the next check.
             _timerFactory.Verify(f => f(It.IsAny<TimerCallback>(),
-                It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Never());
+                It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Once());
             Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_SUCCESS, result);
         }
         
