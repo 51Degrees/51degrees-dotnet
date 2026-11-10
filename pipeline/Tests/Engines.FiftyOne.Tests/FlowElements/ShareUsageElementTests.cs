@@ -199,6 +199,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             public Task SendAsync() => BuildAndSendXmlAsync();
 
             public void StartSending() => TrySendData();
+
+            public void Drain()
+            {
+                while (EvidenceCollection.TryTake(out _))
+                {
+                }
+            }
         }
 
         /// <summary>
@@ -1392,102 +1399,71 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
-        /// Test that when the queue fills up, data is dropped but the queue
-        /// eventually drains and recovers to accept new data.
-        /// Uses a small queue (20) with batch size 10 and a slow HTTP
-        /// endpoint to force the queue to fill up.
+        /// When the queue is full, new entries are discarded and one warning
+        /// is logged for each time the queue fills, never one for each entry
+        /// discarded. Once there is room again a new entry is accepted, and
+        /// the next time the queue fills is warned about again. The queue is
+        /// filled directly so that no send starts and the result does not
+        /// depend on thread timing.
         /// </summary>
         [TestMethod]
         public void ShareUsageElement_QueueFullRecovery()
         {
-            // Arrange
-            // Small queue of 20, batch size 10, so each send drains up to 20 items.
-            // Add a delay to the HTTP handler to simulate a slow endpoint,
-            // causing the queue to fill up while a send is in progress.
-            int sendCount = 0;
-            _httpHandler.SetupResponse(request =>
-            {
-                Interlocked.Increment(ref sendCount);
-                // Simulate slow endpoint on first call to let queue fill up
-                if (sendCount == 1)
-                {
-                    Thread.Sleep(500);
-                }
-                StoreRequestXml(request);
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                {
-                    Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
-                };
-            });
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, 10, 20, _tracker.Object);
+            element.AddPipeline(_pipeline.Object);
 
-            CreateShareUsage(
-                sharePercentage: 1,
-                minimumEntriesPerMessage: 10,
-                maximumQueueSize: 20,
-                interval: 1,
-                blockedHeaders: new List<string>(),
-                includedQueryStringParams: new List<string>(),
-                ignoreDataEvidenceFiler: new List<KeyValuePair<string, string>>());
-
-            // Act - flood with 50 unique requests (more than queue capacity)
-            int totalProcessed = 0;
-            for (int i = 0; i < 50; i++)
+            // The queue fills for the first time.
+            for (int i = 0; i < 20; i++)
             {
-                var evidenceData = new Dictionary<string, object>()
-                {
-                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, $"1.2.3.{i % 256}" },
-                    { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, $"TestAgent/{i}" },
-                };
-                var data = MockFlowData.CreateFromEvidence(evidenceData, false);
-                _shareUsageElement.Process(data.Object);
-                totalProcessed++;
+                element.Enqueue($"10.6.0.{i}");
             }
-
-            // Wait for any in-progress send to complete
-            if (_shareUsageElement.SendDataTask != null)
+            for (int i = 0; i < 5; i++)
             {
-                _shareUsageElement.SendDataTask.Wait(10000);
+                ProcessRequest(element, $"10.6.1.{i}");
             }
+            Assert.AreEqual(20, element.Queued);
+            Assert.AreEqual(1, QueueFullWarnings(),
+                "Five entries discarded while the queue was full should " +
+                "give one warning.");
 
-            // Now send more data - queue should have drained and accept new entries
-            _xmlContent.Clear();
-            for (int i = 50; i < 70; i++)
+            // There is room again, so a new entry is accepted.
+            element.Drain();
+            ProcessRequest(element, "10.6.2.0");
+            Assert.AreEqual(1, element.Queued,
+                "An entry was not accepted once there was room.");
+
+            // The queue fills for the second time.
+            for (int i = 1; i < 20; i++)
             {
-                var evidenceData = new Dictionary<string, object>()
-                {
-                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, $"1.2.3.{i % 256}" },
-                    { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, $"TestAgent/{i}" },
-                };
-                var data = MockFlowData.CreateFromEvidence(evidenceData, false);
-                _shareUsageElement.Process(data.Object);
+                element.Enqueue($"10.6.3.{i}");
             }
-
-            // Wait for the final send to complete
-            if (_shareUsageElement.SendDataTask != null)
+            for (int i = 0; i < 5; i++)
             {
-                _shareUsageElement.SendDataTask.Wait(10000);
+                ProcessRequest(element, $"10.6.4.{i}");
             }
-
-            // Assert
-            // The key assertion: HTTP sends happened (queue was drained)
-            Assert.IsGreaterThanOrEqualTo(2,
-sendCount, $"Expected at least 2 HTTP sends (initial + recovery), but got {sendCount}");
-
-            // After recovery, new data was accepted and sent
-            Assert.IsNotEmpty(_xmlContent,
-                "Expected data to be sent after queue recovery, but no XML content was captured");
-
-            // Verify no errors were logged, and that the full queue was
-            // reported once, not for each entry discarded (the original
-            // complaint was log flooding with overflow messages).
+            Assert.AreEqual(2, QueueFullWarnings(),
+                "Each time the queue fills should give one warning.");
+            Assert.IsTrue(_logger.WarningEntries.All(w => w.Contains("is full")),
+                "Unexpected warnings: " +
+                string.Join("; ", _logger.WarningEntries));
             _logger.AssertMaxErrors(0);
-            var warnings = _logger.WarningEntries.ToList();
-            Assert.IsTrue(
-                warnings.Count <= 1 && warnings.All(w => w.Contains("is full")),
-                "Unexpected warnings: " + string.Join("; ", warnings));
+            _httpHandler.VerifySendCalled(0);
+        }
 
-            Console.WriteLine($"Total HTTP sends: {sendCount}");
-            Console.WriteLine($"XML batches after recovery: {_xmlContent.Count}");
+        private int QueueFullWarnings() =>
+            _logger.WarningEntries.Count(w => w.Contains("is full"));
+
+        private static void ProcessRequest(ShareUsageElement element, string ip)
+        {
+            var data = MockFlowData.CreateFromEvidence(
+                new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, ip },
+                    { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, $"TestAgent/{ip}" },
+                },
+                false);
+            element.Process(data.Object);
         }
 
         /// <summary>
