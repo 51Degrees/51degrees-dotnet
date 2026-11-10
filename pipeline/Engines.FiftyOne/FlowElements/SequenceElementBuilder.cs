@@ -20,6 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.Pipeline.Engines.FiftyOne.Data;
 using Microsoft.Extensions.Logging;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
@@ -52,7 +53,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// </returns>
         public SequenceElement Build()
         {
-            return new SequenceElement(_loggerFactory.CreateLogger<SequenceElement>());
+            return new SequenceElement(
+                _loggerFactory.CreateLogger<SequenceElement>(),
+                _loggerFactory.CreateLogger<SequenceData>());
         }
     }
 }

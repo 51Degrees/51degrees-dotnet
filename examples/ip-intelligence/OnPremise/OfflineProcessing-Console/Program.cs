@@ -239,8 +239,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.OfflineProcessing
                 // In this example, by default, the 51degrees "Lite" file needs to be somewhere in the
                 // project space, or you may specify another file as a command line parameter.
                 //
-                // Note that the Lite data file is only used for illustration, and has limited accuracy
-                // and capabilities. Contact us for a copy of the Enterprise data file:
+                // Note that the Lite data file is only used for illustration, and has a small number of
+                // properties. Contact us for a copy of the Enterprise data file:
                 // https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=main
                 Examples.ExampleUtils.FindDataFile(Constants.LITE_IPI_DATA_FILE_NAME);
 

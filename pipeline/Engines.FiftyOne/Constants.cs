@@ -107,6 +107,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne
         internal const bool SHARE_USAGE_DEFAULT_ENABLED = true;
 
         /// <summary>
+        /// The default value for the flag on FiftyOnePipelineBuilder that
+        /// controls whether the sequence element is added when the pipeline
+        /// does not already have one.
+        /// </summary>
+        internal const bool SEQUENCE_ELEMENT_DEFAULT_ENABLED = true;
+
+        /// <summary>
         /// The default URL to send usage data to
         /// </summary>
         internal const string SHARE_USAGE_DEFAULT_URL = "https://devices-v4.51degrees.com/new.ashx";
