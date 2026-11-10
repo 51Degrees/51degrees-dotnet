@@ -149,7 +149,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                 _loggers, new HttpClient(_handler));
         }
 
-        private string ProcessOnce(CloudRequestEngine engine)
+        private string ProcessOnce(FlowElements.CloudRequestEngine engine)
         {
             using (var pipeline = new PipelineBuilder(_loggers)
                 .AddFlowElement(engine).Build())
