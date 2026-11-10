@@ -77,9 +77,10 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise
                 return TryParseBracketed(candidate, out address, out addressText);
             }
 
-            // A bare address. The text reported is the canonical form, not
-            // the supplied text - see the addressText doc for why.
-            if (IsDottedQuadOrIpV6(candidate) &&
+            // A bare address. The text reported is the canonical form of the
+            // address read, so an IPv4-mapped address reports its IPv4
+            // address and a shortened IPv6 address reports one spelling.
+            if (IsReadableAddressText(candidate) &&
                 IPAddress.TryParse(candidate, out address))
             {
                 address = ToLookupAddress(address);
@@ -97,7 +98,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise
                 IsValidPort(candidate.Substring(portSeparatorIndex + 1)))
             {
                 var addressPart = candidate.Substring(0, portSeparatorIndex);
-                if (IsDottedQuadOrIpV6(addressPart) &&
+                if (IsReadableAddressText(addressPart) &&
                     IPAddress.TryParse(addressPart, out address) &&
                     address.AddressFamily == AddressFamily.InterNetwork)
                 {
@@ -137,7 +138,8 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise
             }
 
             var bracketedAddress = candidate.Substring(1, closingBracketIndex - 1);
-            if (IPAddress.TryParse(bracketedAddress, out address) &&
+            if (IsReadableAddressText(bracketedAddress) &&
+                IPAddress.TryParse(bracketedAddress, out address) &&
                 address.AddressFamily == AddressFamily.InterNetworkV6)
             {
                 address = ToLookupAddress(address);
@@ -189,22 +191,39 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise
         }
 
         /// <summary>
-        /// True when the text is a plain dotted-quad IPv4 address, or holds
-        /// a ':' and so can only be an IPv6 value. .NET additionally accepts
-        /// inet_aton IPv4 forms - a bare number ("3232235521" -> 192.168.0.1),
-        /// fewer than four parts ("1.2.3"), and octal octets ("012.1.2.3" ->
-        /// 10.1.2.3, which the native engine's atoi reads as 12.1.2.3). None
-        /// of those are a client IP: accepting them lets numeric junk count
-        /// as a valid address and outrank a real one, and resolves a
-        /// different address than the native lookup.
+        /// True when the text is a plain dotted-quad IPv4 address, or an IPv6
+        /// value whose embedded IPv4 part, where it has one, is a dotted quad
+        /// as well. RFC 4291 section 2.2 puts an IPv4 address only in the last
+        /// 32 bits of an IPv6 address, so the text after the last ':' is the
+        /// only part that can be dotted.
         /// </summary>
-        private static bool IsDottedQuadOrIpV6(string text)
+        private static bool IsReadableAddressText(string text)
         {
-            if (text.IndexOf(':') >= 0)
+            var lastColonIndex = text.LastIndexOf(':');
+            if (lastColonIndex >= 0)
             {
-                return true;
+                var embeddedIpV4 = text.Substring(lastColonIndex + 1);
+                return embeddedIpV4.IndexOf('.') < 0 ||
+                    IsDottedQuad(embeddedIpV4);
             }
+            return IsDottedQuad(text);
+        }
 
+        /// <summary>
+        /// True when the text is four parts of one to three decimal digits
+        /// with no leading zero, which is RFC 3986's IPv4address built from
+        /// dec-octet. .NET additionally accepts inet_aton IPv4 forms - a bare
+        /// number ("3232235521" -> 192.168.0.1), fewer than four parts
+        /// ("1.2.3"), and octal octets ("012.1.2.3" -> 10.1.2.3, which the
+        /// native engine's atoi reads as 12.1.2.3) - and it reads a leading
+        /// zero in the last part of an embedded IPv4 address
+        /// ("::ffff:1.2.3.04" -> "::ffff:1.2.3.4"). None of those are a client
+        /// IP: accepting them lets numeric junk count as a valid address and
+        /// outrank a real one, and resolves a different address than the
+        /// native lookup.
+        /// </summary>
+        private static bool IsDottedQuad(string text)
+        {
             var octets = text.Split('.');
             if (octets.Length != 4)
             {
