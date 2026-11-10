@@ -1937,6 +1937,64 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         }
 
         /// <summary>
+        /// Check that the If-Modified-Since header falls back to the last
+        /// write time of the data file, and not its creation time, when
+        /// the data has no publish date.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_CheckForUpdate_IfModifiedSince_NoPublishDate_UsesLastWriteTime()
+        {
+            // Arrange
+            const string dataFilePath = "data.dat";
+            var created = new DateTime(2023, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+            var lastWritten = new DateTime(2024, 3, 5, 10, 30, 0, DateTimeKind.Utc);
+            // Newer than the data file, so the update service goes on to
+            // check the remote server.
+            var tempLastWritten = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            _fileWrapper.Setup(w => w.Exists(dataFilePath)).Returns(true);
+            _fileWrapper.Setup(w => w.GetCreationTimeUtc(dataFilePath))
+                .Returns(created);
+            _fileWrapper.Setup(w => w.GetLastWriteTimeUtc(dataFilePath))
+                .Returns(lastWritten);
+            _fileWrapper.Setup(w => w.GetLastWriteTimeUtc(
+                It.Is<string>(s => s != dataFilePath)))
+                .Returns(tempLastWritten);
+            DateTimeOffset? headerValue = null;
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Callback((HttpRequestMessage request) =>
+                {
+                    headerValue = request.Headers.IfModifiedSince;
+                })
+                .Returns(new HttpResponseMessage(System.Net.HttpStatusCode.NotModified)
+                {
+                    Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
+                });
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            engine.Setup(e => e.TempDataDirPath).Returns(Path.GetTempPath());
+            var file = new AspectEngineDataFile()
+            {
+                Engine = engine.Object,
+                Configuration = new DataFileConfiguration()
+                {
+                    DataFilePath = dataFilePath,
+                    DataUpdateUrl = @"http://www.test.com",
+                    FileSystemWatcherEnabled = false,
+                    AutomaticUpdatesEnabled = false,
+                    VerifyModifiedSince = true
+                }
+            };
+            engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+
+            // Act
+            _dataUpdate.CheckForUpdate(engine.Object);
+
+            // Assert
+            _httpHandler.Verify(h => h.Send(It.IsAny<HttpRequestMessage>()), Times.Once());
+            Assert.IsNotNull(headerValue);
+            Assert.AreEqual(new DateTimeOffset(lastWritten), headerValue.Value);
+        }
+
+        /// <summary>
         /// Check that a programmatic update still checks the remote server
         /// and refreshes the engine when automatic updates are disabled.
         /// No polling timer is created as automatic updates are off.

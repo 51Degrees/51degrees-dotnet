@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -123,29 +124,51 @@ namespace FiftyOne.Pipeline.Web.Services
             if (httpRequest == null) throw new ArgumentNullException(nameof(httpRequest));
             if (flowData == null) throw new ArgumentNullException(nameof(flowData));
 
+            AddEvidence(httpRequest, new Target(flowData));
+
+            // The usage sharing element accepts no evidence and reads the
+            // whole request from here instead, so this is added whatever
+            // the pipeline accepts.
+            flowData.AddEvidence(
+                Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
+                new RequestView(this, httpRequest));
+        }
+
+        /// <summary>
+        /// Add the values of the request to the target, being the evidence
+        /// the pipeline accepts or every value for a
+        /// <see cref="RequestView"/>.
+        /// </summary>
+        /// <param name="httpRequest">
+        /// The <see cref="HttpRequest"/> to pull values from.
+        /// </param>
+        /// <param name="target">
+        /// Where the values go.
+        /// </param>
+        private void AddEvidence(HttpRequest httpRequest, Target target)
+        {
             try
             {
                 foreach (var header in httpRequest.Headers)
                 {
                     string evidenceKey = Core.Constants.EVIDENCE_HTTPHEADER_PREFIX +
                         Core.Constants.EVIDENCE_SEPERATOR + header.Key;
-                    CheckAndAdd(flowData, evidenceKey, header.Value.ToString());
+                    target.CheckAndAdd(evidenceKey, header.Value.ToString());
                 }
                 foreach (var cookie in httpRequest.Cookies)
                 {
                     string evidenceKey = Core.Constants.EVIDENCE_COOKIE_PREFIX +
                         Core.Constants.EVIDENCE_SEPERATOR + cookie.Key;
-                    CheckAndAdd(
-                        flowData, 
-                        evidenceKey, 
-                        cookie.Value == null ? "" : 
+                    target.CheckAndAdd(
+                        evidenceKey,
+                        cookie.Value == null ? "" :
                             cookie.Value.ToString(CultureInfo.InvariantCulture));
                 }
                 foreach (var queryValue in httpRequest.Query)
                 {
                     string evidenceKey = Core.Constants.EVIDENCE_QUERY_PREFIX +
                         Core.Constants.EVIDENCE_SEPERATOR + queryValue.Key;
-                    CheckAndAdd(flowData, evidenceKey, queryValue.Value.ToString());
+                    target.CheckAndAdd(evidenceKey, queryValue.Value.ToString());
                 }
                 // Add form parameters to the evidence.
                 if (httpRequest.Method == Shared.Constants.METHOD_POST &&
@@ -157,7 +180,7 @@ namespace FiftyOne.Pipeline.Web.Services
                         {
                             string evidenceKey = Core.Constants.EVIDENCE_QUERY_PREFIX +
                                 Core.Constants.EVIDENCE_SEPERATOR + formValue.Key;
-                            CheckAndAdd(flowData, evidenceKey, formValue.Value.ToString());
+                            target.CheckAndAdd(evidenceKey, formValue.Value.ToString());
                         }
                     }
                     catch (Exception e) when (e is InvalidDataException || e is IOException)
@@ -187,20 +210,20 @@ namespace FiftyOne.Pipeline.Web.Services
                     {
                         string evidenceKey = Core.Constants.EVIDENCE_SESSION_PREFIX +
                             Core.Constants.EVIDENCE_SEPERATOR + sessionKey;
-                        CheckAndAdd(flowData, evidenceKey, httpRequest.HttpContext.Session.GetString(sessionKey));
+                        target.CheckAndAdd(evidenceKey, httpRequest.HttpContext.Session.GetString(sessionKey));
                     }
-                    CheckAndAdd(flowData, Core.Constants.EVIDENCE_SESSION_KEY,
+                    target.CheckAndAdd(Core.Constants.EVIDENCE_SESSION_KEY,
                         new AspCoreSession(httpRequest.HttpContext.Session));
                 }
 
                 if (httpRequest.HttpContext.Connection?.RemoteIpAddress != null)
                 {
-                    CheckAndAdd(flowData, Core.Constants.EVIDENCE_CLIENTIP_KEY,
+                    target.CheckAndAdd(Core.Constants.EVIDENCE_CLIENTIP_KEY,
                         httpRequest.HttpContext.Connection.RemoteIpAddress.ToString());
                 }
 
-                AddRequestProtocolToEvidence(flowData, httpRequest);
-                AddRequestLineToEvidence(flowData, httpRequest);
+                AddRequestProtocolToEvidence(target, httpRequest);
+                AddRequestLineToEvidence(target, httpRequest);
             }
 #pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception ex)
@@ -211,31 +234,78 @@ namespace FiftyOne.Pipeline.Web.Services
         }
 
         /// <summary>
-        /// Check if the given key is needed by the given flowdata.
-        /// If it is then add it as evidence.
+        /// Where the values of a request go, being the evidence of a flow
+        /// data for the keys its pipeline accepts, or every value into the
+        /// dictionary of a <see cref="RequestView"/>.
         /// </summary>
-        /// <param name="flowData">
-        /// The <see cref="IFlowData"/> to add the evidence to.
-        /// </param>
-        /// <param name="key">
-        /// The evidence key
-        /// </param>
-        /// <param name="value">
-        /// The evidence value
-        /// </param>
-        private static void CheckAndAdd(IFlowData flowData, string key, object value)
+        private readonly struct Target
         {
-            if (flowData.EvidenceKeyFilter.Include(key))
+            private readonly IFlowData _flowData;
+            private readonly IDictionary<string, object> _values;
+
+            public Target(IFlowData flowData)
             {
-                flowData.AddEvidence(key, value);   
+                _flowData = flowData;
+                _values = null;
             }
+
+            public Target(IDictionary<string, object> values)
+            {
+                _flowData = null;
+                _values = values;
+            }
+
+            /// <summary>
+            /// True if a value for the key would be kept.
+            /// </summary>
+            public bool Wants(string key) =>
+                _values != null || _flowData.EvidenceKeyFilter.Include(key);
+
+            /// <summary>
+            /// Keep the value if <see cref="Wants"/> the key.
+            /// </summary>
+            public void CheckAndAdd(string key, object value)
+            {
+                if (_values != null)
+                {
+                    _values[key] = value;
+                }
+                else if (_flowData.EvidenceKeyFilter.Include(key))
+                {
+                    _flowData.AddEvidence(key, value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The request as evidence for the usage sharing element, read from
+        /// the request the first time it is used.
+        /// </summary>
+        private sealed class RequestView : RequestEvidenceView
+        {
+            private readonly WebRequestEvidenceService _service;
+            private readonly HttpRequest _request;
+
+            public RequestView(
+                WebRequestEvidenceService service,
+                HttpRequest request)
+            {
+                _service = service;
+                _request = request;
+            }
+
+            protected override void AddValues(
+                IDictionary<string, object> values) =>
+                _service.AddEvidence(_request, new Target(values));
         }
 
         /// <summary>
         /// Get the request protocol using .NET's Request object
         /// 'isHttps'. Fall back to non-standard headers.
         /// </summary>
-        private void AddRequestProtocolToEvidence(IFlowData flowData, HttpRequest request)
+        private static void AddRequestProtocolToEvidence(
+            Target target,
+            HttpRequest request)
         {
             string protocol = "https";
             if (request.IsHttps)
@@ -256,7 +326,7 @@ namespace FiftyOne.Pipeline.Web.Services
             }
 
             // Add protocol to the evidence.
-            CheckAndAdd(flowData, Core.Constants.EVIDENCE_PROTOCOL, protocol);
+            target.CheckAndAdd(Core.Constants.EVIDENCE_PROTOCOL, protocol);
         }
 
         /// <summary>
@@ -291,37 +361,24 @@ namespace FiftyOne.Pipeline.Web.Services
         /// </para>
         /// </remarks>
         private static void AddRequestLineToEvidence(
-            IFlowData flowData,
+            Target target,
             HttpRequest httpRequest)
         {
-            var filter = flowData.EvidenceKeyFilter;
-
-            if (filter.Include(Core.Constants.EVIDENCE_REQUEST_METHOD_KEY))
-            {
-                flowData.AddEvidence(
-                    Core.Constants.EVIDENCE_REQUEST_METHOD_KEY,
-                    httpRequest.Method ?? string.Empty);
-            }
+            target.CheckAndAdd(
+                Core.Constants.EVIDENCE_REQUEST_METHOD_KEY,
+                httpRequest.Method ?? string.Empty);
 
             // The path and the query are split out of the request target
             // together, so the one reading serves both and is only done
             // where at least one of them is wanted.
-            if (filter.Include(Core.Constants.EVIDENCE_REQUEST_PATH_KEY) ||
-                filter.Include(Core.Constants.EVIDENCE_REQUEST_QUERY_KEY))
+            if (target.Wants(Core.Constants.EVIDENCE_REQUEST_PATH_KEY) ||
+                target.Wants(Core.Constants.EVIDENCE_REQUEST_QUERY_KEY))
             {
                 SplitRequestTarget(httpRequest, out var path, out var query);
-
-                if (filter.Include(Core.Constants.EVIDENCE_REQUEST_PATH_KEY))
-                {
-                    flowData.AddEvidence(
-                        Core.Constants.EVIDENCE_REQUEST_PATH_KEY, path);
-                }
-
-                if (filter.Include(Core.Constants.EVIDENCE_REQUEST_QUERY_KEY))
-                {
-                    flowData.AddEvidence(
-                        Core.Constants.EVIDENCE_REQUEST_QUERY_KEY, query);
-                }
+                target.CheckAndAdd(
+                    Core.Constants.EVIDENCE_REQUEST_PATH_KEY, path);
+                target.CheckAndAdd(
+                    Core.Constants.EVIDENCE_REQUEST_QUERY_KEY, query);
             }
         }
 

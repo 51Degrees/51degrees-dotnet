@@ -29,14 +29,16 @@ using System.Collections.Generic;
 namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
 {
     /// <summary>
-    /// This filter is used by the <see cref="ShareUsageElement"/>.
-    /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
+    /// Decides which of the evidence the <see cref="ShareUsageElement"/>
+    /// finds is shared.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/pipeline-elements/usage-sharing-element.md#shared-evidence">Specification</see>
     /// </summary>
     /// <remarks>
-    /// As this filter is generally inclusive, it will often cause far more
-    /// evidence to be passed into a pipeline than the engine-specific 
-    /// filters, which tend to be based on a list of values to include such as
-    /// <see cref="EvidenceKeyFilterWhitelist"/>.
+    /// This filter is not the element's
+    /// <see cref="ShareUsageBase.EvidenceKeyFilter"/>, which accepts no
+    /// evidence. It is generally inclusive, so as an element's filter it
+    /// would put far more evidence into a pipeline than the elements need,
+    /// and every cache key and ETag would depend on it.
     /// </remarks>
     public class EvidenceKeyFilterShareUsage : IEvidenceKeyFilter
     {
@@ -117,6 +119,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// it.
         /// </para>
         /// <para>
+        /// 'header.cookie' is the Cookie header, which carries every cookie
+        /// including the ones the cookie rule leaves out. The cookies
+        /// starting 51D_ are shared as their own 'cookie.' keys.
+        /// </para>
+        /// <para>
         /// An element that needs either value still receives it in evidence,
         /// because this filter governs only what usage sharing sends, not
         /// what a pipeline collects.
@@ -128,6 +135,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
             "id.salt",
             "request-query",
             "request-path",
+            "header.cookie",
         };
 
         /// <summary>
@@ -155,8 +163,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// If this value is null, all query string parameters are shared.
         /// </param>
         /// <param name="includeSession">
-        /// If true then the asp.net session cookie will be included in
-        /// the filter.
+        /// If true then the repeat tracker's filter, which derives from
+        /// this one, keys on the asp.net session cookie. This filter does
+        /// not share the cookie either way, because only cookies starting
+        /// 51D_ are shared.
         /// </param>
         /// <param name="aspSessionCookieName">
         /// The name of the cookie that contains the asp.net session id.
@@ -208,6 +218,22 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         }
 
         /// <summary>
+        /// True if the key is the asp.net session cookie and the filter
+        /// was given the setting to include the session.
+        /// </summary>
+        /// <param name="key">The evidence key.</param>
+        /// <returns>True for the session cookie when it is included.</returns>
+        protected bool IsIncludedSessionCookie(string key)
+        {
+            return _includeSession &&
+                key.Equals(
+                    Core.Constants.EVIDENCE_COOKIE_PREFIX +
+                        Core.Constants.EVIDENCE_SEPERATOR +
+                        _aspSessionCookieName,
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Check if the specified evidence key is included by this filter.
         /// </summary>
         /// <param name="key">
@@ -224,6 +250,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
             if(key == null)
             {
                 throw new ArgumentNullException(nameof(key));
+            }
+
+            // The web request itself is never shared, only the values read
+            // from it.
+            if (ShareUsageEvidence.IsRequestKey(key))
+            {
+                return false;
             }
 
             // The keys listed in _neverSharedEvidenceKeys must never leave
@@ -251,7 +284,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                     string firstPart = key.Remove(firstSeperator);
                     string lastPart = key.Substring(firstSeperator + 1);
 
-                    if (firstPart == Core.Constants.EVIDENCE_HTTPHEADER_PREFIX)
+                    if (string.Equals(firstPart, Core.Constants.EVIDENCE_HTTPHEADER_PREFIX,
+                        StringComparison.OrdinalIgnoreCase))
                     {
                         // Add the header to the list if the header name does not 
                         // appear in the list of blocked headers.
@@ -261,23 +295,24 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                             .Contains(lastPart.ToLowerInvariant()) == false;
 #pragma warning restore CA1308 // Normalize strings to uppercase
                     }
-                    else if (firstPart == Core.Constants.EVIDENCE_COOKIE_PREFIX)
+                    else if (string.Equals(firstPart, Core.Constants.EVIDENCE_COOKIE_PREFIX,
+                        StringComparison.OrdinalIgnoreCase))
                     {
                         // Only add cookies that start with the 51Degrees cookie 
                         // prefix.
                         result = lastPart.StartsWith(Engines.Constants.FIFTYONE_COOKIE_PREFIX,
-                            StringComparison.OrdinalIgnoreCase) ||
-                            (_includeSession && lastPart.Equals(_aspSessionCookieName,
-                                StringComparison.OrdinalIgnoreCase));
+                            StringComparison.OrdinalIgnoreCase);
                     }
-                    else if (firstPart == Core.Constants.EVIDENCE_SESSION_PREFIX)
+                    else if (string.Equals(firstPart, Core.Constants.EVIDENCE_SESSION_PREFIX,
+                        StringComparison.OrdinalIgnoreCase))
                     {
                         // Only add session values that start with the 51Degrees
                         // cookie prefix.
                         result = lastPart.StartsWith(Engines.Constants.FIFTYONE_COOKIE_PREFIX,
                             StringComparison.OrdinalIgnoreCase);
                     }
-                    else if (firstPart == Core.Constants.EVIDENCE_QUERY_PREFIX)
+                    else if (string.Equals(firstPart, Core.Constants.EVIDENCE_QUERY_PREFIX,
+                        StringComparison.OrdinalIgnoreCase))
                     {
                         // If no query string parameter filter was specified 
                         // then share all of them.
