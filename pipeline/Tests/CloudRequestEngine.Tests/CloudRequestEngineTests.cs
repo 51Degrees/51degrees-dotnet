@@ -24,6 +24,7 @@ using FiftyOne.Common.TestHelpers;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -51,6 +52,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
 
         private string _jsonResponse = "{'device':{'value':'1'}}";
         private HttpStatusCode _jsonResponseStatus = HttpStatusCode.OK;
+        // When set, the mocked JSON answer waits for it, so a test can
+        // hold the cloud service's answer back.
+        private ManualResetEventSlim _jsonResponseGate;
+        private const int JsonResponseGateMs = 10000;
+        private const int ProcessReturnMs = 2000;
         private string _evidenceKeysResponse = "['query.User-Agent']";
         private HttpStatusCode _evidenceKeysResponseStatus = HttpStatusCode.OK;
         private string _accessiblePropertiesResponse =
@@ -1504,7 +1510,11 @@ cloudEx.Message, "Exception message did not contain the expected text.");
         /// See the <see href="https://github.com/51Degrees/specifications/blob/b5e7de8019646eaa1e3bc1fd2a177c4c26fae749/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
         /// </summary>
         [TestMethod]
-        public void Cache_ResponseWithFodid_NeverStoredOrServed()
+        [DataRow("fodid")]
+        [DataRow("FODID")]
+        [DataRow("Fodid")]
+        public void Cache_ResponseWithFodid_NeverStoredOrServed(
+            string member)
         {
             ConfigureMockedClient(r => true);
             var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
@@ -1515,7 +1525,8 @@ cloudEx.Message, "Exception message did not contain the expected text.");
             using var pipeline = new PipelineBuilder(_loggerFactory)
                 .AddFlowElement(engine).Build();
 
-            _jsonResponse = "{'device':{'ismobile':true},'fodid':'first'}";
+            _jsonResponse =
+                $"{{'device':{{'ismobile':true}},'{member}':'first'}}";
             using (var first = pipeline.CreateFlowData())
             {
                 first.AddEvidence("query.User-Agent", "iPhone");
@@ -1525,7 +1536,8 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                     first.GetFromElement(engine).JsonResponse, "first");
             }
 
-            _jsonResponse = "{'device':{'ismobile':true},'fodid':'second'}";
+            _jsonResponse =
+                $"{{'device':{{'ismobile':true}},'{member}':'second'}}";
             using (var second = pipeline.CreateFlowData())
             {
                 second.AddEvidence("query.User-Agent", "iPhone");
@@ -1570,6 +1582,60 @@ cloudEx.Message, "Exception message did not contain the expected text.");
             }
 
             VerifyJsonRequests(Times.Once());
+        }
+
+        /// <summary>
+        /// With lazy loading and a results cache, Process returns before the
+        /// cloud service answers, and whether the result is cached is decided
+        /// once the answer has arrived. A response without a 51Did is then
+        /// served from the cache, and one with a 51Did is not.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/advanced-features/lazy-loading.md">Specification</see>
+        /// </summary>
+        [TestMethod]
+        [DataRow("{'device':{'ismobile':true}}", true)]
+        [DataRow("{'device':{'ismobile':true},'fodid':'one'}", false)]
+        public void Cache_LazyLoading_ProcessReturnsBeforeTheAnswer(
+            string response, bool hit)
+        {
+            ConfigureMockedClient(r => true);
+            var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
+                .SetResourceKey("resource_key")
+                .SetCacheSize(10)
+                .SetCacheHitOrMiss(true)
+                .SetLazyLoading(new LazyLoadingConfiguration(JsonResponseGateMs))
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build();
+
+            _jsonResponse = response;
+            using (var gate = new ManualResetEventSlim(false))
+            using (var first = pipeline.CreateFlowData())
+            {
+                _jsonResponseGate = gate;
+                first.AddEvidence("query.User-Agent", "iPhone");
+                var process = Task.Run(() => first.Process());
+                var returned = process.Wait(ProcessReturnMs);
+                gate.Set();
+                Assert.IsTrue(returned,
+                    "Process must return before the cloud service answers.");
+                Assert.IsTrue(first.GetFromElement(engine).ProcessTask
+                    .Wait(JsonResponseGateMs));
+                StringAssert.Contains(
+                    first.GetFromElement(engine).JsonResponse, "ismobile");
+            }
+            _jsonResponseGate = null;
+
+            using (var second = pipeline.CreateFlowData())
+            {
+                second.AddEvidence("query.User-Agent", "iPhone");
+                second.Process();
+                Assert.IsTrue(second.GetFromElement(engine).ProcessTask
+                    .Wait(JsonResponseGateMs));
+                Assert.AreEqual(hit, second.GetFromElement(engine).CacheHit,
+                    $"cache hit {(hit ? "should" : "shouldn't")} occur.");
+            }
+
+            VerifyJsonRequests(hit ? Times.Once() : Times.Exactly(2));
         }
 
         private void VerifyJsonRequests(Times times)
@@ -2385,10 +2451,14 @@ cloudEx.Message, "Exception message did not contain the expected text.");
             else 
             { 
                // Prepare the expected response of the mocked http call
-               setup.ReturnsAsync(() => new HttpResponseMessage()
+               setup.ReturnsAsync(() =>
                 {
-                    StatusCode = _jsonResponseStatus,
-                    Content = new StringContent(_jsonResponse),
+                    _jsonResponseGate?.Wait(JsonResponseGateMs);
+                    return new HttpResponseMessage()
+                    {
+                        StatusCode = _jsonResponseStatus,
+                        Content = new StringContent(_jsonResponse),
+                    };
                 })
                .Verifiable();
             }
