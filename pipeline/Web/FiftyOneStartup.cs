@@ -200,7 +200,7 @@ namespace FiftyOne.Pipeline.Web
 
             if (contentRoot != null)
             {
-                ApplicationRootPaths.ResolveDataFiles(
+                ApplicationRootPaths.ResolvePaths(
                     options,
                     p => ApplicationRootPaths.CombineWithRoot(contentRoot, p));
             }

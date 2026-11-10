@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.Core.Configuration;
+using FiftyOne.Pipeline.Core.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,18 +29,22 @@ using System.Linq;
 namespace FiftyOne.Pipeline.Web.Shared
 {
     /// <summary>
-    /// Replaces a leading tilde (~) in the data file paths of a pipeline
+    /// Replaces a leading tilde (~) in the file system paths of a pipeline
     /// configuration with the root of the web application.
     /// </summary>
     internal static class ApplicationRootPaths
     {
         /// <summary>
-        /// The build parameter that holds an engine's data file path.
+        /// The build parameters that hold a file system path, matched
+        /// without regard to case. They are an engine's data file and its
+        /// temporary directory, the latter with or without the 'Set' that
+        /// starts the name of its builder method.
         /// </summary>
-        internal const string DataFileParameter = "DataFile";
+        internal static readonly string[] PathParameters =
+            new[] { "DataFile", "TempDirPath", "SetTempDirPath" };
 
         /// <summary>
-        /// Replace each data file path that starts with '~/' or '~\' in the
+        /// Replace each path parameter that starts with '~/' or '~\' in the
         /// elements of the options, including nested sub elements. Any other
         /// path is left as it is.
         /// </summary>
@@ -47,19 +52,20 @@ namespace FiftyOne.Pipeline.Web.Shared
         /// Pipeline options to update in place.
         /// </param>
         /// <param name="resolve">
-        /// Maps a path starting with '~/' or '~\' to a full path.
+        /// Maps a path starting with '~/' or '~\' to a full path. An
+        /// empty result is an error.
         /// </param>
-        internal static void ResolveDataFiles(
+        internal static void ResolvePaths(
             PipelineOptions options,
             Func<string, string> resolve)
         {
             if (options?.Elements != null)
             {
-                ResolveDataFiles(options.Elements, resolve);
+                ResolvePaths(options.Elements, resolve);
             }
         }
 
-        private static void ResolveDataFiles(
+        private static void ResolvePaths(
             IEnumerable<ElementOptions> elements,
             Func<string, string> resolve)
         {
@@ -68,22 +74,31 @@ namespace FiftyOne.Pipeline.Web.Shared
                 var parameters = element.BuildParameters;
                 if (parameters != null)
                 {
-                    var keys = parameters.Keys.Where(k => string.Equals(
-                        k,
-                        DataFileParameter,
-                        StringComparison.OrdinalIgnoreCase)).ToList();
+                    var keys = parameters.Keys.Where(k => PathParameters.Any(
+                        n => string.Equals(
+                            k,
+                            n,
+                            StringComparison.OrdinalIgnoreCase))).ToList();
                     foreach (var key in keys)
                     {
                         if (parameters[key] is string path &&
                             IsApplicationRootPath(path))
                         {
-                            parameters[key] = resolve(path);
+                            var resolved = resolve(path);
+                            if (string.IsNullOrEmpty(resolved))
+                            {
+                                throw new PipelineConfigurationException(
+                                    "The web application root could not " +
+                                    $"be applied to '{path}', the value " +
+                                    $"of '{key}'.");
+                            }
+                            parameters[key] = resolved;
                         }
                     }
                 }
                 if (element.SubElements != null)
                 {
-                    ResolveDataFiles(element.SubElements, resolve);
+                    ResolvePaths(element.SubElements, resolve);
                 }
             }
         }

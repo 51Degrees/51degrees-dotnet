@@ -246,7 +246,7 @@ namespace FiftyOne.Pipeline.Web.Framework
 
 
         /// <summary>
-        /// Replace each data file path that starts with '~/' or '~\' with
+        /// Replace each path parameter that starts with '~/' or '~\' with
         /// the path returned by <paramref name="mapPath"/>. Any other path
         /// is left as it is.
         /// </summary>
@@ -261,7 +261,7 @@ namespace FiftyOne.Pipeline.Web.Framework
             PipelineOptions options,
             Func<string, string> mapPath)
         {
-            ApplicationRootPaths.ResolveDataFiles(
+            ApplicationRootPaths.ResolvePaths(
                 options,
                 p => mapPath(p.Replace('\\', '/')));
         }
