@@ -31,7 +31,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
     /// no evidence, so it reads the web request from the
     /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/> value that a
     /// web integration adds.
-    /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
     /// </summary>
     internal static class ShareUsageEvidence
     {

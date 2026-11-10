@@ -266,7 +266,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// the evidence and the values of the web request that a web
         /// integration adds as
         /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>.
-        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
         /// </summary>
         public override IEvidenceKeyFilter EvidenceKeyFilter
         {

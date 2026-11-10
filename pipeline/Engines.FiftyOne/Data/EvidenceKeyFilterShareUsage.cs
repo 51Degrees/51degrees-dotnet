@@ -31,7 +31,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
     /// <summary>
     /// Decides which of the evidence the <see cref="ShareUsageElement"/>
     /// finds is shared.
-    /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/usage-sharing-element.md#shared-evidence">Specification</see>
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/pipeline-elements/usage-sharing-element.md#shared-evidence">Specification</see>
     /// </summary>
     /// <remarks>
     /// This filter is not the element's

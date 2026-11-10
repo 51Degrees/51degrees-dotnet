@@ -42,7 +42,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements;
 /// <summary>
 /// The usage sharing element accepts no evidence, and shares what it finds
 /// in the evidence and in the web request.
-/// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
+/// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
 /// </summary>
 [TestClass]
 public class ShareUsageAcceptsNoEvidenceTests
