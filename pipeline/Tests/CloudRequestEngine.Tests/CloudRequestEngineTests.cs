@@ -117,6 +117,114 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         }
 
         /// <summary>
+        /// The engine sends only the Evidence the cloud accepts, never
+        /// 'resource', 'license', 'licence' or 'values' from Evidence, as the
+        /// Processing section of cloud-request-engine.md says. Other
+        /// Evidence is sent with the usual precedence.
+        /// </summary>
+        [TestMethod]
+        public void Evidence_ResourceLicenseValuesLeftOut()
+        {
+            string resourceKey = "resource_key";
+            string licenseKey = "license_key";
+            string capturedContent = null;
+
+            _handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+            _handlerMock
+               .Protected()
+               .Setup<Task<HttpResponseMessage>>(
+                  "SendAsync",
+                  ItExpr.Is<HttpRequestMessage>(r =>
+                      r.RequestUri.AbsolutePath.ToLower().EndsWith("json")),
+                  ItExpr.IsAny<CancellationToken>())
+               .ReturnsAsync((HttpRequestMessage req, CancellationToken ct) =>
+               {
+                   capturedContent = req.Content.ReadAsStringAsync(
+                       TestContext.CancellationToken).Result;
+                   return new HttpResponseMessage()
+                   {
+                       StatusCode = _jsonResponseStatus,
+                       Content = new StringContent(_jsonResponse),
+                   };
+               });
+            _handlerMock
+               .Protected()
+               .Setup<Task<HttpResponseMessage>>(
+                  "SendAsync",
+                  ItExpr.Is<HttpRequestMessage>(r =>
+                      r.RequestUri.AbsolutePath.ToLower().EndsWith("evidencekeys")),
+                  ItExpr.IsAny<CancellationToken>())
+               .ReturnsAsync(() => new HttpResponseMessage()
+               {
+                   StatusCode = _evidenceKeysResponseStatus,
+                   Content = new StringContent(_evidenceKeysResponse),
+               });
+            _handlerMock
+               .Protected()
+               .Setup<Task<HttpResponseMessage>>(
+                  "SendAsync",
+                  ItExpr.Is<HttpRequestMessage>(r =>
+                      r.RequestUri.AbsolutePath.ToLower().EndsWith("accessibleproperties")),
+                  ItExpr.IsAny<CancellationToken>())
+               .ReturnsAsync(() => new HttpResponseMessage()
+               {
+                   StatusCode = _accessiblePropertiesResponseStatus,
+                   Content = new StringContent(_accessiblePropertiesResponse),
+               });
+
+            _httpClient = new HttpClient(_handlerMock.Object);
+            var engine = new CloudRequestEngineBuilder(
+                _loggerFactory,
+                _httpClient)
+                .SetResourceKey(resourceKey)
+                .SetLicenseKey(licenseKey)
+                .Build();
+
+            using (var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build())
+            {
+                var data = pipeline.CreateFlowData();
+                data.AddEvidence("query.Resource", "evidence_resource");
+                data.AddEvidence("query.LICENSE", "evidence_license");
+                data.AddEvidence("query.Licence", "evidence_licence");
+                data.AddEvidence("query.Values", "evidence_values");
+                data.AddEvidence("header.resource", "header_resource");
+                data.AddEvidence("cookie.License", "cookie_license");
+                data.AddEvidence("query.other", "query_other");
+                data.AddEvidence("header.other", "header_other");
+                data.AddEvidence("cookie.cookie-only", "cookie_only");
+                data.Process();
+            }
+
+            var fields = capturedContent.Split('&')
+                .Select(p => p.Split(new[] { '=' }, 2))
+                .ToList();
+            var names = fields.Select(f => f[0]).ToList();
+
+            Assert.AreEqual(1, names.Count(n => n == "resource"));
+            Assert.AreEqual(1, names.Count(n => n == "license"));
+            Assert.AreEqual(1, names.Count(n => n == "other"));
+            Assert.IsFalse(names.Any(n =>
+                n.Equals("values", StringComparison.OrdinalIgnoreCase) ||
+                n.Equals("licence", StringComparison.OrdinalIgnoreCase)));
+            Assert.IsFalse(names.Any(n => n != "resource" &&
+                n.Equals("resource", StringComparison.OrdinalIgnoreCase)));
+            Assert.IsFalse(names.Any(n => n != "license" &&
+                n.Equals("license", StringComparison.OrdinalIgnoreCase)));
+            Assert.AreEqual(resourceKey,
+                fields.Single(f => f[0] == "resource")[1]);
+            Assert.AreEqual(licenseKey,
+                fields.Single(f => f[0] == "license")[1]);
+            Assert.DoesNotContain("evidence_", capturedContent);
+            Assert.DoesNotContain("header_resource", capturedContent);
+            Assert.DoesNotContain("cookie_license", capturedContent);
+            Assert.AreEqual("query_other",
+                fields.Single(f => f[0] == "other")[1]);
+            Assert.AreEqual("cookie_only",
+                fields.Single(f => f[0] == "cookie-only")[1]);
+        }
+
+        /// <summary>
         /// Verify that nested evidence keys like 'query.id.usage' preserve
         /// the full suffix 'id.usage' rather than just the last segment 'usage'.
         /// </summary>
