@@ -93,7 +93,8 @@ namespace FiftyOne.Pipeline.Web.Services
             if (context == null) throw new ArgumentNullException(nameof(context));
 
             bool result = false;
-            if (context.Request.Path.Value.EndsWith("51Degrees.core.js", 
+            if (context.Request.Path.Value.EndsWith(
+                Options.Value.JavaScriptPath,
                 StringComparison.OrdinalIgnoreCase))
             {
                 ServeCoreJS(context);
@@ -130,7 +131,8 @@ namespace FiftyOne.Pipeline.Web.Services
             if (context == null) throw new ArgumentNullException(nameof(context));
 
             bool result = false;
-            if (context.Request.Path.Value.EndsWith(Engines.Constants.DEFAULT_JSON_ENDPOINT,
+            if (context.Request.Path.Value.EndsWith(
+                Options.Value.JsonPath,
                 StringComparison.OrdinalIgnoreCase))
             {
                 ServeCoreJson(context);
