@@ -1034,7 +1034,7 @@ cloudEx.Message, "Exception message did not contain the expected text.");
         /// Only an answer that says the cloud service is in trouble counts
         /// towards the recovery period, which every request shares. The
         /// next request after one of these answers is stopped.
-        /// See the <see href="https://github.com/51Degrees/specifications/blob/c2d43948428d50555dfd9a43a9e626d254b123b1/pipeline-specification/pipeline-elements/cloud-request-engine.md#failures-that-count">Specification</see>
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/28a2a5045321cef51b49a9d3ac920a0528d06831/pipeline-specification/pipeline-elements/cloud-request-engine.md#failures-that-count">Specification</see>
         /// </summary>
         [TestMethod]
         [DataRow(HttpStatusCode.TooManyRequests, "{'errors':['Slow down']}")]
@@ -1059,6 +1059,7 @@ cloudEx.Message, "Exception message did not contain the expected text.");
         /// </summary>
         [TestMethod]
         [DataRow(HttpStatusCode.BadRequest)]
+        [DataRow(HttpStatusCode.RequestTimeout)]
         [DataRow(HttpStatusCode.Unauthorized)]
         [DataRow(HttpStatusCode.Forbidden)]
         [DataRow(HttpStatusCode.NotFound)]
