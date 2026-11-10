@@ -32,7 +32,7 @@ namespace FiftyOne.Pipeline.Core.Services
     /// <summary>
     /// Masks license keys in text, so a log entry or an error message never
     /// holds one in full. A masked key shows only its last 4 characters.
-    /// See the <see href="https://github.com/51Degrees/specifications/blob/7cd9bc82797ea86c39dd90ed41232f3b0f167e00/pipeline-specification/features/logging.md#license-keys">Specification</see>
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/c9939a787cc71f711e3c82755308482fc1cf63ce/pipeline-specification/features/logging.md#license-keys">Specification</see>
     /// </summary>
     public static class LicenseKeyMask
     {
@@ -91,7 +91,9 @@ namespace FiftyOne.Pipeline.Core.Services
         /// <param name="text">The text to mask.</param>
         /// <param name="knownKeys">
         /// Keys to mask wherever they appear, whether plain or encoded for
-        /// a URL. Null or empty entries are ignored.
+        /// a URL. Null or empty entries are ignored. A key of 4 or fewer
+        /// characters is replaced entirely, so it is masked wherever the same
+        /// text appears, including inside other words.
         /// </param>
         /// <returns>The text with each key masked.</returns>
         public static string MaskText(

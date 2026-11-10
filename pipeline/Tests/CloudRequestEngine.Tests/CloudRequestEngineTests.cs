@@ -442,7 +442,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         /// <summary>
         /// A license key that the cloud service repeats in an error answer
         /// never appears in full in the exception or the log entries.
-        /// See the <see href="https://github.com/51Degrees/specifications/blob/7cd9bc82797ea86c39dd90ed41232f3b0f167e00/pipeline-specification/features/logging.md#license-keys">Specification</see>
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/c9939a787cc71f711e3c82755308482fc1cf63ce/pipeline-specification/features/logging.md#license-keys">Specification</see>
         /// </summary>
         [TestMethod]
         [DataRow("{'errors':['The license key ABCDEFGH12345678 is not valid']}", HttpStatusCode.BadRequest)]

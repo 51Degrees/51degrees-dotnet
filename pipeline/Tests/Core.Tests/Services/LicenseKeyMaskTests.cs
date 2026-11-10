@@ -30,7 +30,7 @@ namespace FiftyOne.Pipeline.Core.Tests.Services
     /// <summary>
     /// A license key never appears in full in a log entry or an error
     /// message.
-    /// See the <see href="https://github.com/51Degrees/specifications/blob/7cd9bc82797ea86c39dd90ed41232f3b0f167e00/pipeline-specification/features/logging.md#license-keys">Specification</see>
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/c9939a787cc71f711e3c82755308482fc1cf63ce/pipeline-specification/features/logging.md#license-keys">Specification</see>
     /// </summary>
     [TestClass]
     public class LicenseKeyMaskTests
