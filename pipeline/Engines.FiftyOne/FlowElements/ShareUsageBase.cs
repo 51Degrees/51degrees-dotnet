@@ -929,23 +929,39 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             }
             SendDataTask?.Wait();
 
-            // Only attempt a final flush if there is something to send. This avoids
-            // a needless network round-trip (and a logged error when offline) when
-            // the pipeline is disposed without any usage. Nothing is sent while
-            // paused, as recent sends have failed.
-            var queued = EvidenceCollection.Count;
-            if (queued > 0)
+            // A message holds at most twice the minimum entries, so send
+            // messages until the queue is empty. Nothing is sent while
+            // paused, and the pause is checked before every send because a
+            // failed send can start one. One timeout bounds the whole of
+            // it, so an endpoint that does not answer cannot hold disposal
+            // up. Nothing is sent when nothing is queued.
+            using (var stop = new CancellationTokenSource())
             {
-                if (_backOff.Remaining(ShareUsageBackOff.Now) > TimeSpan.Zero)
+                var flush = Task.Run(() =>
                 {
-                    Logger.LogInformation(string.Format(
+                    while (EvidenceCollection.Count > 0 &&
+                        stop.IsCancellationRequested == false)
+                    {
+                        if (_backOff.Remaining(ShareUsageBackOff.Now) >
+                            TimeSpan.Zero)
+                        {
+                            Logger.LogInformation(string.Format(
+                                CultureInfo.InvariantCulture,
+                                Messages.MessageShareUsageNotSentWhilePaused,
+                                EvidenceCollection.Count));
+                            return;
+                        }
+                        Task.Run(() => SendOnceAsync()).Wait();
+                    }
+                });
+                if (flush.Wait(DisposeTimeoutMilliseconds) == false)
+                {
+                    stop.Cancel();
+                    Logger.LogWarning(string.Format(
                         CultureInfo.InvariantCulture,
-                        Messages.MessageShareUsageNotSentWhilePaused,
-                        queued));
-                }
-                else
-                {
-                    Task.Run(() => SendOnceAsync()).Wait();
+                        Messages.MessageShareUsageNotSentOnClose,
+                        EvidenceCollection.Count,
+                        DisposeTimeoutMilliseconds));
                 }
             }
             _closing.Dispose();
