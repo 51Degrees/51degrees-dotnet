@@ -199,13 +199,6 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             public Task SendAsync() => BuildAndSendXmlAsync();
 
             public void StartSending() => TrySendData();
-
-            public void Drain()
-            {
-                while (EvidenceCollection.TryTake(out _))
-                {
-                }
-            }
         }
 
         /// <summary>
@@ -1402,16 +1395,29 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// When the queue is full, new entries are discarded and one warning
         /// is logged for each time the queue fills, never one for each entry
         /// discarded. Once there is room again a new entry is accepted, and
-        /// the next time the queue fills is warned about again. The queue is
-        /// filled directly so that no send starts and the result does not
-        /// depend on thread timing.
+        /// the next time the queue fills is warned about again. A failed
+        /// send first pauses sending, so no send takes entries while the
+        /// test fills the queue, and the result does not depend on thread
+        /// timing.
         /// </summary>
         [TestMethod]
         public void ShareUsageElement_QueueFullRecovery()
         {
-            var element = new QueueOpenShareUsageElement(
-                _logger, _httpClient, 10, 20, _tracker.Object);
+            _httpHandler.SetupResponse(request => new HttpResponseMessage(
+                System.Net.HttpStatusCode.InternalServerError));
+            var element = new PausedQueueElement(
+                _logger, _httpClient, _tracker.Object);
             element.AddPipeline(_pipeline.Object);
+            element.Enqueue("10.6.9.1");
+            element.StartSending();
+            var paused = System.Diagnostics.Stopwatch.StartNew();
+            while (_logger.WarningEntries.Any(w => w.Contains("paused")) == false &&
+                paused.Elapsed < TimeSpan.FromSeconds(10))
+            {
+                Thread.Sleep(10);
+            }
+            Assert.IsTrue(_logger.WarningEntries.Any(w => w.Contains("paused")),
+                "The failed send did not pause sending.");
 
             // The queue fills for the first time.
             for (int i = 0; i < 20; i++)
@@ -1444,11 +1450,49 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             }
             Assert.AreEqual(2, QueueFullWarnings(),
                 "Each time the queue fills should give one warning.");
-            Assert.IsTrue(_logger.WarningEntries.All(w => w.Contains("is full")),
-                "Unexpected warnings: " +
-                string.Join("; ", _logger.WarningEntries));
+
+            element.Dispose();
             _logger.AssertMaxErrors(0);
-            _httpHandler.VerifySendCalled(0);
+            Assert.AreEqual(1, _httpHandler.SendCallCount,
+                "A send was made while sending was paused.");
+        }
+
+        /// <summary>
+        /// Opens the queue, so a test can fill it directly. The queue holds
+        /// 20 entries, and one failed send pauses sending for 60 seconds.
+        /// </summary>
+        private class PausedQueueElement : ShareUsageElement
+        {
+            public PausedQueueElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                ITracker tracker)
+                : base(logger, httpClient, 1, 10, 20, 100, 100, 1, true,
+                      "http://51Degrees.com/test", new List<string>(),
+                      new List<string>(),
+                      new List<KeyValuePair<string, string>>(),
+                      Engines.Constants.DEFAULT_ASP_COOKIE_NAME, tracker, false,
+                      failuresToEnterRecovery: 1,
+                      failuresWindowSeconds: 100,
+                      initialRecoveryDelaySeconds: 60,
+                      maxRecoveryDelaySeconds: 60,
+                      recoveryMultiplier: 2)
+            {
+            }
+
+            public void Enqueue(string clientIp) =>
+                EvidenceCollection.Add(new ShareUsageData() { ClientIP = clientIp });
+
+            public int Queued => EvidenceCollection.Count;
+
+            public void StartSending() => TrySendData();
+
+            public void Drain()
+            {
+                while (EvidenceCollection.TryTake(out _))
+                {
+                }
+            }
         }
 
         private int QueueFullWarnings() =>
