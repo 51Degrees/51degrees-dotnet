@@ -228,7 +228,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                 .SetLicenseKey(licenseKey);
             if (properties != null)
             {
-                builder.SetProperties(new List<string> { properties });
+                builder.SetRequestedProperties(
+                    new List<string> { properties });
             }
 
             if (valid)
@@ -258,7 +259,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             var noList = Assert.ThrowsExactly<PipelineConfigurationException>(
                 () => NewBuilder().SetLicenseKey(LicenseKey).Build());
             StringAssert.Contains(noList.Message, "400");
-            StringAssert.Contains(noList.Message, "SetProperties");
+            StringAssert.Contains(noList.Message, "SetRequestedProperties");
 
             foreach (var e in new[] { none, noList })
             {
@@ -277,7 +278,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         {
             var engine = NewBuilder()
                 .SetLicenseKey(LicenseKey)
-                .SetProperties(new List<string>
+                .SetRequestedProperties(new List<string>
                     { "Device.IsMobile", " device.iscrawler ", "" })
                 .Build();
 
@@ -363,7 +364,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         {
             var engine = NewBuilder()
                 .SetResourceKey(ResourceKey)
-                .SetProperties(new List<string> { "Device.HardwareVendor" })
+                .SetRequestedProperties(
+                    new List<string> { "Device.HardwareVendor" })
                 .Build();
 
             var discovery = Discovery();
@@ -387,7 +389,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         {
             var engine = NewBuilder()
                 .SetLicenseKey(LicenseKey + "\n")
-                .SetProperties(new List<string> { Properties })
+                .SetRequestedProperties(new List<string> { Properties })
                 .Build();
 
             ProcessOnce(engine);
@@ -435,7 +437,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             var engine = NewBuilder()
                 .SetResourceKey(ResourceKey)
                 .SetLicenseKey(LicenseKey)
-                .SetProperties(new List<string> { "IP.RegisteredName" })
+                .SetRequestedProperties(
+                    new List<string> { "IP.RegisteredName" })
                 .Build();
 
             var discoveryFields = Fields(Discovery().Body);
@@ -451,6 +454,34 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             Assert.IsFalse(_handler.Requests.Any(r =>
                 r.RequestUri.ToString().Contains(LicenseKey)),
                 "The license key must never appear in a URL.");
+        }
+
+        /// <summary>
+        /// Properties set with SetProperties are not sent, as before, so a
+        /// configuration that lists them keeps the answer it had. A license
+        /// key with only those properties is refused.
+        /// </summary>
+        [TestMethod]
+        public void Process_SetProperties_NotSent()
+        {
+            var engine = NewBuilder()
+                .SetResourceKey(ResourceKey)
+                .SetProperties(new List<string> { "IsMobile", "DeviceId" })
+                .Build();
+
+            ProcessOnce(engine);
+
+            var fields = Fields(DataBodies().Single());
+            Assert.AreEqual(ResourceKey, fields["resource"]);
+            Assert.IsFalse(fields.ContainsKey("values"));
+            Assert.IsFalse(_loggers.Logger.Entries
+                .Any(e => e.Contains("did not return")));
+
+            Assert.ThrowsExactly<PipelineConfigurationException>(
+                () => NewBuilder()
+                    .SetLicenseKey(LicenseKey)
+                    .SetProperties(new List<string> { Properties })
+                    .Build());
         }
 
         /// <summary>
@@ -484,7 +515,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         {
             var engine = NewBuilder()
                 .SetLicenseKey(LicenseKey)
-                .SetProperties(new List<string>
+                .SetRequestedProperties(new List<string>
                 {
                     "Device.IsMobile", "device.iscrawler", "device.hardwarename",
                 })
@@ -510,7 +541,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         {
             var engine = NewBuilder()
                 .SetLicenseKey(LicenseKey)
-                .SetProperties(new List<string> { Properties, "device.other" })
+                .SetRequestedProperties(
+                    new List<string> { Properties, "device.other" })
                 .Build();
             ProcessOnce(engine);
 

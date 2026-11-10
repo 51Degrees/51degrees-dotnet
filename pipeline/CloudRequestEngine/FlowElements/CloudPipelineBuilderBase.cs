@@ -318,7 +318,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             {
                 cloudRequestEngineBuilder.SetLicenseKey(LicenceKey);
             }
-            cloudRequestEngineBuilder.SetProperties(RequestedProperties);
+            cloudRequestEngineBuilder.SetRequestedProperties(
+                RequestedProperties);
             if (string.IsNullOrEmpty(CloudRequestOrigin) == false)
             {
                 cloudRequestEngineBuilder.SetCloudRequestOrigin(CloudRequestOrigin);

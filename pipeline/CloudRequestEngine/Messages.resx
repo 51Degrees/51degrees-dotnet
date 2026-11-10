@@ -142,7 +142,7 @@
     <value>CloudRequestEngine needs a resource key or a license key to authenticate with, as the cloud service answers 401 to a request that carries neither. Use the 'SetResourceKey' method to supply a resource key, which you can create for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.cloudrequestengine-messages.resx&amp;utm_term=exceptionnocredential</value>
   </data>
   <data name="ExceptionLicenseKeyNeedsProperties" xml:space="preserve">
-    <value>CloudRequestEngine has a license key and no requested properties. A license key names no properties of its own, so the cloud service answers 400 to every request made with one that does not list the properties it wants. Use the 'SetProperties' method of the CloudRequestEngineBuilder, or the 'SetRequestedProperties' method of a cloud pipeline builder, to name the fully qualified properties wanted, for example 'device.ismobile' and 'device.iscrawler'.</value>
+    <value>CloudRequestEngine has a license key and no requested properties. A license key names no properties of its own, so the cloud service answers 400 to every request made with one that does not list the properties it wants. Use the 'SetRequestedProperties' method to name the fully qualified properties wanted, for example 'device.ismobile' and 'device.iscrawler'.</value>
   </data>
   <data name="WarningPropertiesNotCovered" xml:space="preserve">
     <value>The cloud service did not return the requested properties {0} in its answer. They are not covered by the keys in use, so they will be missing from every result. The other requested properties came back and are usable.</value>

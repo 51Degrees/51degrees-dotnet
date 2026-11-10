@@ -58,6 +58,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
         private string _resourceKey = Constants.RESOURCE_KEY_DEFAULT;
         private string _licenseKey = Constants.LICENSE_KEY_DEFAULT;
+        private readonly List<string> _requestedProperties =
+            new List<string>();
         private string _cloudRequestOrigin = Constants.CLOUD_REQUEST_ORIGIN_DEFAULT;
         private int _timeout = Constants.CLOUD_REQUEST_TIMEOUT_DEFAULT_SECONDS;
         private int _failuresToEnterRecovery = Constants.CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_DEFAULT;
@@ -173,10 +175,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
         /// <summary>
         /// The license key to authenticate with. A license key alone
-        /// needs the properties wanted, named with <c>SetProperties</c>.
-        /// Beside a resource key it adds the requested properties the
-        /// license grants to what the resource key carries. Leading and
-        /// trailing white space is ignored.
+        /// needs the properties wanted, named with
+        /// <see cref="SetRequestedProperties"/>. Beside a resource key it
+        /// adds the requested properties the license grants to what the
+        /// resource key carries. Leading and trailing white space is
+        /// ignored.
         /// </summary>
         /// <param name="licenseKey">
         /// The license key to use when making requests to the cloud service
@@ -189,6 +192,35 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         public CloudRequestEngineBuilder SetLicenseKey(string licenseKey)
         {
             _licenseKey = licenseKey;
+            return this;
+        }
+
+        /// <summary>
+        /// The properties to ask the cloud service for, as fully qualified
+        /// names such as 'device.ismobile', sent as 'values'. Required with
+        /// a license key alone. Beside a resource key the cloud service adds
+        /// them to the properties the resource key carries. Names are
+        /// trimmed, lower-cased and de-duplicated. The properties set with
+        /// <c>SetProperties</c> are not sent.
+        /// </summary>
+        /// <param name="properties">
+        /// The fully qualified property names to ask for.
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if a required parameter is null.
+        /// </exception>
+        [DefaultValue("None - required with a license key alone")]
+        public CloudRequestEngineBuilder SetRequestedProperties(
+            List<string> properties)
+        {
+            if (properties == null)
+            {
+                throw new ArgumentNullException(nameof(properties));
+            }
+            _requestedProperties.AddRange(properties);
             return this;
         }
 
@@ -438,7 +470,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         {
             var hasResourceKey = TrimOrEmpty(_resourceKey).Length > 0;
             var hasLicenseKey = TrimOrEmpty(_licenseKey).Length > 0;
-            var hasProperties = NormalizeProperties(Properties).Count > 0;
+            var hasProperties =
+                NormalizeProperties(_requestedProperties).Count > 0;
 
             if (hasResourceKey == false && hasLicenseKey == false)
             {
@@ -504,7 +537,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     PropertiesEndpoint = _propertiesEndpoint,
                     EvidenceKeysEndpoint = _evidenceKeysEndpoint,
                     CloudRequestOrigin = _cloudRequestOrigin,
-                    RequestedProperties = NormalizeProperties(properties),
+                    RequestedProperties =
+                        NormalizeProperties(_requestedProperties),
                 },
                 _timeout,
                 new WindowedFailHandler(
