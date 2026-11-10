@@ -24,6 +24,7 @@ using FiftyOne.Common.TestHelpers;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using FiftyOne.Pipeline.Engines.TestHelpers;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System;
@@ -356,6 +357,69 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 "Discarding evidence was not logged.");
             Assert.IsLessThan(6, full.Count,
                 "A message was logged for each entry discarded.");
+        }
+
+        /// <summary>
+        /// Closing sends the queue a message at a time, and a send that
+        /// fails and starts a pause ends it. The entries still queued are
+        /// logged and not sent.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_BackOff_CloseStopsWhenASendStartsAPause()
+        {
+            var element = new QueueOpenElement(
+                _loggerFactory.CreateLogger<ShareUsageBase>(),
+                new HttpClient(_handler));
+            _element = element;
+            foreach (var i in Enumerable.Range(1, 7))
+            {
+                element.Enqueue($"10.4.0.{i}");
+            }
+
+            element.Dispose();
+
+            Assert.AreEqual(1, _handler.Count,
+                "A send was made after a failed send started a pause.");
+            var notSent = _loggerFactory.Loggers
+                .SelectMany(l => l.Entries)
+                .Where(e => e.Key == LogLevel.Information &&
+                    e.Value.Contains("paused"))
+                .Select(e => e.Value)
+                .ToList();
+            Assert.AreEqual(1, notSent.Count,
+                "Expected one message that entries were not sent while " +
+                "paused.");
+            StringAssert.StartsWith(notSent[0], "3 ",
+                "The message should count the 3 entries left after the " +
+                "first message of 4.");
+        }
+
+        /// <summary>
+        /// Opens the queue, so a test can fill it with more than one
+        /// message without a send starting. A message holds at most 4
+        /// entries, and one failed send pauses sending for 60 seconds.
+        /// </summary>
+        private class QueueOpenElement : ShareUsageElement
+        {
+            public QueueOpenElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient)
+                : base(logger, httpClient, 1, 2, 100, 100, 100, 1, false,
+                      "http://localhost/usage", new List<string>(),
+                      new List<string>(),
+                      new List<KeyValuePair<string, string>>(),
+                      Engines.Constants.DEFAULT_ASP_COOKIE_NAME, null, false,
+                      failuresToEnterRecovery: 1,
+                      failuresWindowSeconds: 100,
+                      initialRecoveryDelaySeconds: 60,
+                      maxRecoveryDelaySeconds: 60,
+                      recoveryMultiplier: 2)
+            {
+            }
+
+            public void Enqueue(string clientIp) =>
+                EvidenceCollection.Add(
+                    new ShareUsageData() { ClientIP = clientIp });
         }
     }
 }
