@@ -242,6 +242,12 @@ namespace FiftyOne.Pipeline.Web.Framework
         }
 
 
+        internal static void ResolveApplicationRootPaths(
+            PipelineOptions options,
+            Func<string, string> mapPath)
+        {
+        }
+
         /// <summary>
         /// Populate a FlowData's evidence from the web request, and process
         /// using the Pipeline.

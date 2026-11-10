@@ -11,12 +11,12 @@ param (
 # built them. Every other test project is SDK-style and runs with dotnet
 # test, whose host also honours the redirects an SDK project generates for
 # its net462 build, which the x64 vstest host does not.
-$OldStyle = "^FiftyOne\.(Pipeline\.Web\.Framework\.Tests|DeviceDetection\.Tests\.Framework)\.dll$"
+$OldStyle = "^FiftyOne\.Pipeline\.Web\.Framework\.Tests\.dll$"
 
 # The library test assemblies. The example tests are integration tests, and
 # the test helper packages are not tests. A native library is loaded by a
 # host of the assembly's own platform, which the engine test projects set.
-$Filter = "^FiftyOne\.(?!Pipeline\.Web\.Framework\.Tests\.dll$)(?!DeviceDetection\.Tests\.Framework\.dll$)(?!.*Examples?\.Tests)(?!.*TestHelpers).*Tests?(\.Core|\.Framework)?\.dll$"
+$Filter = "^FiftyOne\.Pipeline\.Web\.Tests\.dll$"
 # A run can be narrowed to some assemblies by setting FIFTYONE_TEST_FILTER,
 # which the probe workflow does.
 if ($env:FIFTYONE_TEST_FILTER) {
