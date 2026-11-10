@@ -952,7 +952,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                                 EvidenceCollection.Count));
                             return;
                         }
-                        Task.Run(() => SendOnceAsync()).Wait();
+                        // Already on the thread pool, so the send runs
+                        // here and takes its entries at once.
+                        SendOnceAsync().GetAwaiter().GetResult();
                     }
                 });
                 if (flush.Wait(DisposeTimeoutMilliseconds) == false)
