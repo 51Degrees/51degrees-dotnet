@@ -265,7 +265,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         {
             var engine = NewBuilder()
                 .SetLicenseKey(LicenseKey)
-                .SetProperties(new List<string> { "Device.IsMobile", " device.iscrawler ", "" })
+                .SetProperties(new List<string>
+                    { "Device.IsMobile", " device.iscrawler ", "" })
                 .Build();
 
             Assert.IsNotEmpty(engine.PublicProperties);
@@ -298,6 +299,24 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             Assert.IsFalse(_handler.Requests.Any(r =>
                 r.RequestUri.ToString().Contains(LicenseKey)),
                 "The license key must never appear in a URL.");
+        }
+
+        /// <summary>
+        /// The named option adds to the same list as SetProperties.
+        /// </summary>
+        [TestMethod]
+        public void Process_SetRequestedProperties_Sent()
+        {
+            var engine = NewBuilder()
+                .SetLicenseKey(LicenseKey)
+                .SetRequestedProperties(new[] { "Device.IsMobile" })
+                .SetRequestedProperties(new[] { "device.iscrawler" })
+                .Build();
+
+            ProcessOnce(engine);
+
+            Assert.AreEqual("device.ismobile,device.iscrawler",
+                Fields(DataBodies().Single())["values"]);
         }
 
         /// <summary>

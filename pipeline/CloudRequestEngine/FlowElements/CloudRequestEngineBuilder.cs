@@ -171,16 +171,51 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// The license key to query the endpoint with.
+        /// The license key to authenticate with. A license key alone
+        /// needs <see cref="SetRequestedProperties"/> to name the
+        /// properties wanted. Alongside a resource key it adds the
+        /// products the license grants. Leading and trailing white space
+        /// is ignored.
         /// </summary>
-        /// <param name="licenseKey"></param>
-        /// <returns></returns>
-        [Obsolete("License key is no longer used directly. " +
-            "Use a resource key instead.")]
+        /// <param name="licenseKey">
+        /// The license key to use when making requests to the cloud service
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        [DefaultValue("No default - a resource key or a license key must be supplied")]
         [CodeConfigOnly]
         public CloudRequestEngineBuilder SetLicenseKey(string licenseKey)
         {
             _licenseKey = licenseKey;
+            return this;
+        }
+
+        /// <summary>
+        /// Name the properties the cloud service should return, as fully
+        /// qualified names such as 'device.ismobile'. The cloud service
+        /// honours the list only for a license key used without a resource
+        /// key, so the list is required then and refused when a resource
+        /// key is set. Names are trimmed, lower-cased and de-duplicated.
+        /// </summary>
+        /// <param name="properties">
+        /// The fully qualified property names to ask for.
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if a required parameter is null.
+        /// </exception>
+        [DefaultValue("None - required with a license key alone")]
+        public CloudRequestEngineBuilder SetRequestedProperties(
+            IEnumerable<string> properties)
+        {
+            if (properties == null)
+            {
+                throw new ArgumentNullException(nameof(properties));
+            }
+            Properties.AddRange(properties);
             return this;
         }
 
@@ -346,11 +381,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// </exception>
         public CloudRequestEngine Build()
         {
-            if (string.IsNullOrWhiteSpace(_resourceKey))
-            {
-                throw new PipelineConfigurationException(
-                    Messages.ExceptionResourceKeyNeeded);
-            }
+            CheckCredentials();
 
             // If any of the endpoints are not set, then use the environment variable if
             // specified, or the default base url if not.
@@ -396,6 +427,63 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             return engine;
         }
 
+        private static string TrimOrEmpty(string value)
+        {
+            return value == null ? string.Empty : value.Trim();
+        }
+
+        /// <summary>
+        /// Trim and lower-case each name, as the cloud service answers in
+        /// lower case, and drop empty names and repeats.
+        /// </summary>
+        private static List<string> NormalizeProperties(
+            IEnumerable<string> names)
+        {
+            var result = new List<string>();
+            foreach (var name in names ?? new List<string>())
+            {
+                var normal = TrimOrEmpty(name).ToLowerInvariant();
+                if (normal.Length > 0 && result.Contains(normal) == false)
+                {
+                    result.Add(normal);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Refuse a combination of resource key, license key and requested
+        /// properties that the cloud service would refuse on every request,
+        /// so a deployment sees one configuration error when the engine is
+        /// built and not a failure on every request it serves. A blank
+        /// value counts as absent.
+        /// </summary>
+        /// <exception cref="PipelineConfigurationException">
+        /// Thrown for any of the three invalid combinations.
+        /// </exception>
+        private void CheckCredentials()
+        {
+            var hasResourceKey = TrimOrEmpty(_resourceKey).Length > 0;
+            var hasLicenseKey = TrimOrEmpty(_licenseKey).Length > 0;
+            var hasProperties = NormalizeProperties(Properties).Count > 0;
+
+            if (hasResourceKey == false && hasLicenseKey == false)
+            {
+                throw new PipelineConfigurationException(
+                    Messages.ExceptionNoCredential);
+            }
+            if (hasResourceKey == false && hasProperties == false)
+            {
+                throw new PipelineConfigurationException(
+                    Messages.ExceptionLicenseKeyNeedsProperties);
+            }
+            if (hasResourceKey && hasProperties)
+            {
+                throw new PipelineConfigurationException(
+                    Messages.ExceptionPropertiesIgnoredWithResourceKey);
+            }
+        }
+
         private CloudRequestData CreateAspectData(IPipeline pipeline, 
             FlowElementBase<CloudRequestData, IAspectPropertyMetaData> engine)
         {
@@ -430,11 +518,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// </returns>
         protected override CloudRequestEngine NewEngine(List<string> properties)
         {
-            if (string.IsNullOrWhiteSpace(_resourceKey))
-            {
-                throw new PipelineConfigurationException(
-                    Messages.ExceptionResourceKeyNeeded);
-            }
+            CheckCredentials();
 
             var failThrottlingStrategy = CreateRecoveryStrategy();
 
@@ -447,12 +531,12 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 new CloudRequestEngine.EndpointsAndKeys
                 {
                     DataEndpoint = _dataEndpoint,
-                    ResourceKey = _resourceKey,
-                    LicenseKey = _licenseKey,
+                    ResourceKey = TrimOrEmpty(_resourceKey),
+                    LicenseKey = TrimOrEmpty(_licenseKey),
                     PropertiesEndpoint = _propertiesEndpoint,
                     EvidenceKeysEndpoint = _evidenceKeysEndpoint,
                     CloudRequestOrigin = _cloudRequestOrigin,
-                    RequestedProperties = properties,
+                    RequestedProperties = NormalizeProperties(properties),
                 },
                 _timeout,
                 new WindowedFailHandler(

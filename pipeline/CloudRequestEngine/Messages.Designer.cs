@@ -124,11 +124,29 @@ namespace FiftyOne.Pipeline.CloudRequestEngine {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to A resource key is required to access the 51Degrees cloud service. Please use the &apos;SetResourceKey&apos; method to supply your resource key. You can obtain one for free from https://configure.51degrees.com.
+        ///   Looks up a localized string similar to CloudRequestEngine has a license key and no requested properties.
         /// </summary>
-        internal static string ExceptionResourceKeyNeeded {
+        internal static string ExceptionLicenseKeyNeedsProperties {
             get {
-                return ResourceManager.GetString("ExceptionResourceKeyNeeded", resourceCulture);
+                return ResourceManager.GetString("ExceptionLicenseKeyNeedsProperties", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to CloudRequestEngine needs a resource key or a license key to authenticate with.
+        /// </summary>
+        internal static string ExceptionNoCredential {
+            get {
+                return ResourceManager.GetString("ExceptionNoCredential", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to CloudRequestEngine has requested properties and a resource key.
+        /// </summary>
+        internal static string ExceptionPropertiesIgnoredWithResourceKey {
+            get {
+                return ResourceManager.GetString("ExceptionPropertiesIgnoredWithResourceKey", resourceCulture);
             }
         }
         
@@ -165,6 +183,15 @@ namespace FiftyOne.Pipeline.CloudRequestEngine {
         internal static string ProcessCloudEngineNotImplemented {
             get {
                 return ResourceManager.GetString("ProcessCloudEngineNotImplemented", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The cloud service did not return the requested properties {0} in its answer.
+        /// </summary>
+        internal static string WarningPropertiesNotCovered {
+            get {
+                return ResourceManager.GetString("WarningPropertiesNotCovered", resourceCulture);
             }
         }
     }
