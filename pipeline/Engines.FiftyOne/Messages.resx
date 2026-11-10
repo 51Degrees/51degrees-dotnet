@@ -150,6 +150,9 @@
   <data name="MessageShareUsageNoPipelines" xml:space="preserve">
     <value>Share usage element not registered to any Pipelines. Unable to populate flow element information</value>
   </data>
+  <data name="MessageShareUsageNotSentOnClose" xml:space="preserve">
+    <value>{0} usage sharing entries were not sent, because sending did not finish within {1} ms when closing down.</value>
+  </data>
   <data name="MessageShareUsageTooManyPipelines" xml:space="preserve">
     <value>Share usage element registered to {0} Pipelines. Unable to populate flow element information</value>
   </data>

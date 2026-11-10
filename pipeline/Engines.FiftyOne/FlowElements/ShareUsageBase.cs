@@ -763,11 +763,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 if (flush.Wait(DisposeTimeoutMilliseconds) == false)
                 {
                     stop.Cancel();
-                    Logger.LogWarning(
-                        $"{EvidenceCollection.Count} usage sharing entries " +
-                        "were not sent, because sending did not finish " +
-                        $"within {DisposeTimeoutMilliseconds} ms when " +
-                        "closing down.");
+                    Logger.LogWarning(string.Format(
+                        CultureInfo.InvariantCulture,
+                        Messages.MessageShareUsageNotSentOnClose,
+                        EvidenceCollection.Count,
+                        DisposeTimeoutMilliseconds));
                 }
             }
         }
