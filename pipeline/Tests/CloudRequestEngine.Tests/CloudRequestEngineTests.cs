@@ -1042,14 +1042,14 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                     _accessiblePropertiesResponse,
             };
 
-            _jsonResponse = "Status code: 404, '*json' method not found";
-            _jsonResponseStatus = HttpStatusCode.NotFound;
+            _jsonResponse = "Status code: 500, '*json' method not found";
+            _jsonResponseStatus = HttpStatusCode.InternalServerError;
 
-            _evidenceKeysResponse = "Status code: 404, '*evidencekeys' method not found";
-            _evidenceKeysResponseStatus = HttpStatusCode.NotFound;
+            _evidenceKeysResponse = "Status code: 500, '*evidencekeys' method not found";
+            _evidenceKeysResponseStatus = HttpStatusCode.InternalServerError;
 
-            _accessiblePropertiesResponse = "Status code: 404, '*accessibleproperties' method not found";
-            _accessiblePropertiesResponseStatus = HttpStatusCode.NotFound;
+            _accessiblePropertiesResponse = "Status code: 500, '*accessibleproperties' method not found";
+            _accessiblePropertiesResponseStatus = HttpStatusCode.InternalServerError;
 
             using (var flowData = pipeline.CreateFlowData())
             {
@@ -1089,6 +1089,100 @@ cloudEx.Message, "Exception message did not contain the expected text.");
             }
         }
 
+        /// <summary>
+        /// Only an answer that says the cloud service is in trouble counts
+        /// towards the recovery period, which every request shares. The
+        /// next request after one of these answers is stopped.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/28a2a5045321cef51b49a9d3ac920a0528d06831/pipeline-specification/pipeline-elements/cloud-request-engine.md#failures-that-count">Specification</see>
+        /// </summary>
+        [TestMethod]
+        [DataRow(HttpStatusCode.TooManyRequests, "{'errors':['Slow down']}")]
+        [DataRow(HttpStatusCode.InternalServerError, "{'errors':['Fault']}")]
+        [DataRow(HttpStatusCode.BadGateway, "Bad gateway")]
+        [DataRow(HttpStatusCode.ServiceUnavailable, "{'errors':['Busy']}")]
+        [DataRow(HttpStatusCode.OK, "this is not JSON")]
+        public void RecoveryPeriod_ServiceTrouble_Counts(
+            HttpStatusCode status, string body)
+        {
+            var second = ProcessTwiceWithOneFailureToEnterRecovery(status, body);
+
+            Assert.IsInstanceOfType<PipelineTemporarilyUnavailableException>(
+                second.InnerException,
+                "The failure should have started the recovery period.");
+        }
+
+        /// <summary>
+        /// An answer from 400 to 499, other than 429, is about the content
+        /// of the one request, so it does not count and the next request
+        /// reaches the cloud service.
+        /// </summary>
+        [TestMethod]
+        [DataRow(HttpStatusCode.BadRequest)]
+        [DataRow(HttpStatusCode.RequestTimeout)]
+        [DataRow(HttpStatusCode.Unauthorized)]
+        [DataRow(HttpStatusCode.Forbidden)]
+        [DataRow(HttpStatusCode.NotFound)]
+        [DataRow(HttpStatusCode.UnprocessableEntity)]
+        [DataRow((HttpStatusCode)499)]
+        public void RecoveryPeriod_AnswerAboutOneRequest_DoesNotCount(
+            HttpStatusCode status)
+        {
+            var second = ProcessTwiceWithOneFailureToEnterRecovery(
+                status, "{'errors':['Evidence not accepted']}");
+
+            Assert.IsNull(second,
+                "The second request should have reached the cloud service.");
+        }
+
+        /// <summary>
+        /// Process one request that gets the given answer, then one that
+        /// gets a good answer, with the engine set to enter recovery after
+        /// one failure.
+        /// </summary>
+        /// <returns>
+        /// The exception from the second request, or null if it worked.
+        /// </returns>
+        private AggregateException ProcessTwiceWithOneFailureToEnterRecovery(
+            HttpStatusCode status, string body)
+        {
+            ConfigureMockedClient(_ => true);
+            var engine = new CloudRequestEngineBuilder(
+                _loggerFactory,
+                _httpClient)
+                .SetResourceKey("resource_key")
+                .SetUseExponentialBackoff(false)
+                .SetRecoverySeconds(30)
+                .SetFailuresToEnterRecovery(1)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build();
+            var goodResponse = _jsonResponse;
+
+            _jsonResponse = body;
+            _jsonResponseStatus = status;
+            using (var flowData = pipeline.CreateFlowData())
+            {
+                flowData.AddEvidence("query.User-Agent", "iPhone");
+                Assert.ThrowsExactly<AggregateException>(() => flowData.Process());
+            }
+
+            _jsonResponse = goodResponse;
+            _jsonResponseStatus = HttpStatusCode.OK;
+            using (var flowData = pipeline.CreateFlowData())
+            {
+                flowData.AddEvidence("query.User-Agent", "iPhone");
+                try
+                {
+                    flowData.Process();
+                    return null;
+                }
+                catch (AggregateException ex)
+                {
+                    return ex;
+                }
+            }
+        }
+
         [TestMethod]
         public void ValidateErrorHandling_RetryAfterNotJson_AfterRecovery()
         {
@@ -1114,14 +1208,14 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                     _accessiblePropertiesResponse,
             };
 
-            _jsonResponse = "Status code: 404, '*json' method not found";
-            _jsonResponseStatus = HttpStatusCode.NotFound;
+            _jsonResponse = "Status code: 500, '*json' method not found";
+            _jsonResponseStatus = HttpStatusCode.InternalServerError;
 
-            _evidenceKeysResponse = "Status code: 404, '*evidencekeys' method not found";
-            _evidenceKeysResponseStatus = HttpStatusCode.NotFound;
+            _evidenceKeysResponse = "Status code: 500, '*evidencekeys' method not found";
+            _evidenceKeysResponseStatus = HttpStatusCode.InternalServerError;
 
-            _accessiblePropertiesResponse = "Status code: 404, '*accessibleproperties' method not found";
-            _accessiblePropertiesResponseStatus = HttpStatusCode.NotFound;
+            _accessiblePropertiesResponse = "Status code: 500, '*accessibleproperties' method not found";
+            _accessiblePropertiesResponseStatus = HttpStatusCode.InternalServerError;
 
             using (var flowData = pipeline.CreateFlowData())
             {
@@ -1185,14 +1279,14 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                     _accessiblePropertiesResponse,
             };
 
-            _jsonResponse = "Status code: 404, '*json' method not found";
-            _jsonResponseStatus = HttpStatusCode.NotFound;
+            _jsonResponse = "Status code: 500, '*json' method not found";
+            _jsonResponseStatus = HttpStatusCode.InternalServerError;
 
-            _evidenceKeysResponse = "Status code: 404, '*evidencekeys' method not found";
-            _evidenceKeysResponseStatus = HttpStatusCode.NotFound;
+            _evidenceKeysResponse = "Status code: 500, '*evidencekeys' method not found";
+            _evidenceKeysResponseStatus = HttpStatusCode.InternalServerError;
 
-            _accessiblePropertiesResponse = "Status code: 404, '*accessibleproperties' method not found";
-            _accessiblePropertiesResponseStatus = HttpStatusCode.NotFound;
+            _accessiblePropertiesResponse = "Status code: 500, '*accessibleproperties' method not found";
+            _accessiblePropertiesResponseStatus = HttpStatusCode.InternalServerError;
 
             using (var flowData = pipeline.CreateFlowData())
             {

@@ -590,7 +590,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     catch (Exception ex)
                     when (!(ex is CloudRequestEngineTemporarilyUnavailableException))
                     {
-                        requestScope.RecordFailure(ex);
+                        if (CountsTowardsRecovery(ex))
+                        {
+                            requestScope.RecordFailure(ex);
+                        }
                         throw;
                     }
                 }
@@ -600,6 +603,22 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             {
                 throw ResurfaceCloudException(originalCloudException, ex);
             }
+        }
+
+        /// <summary>
+        /// Whether a failure says the cloud service is in trouble, so that
+        /// it counts towards the recovery period every request shares. A
+        /// request that did not complete, a status of 500 or more, a 429
+        /// and a success status with a body that could not be used all do.
+        /// Any other status from 400 to 499 answers the content of that
+        /// one request, so it does not.
+        /// </summary>
+        private static bool CountsTowardsRecovery(Exception exception)
+        {
+            return !(exception is CloudRequestException cloudException &&
+                cloudException.HttpStatusCode >= 400 &&
+                cloudException.HttpStatusCode <= 499 &&
+                cloudException.HttpStatusCode != 429);
         }
 
         private CloudRequestException ResurfaceCloudException(
