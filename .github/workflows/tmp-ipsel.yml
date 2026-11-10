@@ -1,0 +1,47 @@
+name: Temporary client IP selection tests
+
+# Temporary. Fetches the IP Intelligence data file and the evidence the
+# on-premise tests read, then runs the client IP parser tests and the client
+# IP selection tests on a tmp/ branch.
+
+on:
+  push:
+    branches: ['tmp/ipsel-*']
+
+jobs:
+  ip-selection-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submodules, with the data repository
+        run: |
+          git submodule update --init --depth 1 cxx pipeline/Core/Configuration/Validation pipeline/JavaScriptBuilderElement/Templates pipeline/owid-dotnet pipeline/DerivedProperty/Scripts
+          git -C cxx submodule update --init --depth 1 data
+      - name: The shared steps the asset script calls
+        uses: actions/checkout@v4
+        with:
+          repository: 51Degrees/common-ci
+          ref: main
+          path: common-ci
+      - name: Put the shared steps where the asset script looks for them
+        run: cp -r common-ci/steps steps
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Data files and evidence
+        shell: pwsh
+        run: |
+          ./ci/fetch-assets.ps1 -IpIntelligenceUrl '${{ secrets.IPI_DATA_FILE_URL }}'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Test
+        shell: pwsh
+        run: |
+          git log --oneline -3
+          dotnet test ip-intelligence/Tests/OnPremise.Tests/FiftyOne.IpIntelligence.OnPremise.Tests.csproj `
+            -c Release --nologo -p:FiftyOneReferences=Project -p:Platform=x64 `
+            --filter 'FullyQualifiedName~ClientIpParserTests|FullyQualifiedName~ClientIpSelectionOnPremiseTests' `
+            --logger 'console;verbosity=normal'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
