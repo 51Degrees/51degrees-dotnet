@@ -149,6 +149,21 @@ namespace FiftyOne.Pipeline.Core
         public const string EVIDENCE_REQUEST_QUERY_KEY = EVIDENCE_SERVER_PREFIX + EVIDENCE_SEPERATOR + "request-query";
 
         /// <summary>
+        /// The complete key under which a web integration adds the web
+        /// request itself as evidence, as a read only dictionary of string
+        /// to object keyed as the request's values would be as evidence,
+        /// for example 'header.user-agent'.
+        /// </summary>
+        /// <remarks>
+        /// It is added on every request whether or not an element accepts
+        /// it. The usage sharing element reads the request from it, so it
+        /// can share values no element accepts. No element accepts this
+        /// key, so it takes no part in a cache key, an ETag or a Vary
+        /// header.
+        /// </remarks>
+        public const string EVIDENCE_HTTPREQUEST_KEY = EVIDENCE_SERVER_PREFIX + EVIDENCE_SEPERATOR + "http-request";
+
+        /// <summary>
         /// The default value for the flag that controls whether the pipeline will automatically 
         /// dispose of its elements when it is disposed.
         /// </summary>
