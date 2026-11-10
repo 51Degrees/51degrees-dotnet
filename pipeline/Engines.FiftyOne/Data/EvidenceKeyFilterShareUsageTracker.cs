@@ -52,8 +52,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// If this value is null, all query string parameters are shared.
         /// </param>
         /// <param name="includeSession">
-        /// If true then the asp.net session cookie will be included in
-        /// the filter.
+        /// If true then the asp.net session cookie is part of the key, so
+        /// the same evidence from two sessions is not a repeat.
         /// </param>
         /// <param name="aspSessionCookieName">
         /// The name of the cookie that contains the asp.net session id. 
@@ -79,6 +79,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                 return false;
             if (key == Constants.EVIDENCE_SEQUENCE)
                 return false;
+            if (IsIncludedSessionCookie(key))
+                return true;
             return base.Include(key);
         }
     }

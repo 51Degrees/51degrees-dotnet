@@ -288,17 +288,30 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// </summary>
         public override string ElementDataKey => DEFAULT_ELEMENT_DATA_KEY;
 
-        private IEvidenceKeyFilter _evidenceKeyFilter;
+        /// <summary>
+        /// Accepts no evidence.
+        /// </summary>
+        private static readonly IEvidenceKeyFilter _noEvidence =
+            new EvidenceKeyFilterWhitelist(new List<string>());
 
         /// <summary>
-        /// Get the evidence key filter for this element.
+        /// Get the evidence key filter for this element, which accepts no
+        /// evidence, so caching, the ETag and the Vary header never depend
+        /// on usage sharing. The element shares what it finds instead, being
+        /// the evidence and the values of the web request that a web
+        /// integration adds as
+        /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
         /// </summary>
         public override IEvidenceKeyFilter EvidenceKeyFilter
         {
-            get { return _evidenceKeyFilter; }
+            get { return _noEvidence; }
         }
 
-        private IEvidenceKeyFilter _evidenceKeyFilterExclSession;
+        /// <summary>
+        /// Decides which of the evidence found is shared.
+        /// </summary>
+        private IEvidenceKeyFilter _sharedEvidenceFilter;
 
         private List<KeyValuePair<string, string>> _ignoreDataEvidenceFilter;
 
@@ -814,10 +827,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                     includedQueryStringParameters.Add(Constants.EVIDENCE_SEQUENCE_SUFIX);
                 }
 
-                _evidenceKeyFilter = new EvidenceKeyFilterShareUsage(
-                    blockedHttpHeaders, includedQueryStringParameters, true,
-                    aspSessionCookieName);
-                _evidenceKeyFilterExclSession = new EvidenceKeyFilterShareUsage(
+                _sharedEvidenceFilter = new EvidenceKeyFilterShareUsage(
                     blockedHttpHeaders, includedQueryStringParameters, false,
                     aspSessionCookieName);
 
@@ -831,8 +841,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             {
                 // Create evidence filters what will allow all 
                 // evidence to be shared
-                _evidenceKeyFilter = new EvidenceKeyFilterShareUsage();
-                _evidenceKeyFilterExclSession = new EvidenceKeyFilterShareUsage();
+                _sharedEvidenceFilter = new EvidenceKeyFilterShareUsage();
                 trackerEvidenceFiler = new EvidenceKeyFilterShareUsageTracker();
             }
 
@@ -890,13 +899,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             {
                 foreach (var kvp in _ignoreDataEvidenceFilter)
                 {
-                    if (evidence.ContainsKey(kvp.Key))
+                    if (ShareUsageEvidence.TryGetValue(
+                            evidence, kvp.Key, out var value) &&
+                        value?.ToString() == kvp.Value)
                     {
-                        if (evidence[kvp.Key].ToString() == kvp.Value)
-                        {
-                            ignoreData = true;
-                            break;
-                        }
+                        ignoreData = true;
+                        break;
                     }
                 }
             }
@@ -992,10 +1000,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 return;
             }
 
-            // Extract the data we want from the evidence and add
-            // it to the collection.
+            // Extract the data we want from the evidence and the web
+            // request, and add it to the collection.
             if (EvidenceCollection.TryAdd(
-                GetDataFromEvidence(data.GetEvidence()),
+                GetDataFromEvidence(ShareUsageEvidence.Find(
+                    data.GetEvidence().AsDictionary())),
                 _addTimeout))
             {
                 Interlocked.Exchange(ref _discarded, 0);
@@ -1033,24 +1042,25 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Extract the desired data from the evidence.
-        /// In order to avoid problems with the evidence data being disposed 
-        /// before it is sent, the data placed into a new object rather 
+        /// Extract the desired data from the evidence found.
+        /// In order to avoid problems with the evidence data being disposed
+        /// before it is sent, the data placed into a new object rather
         /// than being a reference to the existing evidence instance.
         /// </summary>
         /// <param name="evidence">
-        /// An <see cref="IEvidence"/> instance that contains the data to be
-        /// extracted.
+        /// The evidence found, as <see cref="ShareUsageEvidence.Find"/>
+        /// gives it.
         /// </param>
         /// <returns>
         /// A <see cref="ShareUsageData"/> instance populated with data from
         /// the evidence.
         /// </returns>
-        private ShareUsageData GetDataFromEvidence(IEvidence evidence)
+        private ShareUsageData GetDataFromEvidence(
+            IReadOnlyDictionary<string, object> evidence)
         {
             ShareUsageData data = new ShareUsageData();
 
-            foreach (var entry in evidence.AsDictionary())
+            foreach (var entry in evidence)
             {
                 if (entry.Key.Equals(Core.Constants.EVIDENCE_CLIENTIP_KEY, 
                     StringComparison.OrdinalIgnoreCase))
@@ -1078,7 +1088,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 else
                 {
                     // Check if we can send this piece of evidence
-                    bool addToData = _evidenceKeyFilterExclSession.Include(entry.Key);
+                    bool addToData = _sharedEvidenceFilter.Include(entry.Key);
 
                     if (addToData)
                     {
