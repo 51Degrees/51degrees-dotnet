@@ -360,6 +360,68 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         #region The element rebuilds from the strict form
 
         /// <summary>
+        /// A compliant signer signs over the strict signature base and may
+        /// then write the headers any legal way, so a request whose
+        /// 'Signature-Input' and 'Signature-Agent' headers carry legal
+        /// extra spacing, which RFC 8941 permits a parser to accept, still
+        /// reads Verified.
+        /// </summary>
+        [TestMethod]
+        public void LegalNonStrictHeaderSpacingStillVerifies()
+        {
+            using (var harness = ElementHarness.CreateWithTestKey())
+            {
+                var options = new SigningOptions
+                {
+                    // The header spells the member parameter with a space
+                    // after the semicolon, whilst the signed base carries
+                    // the strict form without one.
+                    SignatureAgentHeaderParameters = "; type=directory",
+                    SignatureAgentSignedParameters = ";type=directory",
+                };
+                var signed = RequestSigner.Sign(options);
+
+                // Respell the 'Signature-Input' header with spacing that
+                // RFC 8941 permits, after the signature was made over the
+                // strict form. A double space inside the inner list, and a
+                // space after each parameter semicolon.
+                var strict = signed.SignatureInput;
+                signed.SignatureInput = strict
+                    .Replace("\" \"", "\"  \"")
+                    .Replace(";key=", "; key=")
+                    .Replace(";created=", "; created=")
+                    .Replace(";expires=", ";  expires=")
+                    .Replace(";keyid=", "; keyid=")
+                    .Replace(";alg=", "; alg=")
+                    .Replace(";tag=", "; tag=");
+                Assert.AreNotEqual(strict, signed.SignatureInput,
+                    "The test should have respelled 'Signature-Input'.");
+
+                var result = harness.Process(new Dictionary<string, string>
+                {
+                    { "header.signature", signed.Signature },
+                    { "header.signature-input", signed.SignatureInput },
+                    { "header.signature-agent", signed.SignatureAgent },
+                    { "header.host", "example.com" },
+                    { "header.protocol", "https" },
+                });
+
+                Assert.AreEqual(
+                    Constants.STATUS_VERIFIED,
+                    result.AgentSignature.Value,
+                    "A signature made over the strict base should read " +
+                    "Verified when the headers carry legal extra spacing, " +
+                    "yet the element read " + result.AgentSignature.Value +
+                    " with the reason " +
+                    result.AgentSignatureReason.Value + ".");
+                Assert.AreEqual(
+                    Constants.REASON_VERIFIED,
+                    result.AgentSignatureReason.Value,
+                    "The reason should be Verified.");
+            }
+        }
+
+        /// <summary>
         /// Two spellings of one covered component identifier are still one
         /// component, so a signature listing both is refused the way a
         /// literal duplicate is. RFC 9421 section 2.5 step 2.1 makes the
