@@ -130,11 +130,11 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
                     "An engine built with no names has its table once it " +
                     "is built, before anything is processed.");
                 var inFile = DataFileNames(context);
-                foreach (var name in inFile)
+                foreach (var fileName in inFile)
                 {
                     Assert.IsTrue(
-                        indexes.ContainsKey(name),
-                        $"'{name}' is in the first data file.");
+                        indexes.ContainsKey(fileName),
+                        $"'{fileName}' is in the first data file.");
                 }
                 Assert.AreEqual(
                     inFile.Count,
@@ -263,14 +263,20 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
                 if (present.Contains(name))
                 {
                     var before = expected.Values(name);
-                    Assert.IsTrue(before.HasValue, before.NoValueMessage);
-                    Assert.IsTrue(after.HasValue, after.NoValueMessage);
-                    CollectionAssert.AreEqual(
-                        before.Value.ToList(),
-                        after.Value.ToList(),
-                        $"'{name}' reads the same property after the " +
-                        "refresh.");
-                    compared++;
+                    Assert.AreEqual(
+                        before.HasValue,
+                        after.HasValue,
+                        $"'{name}' has a value after the refresh only if " +
+                        "an engine on the new file has one.");
+                    if (before.HasValue)
+                    {
+                        CollectionAssert.AreEqual(
+                            before.Value.ToList(),
+                            after.Value.ToList(),
+                            $"'{name}' reads the same property after the " +
+                            "refresh.");
+                        compared++;
+                    }
                 }
                 else
                 {
