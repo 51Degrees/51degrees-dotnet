@@ -1,0 +1,89 @@
+name: Temporary property index cost timing
+
+# Temporary, on a tmp/ branch. Times build, process and reads at each commit
+# in REFS, in the order given by ORDER, on one runner per product. The harness
+# in .cost is never committed to a pull request.
+
+on:
+  push:
+    branches: ['tmp/index-cost-dotnet']
+
+permissions:
+  contents: read
+
+jobs:
+  cost:
+    name: Timing ${{ matrix.product }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        product: [dd, ipi]
+    env:
+      REFS: 'before=a14542899d3e59e469ae87eabf004d670f087a3f'
+      ORDER: 'before'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: 51Degrees/common-ci
+          ref: main
+      - uses: actions/checkout@v4
+        with:
+          path: harness
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Check out each commit under test
+        run: |
+          for pair in $REFS; do
+            label=${pair%%=*}; sha=${pair#*=}
+            git init -q "w-$label"
+            git -C "w-$label" remote add origin https://github.com/51Degrees/51degrees-dotnet.git
+            git -C "w-$label" fetch -q --depth 1 origin "$sha"
+            git -C "w-$label" checkout -q FETCH_HEAD
+            git -C "w-$label" submodule update --init --depth 1
+            git -C "w-$label/cxx" submodule update --init --depth 1 data
+            git -C "w-$label" log -1 --format="$label %H %s"
+            git -C "w-$label/cxx" log -1 --format="$label cxx %H"
+          done
+      - name: Fetch the data files into the first checkout
+        shell: pwsh
+        env:
+          DD_KEY: ${{ secrets.DEVICE_DETECTION_KEY }}
+          DD_URL: ${{ secrets.DEVICE_DETECTION_URL }}
+          IPI_URL: ${{ secrets.IPI_DATA_FILE_URL }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $first = 'w-' + $env:REFS.Split(' ')[0].Split('=')[0]
+          $ipi = '${{ matrix.product }}' -eq 'ipi' ? $env:IPI_URL : ''
+          & "./$first/ci/fetch-assets.ps1" -DeviceDetection $env:DD_KEY -DeviceDetectionUrl $env:DD_URL -IpIntelligenceUrl $ipi
+          "COST_DATA=$PWD/$first/cxx/data" >> $env:GITHUB_ENV
+          Get-ChildItem "$first/cxx/data/device-detection", "$first/cxx/data/ip-intelligence" -Filter '51Degrees*' | Select-Object Name, Length | Format-Table
+      - name: Time each commit
+        shell: pwsh
+        run: |
+          $out = "$PWD/cost.txt"
+          $pass = 0
+          foreach ($label in $env:ORDER.Split(' ')) {
+            $pass++
+            $w = "w-$label"
+            if ('${{ matrix.product }}' -eq 'dd') {
+              Copy-Item harness/.cost/IndexCostTimingHash.cs "$w/device-detection/Tests/Hash.Tests/"
+              $proj = "$w/device-detection/Tests/Hash.Tests/FiftyOne.DeviceDetection.Hash.Tests.csproj"
+              $filter = 'FullyQualifiedName~IndexCostTimingHash'
+            } else {
+              Copy-Item harness/.cost/IndexCostTimingIpi.cs "$w/ip-intelligence/Tests/OnPremise.Tests/"
+              $proj = "$w/ip-intelligence/Tests/OnPremise.Tests/FiftyOne.IpIntelligence.OnPremise.Tests.csproj"
+              $filter = 'FullyQualifiedName~IndexCostTimingIpi'
+            }
+            $env:COST_DD_DIR = "$env:COST_DATA/device-detection"
+            $env:COST_IPI_DIR = "$env:COST_DATA/ip-intelligence"
+            $env:COST_OUT = $out
+            $env:COST_LABEL = "$label#$pass"
+            dotnet test $proj -c Release -f net8.0 --nologo -p:FiftyOneReferences=Project -p:Platform=x64 --filter $filter
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+          Get-Content $out
