@@ -1,0 +1,43 @@
+name: Temporary measurement of the json route with a license key alone
+
+# Temporary. Asks the cloud service what a license key carries, then posts to
+# the plain json route with that license key and no resource key, and prints
+# the status and the shape of each answer.
+
+on:
+  push:
+    branches: ['tmp/json-route-*']
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Measure
+        shell: pwsh
+        env:
+          LICENSE: ${{ secrets._51DEGREES_LICENSE_KEY_51DID }}
+        run: |
+          if ([string]::IsNullOrEmpty($env:LICENSE)) { throw 'No license key secret' }
+          $base = 'https://cloud.51degrees.com/api/v4/'
+          $ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+          Write-Host "Request 1: POST ${base}accessibleproperties with form field license"
+          $ap = Invoke-WebRequest -Method Post -Uri "${base}accessibleproperties" -Body @{ license = $env:LICENSE } -SkipHttpErrorCheck
+          Write-Host "Answer 1: HTTP $($ap.StatusCode)"
+          $apJson = $ap.Content | ConvertFrom-Json
+          $names = @()
+          foreach ($p in $apJson.Products.PSObject.Properties) {
+            $props = @($p.Value.Properties | ForEach-Object { $_.Name })
+            Write-Host "  product $($p.Name), DataTier $($p.Value.DataTier), $($props.Count) properties: $(($props | Select-Object -First 8) -join ', ')"
+            if ($props.Count -gt 0) { $names += "$($p.Name).$($props[0])" }
+          }
+          $values = ($names | Select-Object -First 2) -join ','
+          foreach ($case in @(
+              @{ Label = 'license, values and User-Agent'; Body = @{ license = $env:LICENSE; values = $values; 'User-Agent' = $ua } },
+              @{ Label = 'license and User-Agent, no values'; Body = @{ license = $env:LICENSE; 'User-Agent' = $ua } })) {
+            Write-Host "Request: POST ${base}json with form fields $($case.Label), values '$($case.Body.values)'"
+            $r = Invoke-WebRequest -Method Post -Uri "${base}json" -Body $case.Body -SkipHttpErrorCheck
+            Write-Host "Answer: HTTP $($r.StatusCode)"
+            $text = $r.Content
+            if ($text.Length -gt 900) { $text = $text.Substring(0, 900) + ' ...' }
+            Write-Host "  body: $text"
+          }
