@@ -88,7 +88,7 @@ namespace FiftyOne.Did.Client
         /// engine honours. A host other than the public cloud is used for
         /// a privately hosted copy of the same service.
         /// </summary>
-        public const string EndpointEnvironmentVariable = "FOD_CLOUD_API_URL";
+        public const string EndpointEnvironmentVariable = "_51DEGREES_CLOUD_ENDPOINT";
 
         /// <summary>
         /// How old the whole key list may be before a lookup fetches all of

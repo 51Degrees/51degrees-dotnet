@@ -35,7 +35,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine
         /// This is the environment variable key which can be used to specify 
         /// the  URL for the cloud service.
         /// </summary>
-        public const string FOD_CLOUD_API_URL = "FOD_CLOUD_API_URL";
+        public const string _51DEGREES_CLOUD_ENDPOINT = "_51DEGREES_CLOUD_ENDPOINT";
 
         /// <summary>
         /// Default URL and API path for the cloud service.

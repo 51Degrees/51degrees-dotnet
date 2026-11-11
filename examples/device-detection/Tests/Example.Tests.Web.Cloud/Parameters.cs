@@ -51,7 +51,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
                 // BrowserVersion
                 // In addition, each key will need to have specific setup
                 // for the '*Accept-CH' properties:
-                // _51DEGREES_RESOURCE_KEY (or legacy SUPER_RESOURCE_KEY) -
+                // _51DEGREES_RESOURCE_KEY -
                 //    SetHeaderBrowserAccept-CH, SetHeaderHardwareAccept-CH,
                 //    SetHeaderPlatformAccept-CH
                 // ACCEPTCH_BROWSER_KEY - SetHeaderBrowserAccept-CH only
@@ -59,7 +59,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
                 // ACCEPTCH_PLATFORM_KEY - SetHeaderPlatformAccept-CH only
                 // ACCEPTCH_NONE_KEY - No *Accept-CH properties.
                 ExampleUtils.GetResourceKeyFromEnv(v => SUPER_KEY = v);
-                ExampleUtils.GetKeyFromEnv("RESOURCE_KEY_CLOUD_V5_BESPOKE", v => V5_BESPOKE_KEY = v);
+                ExampleUtils.GetKeyFromEnv("_51DEGREES_RESOURCE_KEY_BESPOKE", v => V5_BESPOKE_KEY = v);
                 ExampleUtils.GetKeyFromEnv("ACCEPTCH_BROWSER_KEY", v => BROWSER_KEY = v);
                 ExampleUtils.GetKeyFromEnv("ACCEPTCH_HARDWARE_KEY", v => HARDWARE_KEY = v);
                 ExampleUtils.GetKeyFromEnv("ACCEPTCH_PLATFORM_KEY", v => PLATFORM_KEY = v);

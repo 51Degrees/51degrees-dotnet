@@ -354,7 +354,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
             // If any of the endpoints are not set, then use the environment variable if
             // specified, or the default base url if not.
-            var endpoint = Environment.GetEnvironmentVariable(Constants.FOD_CLOUD_API_URL) ?? 
+            var endpoint = Environment.GetEnvironmentVariable(Constants._51DEGREES_CLOUD_ENDPOINT) ?? 
                 Constants.CLOUD_URI_DEFAULT;
 
             if (string.IsNullOrWhiteSpace(_dataEndpoint))

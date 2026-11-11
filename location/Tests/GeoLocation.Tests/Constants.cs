@@ -59,7 +59,7 @@ namespace FiftyOne.GeoLocation.Tests
         internal const string TEST_LAT = "51.4578261";
         internal const string TEST_LON = "-0.975922996290084";
 
-        internal const string RESOURCE_KEY_ENV_VAR = "SUPER_RESOURCE_KEY";
+        internal const string RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
 
         /// <summary>
         /// Seconds a request to the cloud service may take. The default of

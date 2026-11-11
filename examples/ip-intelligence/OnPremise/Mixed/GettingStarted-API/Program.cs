@@ -431,18 +431,12 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI
 
             // Use the command line argument if provided. Otherwise, an explicit data file
             // path supplied in an environment variable takes precedence over the value in
-            // the configuration file. The aligned '51DEGREES_IPI_PATH' variable is checked
-            // first, followed by the legacy 'IPINTELLIGENCEDATAFILE' variable.
+            // the configuration file, in the '_51DEGREES_IPI_PATH' variable.
             var dataFile = dataFileOverride;
             if (string.IsNullOrWhiteSpace(dataFile))
             {
                 dataFile = Environment.GetEnvironmentVariable(
                     Examples.Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
-            }
-            if (string.IsNullOrWhiteSpace(dataFile))
-            {
-                dataFile = Environment.GetEnvironmentVariable(
-                    Examples.Constants.LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
             }
             if (string.IsNullOrWhiteSpace(dataFile))
             {

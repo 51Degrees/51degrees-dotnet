@@ -62,33 +62,24 @@ namespace FiftyOne.IpIntelligence.Examples
         /// Environment variable key for the license key file to use for the 
         /// tests.
         /// </summary>
-        public const string LICENSE_KEY_ENV_VAR = "IPINTELLIGENCELICENSEKEY_DOTNET";
+        public const string LICENSE_KEY_ENV_VAR = "_51DEGREES_LICENSE_KEY";
 
         /// <summary>
         /// Environment variable key used to supply an explicit path to the
-        /// IP Intelligence data file. This aligned name is checked first,
-        /// before any legacy variable names.
+        /// IP Intelligence data file.
         /// </summary>
-        public const string IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "51DEGREES_IPI_PATH";
-
-        /// <summary>
-        /// Legacy environment variable key used to supply an explicit path to
-        /// the IP Intelligence data file. Retained for backwards
-        /// compatibility and checked when
-        /// <see cref="IP_INTELLIGENCE_DATA_FILE_ENV_VAR"/> is not set.
-        /// </summary>
-        public const string LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "IPINTELLIGENCEDATAFILE";
+        public const string IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "_51DEGREES_IPI_PATH";
 
         /// <summary>
         /// Environment variable key for the evidence file to use for the tests.
         /// </summary>
-        public const string EVIDENCE_FILE_ENV_VAR = "EVIDENCEFILE";
+        public const string EVIDENCE_FILE_ENV_VAR = "_51DEGREES_EVIDENCE_YAML";
 
         /// <summary>
         /// Environment variable key for the geo ip truth 
         /// evidence file to use for the tests.
         /// </summary>
-        public const string GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR = "GEOIPEVIDENCEFILE";
+        public const string GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR = "_51DEGREES_GEOIP_EVIDENCE_YAML";
 
         /// <summary>
         /// Ports used for running web examples and their tests. When these

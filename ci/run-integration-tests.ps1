@@ -19,10 +19,10 @@ $PSNativeCommandUseErrorActionPreference = $true
 # FiftyOne.DeviceDetection.Example.Tests.Web is left out. It holds the generic
 # base classes the web example tests derive from, and has no tests of its own.
 $Filter = "^FiftyOne\.(?!DeviceDetection\.Example\.Tests\.Web\.dll$).*Examples?\.Tests.*\.dll$"
-# A run can be narrowed to some assemblies by setting FIFTYONE_TEST_FILTER,
+# A run can be narrowed to some assemblies by setting _51DEGREES_TEST_FILTER,
 # which the probe workflow does.
-if ($env:FIFTYONE_TEST_FILTER) {
-    $Filter = $env:FIFTYONE_TEST_FILTER
+if ($env:_51DEGREES_TEST_FILTER) {
+    $Filter = $env:_51DEGREES_TEST_FILTER
 }
 # A test is treated as hung after 20 minutes, the limit the separate examples
 # repository allowed, because the IP Intelligence examples load the 6 GB
@@ -105,7 +105,7 @@ $onPremiseProject = "$RepoName/examples/device-detection/OnPremise/GettingStarte
 try {
     Invoke-ContractTests -Label 'cloud' -Project $cloudProject -Port 8095 `
         -BuildArgs (@('-c', $Configuration) + $references) `
-        -ExampleEnv @{ FIFTYONE_CLOUD_ENDPOINT = "https://cloud.51degrees.com/api/v4/" }
+        -ExampleEnv @{ _51DEGREES_CLOUD_ENDPOINT = "https://cloud.51degrees.com/api/v4/" }
 } catch {
     Write-Host "::error title=Selenium contract (cloud)::$_"
     $failed += 'cloud'
@@ -119,7 +119,7 @@ if ($Arch -eq 'x86') {
     try {
         Invoke-ContractTests -Label 'on-premise' -Project $onPremiseProject -Port 8096 `
             -BuildArgs (@('-c', $Configuration, "-p:Platform=$Arch") + $references) `
-            -ExampleEnv @{ '51DEGREES_DD_PATH' = (Resolve-Path $tacFile).Path }
+            -ExampleEnv @{ '_51DEGREES_DD_PATH' = (Resolve-Path $tacFile).Path }
     } catch {
         Write-Host "::error title=Selenium contract (on-premise)::$_"
         $failed += 'on-premise'

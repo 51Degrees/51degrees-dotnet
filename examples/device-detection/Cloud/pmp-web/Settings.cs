@@ -44,7 +44,7 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         /// <summary>
         /// The resource key the pages and the pipeline use. Read first.
         /// </summary>
-        public const string RESOURCE_KEY_ENV_VAR = "51DEGREES_RESOURCE_KEY";
+        public const string RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
 
         /// <summary>
         /// The name continuous integration sets a resource key carrying the
@@ -58,7 +58,7 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         /// The cloud the pages load the PMP and the client script from,
         /// and the pipeline asks.
         /// </summary>
-        public const string CLOUD_ENDPOINT_ENV_VAR = "51DEGREES_CLOUD_ENDPOINT";
+        public const string CLOUD_ENDPOINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
         /// <summary>
         /// The cloud used when no endpoint variable is set.
@@ -69,7 +69,7 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         /// <summary>
         /// The path every endpoint the pages use sits under. An endpoint
         /// variable may be given with or without it, because the other
-        /// repositories that read 51DEGREES_CLOUD_ENDPOINT give it with.
+        /// repositories that read _51DEGREES_CLOUD_ENDPOINT give it with.
         /// </summary>
         private const string API_PATH = "/api/v4";
 
@@ -178,7 +178,7 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public IReadOnlyDictionary<string, string> CloudPlaceholders() =>
             new Dictionary<string, string>
             {
-                ["RESOURCE_KEY"] = ResourceKey,
+                ["_51DEGREES_RESOURCE_KEY"] = ResourceKey,
                 ["CLOUD_ENDPOINT"] = CloudEndpoint,
                 ["PMP_SCRIPT_URL"] = PmpScriptUrl,
                 ["CLIENT_SCRIPT_URL"] = CloudClientScriptUrl
@@ -198,7 +198,7 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public IReadOnlyDictionary<string, string> PipelinePlaceholders() =>
             new Dictionary<string, string>
             {
-                ["RESOURCE_KEY"] = ResourceKey,
+                ["_51DEGREES_RESOURCE_KEY"] = ResourceKey,
                 ["CLOUD_ENDPOINT"] = CloudEndpoint,
                 ["PMP_SCRIPT_URL"] = PmpScriptUrl,
                 ["CLIENT_SCRIPT_URL"] = PIPELINE_CLIENT_SCRIPT_PATH

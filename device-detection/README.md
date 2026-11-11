@@ -220,8 +220,7 @@ an 'inconclusive' result if these resources are not provided.
 -   Tests using the cloud service require resource keys with specific properties
     to be provided using environment variables:
     -   The `_51DEGREES_RESOURCE_KEY` environment variable should be populated
-        with a key that includes all properties. The legacy `SUPER_RESOURCE_KEY`
-        environment variable is still supported and is checked second. A
+        with a key that includes all properties. A
         [license](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=tests-2) is required in order to access
         some properties.
 

@@ -29,18 +29,18 @@ dotnet dev-certs https
 # The data files fetch-assets.ps1 put in the data submodule of cxx.
 $env:_51DEGREES_DD_PATH = "$RepoPath/cxx/data/device-detection/TAC-HashV41.hash"
 $env:_51DEGREES_IPI_PATH = "$RepoPath/cxx/data/ip-intelligence/51Degrees-EnterpriseIpiV41.ipi"
-$env:IPINTELLIGENCEDATAFILE = $env:_51DEGREES_IPI_PATH
-${env:51DEGREES_IPI_PATH} = $env:_51DEGREES_IPI_PATH
+$env:_51DEGREES_IPI_PATH = $env:_51DEGREES_IPI_PATH
+${env:_51DEGREES_IPI_PATH} = $env:_51DEGREES_IPI_PATH
 
 # The resource keys the cloud tests and examples read. The names that start
 # with _51DEGREES_RESOURCE_KEY are the convention, and the shared
 # set-resource-keys step exports every organisation secret of that shape. The
 # older names are still read by some tests.
 $env:_51DEGREES_RESOURCE_KEY = $Keys.TestResourceKey
-$env:SUPER_RESOURCE_KEY = $Keys.TestResourceKey
-$env:RESOURCE_KEY = $Keys.TestResourceKey
-${env:51DEGREES_RESOURCE_KEY} = $Keys.TestResourceKey
-$env:RESOURCE_KEY_CLOUD_V5_BESPOKE = $Keys.TestResourceKey
+$env:_51DEGREES_RESOURCE_KEY = $Keys.TestResourceKey
+$env:_51DEGREES_RESOURCE_KEY = $Keys.TestResourceKey
+${env:_51DEGREES_RESOURCE_KEY} = $Keys.TestResourceKey
+$env:_51DEGREES_RESOURCE_KEY_CLOUD_V5_BESPOKE = $Keys.TestResourceKey
 $env:ACCEPTCH_BROWSER_KEY = $Keys.AcceptCHBrowserKey
 $env:ACCEPTCH_HARDWARE_KEY = $Keys.AcceptCHHardwareKey
 $env:ACCEPTCH_PLATFORM_KEY = $Keys.AcceptCHPlatformKey
@@ -50,7 +50,7 @@ $env:ACCEPTCH_NONE_KEY = $Keys.AcceptCHNoneKey
 # No IP Intelligence key is set. The device detection key was set here once,
 # and the IP Intelligence update service refuses it, so the update test
 # copied the 6 GB data file and then reported inconclusive on every job.
-$env:DEVICEDETECTIONLICENSEKEY_DOTNET = $Keys.DeviceDetection
+$env:_51DEGREES_LICENSE_KEY = $Keys.DeviceDetection
 
 # A chromedriver on PATH is used even when it no longer matches the installed
 # Chrome, and the images ship ones that lag behind. Skipping PATH makes

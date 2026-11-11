@@ -38,19 +38,10 @@ namespace FiftyOne.DeviceDetection.Examples;
 public static class ExampleUtils
 {
     /// <summary>
-    /// The default environment variable key used to get the resource key
-    /// to use when running cloud examples. This aligned name is checked
-    /// first, before any legacy variable names.
+    /// The environment variable key used to get the resource key to use
+    /// when running cloud examples.
     /// </summary>
     public const string CLOUD_RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
-
-    /// <summary>
-    /// The legacy environment variable key used to get the resource key
-    /// to use when running cloud examples. Retained for backwards
-    /// compatibility and checked when <see cref="CLOUD_RESOURCE_KEY_ENV_VAR"/>
-    /// is not set.
-    /// </summary>
-    public const string LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR = "SUPER_RESOURCE_KEY";
 
     /// <summary>
     /// The naming convention for resource key environment variables. The
@@ -74,15 +65,14 @@ public static class ExampleUtils
         $"'{CLOUD_RESOURCE_KEY_ENV_VAR}', or any variable named " +
         $"'{CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX}_<tier>' such as " +
         $"'{CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX}_FREE' or " +
-        $"'{CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX}_PAID', or the legacy " +
-        $"'{LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR}'";
+        $"'{CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX}_PAID'";
 
     /// <summary>
     /// The default environment variable key used to get the end point URL
     /// to use when running cloud examples. Can be used to override the
     /// appsettings.json configuration for testing custom end points.
     /// </summary>
-    public const string CLOUD_END_POINT_ENV_VAR = "51D_CLOUD_ENDPOINT";
+    public const string CLOUD_END_POINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
     /// <summary>
     /// Message displayed when a resource key leaves some of the
@@ -798,9 +788,8 @@ public static class ExampleUtils
     /// <summary>
     /// Get the resource key from the environment, following the
     /// organisation's naming convention. The exact
-    /// '_51DEGREES_RESOURCE_KEY' variable is checked first, then the
-    /// legacy 'SUPER_RESOURCE_KEY' variable, and finally any variable
-    /// whose name begins with '_51DEGREES_RESOURCE_KEY', which is how
+    /// '_51DEGREES_RESOURCE_KEY' variable is checked first, then any
+    /// variable whose name begins with '_51DEGREES_RESOURCE_KEY', which is how
     /// per tier keys such as '_51DEGREES_RESOURCE_KEY_FREE' and
     /// '_51DEGREES_RESOURCE_KEY_PAID' reach a build. Tier variables are
     /// taken in name order so the same machine always picks the same
@@ -834,18 +823,12 @@ public static class ExampleUtils
     /// </returns>
     public static string GetResourceKeyFromEnv(out string envVarName)
     {
-        foreach (var name in new string[]
+        var exact = Environment.GetEnvironmentVariable(
+            CLOUD_RESOURCE_KEY_ENV_VAR);
+        if (string.IsNullOrWhiteSpace(exact) == false)
         {
-            CLOUD_RESOURCE_KEY_ENV_VAR,
-            LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR
-        })
-        {
-            var value = Environment.GetEnvironmentVariable(name);
-            if (string.IsNullOrWhiteSpace(value) == false)
-            {
-                envVarName = name;
-                return value;
-            }
+            envVarName = CLOUD_RESOURCE_KEY_ENV_VAR;
+            return exact;
         }
 
         // Fall back to the tier named variables, for example

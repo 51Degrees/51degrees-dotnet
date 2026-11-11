@@ -148,7 +148,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb
             }
 
             // override the cloud endpoint from the environment, regardless of the resource key
-            string endpoint = Environment.GetEnvironmentVariable("FIFTYONE_CLOUD_ENDPOINT");
+            string endpoint = Environment.GetEnvironmentVariable("_51DEGREES_CLOUD_ENDPOINT");
             if (string.IsNullOrEmpty(endpoint) == false)
             {
                 var cloudEngineIndex = options.Elements.IndexOf(

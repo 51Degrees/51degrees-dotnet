@@ -47,47 +47,29 @@ namespace FiftyOne.DeviceDetection.Examples
         /// Environment variable key for the license key file to use for the
         /// tests.
         /// </summary>
-        public const string LICENSE_KEY_ENV_VAR = "DEVICEDETECTIONLICENSEKEY_DOTNET";
+        public const string LICENSE_KEY_ENV_VAR = "_51DEGREES_LICENSE_KEY";
 
         /// <summary>
         /// Environment variable key used to supply an explicit path to the
-        /// device detection data file. This is the agreed 51Degrees runtime
-        /// name and is checked before any other variable name.
-        /// </summary>
-        public const string DD_PATH_ENV_VAR = "51DEGREES_DD_PATH";
-
-        /// <summary>
-        /// Environment variable key used to supply an explicit path to the
-        /// device detection data file. Checked when
-        /// <see cref="DD_PATH_ENV_VAR"/> is not set, and still set by the
-        /// continuous integration scripts.
+        /// device detection data file.
         /// </summary>
         public const string DEVICE_DETECTION_DATA_FILE_ENV_VAR = "_51DEGREES_DD_PATH";
 
         /// <summary>
-        /// Legacy environment variable key used to supply an explicit path to
-        /// the device detection data file. Retained for backwards
-        /// compatibility and checked when neither
-        /// <see cref="DD_PATH_ENV_VAR"/> nor
-        /// <see cref="DEVICE_DETECTION_DATA_FILE_ENV_VAR"/> is set.
-        /// </summary>
-        public const string LEGACY_DEVICE_DETECTION_DATA_FILE_ENV_VAR = "DEVICEDETECTIONDATAFILE";
-
-        /// <summary>
         /// Every environment variable that can supply an explicit path to the
-        /// device detection data file, in the order they are checked.
+        /// device detection data file. There is one, and the array is kept so
+        /// that the callers which report the names they looked at read the
+        /// same way as the IP Intelligence examples.
         /// </summary>
         public static readonly string[] DATA_FILE_ENV_VARS = new string[]
         {
-            DD_PATH_ENV_VAR,
-            DEVICE_DETECTION_DATA_FILE_ENV_VAR,
-            LEGACY_DEVICE_DETECTION_DATA_FILE_ENV_VAR
+            DEVICE_DETECTION_DATA_FILE_ENV_VAR
         };
 
         /// <summary>
         /// Environment variable key for the evidence file to use for the tests.
         /// </summary>
-        public const string EVIDENCE_FILE_ENV_VAR = "EVIDENCEFILE";
+        public const string EVIDENCE_FILE_ENV_VAR = "_51DEGREES_EVIDENCE_YAML";
 
         /// <summary>
         /// Ports used for running web examples and their tests. When these

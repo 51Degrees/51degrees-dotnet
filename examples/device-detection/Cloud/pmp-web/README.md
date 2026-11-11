@@ -23,8 +23,8 @@ language's copy of it reads.
 
 | Variable | What it holds | Also read when it is not set |
 | --- | --- | --- |
-| `51DEGREES_RESOURCE_KEY` | A resource key that includes the 51Did properties. Required. | `_51DEGREES_RESOURCE_KEY_51DID` |
-| `51DEGREES_CLOUD_ENDPOINT` | The cloud the pages load from and the pipeline asks, given with or without the `/api/v4/` path, for example `https://cloud.51degrees.com/api/v4/`. The default is `https://cloud.51degrees.com`. | nothing |
+| `_51DEGREES_RESOURCE_KEY` | A resource key that includes the 51Did properties. Required. | `_51DEGREES_RESOURCE_KEY_51DID` |
+| `_51DEGREES_CLOUD_ENDPOINT` | The cloud the pages load from and the pipeline asks, given with or without the `/api/v4/` path, for example `https://cloud.51degrees.com/api/v4/`. The default is `https://cloud.51degrees.com`. | nothing |
 
 The first column holds the names a developer sets. The resource key's second
 name is the one continuous integration sets. It starts with an underscore
@@ -52,7 +52,7 @@ set with the env command, because POSIX shells do not accept them in a
 plain assignment.
 
 ```
-env 51DEGREES_RESOURCE_KEY=<your resource key> \
+env _51DEGREES_RESOURCE_KEY=<your resource key> \
     ASPNETCORE_URLS=http://localhost:5180 \
     dotnet run -c Release
 ```
@@ -60,7 +60,7 @@ env 51DEGREES_RESOURCE_KEY=<your resource key> \
 In PowerShell the same is done like this.
 
 ```
-${env:51DEGREES_RESOURCE_KEY} = '<your resource key>'
+${env:_51DEGREES_RESOURCE_KEY} = '<your resource key>'
 ${env:ASPNETCORE_URLS} = 'http://localhost:5180'
 dotnet run -c Release
 ```

@@ -41,15 +41,14 @@ namespace FiftyOne.Did.Tests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Set <c>_51DEGREES_RESOURCE_KEY</c> (or the legacy
-    /// <c>SUPER_RESOURCE_KEY</c>) to a key whose properties include
+    /// Set <c>_51DEGREES_RESOURCE_KEY</c> to a key whose properties include
     /// <c>fodid.*</c>. With no key set the tests are inconclusive.
     /// <c>_51DEGREES_LICENSE_KEY_51DID</c>, then
-    /// <c>_51DEGREES_LICENSE_KEY</c> (or <c>LICENSE_KEY</c>), is read for
+    /// <c>_51DEGREES_LICENSE_KEY</c>, is read for
     /// the license key and is optional. When one is set it must belong to
     /// the resource key's account and carry the 51Did product, because a
     /// sealed result must then read back as a verdict.
-    /// <c>FOD_CLOUD_API_URL</c> points every call at another host.
+    /// <c>_51DEGREES_CLOUD_ENDPOINT</c> points every call at another host.
     /// </para>
     /// <para>
     /// These are integration tests that use the live cloud service, so
@@ -76,13 +75,12 @@ namespace FiftyOne.Did.Tests
         };
 
         private static string? ResourceKey() =>
-            FirstSet("_51DEGREES_RESOURCE_KEY", "SUPER_RESOURCE_KEY");
+            FirstSet("_51DEGREES_RESOURCE_KEY");
 
         private static string? LicenceKey() =>
             FirstSet(
                 "_51DEGREES_LICENSE_KEY_51DID",
-                "_51DEGREES_LICENSE_KEY",
-                "LICENSE_KEY");
+                "_51DEGREES_LICENSE_KEY");
 
         private static string? FirstSet(params string[] names)
         {
@@ -108,8 +106,8 @@ namespace FiftyOne.Did.Tests
             {
                 Assert.Inconclusive(
                     "No resource key supplied for the live cloud 51Did client " +
-                    "tests. Set _51DEGREES_RESOURCE_KEY (or the legacy " +
-                    "SUPER_RESOURCE_KEY) to a key whose properties include " +
+                    "tests. Set _51DEGREES_RESOURCE_KEY to a key whose " +
+                    "properties include " +
                     "fodid.* and re-run. Get a free key that includes 51Did " +
                     "from https://configure.51degrees.com/N57Wygby");
                 return null;
