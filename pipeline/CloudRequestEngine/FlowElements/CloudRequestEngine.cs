@@ -845,7 +845,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             var evidence = data.GetEvidence().AsDictionary();
 
             // Add the other evidence lowest precedence first, being other
-            // prefixes in reverse alphabetical order, then location,
+            // prefixes in reverse alphabetical order of the prefix in lower
+            // case, then of the whole key, then location,
             // fiftyone and server, leaving out the web request a web
             // integration adds for usage sharing, which is an object rather
             // than a value to send.
@@ -857,7 +858,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     string.Equals(e.Key, Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
                         StringComparison.OrdinalIgnoreCase) == false)
                 .OrderByDescending(e => OtherPrefixRank(e.Key))
-                .ThenByDescending(e => e.Key, StringComparer.OrdinalIgnoreCase));
+                .ThenByDescending(e => PrefixOf(e.Key).ToLowerInvariant(),
+                    StringComparer.Ordinal)
+                .ThenByDescending(e => e.Key.ToLowerInvariant(),
+                    StringComparer.Ordinal));
             // Add cookie evidence.
             AddQueryData(queryData, evidence, evidence
                 .Where(e => KeyHasPrefix(e, Core.Constants.EVIDENCE_COOKIE_PREFIX)));
@@ -873,6 +877,20 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
         
         /// <summary>
+        /// The prefix of an Evidence key, being the part before its first
+        /// separator, or the whole key where it has none.
+        /// </summary>
+        /// <param name="key">The Evidence key.</param>
+        /// <returns>The prefix.</returns>
+        private static string PrefixOf(string key)
+        {
+            int separatorIndex = key.IndexOfAny(EVIDENCE_SEPARATOR_CHAR_ARRAY);
+            return separatorIndex >= 0
+                ? key.Substring(0, separatorIndex)
+                : key;
+        }
+
+        /// <summary>
         /// The precedence of a key that is not a query, header or cookie
         /// key, lower first, being server, fiftyone and location as
         /// evidence.md lists them, then any other prefix.
@@ -881,10 +899,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// <returns>The rank, where a lower rank wins.</returns>
         private static int OtherPrefixRank(string key)
         {
-            int separatorIndex = key.IndexOfAny(EVIDENCE_SEPARATOR_CHAR_ARRAY);
-            var prefix = separatorIndex >= 0
-                ? key.Substring(0, separatorIndex)
-                : key;
+            var prefix = PrefixOf(key);
             for (int i = 0; i < OTHER_PREFIX_PRECEDENCE.Length; i++)
             {
                 if (prefix.Equals(OTHER_PREFIX_PRECEDENCE[i],
