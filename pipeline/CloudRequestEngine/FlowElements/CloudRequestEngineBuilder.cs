@@ -200,7 +200,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// names such as 'device.ismobile', sent as 'values'. Required with
         /// a license key alone. Beside a resource key the cloud service adds
         /// them to the properties the resource key carries. Names are
-        /// trimmed, lower-cased and de-duplicated. The properties set with
+        /// trimmed and sent as given, and a name given again in another
+        /// letter case is sent once. The properties set with
         /// <c>SetProperties</c> are not sent.
         /// </summary>
         /// <param name="properties">
@@ -438,19 +439,21 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// Trim and lower-case each name, as the cloud service answers in
-        /// lower case, and drop empty names and repeats.
+        /// Trim each name and drop empty names and repeats. A repeat
+        /// differs only in letter case, as the cloud service reads names
+        /// without regard to case, and the first spelling given is kept.
         /// </summary>
         private static List<string> NormalizeProperties(
             IEnumerable<string> names)
         {
             var result = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var name in names ?? new List<string>())
             {
-                var normal = TrimOrEmpty(name).ToLowerInvariant();
-                if (normal.Length > 0 && result.Contains(normal) == false)
+                var trimmed = TrimOrEmpty(name);
+                if (trimmed.Length > 0 && seen.Add(trimmed))
                 {
-                    result.Add(normal);
+                    result.Add(trimmed);
                 }
             }
             return result;

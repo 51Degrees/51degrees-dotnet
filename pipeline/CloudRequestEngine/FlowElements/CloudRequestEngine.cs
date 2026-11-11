@@ -581,7 +581,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// answer without naming it, so the engine compares names itself,
         /// ignoring letter case. A property that is present but null counts as
         /// answered, as it carries a reason beside it. The request is never
-        /// failed because the covered properties came back.
+        /// failed because the covered properties came back. With no license
+        /// key, a property the resource key does not carry is answered as
+        /// null, so a name left out is not a property, and the message says
+        /// so.
         /// </summary>
         private void ReportPropertiesNotCovered(string json)
         {
@@ -625,7 +628,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
             if (missing.Count > 0)
             {
-                Logger?.LogWarning(Messages.WarningPropertiesNotCovered,
+                Logger?.LogWarning(
+                    string.IsNullOrWhiteSpace(_endpointsAndKeys.LicenseKey)
+                        ? Messages.WarningRequestedNamesNotProperties
+                        : Messages.WarningPropertiesNotCovered,
                     string.Join(", ", missing));
             }
         }

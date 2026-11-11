@@ -147,6 +147,9 @@
   <data name="WarningPropertiesNotCovered" xml:space="preserve">
     <value>The cloud service did not return the requested properties {0} in its answer. They are not covered by the keys in use, so they will be missing from every result. The other requested properties came back and are usable.</value>
   </data>
+  <data name="WarningRequestedNamesNotProperties" xml:space="preserve">
+    <value>The cloud service did not return the requested properties {0} in its answer. With a resource key and no license key every property is answered, with a reason when it has no value, so these names are not properties. Check the spelling of each one. The other requested properties came back and are usable.</value>
+  </data>
   <data name="ExceptionTaskCanceledRequest" xml:space="preserve">
     <value>Failed to send request. A TaskCanceledException was thrown. The likely cause of this would be a connection timeout.</value>
   </data>

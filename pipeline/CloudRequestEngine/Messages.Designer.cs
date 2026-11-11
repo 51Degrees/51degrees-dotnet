@@ -185,5 +185,14 @@ namespace FiftyOne.Pipeline.CloudRequestEngine {
                 return ResourceManager.GetString("WarningPropertiesNotCovered", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The cloud service did not return the requested properties {0} in its answer. With a resource key and no license key every property is answered.
+        /// </summary>
+        internal static string WarningRequestedNamesNotProperties {
+            get {
+                return ResourceManager.GetString("WarningRequestedNamesNotProperties", resourceCulture);
+            }
+        }
     }
 }
