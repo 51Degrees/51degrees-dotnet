@@ -177,11 +177,28 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         }
 
         /// <summary>
-        /// Set the expected number of concurrent operations using the engine.
-        /// This sets the concurrency of the internal caches to avoid excessive
-        /// locking.
+        /// Set the expected number of operations that use the engine at the same
+        /// time. The native code uses it for every collection read from the data
+        /// file.
+        /// First, it sets the number of file handles in the pool, which is the
+        /// concurrency up to a fixed maximum of 64, because a process can only have
+        /// so many files open. An operation that has to read from the file when
+        /// every handle is in use waits until another operation releases one.
+        /// Second, it decides how each cache is split into parts, each with its own
+        /// lock, which avoids excessive locking. An item in use cannot be removed
+        /// from a cache, and any operation can need any part, so every part holds
+        /// at least the concurrency in items. The number of parts is the
+        /// concurrency, or fewer where needed so that every part holds that many
+        /// items, and a cache that holds fewer items than the concurrency in total
+        /// is made large enough to hold that many. No value stops the engine
+        /// building.
+        /// The concurrency has no effect when every collection is held in memory,
+        /// for example with the MaxPerformance profile.
         /// </summary>
-        /// <param name="concurrency">Expected concurrent accesses</param>
+        /// <param name="concurrency">
+        /// The expected number of operations that use the engine at
+        /// the same time.
+        /// </param>
         /// <returns>This builder</returns>
         public override IpiOnPremiseEngineBuilderBase<TEngine> SetConcurrency(
             ushort concurrency)
@@ -257,6 +274,12 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
                 engine.SwigFactory = SwigFactory;
                 engine.PropertiesConfigSwig = propertyConfig;
                 engine.Config = config;
+                // A property's index is the place of its name in this list,
+                // so only an engine built with names reads by index. The
+                // native code gives an engine built with no names no
+                // indexes, so that engine reads by name.
+                engine.BuiltWithPropertyNames =
+                    properties != null && properties.Count > 0;
 
                 // This must be last as the call results in RefreshData being
                 // triggered which requires the prior three properties to be set.

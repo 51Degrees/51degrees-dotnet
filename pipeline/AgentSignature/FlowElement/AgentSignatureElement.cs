@@ -1155,21 +1155,43 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// evidence the pipeline holds.
         /// </summary>
         /// <remarks>
-        /// A signature may cover any request header, so the element asks
-        /// for every header rather than a fixed list. The derived
-        /// components are built from those headers and from the request
-        /// line, being the method, the path and the query string. Where an
-        /// integration supplies no request line, a signature covering
-        /// '&#64;target-uri', '&#64;method', '&#64;path' or '&#64;query' cannot be rebuilt
-        /// and reads Unverified with the ComponentUnavailable reason.
+        /// A header the element accepts is read from the evidence. A
+        /// signature covering any other header cannot be rebuilt, and that
+        /// header is not read from other evidence or from the web request
+        /// a web integration adds as
+        /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>, because a
+        /// header outside the accepted evidence is outside the cache keys,
+        /// the ETag and the Vary header. The
+        /// derived components are built from the accepted headers and from
+        /// the request line, being the method, the path and the query
+        /// string. Where an integration supplies no request line, a
+        /// signature covering '&#64;target-uri', '&#64;method', '&#64;path' or
+        /// '&#64;query' cannot be rebuilt and reads Unverified with the
+        /// ComponentUnavailable reason.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/4612778babd00c032a69ad41608e5c6fed38dc33/pipeline-specification/pipeline-elements/agent-signature-element.md#rebuilding-the-signature-base">Specification</see>
         /// </remarks>
         private sealed class FlowDataComponentResolver : IComponentResolver
         {
+            /// <summary>
+            /// The headers the element accepts as evidence, being the
+            /// header names among the eight accepted keys.
+            /// </summary>
+            private static readonly string[] AcceptedHeaderNames =
+            {
+                "signature",
+                "signature-input",
+                "signature-agent",
+                "host",
+                "protocol",
+            };
+
             private readonly IFlowData _data;
 
             private readonly string _source;
 
-            public FlowDataComponentResolver(IFlowData data, string source)
+            public FlowDataComponentResolver(
+                IFlowData data,
+                string source)
             {
                 _data = data;
                 _source = source;
@@ -1195,7 +1217,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 {
                     return false;
                 }
-                if (GetHeader(name, out var header) == false)
+                if (IsAcceptedHeader(name) == false ||
+                    GetHeader(name, out var header) == false)
                 {
                     return false;
                 }
@@ -1379,6 +1402,21 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             }
 
             /// <summary>
+            /// True if the name is a header whose evidence key the
+            /// element accepts. A covered header with any other name
+            /// cannot be rebuilt.
+            /// </summary>
+            private static bool IsAcceptedHeader(string name)
+            {
+                return Array.Exists(
+                    AcceptedHeaderNames,
+                    accepted => string.Equals(
+                        accepted,
+                        name,
+                        StringComparison.OrdinalIgnoreCase));
+            }
+
+            /// <summary>
             /// Read a header by name from the prefix the signature came
             /// from, and from no other.
             /// </summary>
@@ -1439,25 +1477,27 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         }
 
         /// <summary>
-        /// The evidence this element asks for.
+        /// The evidence this element accepts.
         /// </summary>
         /// <remarks>
-        /// A signature names the parts of the request it covers, and it may
-        /// name any request header, so the element cannot write the list
-        /// down in advance. It accepts every header instead, together with
-        /// the protocol, which '&#64;authority' and '&#64;scheme' are built from,
-        /// and the three request line values, which '&#64;method', '&#64;path',
-        /// '&#64;query' and '&#64;target-uri' are built from. A fixed list of
-        /// headers would leave a signature covering any other header unable
-        /// to be rebuilt, because a web integration only puts evidence into
-        /// the request that some element has asked for.
+        /// The element accepts the three signature headers, the host and
+        /// the protocol, which '&#64;authority' and '&#64;scheme' are built
+        /// from, and the three request line values, which '&#64;method',
+        /// '&#64;path', '&#64;query' and '&#64;target-uri' are built from. A
+        /// pipeline's accepted evidence decides its cache keys, the ETag and
+        /// the Vary header, so only evidence that can change the result is
+        /// accepted. Any other header a signature covers is read without
+        /// being accepted, see <see cref="FlowDataComponentResolver"/>.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/agent-signature-element.md#accepted-evidence">Specification</see>
         /// <para>
-        /// The 'query' prefix is accepted as well as 'header', because a
-        /// caller's own Pipeline sends its evidence on to the cloud service
-        /// with the prefix taken off, so a header that started as
-        /// 'header.signature' reaches the cloud as 'query.signature'.
-        /// Accepting both is what lets one element serve a request that
-        /// arrived directly and one that was forwarded.
+        /// Where forwarded evidence is trusted, the same eight names under
+        /// the 'query' prefix are accepted as well and no other 'query'
+        /// key, because a caller's own Pipeline sends its evidence on to
+        /// the cloud service with the prefix taken off, so a header that
+        /// started as 'header.signature' reaches the cloud as
+        /// 'query.signature'. Accepting both is what lets one element
+        /// serve a request that arrived directly and one that was
+        /// forwarded.
         /// </para>
         /// <para>
         /// The class derives from the whitelist filter, holding the keys
@@ -1492,10 +1532,26 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
 
             private readonly bool _trustForwarded;
 
+            /// <summary>
+            /// The named keys under the query prefix, which are accepted
+            /// where forwarded evidence is trusted but never published.
+            /// </summary>
+            private readonly HashSet<string> _forwardedKeys;
+
             public AgentSignatureEvidenceKeyFilter(bool trustForwarded)
                 : base(NamedKeys())
             {
                 _trustForwarded = trustForwarded;
+                _forwardedKeys = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase);
+                foreach (var key in Whitelist.Keys)
+                {
+                    _forwardedKeys.Add(
+                        _queryPrefix + key.Substring(
+                            key.IndexOf(
+                                Core.Constants.EVIDENCE_SEPERATOR,
+                                StringComparison.Ordinal) + 1));
+                }
             }
 
             /// <summary>
@@ -1571,11 +1627,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
 
             /// <inheritdoc/>
             /// <remarks>
-            /// Any header at all is accepted beyond the named keys,
-            /// because a signature may cover one this element cannot know
-            /// in advance. The protocol, which '&#64;scheme' and the port in
-            /// '&#64;authority' are built from, is itself written as
-            /// 'header.protocol', so the test on the prefix covers it too.
+            /// The named keys are accepted, and where forwarded evidence is
+            /// trusted, the same names under the query prefix as well.
             /// </remarks>
             public override bool Include(string key)
             {
@@ -1583,13 +1636,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 {
                     return false;
                 }
-                return key.StartsWith(
-                        _headerPrefix, StringComparison.OrdinalIgnoreCase) ||
-                    (_trustForwarded &&
-                        key.StartsWith(
-                            _queryPrefix,
-                            StringComparison.OrdinalIgnoreCase)) ||
-                    base.Include(key);
+                return base.Include(key) ||
+                    (_trustForwarded && _forwardedKeys.Contains(key));
             }
 
             /// <inheritdoc/>

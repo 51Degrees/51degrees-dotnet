@@ -32,10 +32,12 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
     /// protocol and host usually come from the request, and the script holds
     /// the URL in a single-quoted string, so the URL is checked before it is
     /// written into the script. A URL that is not valid, including one whose
-    /// protocol is not http or https, is refused. In the user information, in
-    /// anything after the host and port, and in the endpoint, the characters
-    /// a URL cannot hold or that could end the string or the script are
-    /// percent-encoded.
+    /// protocol is not http or https, is refused. In anything after the
+    /// authority, and in the endpoint, the characters a URL cannot hold or
+    /// that could end the string or the script are percent-encoded.
+    /// The rules are applied to the text given, and not to the result of
+    /// parsing it, because <see cref="Uri"/> accepts hosts the rules refuse
+    /// and rewrites others, such as 127.1.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/javascript-builder.md#callback-url">Specification</see>
     /// </summary>
     internal sealed class CallbackUrl
@@ -67,23 +69,23 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         private static readonly string[] Schemes = { "http", "https" };
 
         /// <summary>
+        /// The characters the host value cannot hold. A '?' or '#' would
+        /// make the endpoint part of the query or fragment, and an '@' means
+        /// user information, which fetch refuses and XMLHttpRequest sends.
+        /// </summary>
+        private static readonly char[] NotInHost = { '?', '#', '@' };
+
+        /// <summary>
         /// A label of a host name, being ASCII letters, digits, '-' and '_'.
         /// </summary>
         private static readonly Regex Label = new Regex(
             @"\A[A-Za-z0-9_-]+\z", RegexOptions.CultureInvariant);
 
         /// <summary>
-        /// An IPv6 zone identifier, being unreserved characters as RFC 3986
-        /// section 2.3 defines them.
-        /// </summary>
-        private static readonly Regex Zone = new Regex(
-            @"\A[A-Za-z0-9._~-]+\z", RegexOptions.CultureInvariant);
-
-        /// <summary>
-        /// A port as it follows the host, being ':' and any number of digits.
+        /// A port as it follows the host, being ':' and at least one digit.
         /// </summary>
         private static readonly Regex Port = new Regex(
-            @"\A:[0-9]*\z", RegexOptions.CultureInvariant);
+            @"\A:[0-9]+\z", RegexOptions.CultureInvariant);
 
         /// <summary>
         /// One group of an IPv6 address.
@@ -107,7 +109,8 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
 
         /// <summary>
         /// The URL to write into the script when it is valid, and otherwise
-        /// the URL as it was built, for the log.
+        /// the URL as it was built, for the log, with <c>***</c> in place of
+        /// everything in the host value before its last '@'.
         /// </summary>
         internal string Url { get; }
 
@@ -128,8 +131,7 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         /// The protocol, http or https in any case.
         /// </param>
         /// <param name="host">
-        /// The host, which can start with user information and end with a
-        /// port, a path, a query or a fragment.
+        /// The host, which can end with a port and a path.
         /// </param>
         /// <param name="endpoint">
         /// The endpoint.
@@ -159,21 +161,33 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
             {
                 endpoint = endpoint.Substring(1);
             }
-            var built = protocol + "://" + host + endpoint;
-            if (IsScheme(protocol) == false)
-            {
-                return new CallbackUrl(false, built);
-            }
             var end = AuthorityEnd(host);
-            var authority = CheckedAuthority(host.Substring(0, end));
+            var authority = IsScheme(protocol) &&
+                host.IndexOfAny(NotInHost) < 0
+                ? CheckedHostPort(host.Substring(0, end))
+                : null;
             if (authority == null)
             {
-                return new CallbackUrl(false, built);
+                return new CallbackUrl(
+                    false,
+                    protocol + "://" + WithoutUserInformation(host) +
+                        endpoint);
             }
             return new CallbackUrl(
                 true,
                 AsciiLowerCase(protocol) + "://" + authority +
                     Encode(host.Substring(end)) + Encode(endpoint));
+        }
+
+        /// <summary>
+        /// The host value with everything before its last '@' replaced by
+        /// <c>***</c>. The last '@' of the whole value is used, and not that
+        /// of the authority, because a password can hold a '/', '?' or '#'.
+        /// </summary>
+        private static string WithoutUserInformation(string host)
+        {
+            var at = host.LastIndexOf('@');
+            return at < 0 ? host : "***" + host.Substring(at);
         }
 
         /// <summary>
@@ -220,40 +234,21 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         }
 
         /// <summary>
-        /// Where the authority ends, which is at the first '/', '?' or '#'
-        /// of the host, or at its end.
+        /// Where the authority ends, which is at the first '/' of the host,
+        /// or at its end.
         /// </summary>
         private static int AuthorityEnd(string host)
         {
-            var end = host.IndexOfAny(new[] { '/', '?', '#' });
+            var end = host.IndexOf('/');
             return end < 0 ? host.Length : end;
         }
 
         /// <summary>
-        /// The user information, host and port as they are written into the
-        /// URL, or null when they are not valid. The user information ends
-        /// at the first '@', so a second '@' is part of the host and
-        /// refused.
-        /// </summary>
-        private static string CheckedAuthority(string authority)
-        {
-            var at = authority.IndexOf('@');
-            if (at < 0)
-            {
-                return CheckedHostPort(authority);
-            }
-            var hostPort = CheckedHostPort(authority.Substring(at + 1));
-            return hostPort == null
-                ? null
-                : Encode(authority.Substring(0, at)) + "@" + hostPort;
-        }
-
-        /// <summary>
         /// The host and optional port in lower case, or null when they are
-        /// not valid. The host is an IPv6 address in brackets with an
-        /// optional zone identifier, or a name of labels separated by dots
-        /// with a dot allowed at the end. The port is ':' followed by digits
-        /// up to 65535, or by nothing.
+        /// not valid. The host is an IPv6 address in brackets, or a name of
+        /// labels separated by dots with a dot allowed at the end, which
+        /// must be an IPv4 address when its last label is a number. The port
+        /// is ':' followed by digits up to 65535.
         /// </summary>
         private static string CheckedHostPort(string hostPort)
         {
@@ -267,15 +262,6 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
                     return null;
                 }
                 var address = hostPort.Substring(1, close - 1);
-                var zone = address.IndexOf("%25", StringComparison.Ordinal);
-                if (zone >= 0)
-                {
-                    if (Zone.IsMatch(address.Substring(zone + 3)) == false)
-                    {
-                        return null;
-                    }
-                    address = address.Substring(0, zone);
-                }
                 if (IsIpv6(address) == false)
                 {
                     return null;
@@ -292,12 +278,18 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
                 var name = host.Length > 0 && host[host.Length - 1] == '.'
                     ? host.Substring(0, host.Length - 1)
                     : host;
-                foreach (var label in name.Split('.'))
+                var labels = name.Split('.');
+                foreach (var label in labels)
                 {
                     if (Label.IsMatch(label) == false)
                     {
                         return null;
                     }
+                }
+                if (IsNumber(labels[labels.Length - 1]) &&
+                    Ipv4.IsMatch(host) == false)
+                {
+                    return null;
                 }
             }
             if (port.Length > 0 && IsPort(port) == false)
@@ -308,8 +300,30 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         }
 
         /// <summary>
+        /// Whether a label is only decimal digits, or is "0x" or "0X"
+        /// followed by hexadecimal digits, which the URL Standard reads as
+        /// the last part of an IPv4 address.
+        /// </summary>
+        private static bool IsNumber(string label)
+        {
+            var hex = label.Length >= 2 && label[0] == '0' &&
+                (label[1] == 'x' || label[1] == 'X');
+            for (var i = hex ? 2 : 0; i < label.Length; i++)
+            {
+                var c = label[i];
+                if ((c >= '0' && c <= '9') == false &&
+                    (hex && ((c >= 'a' && c <= 'f') ||
+                        (c >= 'A' && c <= 'F'))) == false)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
         /// Whether the text is ':' followed by digits whose value is no more
-        /// than 65535, or by nothing.
+        /// than 65535.
         /// </summary>
         private static bool IsPort(string text)
         {

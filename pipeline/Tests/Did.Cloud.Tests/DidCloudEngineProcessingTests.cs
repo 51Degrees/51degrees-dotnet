@@ -58,6 +58,9 @@ public class DidCloudEngineProcessingTests
         public new void ProcessCloudEngine(
             IFlowData data, I51DidData aspectData, string json)
             => base.ProcessCloudEngine(data, aspectData, json);
+
+        public new bool CanCache(I51DidData aspectData)
+            => base.CanCache(aspectData);
     }
 
     private ExposedDidCloudEngine _engine = null!;
@@ -152,5 +155,22 @@ public class DidCloudEngineProcessingTests
         Assert.AreEqual("rl", aspectData.IdRandLic.Value);
         Assert.AreEqual("hg", aspectData.IdHemGlobal.Value);
         Assert.AreEqual("hl", aspectData.IdHemLic.Value);
+    }
+
+    /// <summary>
+    /// Every result of the 51Did engine holds a 51Did created for one
+    /// request, so no result may be stored in a results cache or served
+    /// from one, even when a cache is configured.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
+    /// </summary>
+    [TestMethod]
+    public void CanCache_IsFalseForEveryResult()
+    {
+        var empty = NewAspectData();
+        var populated = NewAspectData();
+        _engine.ProcessCloudEngine(NewFlowData(), populated,
+            "{'fodid':{'idprobglobal':'g','idproblic':'l'}}");
+        Assert.IsFalse(_engine.CanCache(empty));
+        Assert.IsFalse(_engine.CanCache(populated));
     }
 }
