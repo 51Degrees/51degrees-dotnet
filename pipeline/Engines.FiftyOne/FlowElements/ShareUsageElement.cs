@@ -20,7 +20,6 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
-using FiftyOne.Pipeline.Core.FailHandling.Facade;
 using FiftyOne.Pipeline.Engines.Trackers;
 using Microsoft.Extensions.Logging;
 using System;
@@ -64,7 +63,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             string aspSessionCookieName,
             ITracker tracker,
             bool shareAllEvidence,
-            IFailHandler failHandler = null)
+            int failuresToEnterRecovery =
+                Constants.SHARE_USAGE_FAILURES_TO_ENTER_RECOVERY_DEFAULT,
+            int failuresWindowSeconds =
+                Constants.SHARE_USAGE_FAILURES_WINDOW_SECONDS_DEFAULT,
+            double initialRecoveryDelaySeconds =
+                Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_INITIAL_DELAY_SECONDS_DEFAULT,
+            double maxRecoveryDelaySeconds =
+                Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MAX_DELAY_SECONDS_DEFAULT,
+            double recoveryMultiplier =
+                Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MULTIPLIER_DEFAULT)
             : base(logger,
                   httpClient,
                   sharePercentage,
@@ -81,7 +89,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                   aspSessionCookieName,
                   tracker,
                   shareAllEvidence,
-                  failHandler)
+                  failuresToEnterRecovery,
+                  failuresWindowSeconds,
+                  initialRecoveryDelaySeconds,
+                  maxRecoveryDelaySeconds,
+                  recoveryMultiplier)
         {
         }
 
@@ -93,21 +105,18 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         {
             List<ShareUsageData> allData = new List<ShareUsageData>();
             ShareUsageData currentData;
-            // The size is checked before taking from the queue. Checked the
-            // other way round, a full message still took one more entry off
-            // the queue and then dropped it, so a busy server lost about one
-            // entry in every message.
+            // The size is checked before taking from the queue, so an entry
+            // is never taken for a message that is already full.
             while (allData.Count < MinEntriesPerMessage * 2 &&
                 EvidenceCollection.TryTake(out currentData, TakeTimeout))
             {
                 allData.Add(currentData);
             }
 
-            // Nothing was queued (e.g. the element was disposed without any usage,
-            // or a concurrent send already drained the queue). Do not open a
-            // connection or POST an empty <Devices/> document - doing so produces
-            // spurious "Unexpected failure while sharing usage data" errors on
-            // machines that cannot reach the usage-sharing endpoint. See issue #224.
+            // Nothing was queued, for example when the element was disposed
+            // without any usage. An empty <Devices/> document is not posted,
+            // as on a machine that cannot reach the usage sharing endpoint it
+            // would only log a failure.
             if (allData.Count == 0)
             {
                 return;
@@ -143,6 +152,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                     else
                     {
                         Interlocked.Increment(ref _failCount);
+                        RecordSendFailure();
                         string response = "";
                         try
                         {
@@ -156,7 +166,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                         // If failure percentage is > 1% then log this as a warning.
                         // Otherwise, log at information level.
                         var logLevel = LogLevel.Information;
-                        var percentageFailure = _failCount / (_successCount + _failCount);
+                        var percentageFailure =
+                            (double)_failCount / (_successCount + _failCount);
                         if (percentageFailure > 0.01)
                         {
                             logLevel = LogLevel.Warning;

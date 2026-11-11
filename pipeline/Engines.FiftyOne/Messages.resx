@@ -153,6 +153,18 @@
   <data name="MessageShareUsageNotSentOnClose" xml:space="preserve">
     <value>{0} usage sharing entries were not sent, because sending did not finish within {1} ms when closing down.</value>
   </data>
+  <data name="MessageShareUsageNotSentWhilePaused" xml:space="preserve">
+    <value>{0} usage sharing entries were not sent, as sending was paused after failed sends when usage sharing closed.</value>
+  </data>
+  <data name="MessageShareUsageQueueFull" xml:space="preserve">
+    <value>The usage sharing queue is full at {0} entries, so usage data is being discarded.</value>
+  </data>
+  <data name="MessageShareUsagePaused" xml:space="preserve">
+    <value>Usage sharing paused for {0} seconds after failed sends. Usage data is still queued, up to the maximum queue size, and sending starts again when the pause ends.</value>
+  </data>
+  <data name="MessageShareUsageResumed" xml:space="preserve">
+    <value>Usage sharing resumed after a send succeeded.</value>
+  </data>
   <data name="MessageShareUsageTooManyPipelines" xml:space="preserve">
     <value>Share usage element registered to {0} Pipelines. Unable to populate flow element information</value>
   </data>
