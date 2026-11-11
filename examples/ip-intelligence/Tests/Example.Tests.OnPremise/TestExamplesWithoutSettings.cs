@@ -52,7 +52,6 @@ public class TestExamplesWithoutSettings
         Constants.GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR,
         Constants.LICENSE_KEY_ENV_VAR,
         "_51DEGREES_DD_PATH",
-        "_51DEGREES_DD_PATH",
         "DEVICEDETECTIONDATAFILE"
     };
 
