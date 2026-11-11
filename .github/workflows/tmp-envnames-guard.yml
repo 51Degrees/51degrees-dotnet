@@ -1,0 +1,24 @@
+name: Environment variable names guard
+
+# Temporary workflow proving the guard test red before the rename and green
+# after it. Delete the branch and this file once both runs are recorded.
+
+on:
+  push:
+    branches: ['tmp/envnames-old-*']
+
+jobs:
+  Guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Run the guard test
+        run: >
+          dotnet test common/Test/FiftyOne.Common.Tests.csproj
+          -c Release
+          --filter 'FullyQualifiedName~EnvironmentVariableNamesTests'
