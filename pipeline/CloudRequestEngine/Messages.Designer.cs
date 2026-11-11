@@ -187,7 +187,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The cloud service did not return the requested properties {0} in its answer. With a resource key and no license key every property is answered.
+        ///   Looks up a localized string similar to The cloud service did not return the requested properties {0} in its answer. Every property is answered, so these names are not properties.
         /// </summary>
         internal static string WarningRequestedNamesNotProperties {
             get {
