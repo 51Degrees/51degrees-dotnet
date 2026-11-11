@@ -6,15 +6,15 @@ name: Temporary IP Intelligence property index checks
 
 on:
   push:
-    branches: ['tmp/index-ipi-check']
+    branches: ['tmp/index-ipi-check-137']
 
 permissions:
   contents: read
 
 env:
-  RED: '52de0a03b5f0acabcc9043f23eb4cc67ee640884'
-  GREEN: '87d10c718dae260bb771aaab3d9006ac2fc35b30'
-  BEFORE: 'a14542899d3e59e469ae87eabf004d670f087a3f'
+  RED: '110fadd7d09257e895c876379fe9207a144345a9'
+  GREEN: 'a292ed57686e4eb973c53fe12a896e947ae34efa'
+  BEFORE: '110fadd7d09257e895c876379fe9207a144345a9'
 
 jobs:
   prefetch:
@@ -51,7 +51,6 @@ jobs:
 
   tests:
     name: Tests ${{ matrix.label }}
-    if: false
     needs: prefetch
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -60,9 +59,9 @@ jobs:
       matrix:
         include:
           - label: red
-            ref: 52de0a03b5f0acabcc9043f23eb4cc67ee640884
+            ref: 110fadd7d09257e895c876379fe9207a144345a9
           - label: green
-            ref: 87d10c718dae260bb771aaab3d9006ac2fc35b30
+            ref: a292ed57686e4eb973c53fe12a896e947ae34efa
     steps:
       - uses: actions/checkout@v4
         with:
