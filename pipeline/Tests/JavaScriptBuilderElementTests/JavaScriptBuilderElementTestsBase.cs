@@ -154,6 +154,10 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
 
         delegate void GetValueCallback(string key, out object result);
 
+        delegate bool TryGetElementDataCallback(
+            string key,
+            out IElementData value);
+
         /// <summary>
         /// Configure the flow data to respond in the way we want for 
         /// this test.
@@ -219,6 +223,27 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
                 .Callback(new GetValueCallback((string key, out object result) => { result = session; })).Returns(true);
             flowData.Setup(d => d.TryGetEvidence(Engines.FiftyOne.Constants.EVIDENCE_SEQUENCE, out It.Ref<object>.IsAny))
                 .Callback(new GetValueCallback((string key, out object result) => { result = sequence; })).Returns(true);
+
+            // The Sequence Element's data, which is where the builder
+            // reads the session id and the sequence from, as a web
+            // integration's pipeline holds it.
+            var sequenceData = new Mock<IElementData>();
+            sequenceData.Setup(d => d.AsDictionary()).Returns(
+                new Dictionary<string, object>()
+                {
+                    { Engines.FiftyOne.Constants.EVIDENCE_SESSIONID_SUFFIX, session },
+                    { Engines.FiftyOne.Constants.EVIDENCE_SEQUENCE_SUFIX, sequence }
+                });
+            flowData.Setup(d => d.TryGet(
+                    Engines.FiftyOne.FlowElements.SequenceElement
+                        .DEFAULT_ELEMENT_DATA_KEY,
+                    out It.Ref<IElementData>.IsAny))
+                .Returns(new TryGetElementDataCallback(
+                    (string key, out IElementData value) =>
+                    {
+                        value = sequenceData.Object;
+                        return true;
+                    }));
 
             flowData.Setup(d => d.GetAsString(It.IsAny<string>())).Returns("None");
             var evidenceDict = new Dictionary<string, object>() {
