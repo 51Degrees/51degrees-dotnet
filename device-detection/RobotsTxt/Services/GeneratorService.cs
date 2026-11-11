@@ -47,10 +47,10 @@ public class GeneratorService(RobotsTxtModel _dataSet)
     /// <see cref="Constants.NotApplicableUsage"/> is among them.
     /// </param>
     /// <param name="tdls">
-    /// Terms Document Locator URIs. When non-empty, each URI is emitted as a
-    /// TDL line (with a "# Terms ..." comment) inside the wildcard Allow
-    /// block. When empty or null, the wildcard Allow block is emitted with
-    /// no TDL lines.
+    /// Terms Document Locator URIs, written exactly as given. When
+    /// non-empty, each URI is emitted as a TDL line (with a "# Terms ..."
+    /// comment) inside the wildcard Allow block. When empty or null, the
+    /// wildcard Allow block is emitted with no TDL lines.
     /// </param>
     /// <param name="annotations">
     /// True if the resulting file should include annotations, otherwise false.
@@ -59,7 +59,7 @@ public class GeneratorService(RobotsTxtModel _dataSet)
     public void Write(
         TextWriter writer,
         HashSet<string> allowed,
-        IReadOnlyList<Uri> tdls,
+        IReadOnlyList<string> tdls,
         bool annotations,
         CancellationToken stopToken)
     {
@@ -108,6 +108,34 @@ public class GeneratorService(RobotsTxtModel _dataSet)
         WriteWildcardBlock(writer, allowedCrawlers, tdls, annotations);
     }
 
+    /// <summary>
+    /// Builds a robots.txt as the overload taking strings does, with the
+    /// Terms Document Locators as <see cref="Uri"/> values. Each is written
+    /// as it was given (<see cref="Uri.OriginalString"/>), never normalised.
+    /// This overload keeps the earlier public signature working.
+    /// </summary>
+    /// <param name="writer">
+    /// Text writer to send the robots.txt content to.
+    /// </param>
+    /// <param name="allowed">Usages that are allowed.</param>
+    /// <param name="tdls">Terms Document Locators, or null for none.</param>
+    /// <param name="annotations">
+    /// True if the resulting file should include annotations, otherwise false.
+    /// </param>
+    /// <param name="stopToken"></param>
+    public void Write(
+        TextWriter writer,
+        HashSet<string> allowed,
+        IReadOnlyList<Uri> tdls,
+        bool annotations,
+        CancellationToken stopToken) =>
+        Write(
+            writer,
+            allowed,
+            tdls?.Select(u => u.OriginalString).ToList(),
+            annotations,
+            stopToken);
+
     // Writes the wildcard catch-all that closes the file. It is always an Allow
     // block. In annotated output the crawlers that fall through to it (the
     // allowed crawlers) are listed as one comment group before the Allow record,
@@ -116,7 +144,7 @@ public class GeneratorService(RobotsTxtModel _dataSet)
     private void WriteWildcardBlock(
         TextWriter writer,
         IReadOnlyList<CrawlerModel> allowedCrawlers,
-        IReadOnlyList<Uri> tdls,
+        IReadOnlyList<string> tdls,
         bool annotations)
     {
         writer.WriteLine("User-Agent: *");
@@ -135,11 +163,10 @@ public class GeneratorService(RobotsTxtModel _dataSet)
         {
             foreach (var tdl in tdls)
             {
-                var url = tdl.ToString();
                 writer.Write("# Terms ");
-                writer.WriteLine(url);
+                writer.WriteLine(tdl);
                 writer.Write("TDL: ");
-                writer.WriteLine(url);
+                writer.WriteLine(tdl);
             }
         }
 

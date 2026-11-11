@@ -50,7 +50,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
     /// </typeparam>
     public abstract class CloudAspectEngineBase<T> : 
         AspectEngineBase<T, IAspectPropertyMetaData>, 
-        ICloudAspectEngine
+        ICloudAspectEngine,
+        IPropertyListRequestState
         where T : IAspectData
     {
         /// <summary>
@@ -247,6 +248,36 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         public override bool HasLoadedProperties { get { return _aspectProperties != null; } }
 
         /// <summary>
+        /// True when the most recent read of the request engine's
+        /// <see cref="ICloudRequestEngine.PublicProperties"/> failed, which
+        /// leaves this engine without property meta-data.
+        /// </summary>
+        bool IPropertyListRequestState.PropertyListRequestFailed =>
+            _propertyListRequestFailed;
+
+        private volatile bool _propertyListRequestFailed;
+
+        /// <summary>
+        /// Read the products and properties the resource key gives,
+        /// recording whether the request for them failed.
+        /// </summary>
+        private IReadOnlyDictionary<string, ProductMetaData>
+            ReadPublicProperties(ICloudRequestEngine engine)
+        {
+            try
+            {
+                var products = engine.PublicProperties;
+                _propertyListRequestFailed = false;
+                return products;
+            }
+            catch
+            {
+                _propertyListRequestFailed = true;
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="logger">
@@ -298,7 +329,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// </returns>
         private bool LoadAspectProperties(ICloudRequestEngine engine)
         {
-            var dictionary = engine.PublicProperties;
+            var dictionary = ReadPublicProperties(engine);
 
             if (dictionary != null &&
                 dictionary.Count > 0 &&

@@ -43,11 +43,6 @@ namespace FiftyOne.IpIntelligence.CloudTests;
 public class CloudCountriesTranslationEngineTests
 {
     private IPipeline _pipeline;
-    // The aligned environment variable name is checked first. The legacy
-    // names are retained for backwards compatibility.
-    private const string _resource_key_env_variable = "_51DEGREES_RESOURCE_KEY";
-    private const string _legacy_resource_key_env_variable = "51D_RESOURCE_KEY";
-    private const string _super_resource_key_env_variable = "SUPER_RESOURCE_KEY";
     // The default of 2 seconds is short for a first request from a
     // machine that has not yet connected to the cloud service.
     private const int _cloud_timeout_seconds = 10;
@@ -60,45 +55,54 @@ public class CloudCountriesTranslationEngineTests
     /// of this test. The default IpiPipelineBuilder does not include the
     /// translation engine (neither cloud nor on-premise builders wire the
     /// translation engines automatically), so the pipeline is assembled here
-    /// with a CloudRequestEngine followed by the engine under test.
+    /// with a CloudRequestEngine followed by the engine under test. It
+    /// fails when no resource key is set.
     /// </summary>
     [TestMethod]
     public void CloudIntegrationTest()
     {
-        var resourceKey = System.Environment.GetEnvironmentVariable(
-            _resource_key_env_variable)
-            ?? System.Environment.GetEnvironmentVariable(
-                _legacy_resource_key_env_variable)
-            ?? System.Environment.GetEnvironmentVariable(
-                _super_resource_key_env_variable);
+        var resourceKey = LiveCloudKey.Require(
+            "countrynamestranslated",
+            "the CountryNamesGeographicalTranslated of an IP address");
 
-        if (resourceKey != null)
+        var loggerFactory = new LoggerFactory();
+        _pipeline = new PipelineBuilder(loggerFactory)
+            .AddFlowElement(
+                new CloudRequestEngineBuilder(
+                    loggerFactory, new System.Net.Http.HttpClient())
+                .SetResourceKey(resourceKey)
+                .SetTimeOutSeconds(_cloud_timeout_seconds)
+                .Build())
+            .AddFlowElement(
+                new CloudCountriesTranslationEngineBuilder(loggerFactory)
+                .Build())
+            .Build();
+        var data = _pipeline.CreateFlowData();
+        data.AddEvidence("query.client-ip-51d",
+            "185.28.167.78");
+        data.Process();
+
+        var translationData = data.Get<ICountriesTranslationData>();
+        Assert.IsNotNull(translationData);
+        IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>
+            translated = null;
+        try
         {
-            var loggerFactory = new LoggerFactory();
-            _pipeline = new PipelineBuilder(loggerFactory)
-                .AddFlowElement(
-                    new CloudRequestEngineBuilder(
-                        loggerFactory, new System.Net.Http.HttpClient())
-                    .SetResourceKey(resourceKey)
-                    .SetTimeOutSeconds(_cloud_timeout_seconds)
-                    .Build())
-                .AddFlowElement(
-                    new CloudCountriesTranslationEngineBuilder(loggerFactory)
-                    .Build())
-                .Build();
-            var data = _pipeline.CreateFlowData();
-            data.AddEvidence("query.client-ip-51d",
-                "185.28.167.78");
-            data.Process();
-
-            var translationData = data.Get<ICountriesTranslationData>();
-            Assert.IsNotNull(translationData);
-            Assert.IsTrue(translationData.CountryNamesGeographicalTranslated.HasValue);
+            translated = translationData.CountryNamesGeographicalTranslated;
         }
-        else
+        catch (FiftyOne.Pipeline.Engines.PropertyMissingException ex)
         {
-            Assert.Inconclusive($"No resource key supplied in " +
-                $"environment variable '{_resource_key_env_variable}'");
+            Assert.Fail(LiveCloudKey.Missing(
+                "CountryNamesGeographicalTranslated",
+                ex.Message,
+                "countrynamestranslated"));
+        }
+        if (translated.HasValue == false)
+        {
+            Assert.Fail(LiveCloudKey.Missing(
+                "CountryNamesGeographicalTranslated",
+                translated.NoValueMessage,
+                "countrynamestranslated"));
         }
     }
 
