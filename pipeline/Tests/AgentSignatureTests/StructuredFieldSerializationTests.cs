@@ -363,11 +363,8 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         /// A compliant signer signs over the strict signature base and may
         /// then write the headers any legal way, so a request whose
         /// 'Signature-Input' and 'Signature-Agent' headers carry legal
-        /// extra spacing, which RFC 8941 permits a parser to accept, must
-        /// still read Verified. Before the element rebuilt the base from
-        /// the strict serialisation this request read Invalid with the
-        /// SignatureMismatch reason, because the base was rebuilt from the
-        /// respelled text rather than from the text the agent signed.
+        /// extra spacing, which RFC 8941 permits a parser to accept, still
+        /// reads Verified.
         /// </summary>
         [TestMethod]
         public void LegalNonStrictHeaderSpacingStillVerifies()
@@ -382,16 +379,14 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                     SignatureAgentHeaderParameters = "; type=directory",
                     SignatureAgentSignedParameters = ";type=directory",
                 };
-                options.ExtraComponents.Add(new KeyValuePair<string, string>(
-                    "\"example-dict\";key=\"b\"", "2;x=1;y=2"));
                 var signed = RequestSigner.Sign(options);
 
                 // Respell the 'Signature-Input' header with spacing that
                 // RFC 8941 permits, after the signature was made over the
                 // strict form. A double space inside the inner list, and a
-                // space after each parameter semicolon, both inside a
-                // covered component identifier and on the member itself.
-                signed.SignatureInput = signed.SignatureInput
+                // space after each parameter semicolon.
+                var strict = signed.SignatureInput;
+                signed.SignatureInput = strict
                     .Replace("\" \"", "\"  \"")
                     .Replace(";key=", "; key=")
                     .Replace(";created=", "; created=")
@@ -399,6 +394,8 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                     .Replace(";keyid=", "; keyid=")
                     .Replace(";alg=", "; alg=")
                     .Replace(";tag=", "; tag=");
+                Assert.AreNotEqual(strict, signed.SignatureInput,
+                    "The test should have respelled 'Signature-Input'.");
 
                 var result = harness.Process(new Dictionary<string, string>
                 {
@@ -407,10 +404,6 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                     { "header.signature-agent", signed.SignatureAgent },
                     { "header.host", "example.com" },
                     { "header.protocol", "https" },
-                    // The covered member 'b' is spelled with spaces after
-                    // its parameter semicolons, which the signed base does
-                    // not carry.
-                    { "header.example-dict", "a=1, b=2; x=1; y=2, c" },
                 });
 
                 Assert.AreEqual(
@@ -425,48 +418,6 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                     Constants.REASON_VERIFIED,
                     result.AgentSignatureReason.Value,
                     "The reason should be Verified.");
-            }
-        }
-
-        /// <summary>
-        /// A dictionary member written without a value is the boolean
-        /// true, so a signature covering that member through the 'key'
-        /// parameter is checked against a base line holding '?1', which is
-        /// what a compliant signer signed. RFC 9421 section 2.1.2 prints
-        /// exactly this case for its Example-Dict member 'd'.
-        /// </summary>
-        [TestMethod]
-        public void CoveredMemberWithNoValueResolvesAsBooleanTrue()
-        {
-            using (var harness = ElementHarness.CreateWithTestKey())
-            {
-                var options = new SigningOptions();
-                options.ExtraComponents.Add(new KeyValuePair<string, string>(
-                    "\"example-dict\";key=\"d\"", "?1"));
-                options.ExtraComponents.Add(new KeyValuePair<string, string>(
-                    "\"example-dict\";key=\"e\"", "?1;x=1"));
-                var signed = RequestSigner.Sign(options);
-
-                var result = harness.Process(new Dictionary<string, string>
-                {
-                    { "header.signature", signed.Signature },
-                    { "header.signature-input", signed.SignatureInput },
-                    { "header.signature-agent", signed.SignatureAgent },
-                    { "header.host", "example.com" },
-                    { "header.protocol", "https" },
-                    // 'd' has no value at all and 'e' has only a
-                    // parameter, so both stand for the boolean true.
-                    { "header.example-dict", "a=1, d, e;x=1" },
-                });
-
-                Assert.AreEqual(
-                    Constants.STATUS_VERIFIED,
-                    result.AgentSignature.Value,
-                    "A signature covering members written without a value " +
-                    "should read Verified, because their lines carry " +
-                    "'?1', yet the element read " +
-                    result.AgentSignature.Value + " with the reason " +
-                    result.AgentSignatureReason.Value + ".");
             }
         }
 

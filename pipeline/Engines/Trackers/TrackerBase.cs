@@ -111,7 +111,7 @@ namespace FiftyOne.Pipeline.Engines.Trackers
         /// False if a matching entry was found and the tracker's logic does
         /// not allow further processing of this flow data instance.
         /// </returns>
-        public bool Track(IFlowData data)
+        public virtual bool Track(IFlowData data)
         {
             bool result = true;
             TValue value = this[data];

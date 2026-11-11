@@ -51,7 +51,14 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
         private Mock<IJsonBuilderElementData> _jsonData;
         private Mock<IJavaScriptBuilderElementData> _jsData;
 
-        private DataKey _defaultDataKey;
+        private const string EVIDENCE_KEY = "query.test";
+        private const string EVIDENCE_VALUE = "value";
+
+        /// <summary>
+        /// The ETag of the evidence above, worked out from the definition of
+        /// the hash rather than by running it.
+        /// </summary>
+        private const string DEFAULT_ETAG = "W/\"44ddae7e9f1b3dfb\"";
 
         private const string JS_CONTENT = @"JAVASCRIPT CONTENT";
         private const string JSON_CONTENT = @"JSON CONTENT";
@@ -107,7 +114,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             ValidateResponse(JS_CONTENT, 
                 JS_CONTENT.Length.ToString(), 
                 JS_CONTENT_TYPE, 200, 
-                _defaultDataKey.GetHashCode().ToString(),
+                DEFAULT_ETAG,
                 "", 
                 null);
         }
@@ -125,11 +132,11 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             // Configure the 'If-None-Match' header in the request to have
             // the same value that will be returned by the data key.
             _request.Setup(r => r.GetHeaderValue("If-None-Match"))
-                .Returns(_defaultDataKey.GetHashCode().ToString());
+                .Returns(DEFAULT_ETAG);
 
             _service.ServeJavascript(_context.Object, _flowData.Object);
 
-            ValidateResponse(null, null, null, 304, null, null, null);
+            ValidateResponse(null, null, null, 304, DEFAULT_ETAG, null, null);
         }
 
         /// <summary>
@@ -149,7 +156,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             ValidateResponse(JS_CONTENT,
                 JS_CONTENT.Length.ToString(),
                 JS_CONTENT_TYPE, 200,
-                _defaultDataKey.GetHashCode().ToString(),
+                DEFAULT_ETAG,
                 expectedVary, 
                 null);
         }
@@ -167,7 +174,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             ValidateResponse(JSON_CONTENT,
                 JSON_CONTENT.Length.ToString(),
                 JSON_CONTENT_TYPE, 200,
-                _defaultDataKey.GetHashCode().ToString(),
+                DEFAULT_ETAG,
                 "",
                 null);
         }
@@ -184,11 +191,11 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             // Configure the 'If-None-Match' header in the request to have
             // the same value that will be returned by the data key.
             _request.Setup(r => r.GetHeaderValue("If-None-Match"))
-                .Returns(_defaultDataKey.GetHashCode().ToString());
+                .Returns(DEFAULT_ETAG);
 
             _service.ServeJson(_context.Object, _flowData.Object);
 
-            ValidateResponse(null, null, null, 304, null, null, null);
+            ValidateResponse(null, null, null, 304, DEFAULT_ETAG, null, null);
         }
 
         /// <summary>
@@ -209,7 +216,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             ValidateResponse(JSON_CONTENT,
                 JSON_CONTENT.Length.ToString(),
                 JSON_CONTENT_TYPE, 200,
-                _defaultDataKey.GetHashCode().ToString(),
+                DEFAULT_ETAG,
                 expectedVary,
                 null);
         }
@@ -229,7 +236,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             ValidateResponse(JSON_CONTENT,
                 JSON_CONTENT.Length.ToString(),
                 JSON_CONTENT_TYPE, 200,
-                _defaultDataKey.GetHashCode().ToString(),
+                DEFAULT_ETAG,
                 "",
                 ORIGIN_VALUE);
         }
@@ -249,7 +256,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             ValidateResponse(JSON_CONTENT,
                 JSON_CONTENT.Length.ToString(),
                 JSON_CONTENT_TYPE, 200,
-                _defaultDataKey.GetHashCode().ToString(),
+                DEFAULT_ETAG,
                 "",
             null);
         }
@@ -269,7 +276,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             ValidateResponse(JS_CONTENT,
                 JS_CONTENT.Length.ToString(),
                 JS_CONTENT_TYPE, 200,
-                _defaultDataKey.GetHashCode().ToString(),
+                DEFAULT_ETAG,
                 "",
                 ORIGIN_VALUE);
         }
@@ -289,7 +296,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             ValidateResponse(JS_CONTENT,
                 JS_CONTENT.Length.ToString(),
                 JS_CONTENT_TYPE, 200,
-                _defaultDataKey.GetHashCode().ToString(),
+                DEFAULT_ETAG,
                 "",
                 null);
         }
@@ -391,7 +398,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             {
                 _response.Verify(r => r.SetHeader("Content-Length", It.IsAny<string>()), Times.Never);
             }
-            if (expectedStatusCode == 200)
+            if (expectedStatusCode == 200 || expectedStatusCode == 304)
             {
                 _response.Verify(r => r.SetHeader("Cache-Control", $"private,max-age=1800"));
             }
@@ -413,7 +420,7 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             }
             else
             {
-                _response.Verify(r => r.SetHeader("Vary", It.IsAny<string>()), Times.Never);
+                _response.Verify(r => r.SetHeader("ETag", It.IsAny<string>()), Times.Never);
             }
             if (expectedOrigin != null)
             {
@@ -438,12 +445,17 @@ namespace FiftyOne.Pipeline.Web.Shared.Tests
             _pipeline.Setup(p => p.FlowElements)
                 .Returns(flowElements);
             _pipeline.Setup(p => p.EvidenceKeyFilter)
-                .Returns(new EvidenceKeyFilterWhitelist(new List<string>()));
-            // Configure the key for this flow data to contain a fake value
-            // that we can use to test the cached response handling.
-            _defaultDataKey = new DataKeyBuilder().Add(1, "test", "value").Build();
-            _flowData.Setup(f => f.GenerateKey(It.IsAny<IEvidenceKeyFilter>()))
-                .Returns(_defaultDataKey);
+                .Returns(new EvidenceKeyFilterWhitelist(
+                    new List<string>() { EVIDENCE_KEY }));
+            // Give the flow data a fake evidence value that we can use to
+            // test the cached response handling.
+            var evidence = new Mock<IEvidence>();
+            evidence.Setup(e => e.AsDictionary()).Returns(
+                new Dictionary<string, object>()
+                {
+                    { EVIDENCE_KEY, EVIDENCE_VALUE }
+                });
+            _flowData.Setup(f => f.GetEvidence()).Returns(evidence.Object);
 
             // Set the flow element data objects to return placeholder 
             // text that we can check for.

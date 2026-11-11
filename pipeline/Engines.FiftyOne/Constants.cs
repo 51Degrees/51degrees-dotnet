@@ -60,6 +60,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne
         internal const int SHARE_USAGE_DEFAULT_TAKE_TIMEOUT = 100;
 
         /// <summary>
+        /// The time in milliseconds that disposing the usage sharing element
+        /// may spend sending the entries still queued.
+        /// </summary>
+        internal const int SHARE_USAGE_DISPOSE_TIMEOUT_MILLISECONDS = 5000;
+
+        /// <summary>
         /// The default repeat evidence interval in minutes.
         /// This is the maximum time to consider a set of evidence as a 
         /// match for another (and thus, prevent it from being shared)
@@ -99,6 +105,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne
         /// usage sharing is enabled or disabled.
         /// </summary>
         internal const bool SHARE_USAGE_DEFAULT_ENABLED = true;
+
+        /// <summary>
+        /// The default value for the flag on FiftyOnePipelineBuilder that
+        /// controls whether the sequence element is added when the pipeline
+        /// does not already have one.
+        /// </summary>
+        internal const bool SEQUENCE_ELEMENT_DEFAULT_ENABLED = true;
 
         /// <summary>
         /// The default URL to send usage data to

@@ -22,6 +22,7 @@
 
 using System;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
@@ -45,6 +46,12 @@ namespace FiftyOne.Pipeline.Web
     public static class FiftyOneStartup
     {
         /// <summary>
+        /// The build parameter that stops the default Pipeline builder
+        /// adding the Sequence Element.
+        /// </summary>
+        private const string SequenceElementBuildParameter = "SequenceElement";
+
+        /// <summary>
         /// Set up the specified <see cref="IServiceCollection"/> with the 
         /// services that will be needed by device detection.
         /// This is called from the IServiceCollection.AddFiftyOne() 
@@ -67,6 +74,11 @@ namespace FiftyOne.Pipeline.Web
         {
             services.AddLogging();
             services.AddOptions();
+            // The services read the web integration options through
+            // IOptions, so bind them from the configuration the Pipeline
+            // is built from.
+            services.AddOptions<PipelineWebIntegrationOptions>()
+                .Configure(o => BindWebIntegrationOptions(configuration, o));
 
 #if NETCOREAPP2_0 || NETCOREAPP2_1 || NETCOREAPP2_2
             // Set up a file provider that will allow the client web 
@@ -122,7 +134,9 @@ namespace FiftyOne.Pipeline.Web
                     // to create the pipeline from configuration.
                     pipeline = CreatePipelineFromConfig(
                         configuration,
-                        pipelineBuilder);
+                        pipelineBuilder,
+                        serviceProvider.GetService<IWebHostEnvironment>()
+                            ?.ContentRootPath);
                 }
                 else
                 {
@@ -147,12 +161,18 @@ namespace FiftyOne.Pipeline.Web
         /// a pipeline builder instance to use when constructing the
         /// <see cref="IPipeline"/>.
         /// </param>
+        /// <param name="contentRoot">
+        /// The content root of the web application. A data file path that
+        /// starts with '~/' or '~\' is resolved against it. Null leaves
+        /// such paths as they are.
+        /// </param>
         /// <returns>
         /// A new <see cref="IPipeline"/> instance
         /// </returns>
         private static IPipeline CreatePipelineFromConfig(
             IConfiguration config,
-            IPipelineBuilderFromConfiguration pipelineBuilder)
+            IPipelineBuilderFromConfiguration pipelineBuilder,
+            string contentRoot)
         {
             // Get Pipeline options to check that it is present
             var section = config.GetRequiredSection("PipelineOptions");
@@ -178,8 +198,37 @@ namespace FiftyOne.Pipeline.Web
             }
             // ---------
 
-            // Add the sequence element.
-            AddSequenceElement(options);
+            if (contentRoot != null)
+            {
+                ApplicationRootPaths.ResolvePaths(
+                    options,
+                    p => ApplicationRootPaths.CombineWithRoot(contentRoot, p));
+            }
+
+            if (options.SequenceElementEnabled)
+            {
+                // Add the sequence element.
+                AddSequenceElement(options);
+            }
+            else
+            {
+                // The default builder adds the sequence element itself
+                // unless told not to.
+                if (options.BuildParameters != null &&
+                    options.BuildParameters.ContainsKey(
+                        SequenceElementBuildParameter) == false)
+                {
+                    options.BuildParameters[SequenceElementBuildParameter] =
+                        bool.FalseString;
+                }
+                if (options.ClientSideEvidenceEnabled &&
+                    HasElement(options, nameof(SequenceElement)) == false)
+                {
+                    // The JSON builder fails without a sequence number.
+                    throw new PipelineConfigurationException(
+                        Messages.ExceptionNoSequenceElement);
+                }
+            }
 
             if (options.ClientSideEvidenceEnabled)
             {
@@ -189,17 +238,37 @@ namespace FiftyOne.Pipeline.Web
                 AddJsElements(options);
             }
 
-            // Add the SetHeaders element
-            AddSetHeadersElement(options);
+            if (options.SetHeadersElementEnabled)
+            {
+                // Add the SetHeaders element
+                AddSetHeadersElement(options);
+            }
 
             return pipelineBuilder.BuildFromConfiguration(options);
         }
 
         /// <summary>
+        /// Bind the web integration options from the configuration, being
+        /// the same sections that the Pipeline is built from.
+        /// </summary>
+        private static void BindWebIntegrationOptions(
+            IConfiguration config,
+            PipelineWebIntegrationOptions options)
+        {
+            config.GetSection("PipelineOptions").Bind(options);
+            config.GetSection("PipelineWebIntegrationOptions").Bind(options);
+        }
+
+        private static bool HasElement(PipelineOptions options, string name) =>
+            options.Elements != null &&
+            options.Elements.Any(e => e.BuilderName.Contains(
+                name, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>
         /// Ensure the json and javascript elements are added to the configuration
         /// </summary>
         /// <param name="options"></param>
-        private static void AddJsElements(PipelineOptions options)
+        private static void AddJsElements(PipelineWebIntegrationOptions options)
         {
             var jsonConfig = options.Elements.Where(e =>
                 e.BuilderName.Contains(nameof(JsonBuilderElement),
@@ -233,10 +302,18 @@ namespace FiftyOne.Pipeline.Web
             if (jsIndex == -1)
             {
                 // The builder is not included so add it.
-                options.Elements.Add(new ElementOptions()
+                var javaScriptOptions = new ElementOptions()
                 {
                     BuilderName = nameof(JavaScriptBuilderElement)
-                });
+                };
+                // The script must call back to the path that is intercepted.
+                if (options.JsonPath !=
+                    PipelineWebIntegrationOptions.DefaultJsonPath)
+                {
+                    javaScriptOptions.BuildParameters["Endpoint"] =
+                        options.JsonPath;
+                }
+                options.Elements.Add(javaScriptOptions);
             }
         }
 
