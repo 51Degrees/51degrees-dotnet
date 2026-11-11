@@ -67,9 +67,14 @@ function Invoke-ContractTests {
     )
     Write-Host "::group::Selenium contract against the $Label example on port $Port"
     $example = $null
+    $previous = @{}
     try {
         dotnet build $Project @BuildArgs
+        # The example's variables are set for this run only, and each one
+        # gets its earlier value back afterwards, because a later script
+        # in the same job may read the same name.
         foreach ($variable in $ExampleEnv.Keys) {
+            $previous[$variable] = [Environment]::GetEnvironmentVariable($variable)
             Set-Item -Path "Env:$variable" -Value $ExampleEnv[$variable]
         }
         $env:PORT = $Port
@@ -87,8 +92,12 @@ function Invoke-ContractTests {
     } finally {
         if ($example) { Remove-Job -Force $example }
         Remove-Item Env:ASPNETCORE_URLS, Env:PORT, Env:EXAMPLE_URL -ErrorAction SilentlyContinue
-        foreach ($variable in $ExampleEnv.Keys) {
-            Remove-Item -Path "Env:$variable" -ErrorAction SilentlyContinue
+        foreach ($variable in $previous.Keys) {
+            if ($null -eq $previous[$variable]) {
+                Remove-Item -Path "Env:$variable" -ErrorAction SilentlyContinue
+            } else {
+                Set-Item -Path "Env:$variable" -Value $previous[$variable]
+            }
         }
         Write-Host "::endgroup::"
     }
