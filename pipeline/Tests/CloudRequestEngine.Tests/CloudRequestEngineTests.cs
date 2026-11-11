@@ -390,6 +390,72 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         }
 
         /// <summary>
+        /// Evidence keys ignore letter case, so one name under two prefixes
+        /// in two letter cases is one field. It is sent once, with the name
+        /// and value of the key that wins by the precedence in evidence.md,
+        /// being query, header, cookie, server, fiftyone and location, then
+        /// any other prefix alphabetically.
+        /// </summary>
+        [TestMethod]
+        [DataRow("header.User-Agent=A", "query.user-agent=B", "user-agent=B")]
+        [DataRow("query.User-Agent=A", "header.user-agent=B", "User-Agent=A")]
+        [DataRow("cookie.X-Thing=A", "header.x-thing=B", "x-thing=B")]
+        [DataRow("location.Value=A", "server.value=B", "value=B")]
+        [DataRow("location.Value=A", "fiftyone.value=B", "value=B")]
+        [DataRow("fiftyone.Value=A", "server.value=B", "value=B")]
+        [DataRow("server.Value=A", "a.value=B", "Value=A")]
+        [DataRow("b.Value=A", "a.value=B", "value=B")]
+        public void Process_OneNameInTwoCases_SentOnceByPrecedence(
+            string first,
+            string second,
+            string expected)
+        {
+            string content = null;
+            ConfigureMockedClient(r =>
+            {
+                if (r.RequestUri.AbsolutePath.ToLower().EndsWith("json"))
+                {
+                    content = r.Content.ReadAsStringAsync(
+                        TestContext.CancellationToken).Result;
+                }
+                return true;
+            });
+
+            var engine = new CloudRequestEngineBuilder(
+                _loggerFactory,
+                _httpClient)
+                .SetResourceKey("resource_key")
+                .Build();
+
+            using (var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine)
+                .Build())
+            {
+                var data = pipeline.CreateFlowData();
+                foreach (var item in new[] { first, second })
+                {
+                    var parts = item.Split('=');
+                    data.AddEvidence(parts[0], parts[1]);
+                }
+                data.Process();
+            }
+
+            Assert.IsNotNull(content,
+                "the engine must have sent a request to the json endpoint");
+            var name = expected.Split('=')[0];
+            var fields = content
+                .Split('&')
+                .Select(f => WebUtility.UrlDecode(f))
+                .Where(f => f.Split('=')[0].Equals(
+                    name, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            Assert.HasCount(1, fields,
+                $"'{name}' must be sent once, but the request held " +
+                $"'{string.Join("', '", fields)}'");
+            Assert.AreEqual(expected, fields[0]);
+        }
+
+        /// <summary>
         /// Test cloud request engine adds correct information to post request
         /// following the order of precedence when processing evidence and 
         /// returns the response in the ElementData. Evidence parameters 
