@@ -69,7 +69,7 @@ namespace FiftyOne.IpIntelligence.Examples
         /// IP Intelligence data file. This aligned name is checked first,
         /// before any legacy variable names.
         /// </summary>
-        public const string IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "51DEGREES_IPI_PATH";
+        public const string IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "_51DEGREES_IPI_PATH";
 
         /// <summary>
         /// Legacy environment variable key used to supply an explicit path to

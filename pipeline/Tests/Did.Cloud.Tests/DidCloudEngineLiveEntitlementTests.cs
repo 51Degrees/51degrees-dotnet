@@ -44,7 +44,7 @@ namespace FiftyOne.Did.Cloud.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The test reads one resource key from <c>51DEGREES_RESOURCE_KEY</c>, which
+/// The test reads one resource key from <c>_51DEGREES_RESOURCE_KEY</c>, which
 /// the workflow that runs the live 51Did tests sets once per key secret, or
 /// where that is unset from <c>_51DEGREES_RESOURCE_KEY_51DID</c>, the name
 /// continuous integration gives a resource key carrying the 51Did product.
@@ -75,7 +75,7 @@ public class DidCloudEngineLiveEntitlementTests
     /// <summary>
     /// Read first. The runtime name a developer sets.
     /// </summary>
-    private const string ResourceKeyEnvVar = "51DEGREES_RESOURCE_KEY";
+    private const string ResourceKeyEnvVar = "_51DEGREES_RESOURCE_KEY";
 
     /// <summary>
     /// Read where <see cref="ResourceKeyEnvVar"/> is unset. The name

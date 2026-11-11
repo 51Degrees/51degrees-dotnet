@@ -42,7 +42,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
     /// the expected IP Intelligence results for a known IP address.
     /// </summary>
     /// <remarks>
-    /// Requires the <c>51DEGREES_RESOURCE_KEY</c> (or legacy
+    /// Requires the <c>_51DEGREES_RESOURCE_KEY</c> (or legacy
     /// <c>SUPER_RESOURCE_KEY</c>) environment variable to be set. It also
     /// requires a trusted HTTPS development certificate, because the example
     /// binds its configured HTTPS endpoints on start-up (run

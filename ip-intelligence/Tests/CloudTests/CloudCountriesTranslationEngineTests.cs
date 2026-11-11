@@ -44,9 +44,8 @@ public class CloudCountriesTranslationEngineTests
 {
     private IPipeline _pipeline;
     // The aligned environment variable name is checked first. The legacy
-    // names are retained for backwards compatibility.
+    // name is retained for backwards compatibility.
     private const string _resource_key_env_variable = "_51DEGREES_RESOURCE_KEY";
-    private const string _legacy_resource_key_env_variable = "51D_RESOURCE_KEY";
     private const string _super_resource_key_env_variable = "SUPER_RESOURCE_KEY";
     // The default of 2 seconds is short for a first request from a
     // machine that has not yet connected to the cloud service.
@@ -67,8 +66,6 @@ public class CloudCountriesTranslationEngineTests
     {
         var resourceKey = System.Environment.GetEnvironmentVariable(
             _resource_key_env_variable)
-            ?? System.Environment.GetEnvironmentVariable(
-                _legacy_resource_key_env_variable)
             ?? System.Environment.GetEnvironmentVariable(
                 _super_resource_key_env_variable);
 

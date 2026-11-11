@@ -63,7 +63,7 @@ using System.Net.Http;
 /// # Command Line Usage
 /// The data file path is provided via the first command line argument. Here's how it works:
 /// 
-/// 1. First argument: Data file path (optional - checks the 51DEGREES_IPI_PATH and legacy
+/// 1. First argument: Data file path (optional - checks the _51DEGREES_IPI_PATH and legacy
 ///    IPINTELLIGENCEDATAFILE environment variables, then defaults to Constants.ENTERPRISE_IPI_DATA_FILE_NAME)
 /// 2. Second argument: License key (optional when using --data-update-url)
 /// 3. Option: --data-update-url for custom URL

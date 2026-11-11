@@ -119,7 +119,7 @@ if ($Arch -eq 'x86') {
     try {
         Invoke-ContractTests -Label 'on-premise' -Project $onPremiseProject -Port 8096 `
             -BuildArgs (@('-c', $Configuration, "-p:Platform=$Arch") + $references) `
-            -ExampleEnv @{ '51DEGREES_DD_PATH' = (Resolve-Path $tacFile).Path }
+            -ExampleEnv @{ '_51DEGREES_DD_PATH' = (Resolve-Path $tacFile).Path }
     } catch {
         Write-Host "::error title=Selenium contract (on-premise)::$_"
         $failed += 'on-premise'

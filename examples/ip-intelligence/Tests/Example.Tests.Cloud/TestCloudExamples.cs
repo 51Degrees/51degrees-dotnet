@@ -38,7 +38,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
 {
     /// <summary>
     /// Runs the Cloud examples against the real 51Degrees Cloud service
-    /// (cloud.51degrees.com by default). Requires the 51DEGREES_RESOURCE_KEY
+    /// (cloud.51degrees.com by default). Requires the _51DEGREES_RESOURCE_KEY
     /// (or legacy SUPER_RESOURCE_KEY) environment variable to be set.
     /// </summary>
     /// <remarks>

@@ -82,7 +82,7 @@ public static class ExampleUtils
     /// to use when running cloud examples. Can be used to override the
     /// appsettings.json configuration for testing custom end points.
     /// </summary>
-    public const string CLOUD_END_POINT_ENV_VAR = "51D_CLOUD_ENDPOINT";
+    public const string CLOUD_END_POINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
     /// <summary>
     /// Message displayed when a resource key leaves some of the

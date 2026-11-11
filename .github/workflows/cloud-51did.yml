@@ -1,9 +1,9 @@
 name: Cloud 51Did Tests
 
 # Runs the live cloud 51Did tests once for every _51DEGREES_RESOURCE_KEY*
-# key passed in below. Each run sets two names to that key, being
-# 51DEGREES_RESOURCE_KEY, which DidCloudEngineLiveEntitlementTests reads, and
-# _51DEGREES_RESOURCE_KEY, which CloudFodIdTests and CloudDidClientTests read.
+# key passed in below. Each run sets _51DEGREES_RESOURCE_KEY to that key,
+# which DidCloudEngineLiveEntitlementTests, CloudFodIdTests and
+# CloudDidClientTests all read.
 # A license key only reads a sealed creator context result made with a
 # resource key of its own account, so each _51DEGREES_LICENSE_KEY<suffix> is
 # set only on the pass for _51DEGREES_RESOURCE_KEY<suffix>. With it,
@@ -99,7 +99,6 @@ jobs:
           $failed = $false
           foreach ($k in $keys) {
             $env:_51DEGREES_RESOURCE_KEY = $k.Value
-            ${env:51DEGREES_RESOURCE_KEY} = $k.Value
             $licenseName = $k.Name -replace '^_51DEGREES_RESOURCE_KEY', '_51DEGREES_LICENSE_KEY'
             if ($licenses.ContainsKey($licenseName)) {
               Set-Item "env:$licenseName" $licenses[$licenseName]

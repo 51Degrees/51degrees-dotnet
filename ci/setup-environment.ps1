@@ -30,7 +30,6 @@ dotnet dev-certs https
 $env:_51DEGREES_DD_PATH = "$RepoPath/cxx/data/device-detection/TAC-HashV41.hash"
 $env:_51DEGREES_IPI_PATH = "$RepoPath/cxx/data/ip-intelligence/51Degrees-EnterpriseIpiV41.ipi"
 $env:IPINTELLIGENCEDATAFILE = $env:_51DEGREES_IPI_PATH
-${env:51DEGREES_IPI_PATH} = $env:_51DEGREES_IPI_PATH
 
 # The resource keys the cloud tests and examples read. The names that start
 # with _51DEGREES_RESOURCE_KEY are the convention, and the shared
@@ -39,7 +38,6 @@ ${env:51DEGREES_IPI_PATH} = $env:_51DEGREES_IPI_PATH
 $env:_51DEGREES_RESOURCE_KEY = $Keys.TestResourceKey
 $env:SUPER_RESOURCE_KEY = $Keys.TestResourceKey
 $env:RESOURCE_KEY = $Keys.TestResourceKey
-${env:51DEGREES_RESOURCE_KEY} = $Keys.TestResourceKey
 $env:RESOURCE_KEY_CLOUD_V5_BESPOKE = $Keys.TestResourceKey
 $env:ACCEPTCH_BROWSER_KEY = $Keys.AcceptCHBrowserKey
 $env:ACCEPTCH_HARDWARE_KEY = $Keys.AcceptCHHardwareKey

@@ -68,9 +68,9 @@ used by the examples. See our [pricing page](https://51degrees.com/pricing?utm_s
 subscription with more properties.
 
 Examples and tests read the resource key from an environment variable called
-"_51DEGREES_RESOURCE_KEY". The legacy environment variable names
-"51D_RESOURCE_KEY" and "SUPER_RESOURCE_KEY" are still supported, with the
-aligned "_51DEGREES_RESOURCE_KEY" name checked first.
+"_51DEGREES_RESOURCE_KEY". The legacy environment variable name
+"SUPER_RESOURCE_KEY" is still supported, with the aligned
+"_51DEGREES_RESOURCE_KEY" name checked first.
 
 ## Solutions and projects
 

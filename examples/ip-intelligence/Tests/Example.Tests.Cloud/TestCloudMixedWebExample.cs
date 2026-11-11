@@ -43,7 +43,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud;
 /// combined-results layout.
 /// </summary>
 /// <remarks>
-/// Requires the <c>51DEGREES_RESOURCE_KEY</c> environment variable to be set. 
+/// Requires the <c>_51DEGREES_RESOURCE_KEY</c> environment variable to be set. 
 /// As with the other web example tests it binds the example's configured 
 /// HTTP/HTTPS endpoints on start-up, so a trusted HTTPS development 
 /// certificate must be present. The page is queried over plain HTTP, because

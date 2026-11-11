@@ -38,7 +38,7 @@ public static class ExampleUtils
     /// to use when running cloud examples. This aligned name is checked
     /// first, before any legacy variable names.
     /// </summary>
-    public const string CLOUD_RESOURCE_KEY_ENV_VAR = "51DEGREES_RESOURCE_KEY";
+    public const string CLOUD_RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
 
     /// <summary>
     /// The legacy environment variable key used to get the resource key
@@ -60,7 +60,7 @@ public static class ExampleUtils
     /// to use when running cloud examples. Can be used to override the
     /// appsettings.json configuration for testing custom end points.
     /// </summary>
-    public const string CLOUD_END_POINT_ENV_VAR = "51D_CLOUD_ENDPOINT";
+    public const string CLOUD_END_POINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
     /// <summary>
     /// Timeout used when searching for files.
@@ -552,7 +552,7 @@ public static class ExampleUtils
 
     /// <summary>
     /// Get the resource key from the environment. The aligned
-    /// '51DEGREES_RESOURCE_KEY' variable is checked first, followed by
+    /// '_51DEGREES_RESOURCE_KEY' variable is checked first, followed by
     /// the legacy 'RESOURCE_KEY' and 'SUPER_RESOURCE_KEY' variables.
     /// </summary>
     /// <returns>
@@ -578,7 +578,7 @@ public static class ExampleUtils
     /// <summary>
     /// Get the resource key from the environment and run the action with
     /// the value, or an empty string if no resource key is set. The
-    /// aligned '51DEGREES_RESOURCE_KEY' variable is checked first,
+    /// aligned '_51DEGREES_RESOURCE_KEY' variable is checked first,
     /// followed by the legacy 'RESOURCE_KEY' and 'SUPER_RESOURCE_KEY'
     /// variables.
     /// </summary>
