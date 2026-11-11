@@ -298,7 +298,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
 
             var fields = Fields(DataBodies().Single());
             Assert.AreEqual(LicenseKey, fields["license"]);
-            Assert.AreEqual("device.ismobile,device.iscrawler",
+            Assert.AreEqual("Device.IsMobile,device.iscrawler",
                 fields["values"]);
             Assert.IsFalse(fields.ContainsKey("resource"));
             Assert.AreEqual("iPhone", fields["User-Agent"]);
@@ -348,7 +348,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
 
             var fields = Fields(DataBodies().Single());
             Assert.AreEqual(LicenseKey, fields["license"]);
-            Assert.AreEqual("device.ismobile,device.iscrawler",
+            Assert.AreEqual("Device.IsMobile,device.iscrawler",
                 fields["values"]);
             Assert.IsFalse(fields.ContainsKey("resource"));
         }
@@ -377,7 +377,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
 
             var fields = Fields(DataBodies().Single());
             Assert.AreEqual(ResourceKey, fields["resource"]);
-            Assert.AreEqual("device.hardwarevendor", fields["values"]);
+            Assert.AreEqual("Device.HardwareVendor", fields["values"]);
             Assert.IsFalse(fields.ContainsKey("license"));
         }
 
@@ -450,7 +450,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             var fields = Fields(DataBodies().Single());
             Assert.AreEqual(ResourceKey, fields["resource"]);
             Assert.AreEqual(LicenseKey, fields["license"]);
-            Assert.AreEqual("ip.registeredname", fields["values"]);
+            Assert.AreEqual("IP.RegisteredName", fields["values"]);
             Assert.IsFalse(_handler.Requests.Any(r =>
                 r.RequestUri.ToString().Contains(LicenseKey)),
                 "The license key must never appear in a URL.");
@@ -528,8 +528,60 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                 .Where(e => e.Contains("did not return")).ToList();
             Assert.HasCount(1, warnings);
             StringAssert.Contains(warnings[0], "device.hardwarename");
+            StringAssert.Contains(warnings[0], "not covered by the keys");
             Assert.DoesNotContain("device.iscrawler", warnings[0]);
             Assert.DoesNotContain("device.ismobile", warnings[0]);
+        }
+
+        /// <summary>
+        /// With a resource key, requested properties and no license key,
+        /// a property no licence grants is answered as null, so a name
+        /// the answer leaves out is not a property. The report says so,
+        /// and names no license key, because none was given.
+        /// </summary>
+        [TestMethod]
+        public void Process_ResourceKeyNameNotAnswered_ReportedAsNotAProperty()
+        {
+            var engine = NewBuilder()
+                .SetResourceKey(ResourceKey)
+                .SetRequestedProperties(new List<string>
+                {
+                    "Device.IsMobile", "device.notaproperty",
+                })
+                .Build();
+
+            Assert.AreEqual(AnswerBody, ProcessOnce(engine));
+            ProcessOnce(engine);
+
+            var warnings = _loggers.Logger.Entries
+                .Where(e => e.Contains("did not return")).ToList();
+            Assert.HasCount(1, warnings);
+            StringAssert.Contains(warnings[0], "device.notaproperty");
+            StringAssert.Contains(warnings[0], "not properties");
+            Assert.DoesNotContain("license", warnings[0]);
+            Assert.DoesNotContain("not covered", warnings[0]);
+        }
+
+        /// <summary>
+        /// A name given twice in different letter cases is sent once,
+        /// as it was first given, because the cloud service reads
+        /// property names without regard to case.
+        /// </summary>
+        [TestMethod]
+        public void Process_NameGivenTwice_SentOnceAsFirstGiven()
+        {
+            var engine = NewBuilder()
+                .SetLicenseKey(LicenseKey)
+                .SetRequestedProperties(new List<string>
+                {
+                    "Device.IsMobile", "device.ismobile", "device.iscrawler",
+                })
+                .Build();
+
+            ProcessOnce(engine);
+
+            Assert.AreEqual("Device.IsMobile,device.iscrawler",
+                Fields(DataBodies().Single())["values"]);
         }
 
         /// <summary>
