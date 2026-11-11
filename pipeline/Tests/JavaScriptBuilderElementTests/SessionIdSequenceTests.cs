@@ -43,11 +43,11 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
     /// is not a positive 32 bit integer is written as 1.
     /// </summary>
     /// <remarks>
-    /// No browser is used. The element is given the values as evidence
-    /// with no Sequence Element in the pipeline, which is what reaches the
-    /// script when a page sends them itself. The rendered script is
-    /// checked with <c>node --check</c>, so Node must be on the path, and
-    /// each test is inconclusive when it is not.
+    /// No browser is used. The element is given the values in the Sequence
+    /// Element's data, which is where the specification's step 5 takes them
+    /// from. The rendered script is checked with <c>node --check</c>, so
+    /// Node must be on the path, and each test is inconclusive when it is
+    /// not.
     /// </remarks>
     [TestClass]
     public class SessionIdSequenceTests
@@ -57,6 +57,16 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
 
         private const string SEQUENCE_KEY =
             Engines.FiftyOne.Constants.EVIDENCE_SEQUENCE;
+
+        private const string SESSION_ID_NAME =
+            Engines.FiftyOne.Constants.EVIDENCE_SESSIONID_SUFFIX;
+
+        private const string SEQUENCE_NAME =
+            Engines.FiftyOne.Constants.EVIDENCE_SEQUENCE_SUFIX;
+
+        private const string SEQUENCE_DATA_KEY =
+            Engines.FiftyOne.FlowElements.SequenceElement
+                .DEFAULT_ELEMENT_DATA_KEY;
 
         private TestLoggerFactory _loggerFactory;
 
@@ -111,14 +121,33 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         }
 
         /// <summary>
-        /// With no session id and no sequence in the evidence, which is
-        /// the case when there is no Sequence Element, the session id is
-        /// empty and the sequence is 1.
+        /// With a Sequence Element that wrote neither value, the session id
+        /// is empty and the sequence is 1.
         /// </summary>
         [TestMethod]
         public void SessionIdAndSequence_Absent_EmptyAndOne()
         {
             var script = Render(null, null);
+
+            AssertSessionId(script, string.Empty);
+            AssertSequence(script, 1);
+            AssertParses(script);
+        }
+
+        /// <summary>
+        /// With no Sequence Element in the pipeline the session id is empty
+        /// and the sequence is 1, even when the request carried both. Step 5
+        /// of the
+        /// <see href="https://github.com/51Degrees/specifications/blob/67ead6986f3118c68f0714325800b92d48ddc71f/pipeline-specification/pipeline-elements/javascript-builder.md#process">specification</see>
+        /// takes them from the Sequence Element's data, and says "Where
+        /// there is no Sequence Element, the sequence MUST be rendered as
+        /// 1 and the session id as an empty string, so the script always
+        /// parses."
+        /// </summary>
+        [TestMethod]
+        public void NoSequenceElement_EvidenceIsNotRead_EmptyAndOne()
+        {
+            var script = Render("abc-123", 7, false);
 
             AssertSessionId(script, string.Empty);
             AssertSequence(script, 1);
@@ -281,13 +310,32 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
 
         private delegate bool TryGetDelegate(string key, out object value);
 
+        private delegate bool TryGetElementDataDelegate(
+            string key,
+            out IElementData value);
+
         /// <summary>
-        /// Processes a mocked request, with no Sequence Element, carrying
-        /// the session id and sequence evidence given (left out when null),
-        /// and returns the rendered script, which is not minified so that
-        /// the values can be found in it.
+        /// Processes a mocked request whose Sequence Element wrote the
+        /// session id and sequence given, leaving out either one that is
+        /// null, and returns the rendered script.
         /// </summary>
         private string Render(string sessionId, object sequence)
+        {
+            return Render(sessionId, sequence, true);
+        }
+
+        /// <summary>
+        /// Processes a mocked request and returns the rendered script, which
+        /// is not minified so that the values can be found in it. The two
+        /// values are always in the Evidence, as a request that carried them
+        /// puts them there, and they are in the Sequence Element's data only
+        /// when <paramref name="withSequenceElement"/> is true, so a false
+        /// value is a pipeline that has no Sequence Element.
+        /// </summary>
+        private string Render(
+            string sessionId,
+            object sequence,
+            bool withSequenceElement)
         {
             var element = new JavaScriptBuilderElementBuilder(_loggerFactory)
                 .SetEndpoint("/json")
@@ -307,11 +355,34 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
                 evidence[SEQUENCE_KEY] = sequence;
             }
 
+            var sequenceValues = new Dictionary<string, object>();
+            if (sessionId != null)
+            {
+                sequenceValues[SESSION_ID_NAME] = sessionId;
+            }
+            if (sequence != null)
+            {
+                sequenceValues[SEQUENCE_NAME] = sequence;
+            }
+            var sequenceData = new Mock<IElementData>();
+            sequenceData.Setup(d => d.AsDictionary())
+                .Returns(sequenceValues);
+
             var flowData = new Mock<IFlowData>();
             flowData.Setup(d => d.TryGetEvidence(
                     It.IsAny<string>(), out It.Ref<object>.IsAny))
                 .Returns(new TryGetDelegate((string key, out object value) =>
                     evidence.TryGetValue(key, out value)));
+            flowData.Setup(d => d.TryGet(
+                    It.IsAny<string>(), out It.Ref<IElementData>.IsAny))
+                .Returns(new TryGetElementDataDelegate(
+                    (string key, out IElementData value) =>
+                    {
+                        value = withSequenceElement &&
+                            key == SEQUENCE_DATA_KEY ?
+                            sequenceData.Object : null;
+                        return value != null;
+                    }));
             flowData.Setup(d => d.Get<IJsonBuilderElementData>())
                 .Returns(() => new JsonBuilderElementData(
                     new Mock<ILogger<JsonBuilderElementData>>().Object,

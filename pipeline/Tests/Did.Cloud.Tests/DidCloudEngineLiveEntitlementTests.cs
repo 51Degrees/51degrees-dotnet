@@ -44,13 +44,12 @@ namespace FiftyOne.Did.Cloud.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The test reads one resource key from <c>51DEGREES_RESOURCE_KEY</c>, which
-/// the workflow that runs the live 51Did tests sets once per key secret, or
-/// where that is unset from <c>_51DEGREES_RESOURCE_KEY_51DID</c>, the name
-/// continuous integration gives a resource key carrying the 51Did product.
-/// Running it for both an entitled key and an unentitled one is therefore a
-/// matter of the workflow looping rather than of this test naming two keys.
-/// With neither name set it is inconclusive.
+/// The test reads one resource key, found by <see cref="LiveCloudKey"/>.
+/// The workflow that runs the live 51Did tests sets
+/// <c>_51DEGREES_RESOURCE_KEY</c>, the first name it reads, once per key
+/// secret. Running it for both an entitled key and an unentitled one is
+/// therefore a matter of the workflow looping rather than of this test
+/// naming two keys. With no key set it fails.
 /// </para>
 /// <para>
 /// Whether the key carries the product is not taken from the engine under
@@ -72,19 +71,6 @@ public class DidCloudEngineLiveEntitlementTests
     /// </summary>
     public TestContext TestContext { get; set; } = null!;
 
-    /// <summary>
-    /// Read first. The runtime name a developer sets.
-    /// </summary>
-    private const string ResourceKeyEnvVar = "51DEGREES_RESOURCE_KEY";
-
-    /// <summary>
-    /// Read where <see cref="ResourceKeyEnvVar"/> is unset. The name
-    /// continuous integration sets for a resource key carrying the 51Did
-    /// product. It starts with an underscore because a shell cannot export
-    /// a name starting with a digit.
-    /// </summary>
-    private const string CiResourceKeyEnvVar = "_51DEGREES_RESOURCE_KEY_51DID";
-
     private const string AccessiblePropertiesUrl =
         "https://cloud.51degrees.com/api/v4/accessibleproperties";
 
@@ -94,21 +80,6 @@ public class DidCloudEngineLiveEntitlementTests
     /// not yet connected to the service.
     /// </summary>
     private const int CloudTimeoutSeconds = 10;
-
-    private static string? ResourceKey()
-    {
-        var key = Environment.GetEnvironmentVariable(ResourceKeyEnvVar);
-        if (string.IsNullOrWhiteSpace(key) == false)
-        {
-            return key;
-        }
-        key = Environment.GetEnvironmentVariable(CiResourceKeyEnvVar);
-        if (string.IsNullOrWhiteSpace(key) == false)
-        {
-            return key;
-        }
-        return null;
-    }
 
     /// <summary>
     /// Ask the cloud what the key is entitled to, and return the property
@@ -164,14 +135,10 @@ public class DidCloudEngineLiveEntitlementTests
     [Timeout(180_000)]
     public async Task ACustomerPipelineMatchesWhatTheKeyIsEntitledTo()
     {
-        var key = ResourceKey();
-        if (key == null)
-        {
-            Assert.Inconclusive(
-                "No resource key in the environment. Set " +
-                $"{ResourceKeyEnvVar}, or {CiResourceKeyEnvVar} in CI, to " +
-                "run this against the live cloud.");
-        }
+        var key = LiveCloudKey.Require(
+            "the FODid properties the key carries, and checks that the " +
+            "pipeline offers exactly those or refuses to build when there " +
+            "are none");
 
         var listed = await ListedPropertiesAsync(key);
         var loggerFactory = new LoggerFactory();

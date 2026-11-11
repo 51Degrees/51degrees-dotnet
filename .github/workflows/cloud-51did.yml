@@ -1,9 +1,15 @@
 name: Cloud 51Did Tests
 
 # Runs the live cloud 51Did tests once for every _51DEGREES_RESOURCE_KEY*
-# key passed in below. Each run sets two names to that key, being
-# 51DEGREES_RESOURCE_KEY, which DidCloudEngineLiveEntitlementTests reads, and
-# _51DEGREES_RESOURCE_KEY, which CloudFodIdTests and CloudDidClientTests read.
+# key passed in below. Each run sets _51DEGREES_RESOURCE_KEY, the first name
+# every one of the tests reads, to that key. A run with no key fails, because
+# a cloud test that passes without calling the cloud has proved nothing.
+#
+# The Basic tier key gets a 51Did for the non-marketing usage only, so it runs
+# only DidCloudEngineLiveEntitlementTests, which checks what each tier is
+# entitled to. CloudFodIdTests insist on a marketing 51Did, which needs the
+# CloudV5FODiD product.
+#
 # A license key only reads a sealed creator context result made with a
 # resource key of its own account, so each _51DEGREES_LICENSE_KEY<suffix> is
 # set only on the pass for _51DEGREES_RESOURCE_KEY<suffix>. With it,
@@ -74,16 +80,18 @@ jobs:
           _51DEGREES_LICENSE_KEY_51DID: ${{ secrets._51DEGREES_LICENSE_KEY_51DID }}
         run: |
           $runs = @(
-            @{ Project = 'pipeline/Tests/Did.Tests/FiftyOne.Did.Tests.csproj'
-               Filter  = 'FullyQualifiedName~CloudFodIdTests|FullyQualifiedName~CloudDidClientTests' },
-            @{ Project = 'pipeline/Tests/Did.Cloud.Tests/FiftyOne.Did.Cloud.Tests.csproj'
-               Filter  = 'FullyQualifiedName~DidCloudEngineLiveEntitlementTests' }
+            @{ Project  = 'pipeline/Tests/Did.Tests/FiftyOne.Did.Tests.csproj'
+               Filter   = 'FullyQualifiedName~CloudFodIdTests|FullyQualifiedName~CloudDidClientTests'
+               AllTiers = $false },
+            @{ Project  = 'pipeline/Tests/Did.Cloud.Tests/FiftyOne.Did.Cloud.Tests.csproj'
+               Filter   = 'FullyQualifiedName~DidCloudEngineLiveEntitlementTests'
+               AllTiers = $true }
           )
           $keys = Get-ChildItem env: |
             Where-Object { $_.Name -like '_51DEGREES_RESOURCE_KEY*' -and $_.Value }
           if (-not $keys) {
-            Write-Host 'No _51DEGREES_RESOURCE_KEY* secrets available; skipping.'
-            exit 0
+            Write-Host '::error::No _51DEGREES_RESOURCE_KEY* secret reached this job. The tests need a key that carries the FODid product, and the CloudV5FODiD product for the marketing usages.'
+            exit 1
           }
           foreach ($run in $runs) {
             dotnet build $run.Project -c Release --nologo
@@ -99,7 +107,6 @@ jobs:
           $failed = $false
           foreach ($k in $keys) {
             $env:_51DEGREES_RESOURCE_KEY = $k.Value
-            ${env:51DEGREES_RESOURCE_KEY} = $k.Value
             $licenseName = $k.Name -replace '^_51DEGREES_RESOURCE_KEY', '_51DEGREES_LICENSE_KEY'
             if ($licenses.ContainsKey($licenseName)) {
               Set-Item "env:$licenseName" $licenses[$licenseName]
@@ -109,6 +116,11 @@ jobs:
             }
             foreach ($run in $runs) {
               $name = Split-Path $run.Project -Leaf
+              $basic = $k.Name -eq '_51DEGREES_RESOURCE_KEY_BASIC'
+              if ($basic -and -not $run.AllTiers) {
+                Write-Host "$name is not run with $($k.Name)"
+                continue
+              }
               Write-Host "::group::$name with $($k.Name)"
               dotnet test $run.Project -c Release --no-build --nologo `
                 --filter $run.Filter `

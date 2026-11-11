@@ -27,16 +27,12 @@ using System.Net.Sockets;
 namespace FiftyOne.IpIntelligence.Engine.OnPremise
 {
     /// <summary>
-    /// Parses the client IP address out of an evidence value.
-    /// <para>
-    /// Client IP evidence does not arrive in one shape. An edge may forward
-    /// it as a comma-separated list, and a connection-derived value routinely
-    /// carries a port (`82.132.237.238:34947`). Bare
-    /// <see cref="IPAddress.TryParse(string, out IPAddress)"/> rejects both,
-    /// so the same request could resolve elsewhere in the pipeline while this
-    /// engine saw no usable IP. This is the single tolerant parser used for
-    /// all client IP evidence.
-    /// </para>
+    /// Reads the client IP address from an evidence value, only when all of
+    /// the value is one address, optionally with a port. A list, a space or
+    /// line ending before or after the address, a zone index and any other
+    /// text make the value unread, so that no part of it is taken for an
+    /// address the sender did not give.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/67ead6986f3118c68f0714325800b92d48ddc71f/ip-intelligence-specification/pipeline-elements/ip-intelligence-on-premise.md#reading-the-client-ip-value">Specification</see>
     /// </summary>
     internal static class ClientIpParser
     {
@@ -44,8 +40,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise
         /// Reads an IP address from a raw client-ip evidence value.
         /// </summary>
         /// <param name="rawValue">
-        /// The evidence value. May be null, may carry a port, and may be a
-        /// comma-separated forwarded list of which the first entry is used.
+        /// The evidence value. May be null, and may carry a port.
         /// </param>
         /// <param name="address">
         /// The address read from the value. An IPv4-mapped address is its
@@ -53,12 +48,8 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise
         /// </param>
         /// <param name="addressText">
         /// The canonical textual form of <paramref name="address"/>, for
-        /// passing to services that take a string. Always canonical, never
-        /// the raw input: .NET accepts an IPv6 zone index ("fe80::1%1")
-        /// which the native engine's parser rejects, so forwarding the raw
-        /// text would reintroduce the native INCORRECT_IP_ADDRESS_FORMAT
-        /// abort this parser exists to prevent. The zone index is stripped
-        /// rather than kept: it has no meaning to an IP lookup.
+        /// passing to services that take a string, without any port or
+        /// brackets.
         /// </param>
         /// <returns>True when an address was read.</returns>
         public static bool TryParse(
@@ -68,20 +59,12 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise
         {
             address = null;
             addressText = null;
-            if (string.IsNullOrEmpty(rawValue))
+            if (string.IsNullOrEmpty(rawValue) ||
+                HasOnlyAddressCharacters(rawValue) == false)
             {
                 return false;
             }
-
-            // An edge may forward a chain; the first entry is the client.
-            var listSeparatorIndex = rawValue.IndexOf(',');
-            var candidate = listSeparatorIndex < 0
-                ? rawValue.Trim()
-                : rawValue.Substring(0, listSeparatorIndex).Trim();
-            if (candidate.Length == 0)
-            {
-                return false;
-            }
+            var candidate = rawValue;
 
             // Brackets are excluded from the fast path below deliberately.
             // On some runtimes IPAddress.TryParse accepts the bracketed IPv6
@@ -94,9 +77,10 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise
                 return TryParseBracketed(candidate, out address, out addressText);
             }
 
-            // A bare address. The text reported is the canonical form, not
-            // the supplied text - see the addressText doc for why.
-            if (IsDottedQuadOrIpV6(candidate) &&
+            // A bare address. The text reported is the canonical form of the
+            // address read, so an IPv4-mapped address reports its IPv4
+            // address and a shortened IPv6 address reports one spelling.
+            if (IsReadableAddressText(candidate) &&
                 IPAddress.TryParse(candidate, out address))
             {
                 address = ToLookupAddress(address);
@@ -114,7 +98,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise
                 IsValidPort(candidate.Substring(portSeparatorIndex + 1)))
             {
                 var addressPart = candidate.Substring(0, portSeparatorIndex);
-                if (IsDottedQuadOrIpV6(addressPart) &&
+                if (IsReadableAddressText(addressPart) &&
                     IPAddress.TryParse(addressPart, out address) &&
                     address.AddressFamily == AddressFamily.InterNetwork)
                 {
@@ -154,7 +138,8 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise
             }
 
             var bracketedAddress = candidate.Substring(1, closingBracketIndex - 1);
-            if (IPAddress.TryParse(bracketedAddress, out address) &&
+            if (IsReadableAddressText(bracketedAddress) &&
+                IPAddress.TryParse(bracketedAddress, out address) &&
                 address.AddressFamily == AddressFamily.InterNetworkV6)
             {
                 address = ToLookupAddress(address);
@@ -168,50 +153,77 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise
 
         /// <summary>
         /// Returns the address a lookup uses, which is the IPv4 address for
-        /// an IPv4-mapped address and otherwise the address without its zone
-        /// index. MapToIPv4 takes the last four bytes of any IPv6 address, so
+        /// an IPv4-mapped address and otherwise the address itself.
+        /// MapToIPv4 takes the last four bytes of any IPv6 address, so
         /// it is only called on a mapped one. The
-        /// <see href="https://github.com/51Degrees/specifications/blob/main/ip-intelligence-specification/pipeline-elements/ip-intelligence-on-premise.md#address-forms">specification</see>
+        /// <see href="https://github.com/51Degrees/specifications/blob/67ead6986f3118c68f0714325800b92d48ddc71f/ip-intelligence-specification/pipeline-elements/ip-intelligence-on-premise.md#address-forms">specification</see>
         /// defines which forms are mapped.
         /// </summary>
         private static IPAddress ToLookupAddress(IPAddress address)
         {
             return address.IsIPv4MappedToIPv6
                 ? address.MapToIPv4()
-                : StripZoneIndex(address);
-        }
-
-        /// <summary>
-        /// Returns the address without its IPv6 zone index ("fe80::1%1" ->
-        /// "fe80::1"). A zone index identifies the local interface the
-        /// address is reachable through; it has no meaning to an IP lookup,
-        /// and the native engine's parser rejects the '%' character.
-        /// </summary>
-        private static IPAddress StripZoneIndex(IPAddress address)
-        {
-            return address.AddressFamily == AddressFamily.InterNetworkV6 &&
-                address.ScopeId != 0
-                ? new IPAddress(address.GetAddressBytes())
                 : address;
         }
 
         /// <summary>
-        /// True when the text is a plain dotted-quad IPv4 address, or holds
-        /// a ':' and so can only be an IPv6 value. .NET additionally accepts
-        /// inet_aton IPv4 forms - a bare number ("3232235521" -> 192.168.0.1),
-        /// fewer than four parts ("1.2.3"), and octal octets ("012.1.2.3" ->
-        /// 10.1.2.3, which the native engine's atoi reads as 12.1.2.3). None
-        /// of those are a client IP: accepting them lets numeric junk count
-        /// as a valid address and outrank a real one, and resolves a
-        /// different address than the native lookup.
+        /// True if every character can be part of an address with a port,
+        /// being a hexadecimal digit, '.', ':', '[' or ']'. A list, a space,
+        /// a tab, a line ending, a zone index's '%' and a prefix length's '/'
+        /// all fail this check.
         /// </summary>
-        private static bool IsDottedQuadOrIpV6(string text)
+        private static bool HasOnlyAddressCharacters(string value)
         {
-            if (text.IndexOf(':') >= 0)
+            foreach (var character in value)
             {
-                return true;
+                var allowed =
+                    (character >= '0' && character <= '9') ||
+                    (character >= 'a' && character <= 'f') ||
+                    (character >= 'A' && character <= 'F') ||
+                    character == '.' || character == ':' ||
+                    character == '[' || character == ']';
+                if (allowed == false)
+                {
+                    return false;
+                }
             }
+            return true;
+        }
 
+        /// <summary>
+        /// True when the text is a plain dotted-quad IPv4 address, or an IPv6
+        /// value whose embedded IPv4 part, where it has one, is a dotted quad
+        /// as well. RFC 4291 section 2.2 puts an IPv4 address only in the last
+        /// 32 bits of an IPv6 address, so the text after the last ':' is the
+        /// only part that can be dotted.
+        /// </summary>
+        private static bool IsReadableAddressText(string text)
+        {
+            var lastColonIndex = text.LastIndexOf(':');
+            if (lastColonIndex >= 0)
+            {
+                var embeddedIpV4 = text.Substring(lastColonIndex + 1);
+                return embeddedIpV4.IndexOf('.') < 0 ||
+                    IsDottedQuad(embeddedIpV4);
+            }
+            return IsDottedQuad(text);
+        }
+
+        /// <summary>
+        /// True when the text is four parts of one to three decimal digits
+        /// with no leading zero, which is RFC 3986's IPv4address built from
+        /// dec-octet. .NET additionally accepts inet_aton IPv4 forms - a bare
+        /// number ("3232235521" -> 192.168.0.1), fewer than four parts
+        /// ("1.2.3"), and octal octets ("012.1.2.3" -> 10.1.2.3, which the
+        /// native engine's atoi reads as 12.1.2.3) - and it reads a leading
+        /// zero in the last part of an embedded IPv4 address
+        /// ("::ffff:1.2.3.04" -> "::ffff:1.2.3.4"). None of those are a client
+        /// IP: accepting them lets numeric junk count as a valid address and
+        /// outrank a real one, and resolves a different address than the
+        /// native lookup.
+        /// </summary>
+        private static bool IsDottedQuad(string text)
+        {
             var octets = text.Split('.');
             if (octets.Length != 4)
             {

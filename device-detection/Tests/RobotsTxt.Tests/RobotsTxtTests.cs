@@ -298,6 +298,49 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         }
 
         /// <summary>
+        /// Checks that a TDL holding an escape is written unchanged.
+        /// </summary>
+        [TestMethod]
+        public void TdlEscapesKept()
+        {
+            // Arrange
+            const string tdl = "https://example.com/Terms%20Of%20Use/1.txt";
+            _data.AddEvidence(Constants.TdlEvidenceKey, tdl);
+
+            // Act
+            _data.Process();
+
+            // Assert
+            var result = _data.Get<IRobotsTxtData>();
+            Assert.Contains($"TDL: {tdl}", result.PlainText.Value);
+            Assert.Contains($"TDL: {tdl}", result.AnnotatedText.Value);
+            Assert.DoesNotContain("Terms Of Use", result.PlainText.Value);
+        }
+
+        /// <summary>
+        /// Checks that a relative TDL entry is dropped, whichever system
+        /// the engine runs on.
+        /// </summary>
+        [TestMethod]
+        public void TdlRelativeEntryDropped()
+        {
+            // Arrange
+            const string valid = "https://example.com/terms";
+            _data.AddEvidence(
+                Constants.TdlEvidenceKey,
+                $"/terms/1.txt,{valid}");
+
+            // Act
+            _data.Process();
+
+            // Assert
+            var plain = _data.Get<IRobotsTxtData>().PlainText.Value;
+            Assert.Contains($"TDL: {valid}", plain);
+            Assert.DoesNotContain("file:", plain);
+            Assert.DoesNotContain("/terms/1.txt", plain);
+        }
+
+        /// <summary>
         /// Checks that when only TDL evidence is provided (no allow/disallow
         /// usages), the engine still produces aspect data.
         /// </summary>
