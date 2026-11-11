@@ -56,6 +56,21 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
 
         private IEngineSwigWrapper _engine;
 
+        /// <summary>
+        /// The required property index of each property name the engine was
+        /// built with. Null for an engine built with no names.
+        /// </summary>
+        internal IReadOnlyDictionary<string, int> PropertyIndexes
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// True when the engine was built with a list of property names.
+        /// </summary>
+        internal bool BuiltWithPropertyNames { get; set; }
+
         private IEvidenceKeyFilter _evidenceKeyFilter;
 
         /// <summary>
