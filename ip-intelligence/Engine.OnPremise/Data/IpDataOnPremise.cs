@@ -210,7 +210,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
 
         /// <summary>
         /// Gets the results to read a property from, with the property's
-        /// required property index when the name is in the engine's table,
+        /// required property index when the engine was built with that name,
         /// or -1 to read it by name.
         /// </summary>
         private ResultsIpiSwig GetResults(string propertyName, out int index)
