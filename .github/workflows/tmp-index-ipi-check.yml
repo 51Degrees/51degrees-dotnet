@@ -1,0 +1,170 @@
+name: Temporary IP Intelligence property index checks
+
+# Temporary, on a tmp/ branch. Fetches the data files once, then runs the
+# property index tests at the red and green commits, and times reads before
+# and after. The harness in .cost is never committed to a pull request.
+
+on:
+  push:
+    branches: ['tmp/index-ipi-check']
+
+permissions:
+  contents: read
+
+env:
+  RED: '52de0a03b5f0acabcc9043f23eb4cc67ee640884'
+  GREEN: '87d10c718dae260bb771aaab3d9006ac2fc35b30'
+  BEFORE: 'a14542899d3e59e469ae87eabf004d670f087a3f'
+
+jobs:
+  prefetch:
+    name: Fetch the data files
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: 51Degrees/common-ci
+          ref: main
+      - uses: actions/checkout@v4
+        with:
+          path: 51degrees-dotnet
+      - name: Submodules, with the data repository
+        working-directory: 51degrees-dotnet
+        run: |
+          git submodule update --init --depth 1
+          git -C cxx submodule update --init --depth 1 data
+      - name: Fetch
+        shell: pwsh
+        env:
+          DD_KEY: ${{ secrets.DEVICE_DETECTION_KEY }}
+          DD_URL: ${{ secrets.DEVICE_DETECTION_URL }}
+          IPI_URL: ${{ secrets.IPI_DATA_FILE_URL }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./51degrees-dotnet/ci/fetch-assets.ps1 -DeviceDetection $env:DD_KEY -DeviceDetectionUrl $env:DD_URL -IpIntelligenceUrl $env:IPI_URL
+          Get-ChildItem assets | Select-Object Name, Length | Format-Table
+      - uses: actions/cache/save@v4
+        with:
+          key: index-ipi-${{ github.run_id }}
+          path: assets
+
+  tests:
+    name: Tests ${{ matrix.label }}
+    needs: prefetch
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: red
+            ref: 52de0a03b5f0acabcc9043f23eb4cc67ee640884
+          - label: green
+            ref: 87d10c718dae260bb771aaab3d9006ac2fc35b30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: 51Degrees/common-ci
+          ref: main
+      - uses: actions/cache/restore@v4
+        with:
+          key: index-ipi-${{ github.run_id }}
+          path: assets
+          fail-on-cache-miss: true
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+          path: 51degrees-dotnet
+      - name: Submodules, with the data repository
+        working-directory: 51degrees-dotnet
+        run: |
+          git submodule update --init --depth 1
+          git -C cxx submodule update --init --depth 1 data
+          git log -3 --format='%H %s'
+          git -C cxx log -1 --format='cxx %H'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Put the data files in place
+        shell: pwsh
+        env:
+          DD_KEY: ${{ secrets.DEVICE_DETECTION_KEY }}
+          DD_URL: ${{ secrets.DEVICE_DETECTION_URL }}
+          IPI_URL: ${{ secrets.IPI_DATA_FILE_URL }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./51degrees-dotnet/ci/fetch-assets.ps1 -DeviceDetection $env:DD_KEY -DeviceDetectionUrl $env:DD_URL -IpIntelligenceUrl $env:IPI_URL
+      - name: IP Intelligence property index tests
+        shell: pwsh
+        run: |
+          dotnet test 51degrees-dotnet/ip-intelligence/Tests/OnPremise.Tests/FiftyOne.IpIntelligence.OnPremise.Tests.csproj `
+            -c Release -f net8.0 --nologo -p:FiftyOneReferences=Project -p:Platform=x64 `
+            --filter 'FullyQualifiedName~PropertyIndexTests' `
+            --logger 'console;verbosity=normal'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+  timing:
+    name: Timing before and after
+    needs: prefetch
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: 51Degrees/common-ci
+          ref: main
+      - uses: actions/checkout@v4
+        with:
+          path: harness
+      - uses: actions/cache/restore@v4
+        with:
+          key: index-ipi-${{ github.run_id }}
+          path: assets
+          fail-on-cache-miss: true
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Check out each commit under test
+        run: |
+          for pair in "before=$BEFORE" "after=$GREEN"; do
+            label=${pair%%=*}; sha=${pair#*=}
+            git init -q "w-$label"
+            git -C "w-$label" remote add origin https://github.com/51Degrees/51degrees-dotnet.git
+            git -C "w-$label" fetch -q --depth 1 origin "$sha"
+            git -C "w-$label" checkout -q FETCH_HEAD
+            git -C "w-$label" submodule update --init --depth 1
+            git -C "w-$label/cxx" submodule update --init --depth 1 data
+            git -C "w-$label" log -1 --format="$label %H %s"
+          done
+      - name: Put the data files in the first checkout
+        shell: pwsh
+        env:
+          DD_KEY: ${{ secrets.DEVICE_DETECTION_KEY }}
+          DD_URL: ${{ secrets.DEVICE_DETECTION_URL }}
+          IPI_URL: ${{ secrets.IPI_DATA_FILE_URL }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./w-before/ci/fetch-assets.ps1 -DeviceDetection $env:DD_KEY -DeviceDetectionUrl $env:DD_URL -IpIntelligenceUrl $env:IPI_URL
+          "COST_DATA=$PWD/w-before/cxx/data" >> $env:GITHUB_ENV
+      - name: Time each commit
+        shell: pwsh
+        run: |
+          $out = "$PWD/cost.txt"
+          $pass = 0
+          foreach ($label in @('before', 'after', 'before', 'after')) {
+            $pass++
+            $w = "w-$label"
+            Copy-Item harness/.cost/IndexCostTimingIpi.cs "$w/ip-intelligence/Tests/OnPremise.Tests/"
+            $proj = "$w/ip-intelligence/Tests/OnPremise.Tests/FiftyOne.IpIntelligence.OnPremise.Tests.csproj"
+            $env:COST_IPI_DIR = "$env:COST_DATA/ip-intelligence"
+            $env:COST_OUT = $out
+            $env:COST_LABEL = "$label#$pass"
+            dotnet test $proj -c Release -f net8.0 --nologo -p:FiftyOneReferences=Project -p:Platform=x64 --filter 'FullyQualifiedName~IndexCostTimingIpi'
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+          Get-Content $out
