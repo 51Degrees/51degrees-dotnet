@@ -57,9 +57,9 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
     /// When Terms Document Locator (TDL) evidence is provided via the
     /// <see cref="Constants.TdlEvidenceKey"/> key, the catch-all footer
     /// is emitted as an Allow-all block with one <c>TDL:</c> line per
-    /// valid absolute URI. Invalid entries are silently dropped per the
-    /// IETF-Robots TDL specification. If no valid TDL URIs remain, the
-    /// engine falls back to the default Disallow-all catch-all.
+    /// URI that conforms to RFC 3986. Invalid entries are silently dropped
+    /// per the IETF-Robots TDL specification. If no valid TDL URIs remain,
+    /// the engine falls back to the default Disallow-all catch-all.
     /// </para>
     /// </summary>
     public class RobotsTxtEngine :
@@ -293,13 +293,13 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
 
         /// <summary>
         /// Parses TDL URIs from evidence. Accepts a single value or a list
-        /// of values joined with ',' or '|'. Each entry is treated as an
-        /// absolute URI first; if that fails and an
-        /// <see cref="ITdlSourceResolver"/> is registered, it gets a chance
-        /// to resolve known short ids to URLs. Anything that ends up
-        /// non-URI is silently dropped per the IETF-Robots TDL specification.
+        /// of values joined with ',' or '|'. An entry that conforms to
+        /// RFC 3986 is kept as given (trimmed). Any other entry is offered
+        /// to the <see cref="ITdlSourceResolver"/>, if one is registered, to
+        /// resolve known short ids to URLs. Anything left is silently
+        /// dropped per the IETF-Robots TDL specification.
         /// </summary>
-        private IReadOnlyList<Uri> GetTdls(IFlowData data)
+        private IReadOnlyList<string> GetTdls(IFlowData data)
         {
             if (data.TryGetEvidence<string>(
                     Constants.TdlEvidenceKey,
@@ -318,21 +318,26 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
                 .ToArray();
         }
 
-        private Uri ResolveTdlEntry(string entry)
+        private string ResolveTdlEntry(string entry)
         {
-            if (Uri.TryCreate(entry, UriKind.Absolute, out var u))
+            // The text is checked and written as given. Parsing it with
+            // Uri would accept values that are not URIs (a string starting
+            // with '/' is a file path on some systems), refuse some that
+            // are, and rewrite the address.
+            var value = entry?.Trim();
+            if (Rfc3986.IsUri(value))
             {
-                return u;
+                return value;
             }
             if (_tdlResolver?.IsKnown(entry) == true)
             {
-                return _tdlResolver.Resolve(entry);
+                return _tdlResolver.Resolve(entry)?.OriginalString;
             }
             return null;
         }
 
         private IEnumerable<KeyValuePair<string, object>>
-            GetValues(HashSet<string> allowed, IReadOnlyList<Uri> tdls)
+            GetValues(HashSet<string> allowed, IReadOnlyList<string> tdls)
         {
             if (IsRequired(nameof(RobotsTxtData.PlainText)))
             {
@@ -357,7 +362,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
 
         private IAspectPropertyValue<string> GetValue(
             HashSet<string> allowed,
-            IReadOnlyList<Uri> tdls,
+            IReadOnlyList<string> tdls,
             bool annotations)
         {
             var sb = new StringBuilder();

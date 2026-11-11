@@ -51,15 +51,22 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
                 // BrowserVersion
                 // In addition, each key will need to have specific setup
                 // for the '*Accept-CH' properties:
-                // _51DEGREES_RESOURCE_KEY -
+                // The key LiveCloudKey finds, and
+                // RESOURCE_KEY_CLOUD_V5_BESPOKE when that is set -
                 //    SetHeaderBrowserAccept-CH, SetHeaderHardwareAccept-CH,
                 //    SetHeaderPlatformAccept-CH
                 // ACCEPTCH_BROWSER_KEY - SetHeaderBrowserAccept-CH only
                 // ACCEPTCH_HARDWARE_KEY - SetHeaderHardwareAccept-CH only
                 // ACCEPTCH_PLATFORM_KEY - SetHeaderPlatformAccept-CH only
                 // ACCEPTCH_NONE_KEY - No *Accept-CH properties.
-                ExampleUtils.GetResourceKeyFromEnv(v => SUPER_KEY = v);
-                ExampleUtils.GetKeyFromEnv("RESOURCE_KEY_CLOUD_V5_BESPOKE", v => V5_BESPOKE_KEY = v);
+                // The V5 bespoke rows use the same key as the others when
+                // no V5 bespoke key of its own is set.
+                SUPER_KEY = LiveCloudKey.Find();
+                var v5BespokeKey = System.Environment.GetEnvironmentVariable(
+                    "RESOURCE_KEY_CLOUD_V5_BESPOKE");
+                V5_BESPOKE_KEY = string.IsNullOrWhiteSpace(v5BespokeKey)
+                    ? SUPER_KEY
+                    : v5BespokeKey;
                 ExampleUtils.GetKeyFromEnv("ACCEPTCH_BROWSER_KEY", v => BROWSER_KEY = v);
                 ExampleUtils.GetKeyFromEnv("ACCEPTCH_HARDWARE_KEY", v => HARDWARE_KEY = v);
                 ExampleUtils.GetKeyFromEnv("ACCEPTCH_PLATFORM_KEY", v => PLATFORM_KEY = v);

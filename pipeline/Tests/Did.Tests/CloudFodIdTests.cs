@@ -24,6 +24,8 @@ using FiftyOne.Did.Model;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Owid.Client;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -36,25 +38,24 @@ namespace FiftyOne.Did.Tests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The test uses a single resource key from the environment. Set
-    /// <c>_51DEGREES_RESOURCE_KEY</c>
-    /// to a key whose properties include <c>fodid.*</c>. With no key set the
-    /// test is inconclusive.
+    /// The test uses a single resource key from the environment, found by
+    /// <see cref="LiveCloudKey"/>, which fails the test when none is set.
+    /// The key has to carry the CloudV5FODiD product, because both tests
+    /// need a marketing 51Did.
     /// </para>
     /// <para>
-    /// To exercise more than one key (for example a free key and a paid key),
-    /// the CI workflow runs this test once per <c>_51DEGREES_RESOURCE_KEY*</c>
-    /// secret, setting <c>_51DEGREES_RESOURCE_KEY</c> to each in turn. The test
-    /// itself only ever reads the single variable.
+    /// To exercise more than one key, the CI workflow runs this test once for
+    /// each <c>_51DEGREES_RESOURCE_KEY*</c> secret that carries the marketing
+    /// usages, setting <c>_51DEGREES_RESOURCE_KEY</c>, the first name
+    /// <see cref="LiveCloudKey"/> reads, to each in turn.
     /// </para>
     /// <para>
     /// For each key the test checks the cloud <c>id.usage</c> levels.
     /// <c>non-marketing</c> is available on any key that includes
     /// <c>fodid.*</c>, so it is required. <c>standard</c> and
-    /// <c>personalized</c> are marketing usages that paid keys are expected to
-    /// grant in due course; they are validated when the key returns them and
-    /// reported when it does not, so the test starts covering them
-    /// automatically once a paid key is expanded for marketing.
+    /// <c>personalized</c> are marketing usages, which need the CloudV5FODiD
+    /// product. Each is validated when the key returns it, and the test
+    /// fails when the key returns a marketing 51Did for neither.
     /// </para>
     /// <para>
     /// This is an integration test that uses the live cloud service, so any
@@ -65,9 +66,16 @@ namespace FiftyOne.Did.Tests
     public class CloudFodIdTests
     {
         /// <summary>
-        /// The environment variable name used to supply the resource key.
+        /// The product a key needs for a marketing 51Did.
         /// </summary>
-        private const string ResourceKeyEnvVar = "_51DEGREES_RESOURCE_KEY";
+        private const string MarketingProduct = "CloudV5FODiD";
+
+        /// <summary>
+        /// What these tests ask the cloud for, for the message when no key
+        /// is set.
+        /// </summary>
+        private const string AsksFor =
+            "a 51Did for each usage, stated or read from a consent string";
 
         /// <summary>
         /// The 51Degrees cloud V4 JSON endpoint.
@@ -110,7 +118,8 @@ namespace FiftyOne.Did.Tests
         /// address the identifier must carry. <c>non-marketing</c> is
         /// available on any key that includes <c>fodid.*</c>, so it is
         /// required. <c>standard</c> and <c>personalized</c> are marketing
-        /// usages that are validated when returned and reported when not.
+        /// usages, each validated when returned, and at least one of them
+        /// has to return a 51Did.
         /// </summary>
         /// <remarks>
         /// A non-marketing identifier states no terms, because it may not
@@ -155,34 +164,10 @@ namespace FiftyOne.Did.Tests
             Timeout = TimeSpan.FromSeconds(30),
         };
 
-        /// <summary>
-        /// The resource key from the environment, or <c>null</c> when it is
-        /// not set.
-        /// </summary>
-        private static string? ResourceKey()
-        {
-            var key = Environment.GetEnvironmentVariable(ResourceKeyEnvVar);
-            return string.IsNullOrWhiteSpace(key) ? null : key;
-        }
-
         [TestMethod]
         public async Task ResourceKeyReturns51DidForSupportedUsages()
         {
-            var resourceKey = ResourceKey();
-            if (resourceKey == null)
-            {
-                Assert.Inconclusive(
-                    $"No resource key supplied for the live cloud 51Did test.\n" +
-                    $"Set a 51Degrees resource key whose properties include " +
-                    $"fodid.* in one of these ways, then re-run:\n" +
-                    $"  - PowerShell env var:  $env:{ResourceKeyEnvVar} = '<your-key>'\n" +
-                    $"  - bash env var:        export {ResourceKeyEnvVar}=<your-key>\n" +
-                    $"  - inline, single run:  dotnet test --filter " +
-                    $"FullyQualifiedName~CloudFodIdTests -e {ResourceKeyEnvVar}=<your-key>\n" +
-                    $"Get a free key that includes 51Did from " +
-                    $"https://configure.51degrees.com/N57Wygby");
-                return;
-            }
+            var resourceKey = LiveCloudKey.Require(MarketingProduct, AsksFor);
 
             // Counts the identifiers whose terms were actually read
             // and matched. A key carrying no marketing usage skips
@@ -191,6 +176,9 @@ namespace FiftyOne.Did.Tests
             // the count is checked after the loop rather than left
             // implied.
             var termsChecked = 0;
+
+            // Why the cloud returned no 51Did for a marketing usage.
+            var refusals = new List<string>();
 
             foreach (var (usage, required, terms, expected) in Usages)
             {
@@ -204,15 +192,13 @@ namespace FiftyOne.Did.Tests
                 {
                     if (required)
                     {
-                        Assert.Fail(
-                            $"id.usage={usage}: response has no 'fodid' element; a " +
-                            $"resource key for the 51Did tests must include the " +
-                            $"fodid.* properties. Response: {body}");
+                        Assert.Fail(LiveCloudKey.Missing(
+                            $"the fodid element for id.usage={usage}",
+                            null,
+                            "FODid"));
                     }
                     Console.WriteLine(
-                        $"id.usage={usage}: no 'fodid' element returned (this " +
-                        $"marketing usage becomes available once the resource key " +
-                        $"is expanded for it).");
+                        $"id.usage={usage}: no 'fodid' element returned.");
                     continue;
                 }
 
@@ -232,16 +218,22 @@ namespace FiftyOne.Did.Tests
                 }
                 else if (required)
                 {
-                    Assert.Fail(
-                        $"id.usage={usage}: no idprobglobal returned. fodid " +
-                        $"element: " + fodidElement.GetRawText());
+                    Assert.Fail(LiveCloudKey.Missing(
+                        $"fodid.idprobglobal for id.usage={usage}",
+                        LiveCloudKey.NullReason(fodidElement, "idprobglobal"),
+                        "FODid"));
                 }
                 else
                 {
+                    var reason = LiveCloudKey.NullReason(
+                        fodidElement, "idprobglobal");
+                    if (reason != null)
+                    {
+                        refusals.Add(reason);
+                    }
                     Console.WriteLine(
-                        $"id.usage={usage}: no idprobglobal returned (becomes " +
-                        $"available once the resource key is expanded for this " +
-                        $"marketing usage).");
+                        $"id.usage={usage}: no idprobglobal returned " +
+                        $"({reason ?? "no reason given"}).");
                 }
 
                 // idproblic is scoped to the caller's licence and is validated
@@ -261,19 +253,17 @@ namespace FiftyOne.Did.Tests
 
             // Only a marketing usage carries a terms address, so only
             // a marketing identifier can show that the service wrote
-            // the byte. Where this key returned none, say so rather
-            // than reporting a pass that proved nothing. The
+            // the byte. Where this key returned none, fail saying so
+            // rather than reporting a pass that proved nothing. The
             // non-marketing identifier states no terms either way,
             // which is the same answer a cloud predating the Terms
             // release would give, so it cannot tell them apart.
             if (termsChecked == 0)
             {
-                Assert.Inconclusive(
-                    "This resource key returned no marketing 51Did, " +
-                    "so nothing carried a terms address and this run " +
-                    "did not prove the Terms byte. Use a key entitled " +
-                    "to the standard or personalized usage to prove " +
-                    "it.");
+                Assert.Fail(LiveCloudKey.Missing(
+                    "a marketing 51Did for id.usage=standard or personalized",
+                    string.Join(" ", refusals.Distinct()),
+                    MarketingProduct));
             }
 
             Console.WriteLine(
@@ -299,18 +289,13 @@ namespace FiftyOne.Did.Tests
         [TestMethod]
         public async Task ConsentStringSetsTheUsageIsIndirectBit()
         {
-            var resourceKey = ResourceKey();
-            if (resourceKey == null)
-            {
-                Assert.Inconclusive(
-                    "No resource key supplied for the live cloud 51Did " +
-                    "test. See the message on " +
-                    nameof(ResourceKeyReturns51DidForSupportedUsages) +
-                    " for how to set one.");
-                return;
-            }
+            var resourceKey = LiveCloudKey.Require(MarketingProduct, AsksFor);
 
             var proven = 0;
+
+            // Why the cloud returned no 51Did for a consent string.
+            var refusals = new List<string>();
+
             foreach (var (tcString, expected) in ConsentStrings)
             {
                 // No id.usage is sent. A stated usage wins over a consent
@@ -337,6 +322,12 @@ namespace FiftyOne.Did.Tests
                     var value = StringProperty(fodidElement, name);
                     if (string.IsNullOrEmpty(value))
                     {
+                        var reason = LiveCloudKey.NullReason(
+                            fodidElement, name);
+                        if (reason != null)
+                        {
+                            refusals.Add(reason);
+                        }
                         continue;
                     }
                     // A consent string granting a marketing usage produces a
@@ -353,14 +344,14 @@ namespace FiftyOne.Did.Tests
 
             // Same reasoning as the usage test. A key not entitled to the
             // marketing usages returns no identifier to read the bit from,
-            // and a run that read none has not proven anything.
+            // and a run that read none has not proven anything, so it
+            // fails.
             if (proven == 0)
             {
-                Assert.Inconclusive(
-                    "This resource key returned no identifier for either " +
-                    "consent string, so the usage-from-consent bit was not " +
-                    "read and this run did not prove it. Use a key " +
-                    "entitled to the standard or personalized usage.");
+                Assert.Fail(LiveCloudKey.Missing(
+                    "a 51Did for either consent string",
+                    string.Join(" ", refusals.Distinct()),
+                    MarketingProduct));
             }
 
             Console.WriteLine(
