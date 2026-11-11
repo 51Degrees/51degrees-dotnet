@@ -87,7 +87,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             public string DataEndpoint;
 
             /// <summary>
-            /// The resource key to use when making requests.
+            /// The resource key to use when making requests. Leave it
+            /// empty to authenticate with <see cref="LicenseKey"/> alone,
+            /// which also needs <see cref="RequestedProperties"/>.
             /// A resource key encapsulates details such as any license keys,
             /// the properties that should be returned and the domains that
             /// requests are permitted from. A new resource key can be
@@ -96,8 +98,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             public string ResourceKey;
 
             /// <summary>
-            /// The license key to use when making requests.
-            /// This parameter is obsolete, use resourceKey instead.
+            /// The license key to use when making requests, either alone
+            /// with <see cref="RequestedProperties"/> or beside a resource
+            /// key to add the requested properties the license grants.
             /// </summary>
             public string LicenseKey;
 
@@ -122,11 +125,23 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             public string CloudRequestOrigin;
 
             /// <summary>
-            /// Not currently used.
+            /// The fully qualified names of the properties to ask for,
+            /// sent as 'values' when the list is not empty.
             /// </summary>
             public IList<string> RequestedProperties;
         }
         private readonly EndpointsAndKeys _endpointsAndKeys;
+
+        private bool HasRequestedProperties =>
+            _endpointsAndKeys.RequestedProperties != null &&
+            _endpointsAndKeys.RequestedProperties.Count > 0;
+
+        /// <summary>
+        /// Set once the requested properties have been compared with an
+        /// answer, as the answer cannot change while the credential and
+        /// the list stay the same.
+        /// </summary>
+        private int _requestedPropertiesChecked;
 
         private readonly IFailHandler _failHandler;
 
@@ -149,7 +164,6 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// </param>
         /// <param name="licenseKey">
         /// The license key to use when making requests.
-        /// This parameter is obsolete, use resourceKey instead.
         /// </param>
         /// <param name="resourceKey">
         /// The resource key to use when making requests.
@@ -176,7 +190,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// The timeout for HTTP requests in seconds.
         /// </param>
         /// <param name="requestedProperties">
-        /// Not currently used.
+        /// The properties to ask for, sent as 'values'.
         /// </param>
         /// <param name="cloudRequestOrigin">
         /// The value to use for the Origin header when making requests 
@@ -564,7 +578,73 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     checkForErrorMessages: true);
             }
 
+            if (HasRequestedProperties)
+            {
+                ReportPropertiesNotCovered(jsonResult);
+            }
+
             aspectData.JsonResponse = jsonResult;
+        }
+
+        /// <summary>
+        /// Warn once about requested properties missing from an answer.
+        /// The cloud service leaves out a requested property it does not
+        /// answer without naming it, so the engine compares names itself,
+        /// ignoring letter case. A property that is present but null counts as
+        /// answered, as it carries a reason beside it. The request is never
+        /// failed because the covered properties came back. With no license
+        /// key, a property the resource key does not carry is answered as
+        /// null, so a name left out is not a property, and the message says
+        /// so.
+        /// </summary>
+        private void ReportPropertiesNotCovered(string json)
+        {
+            if (Volatile.Read(ref _requestedPropertiesChecked) != 0)
+            {
+                return;
+            }
+
+            JObject answer;
+            try
+            {
+                answer = JObject.Parse(json);
+            }
+            catch (JsonException)
+            {
+                return;
+            }
+
+            if (Interlocked.Exchange(ref _requestedPropertiesChecked, 1) != 0)
+            {
+                return;
+            }
+
+            var missing = new List<string>();
+            foreach (var name in _endpointsAndKeys.RequestedProperties
+                .OrderBy(n => n, StringComparer.Ordinal))
+            {
+                var split = name.Split(
+                    EVIDENCE_SEPARATOR_CHAR_ARRAY, 2);
+                var section = split.Length == 2
+                    ? answer.GetValue(split[0],
+                        StringComparison.OrdinalIgnoreCase) as JObject
+                    : null;
+                if (section == null ||
+                    section.GetValue(split[1],
+                        StringComparison.OrdinalIgnoreCase) == null)
+                {
+                    missing.Add(name);
+                }
+            }
+
+            if (missing.Count > 0)
+            {
+                Logger?.LogWarning(
+                    string.IsNullOrWhiteSpace(_endpointsAndKeys.LicenseKey)
+                        ? Messages.WarningRequestedNamesNotProperties
+                        : Messages.WarningPropertiesNotCovered,
+                    string.Join(", ", missing));
+            }
         }
 
         private void ThrowIfStillRecovering()
@@ -835,11 +915,20 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             var queryData = new Dictionary<string, string>(
                 StringComparer.OrdinalIgnoreCase);
 
-            queryData.Add("resource", _endpointsAndKeys.ResourceKey);
+            if (string.IsNullOrWhiteSpace(_endpointsAndKeys.ResourceKey) == false)
+            {
+                queryData.Add("resource", _endpointsAndKeys.ResourceKey);
+            }
 
             if (string.IsNullOrWhiteSpace(_endpointsAndKeys.LicenseKey) == false)
             {
                 queryData.Add("license", _endpointsAndKeys.LicenseKey);
+            }
+
+            if (HasRequestedProperties)
+            {
+                queryData.Add("values", string.Join(",",
+                    _endpointsAndKeys.RequestedProperties));
             }
 
             var evidence = data.GetEvidence().AsDictionary();
@@ -1048,10 +1137,31 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 "Failed to retrieve available properties " +
                 $"from cloud service at {_endpointsAndKeys.PropertiesEndpoint}.";
 
-            var url = $"{_endpointsAndKeys.PropertiesEndpoint}?resource={_endpointsAndKeys.ResourceKey}";
-            using (var requestMessage =
-                new HttpRequestMessage(HttpMethod.Get, url))
+            // A resource key alone goes in the query string as it always
+            // has. A license key is posted in the body, with the resource
+            // key if there is one, so it never appears in a URL. The cloud
+            // service answers with everything the keys entitle.
+            var hasLicenseKey =
+                string.IsNullOrWhiteSpace(_endpointsAndKeys.LicenseKey) == false;
+            var url = hasLicenseKey
+                ? _endpointsAndKeys.PropertiesEndpoint
+                : $"{_endpointsAndKeys.PropertiesEndpoint}?resource={_endpointsAndKeys.ResourceKey}";
+            using (var requestMessage = new HttpRequestMessage(
+                hasLicenseKey ? HttpMethod.Post : HttpMethod.Get, url))
             {
+                if (hasLicenseKey)
+                {
+                    var credentials = new Dictionary<string, string>();
+                    if (string.IsNullOrWhiteSpace(
+                        _endpointsAndKeys.ResourceKey) == false)
+                    {
+                        credentials.Add(
+                            "resource", _endpointsAndKeys.ResourceKey);
+                    }
+                    credentials.Add("license", _endpointsAndKeys.LicenseKey);
+                    requestMessage.Content =
+                        new FormUrlEncodedContent(credentials);
+                }
                 try
                 {
                     jsonResult = AmendSendAndProcess(
