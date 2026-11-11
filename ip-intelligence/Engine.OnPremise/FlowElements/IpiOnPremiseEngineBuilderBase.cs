@@ -274,13 +274,6 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
                 engine.SwigFactory = SwigFactory;
                 engine.PropertiesConfigSwig = propertyConfig;
                 engine.Config = config;
-                // A property's index is the place of its name in this list,
-                // so only an engine built with names reads by index. The
-                // native code gives an engine built with no names no
-                // indexes, so that engine reads by name.
-                engine.BuiltWithPropertyNames =
-                    properties != null && properties.Count > 0;
-
                 // This must be last as the call results in RefreshData being
                 // triggered which requires the prior three properties to be set.
                 engine.AddDataFile(dataFile);

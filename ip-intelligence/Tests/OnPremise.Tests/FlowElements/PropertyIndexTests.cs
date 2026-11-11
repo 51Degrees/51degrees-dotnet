@@ -106,44 +106,55 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
             }
         }
 
-        /// <summary>
-        /// Swapping two indexes in the table makes a read of one name give the
-        /// other's value, which happens only if reads go by the index.
-        /// </summary>
         [TestMethod]
         public void PropertyIndex_ReadsGoByIndex()
         {
             using (var context = NewContext(BuildNames))
             {
-                var name = context.Read(d => d.RegisteredName);
-                var country = context.Read(d => d.RegisteredCountry);
-                Assert.IsTrue(name.HasValue, name.NoValueMessage);
-                Assert.IsTrue(country.HasValue, country.NoValueMessage);
-                Assert.AreNotEqual(name.Value, country.Value);
+                AssertReadsGoByIndex(context);
+            }
+        }
 
-                var table = context.Engine.PropertyIndexes;
-                var swapped = table.ToDictionary(
-                    x => x.Key,
-                    x => x.Value,
-                    StringComparer.OrdinalIgnoreCase);
-                swapped["RegisteredName"] = table["RegisteredCountry"];
-                swapped["RegisteredCountry"] = table["RegisteredName"];
-                context.Engine.PropertyIndexes = swapped;
-                try
+        /// <summary>
+        /// An engine built with no names takes the names of its first data
+        /// file as its list, so it has a table once it is built.
+        /// </summary>
+        [TestMethod]
+        public void PropertyIndex_NoNamesTakesFirstFileNames()
+        {
+            using (var context = NewContext(null))
+            {
+                var indexes = context.Engine.PropertyIndexes;
+                Assert.IsNotNull(
+                    indexes,
+                    "An engine built with no names has its table once it " +
+                    "is built, before anything is processed.");
+                var inFile = DataFileNames(context);
+                foreach (var fileName in inFile)
                 {
-                    Assert.AreEqual(
-                        country.Value,
-                        context.Read(d => d.RegisteredName).Value,
-                        "A typed read goes by the index in the table.");
-                    Assert.AreEqual(
-                        name.Value,
-                        context.Read(ByName("RegisteredCountry")).Value,
-                        "A read by name goes by the index in the table.");
+                    Assert.IsTrue(
+                        indexes.ContainsKey(fileName),
+                        $"'{fileName}' is in the first data file.");
                 }
-                finally
-                {
-                    context.Engine.PropertyIndexes = table;
-                }
+                Assert.AreEqual(
+                    inFile.Count,
+                    indexes.Count,
+                    "The table holds only the first data file's names.");
+                CollectionAssert.AreEquivalent(
+                    Enumerable.Range(0, indexes.Count).ToList(),
+                    indexes.Values.ToList(),
+                    "Each name has its own index, counting from 0.");
+                var name = context.Read(d => d.RegisteredName);
+                Assert.IsTrue(name.HasValue, name.NoValueMessage);
+            }
+        }
+
+        [TestMethod]
+        public void PropertyIndex_NoNamesReadsGoByIndex()
+        {
+            using (var context = NewContext(null))
+            {
+                AssertReadsGoByIndex(context);
             }
         }
 
@@ -162,20 +173,6 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
         }
 
         /// <summary>
-        /// An engine built with no names reads by name, so it has no table.
-        /// </summary>
-        [TestMethod]
-        public void PropertyIndex_NoNamesReadsByName()
-        {
-            using (var context = NewContext(null))
-            {
-                Assert.IsNull(context.Engine.PropertyIndexes);
-                var name = context.Read(d => d.RegisteredName);
-                Assert.IsTrue(name.HasValue, name.NoValueMessage);
-            }
-        }
-
-        /// <summary>
         /// After a refresh to a data file with other properties, each index
         /// still names the property it named at build, so the values match
         /// those an engine built on the new file reads by name.
@@ -187,29 +184,92 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
             using (var expected = NewContext(null, asn.FullName))
             using (var context = NewContext(BuildNames))
             {
-                var table = context.Engine.PropertyIndexes;
-                using (var stream = File.OpenRead(asn.FullName))
-                {
-                    context.Engine.RefreshData(
-                        context.Engine.DataFiles[0].Identifier, stream);
-                }
-                Assert.AreSame(
-                    table,
-                    context.Engine.PropertyIndexes,
-                    "A refresh keeps the table made at build.");
+                RefreshKeepsTable(context, asn);
+                AssertReadAsNewFile(expected, context, BuildNames);
+            }
+        }
 
-                var present = expected.Engine.Properties
-                    .Select(p => p.Name)
-                    .ToList();
-                var compared = 0;
-                foreach (var name in BuildNames)
+        /// <summary>
+        /// An engine built with no names keeps the first data file's names
+        /// across a refresh, so each index names the same property, and a
+        /// property only the new file has gets no index and no value.
+        /// </summary>
+        [TestMethod]
+        public void PropertyIndex_NoNamesHoldsAcrossRefresh()
+        {
+            var asn = TestHelpers.Utils.GetFilePath(AsnDataFileName);
+            using (var expected = NewContext(null, asn.FullName))
+            using (var context = NewContext(null))
+            {
+                var table = RefreshKeepsTable(context, asn);
+                AssertReadAsNewFile(expected, context, table.Keys);
+                foreach (var name in DataFileNames(expected)
+                    .Where(n => table.ContainsKey(n) == false))
                 {
-                    var after = context.Values(name);
-                    if (present.Contains(name))
+                    Assert.IsFalse(
+                        context.Values(name).HasValue,
+                        $"'{name}' is only in the new file, so it has no " +
+                        "index and no value.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// The names of the properties the engine's data file has, leaving
+        /// out the Ip and IpV6 properties the engine adds from the evidence.
+        /// </summary>
+        private static List<string> DataFileNames(Context context)
+        {
+            return context.Engine.Properties
+                .OfType<PropertyMetaDataIpi>()
+                .Select(p => p.Name)
+                .ToList();
+        }
+
+        private static IReadOnlyDictionary<string, int> RefreshKeepsTable(
+            Context context,
+            FileInfo dataFile)
+        {
+            var table = context.Engine.PropertyIndexes;
+            Assert.IsNotNull(table, "The engine has its table once built.");
+            using (var stream = File.OpenRead(dataFile.FullName))
+            {
+                context.Engine.RefreshData(
+                    context.Engine.DataFiles[0].Identifier, stream);
+            }
+            Assert.AreSame(
+                table,
+                context.Engine.PropertyIndexes,
+                "A refresh keeps the table made at build.");
+            return table;
+        }
+
+        /// <summary>
+        /// Checks that each name reads after a refresh what an engine built
+        /// on the new file reads by name, or no value if that file lacks it.
+        /// </summary>
+        private static void AssertReadAsNewFile(
+            Context expected,
+            Context context,
+            IEnumerable<string> names)
+        {
+            var present = expected.Engine.Properties
+                .Select(p => p.Name)
+                .ToList();
+            var compared = 0;
+            foreach (var name in names)
+            {
+                var after = context.Values(name);
+                if (present.Contains(name))
+                {
+                    var before = expected.Values(name);
+                    Assert.AreEqual(
+                        before.HasValue,
+                        after.HasValue,
+                        $"'{name}' has a value after the refresh only if " +
+                        "an engine on the new file has one.");
+                    if (before.HasValue)
                     {
-                        var before = expected.Values(name);
-                        Assert.IsTrue(before.HasValue, before.NoValueMessage);
-                        Assert.IsTrue(after.HasValue, after.NoValueMessage);
                         CollectionAssert.AreEqual(
                             before.Value.ToList(),
                             after.Value.ToList(),
@@ -217,17 +277,55 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
                             "refresh.");
                         compared++;
                     }
-                    else
-                    {
-                        Assert.IsFalse(
-                            after.HasValue,
-                            $"'{name}' is not in the new file, so it has no " +
-                            "value.");
-                    }
                 }
-                Assert.IsTrue(
-                    compared > 0,
-                    "The new file holds at least one of the names.");
+                else
+                {
+                    Assert.IsFalse(
+                        after.HasValue,
+                        $"'{name}' is not in the new file, so it has no " +
+                        "value.");
+                }
+            }
+            Assert.IsTrue(
+                compared > 0,
+                "The new file holds at least one of the names.");
+        }
+
+        /// <summary>
+        /// Swapping two indexes in the table makes a read of one name give the
+        /// other's value, which happens only if reads go by the index.
+        /// </summary>
+        private static void AssertReadsGoByIndex(Context context)
+        {
+            var name = context.Read(d => d.RegisteredName);
+            var country = context.Read(d => d.RegisteredCountry);
+            Assert.IsTrue(name.HasValue, name.NoValueMessage);
+            Assert.IsTrue(country.HasValue, country.NoValueMessage);
+            Assert.AreNotEqual(name.Value, country.Value);
+
+            var table = context.Engine.PropertyIndexes;
+            Assert.IsNotNull(table, "The engine has its table once built.");
+            var swapped = table.ToDictionary(
+                x => x.Key,
+                x => x.Value,
+                StringComparer.OrdinalIgnoreCase);
+            swapped["RegisteredName"] = table["RegisteredCountry"];
+            swapped["RegisteredCountry"] = table["RegisteredName"];
+            context.Engine.PropertyIndexes = swapped;
+            try
+            {
+                Assert.AreEqual(
+                    country.Value,
+                    context.Read(d => d.RegisteredName).Value,
+                    "A typed read goes by the index in the table.");
+                Assert.AreEqual(
+                    name.Value,
+                    context.Read(ByName("RegisteredCountry")).Value,
+                    "A read by name goes by the index in the table.");
+            }
+            finally
+            {
+                context.Engine.PropertyIndexes = table;
             }
         }
 
