@@ -17,10 +17,10 @@ $OldStyle = "^FiftyOne\.(Pipeline\.Web\.Framework\.Tests|DeviceDetection\.Tests\
 # the test helper packages are not tests. A native library is loaded by a
 # host of the assembly's own platform, which the engine test projects set.
 $Filter = "^FiftyOne\.(?!Pipeline\.Web\.Framework\.Tests\.dll$)(?!DeviceDetection\.Tests\.Framework\.dll$)(?!.*Examples?\.Tests)(?!.*TestHelpers).*Tests?(\.Core|\.Framework)?\.dll$"
-# A run can be narrowed to some assemblies by setting FIFTYONE_TEST_FILTER,
+# A run can be narrowed to some assemblies by setting _51DEGREES_TEST_FILTER,
 # which the probe workflow does.
-if ($env:FIFTYONE_TEST_FILTER) {
-    $Filter = $env:FIFTYONE_TEST_FILTER
+if ($env:_51DEGREES_TEST_FILTER) {
+    $Filter = $env:_51DEGREES_TEST_FILTER
 }
 
 # The SDK-style assemblies run in parallel lanes, which ci/run-test-lanes.ps1
@@ -36,7 +36,7 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-if ($BuildMethod -eq "msbuild" -and -not $env:FIFTYONE_TEST_FILTER) {
+if ($BuildMethod -eq "msbuild" -and -not $env:_51DEGREES_TEST_FILTER) {
     ./dotnet/run-unit-tests.ps1 `
         -RepoName $RepoName `
         -Name $Name `

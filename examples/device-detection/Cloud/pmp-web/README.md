@@ -23,14 +23,13 @@ language's copy of it reads.
 
 | Variable | What it holds | Also read when it is not set |
 | --- | --- | --- |
-| `51DEGREES_RESOURCE_KEY` | A resource key that includes the 51Did properties. Required. | `_51DEGREES_RESOURCE_KEY_51DID` |
-| `51DEGREES_CLOUD_ENDPOINT` | The cloud the pages load from and the pipeline asks, given with or without the `/api/v4/` path, for example `https://cloud.51degrees.com/api/v4/`. The default is `https://cloud.51degrees.com`. | nothing |
+| `_51DEGREES_RESOURCE_KEY` | A resource key that includes the 51Did properties. Required. | `_51DEGREES_RESOURCE_KEY_51DID` |
+| `_51DEGREES_CLOUD_ENDPOINT` | The cloud the pages load from and the pipeline asks, given with or without the `/api/v4/` path, for example `https://cloud.51degrees.com/api/v4/`. The default is `https://cloud.51degrees.com`. | nothing |
 
 The first column holds the names a developer sets. The resource key's second
-name is the one continuous integration sets. It starts with an underscore
-because a shell cannot export a name that starts with a digit, and it ends
-with the product the demo needs, being the 51Did. No licence key is read,
-because the resource key has to carry the 51Did product itself.
+name is the one continuous integration sets, and it ends with the product the
+demo needs, being the 51Did. No licence key is read, because the resource key
+has to carry the 51Did product itself.
 
 The address the demo listens on comes from `ASPNETCORE_URLS`, which is how
 any ASP.NET Core application is started. Without it the demo listens on
@@ -47,21 +46,19 @@ from the answer. The key also has to carry `ThirdPartyCookiesEnabled` and
 never tests the third party cookie and the second card never appears. The
 demo never writes the resource key or the cloud address to the console.
 
-On Linux and macOS the variable names that start with a digit have to be
-set with the env command, because POSIX shells do not accept them in a
-plain assignment.
+On Linux and macOS run these.
 
 ```
-env 51DEGREES_RESOURCE_KEY=<your resource key> \
-    ASPNETCORE_URLS=http://localhost:5180 \
-    dotnet run -c Release
+export _51DEGREES_RESOURCE_KEY=<your resource key>
+export ASPNETCORE_URLS=http://localhost:5180
+dotnet run -c Release
 ```
 
 In PowerShell the same is done like this.
 
 ```
-${env:51DEGREES_RESOURCE_KEY} = '<your resource key>'
-${env:ASPNETCORE_URLS} = 'http://localhost:5180'
+$env:_51DEGREES_RESOURCE_KEY = '<your resource key>'
+$env:ASPNETCORE_URLS = 'http://localhost:5180'
 dotnet run -c Release
 ```
 

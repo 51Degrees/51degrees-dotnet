@@ -92,7 +92,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                .Verifiable();
 
             // Un-set cloud URL environment variable.
-            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, null);
+            Environment.SetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR, null);
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         {
             var expectedUrl = "http://localhost/test_conf/";
 
-            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, "http://localhost/test_env/");
+            Environment.SetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR, "http://localhost/test_env/");
 
             Action<int> VerifyPublicPropsTimes = (timesExpected) => _handlerMock.Protected().Verify(
                "SendAsync",
@@ -250,7 +250,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         {
             var expectedUrl = "http://localhost/test_env/";
 
-            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, expectedUrl);
+            Environment.SetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR, expectedUrl);
 
             Action<int> VerifyPublicPropsTimes = (timesExpected) => _handlerMock.Protected().Verify(
                "SendAsync",
@@ -444,7 +444,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         public void Cleanup()
         {
             // Un-set cloud URL environment variable.
-            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, null);
+            Environment.SetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR, null);
         }
     }
 }

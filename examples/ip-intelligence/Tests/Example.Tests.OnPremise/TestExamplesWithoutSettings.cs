@@ -47,13 +47,10 @@ public class TestExamplesWithoutSettings
     private static readonly string[] Settings =
     {
         Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
-        Constants.LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
         Constants.EVIDENCE_FILE_ENV_VAR,
         Constants.GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR,
         Constants.LICENSE_KEY_ENV_VAR,
-        "51DEGREES_DD_PATH",
-        "_51DEGREES_DD_PATH",
-        "DEVICEDETECTIONDATAFILE"
+        "_51DEGREES_DD_PATH"
     };
 
     /// <summary>
