@@ -167,7 +167,8 @@ public class EnvironmentVariableNamesTests
         @"(?:(?<!\[)[""']|\$env:|\$\{env:|Env:|@\{\s*|;\s*)" +
         "(?:RESOURCE_KEY|SUPER_RESOURCE_KEY|LICENSE_KEY|" +
         "DEVICEDETECTIONDATAFILE|IPINTELLIGENCEDATAFILE|FOD_CLOUD_API_URL|" +
-        "FIFTYONE_CLOUD_ENDPOINT|FIFTYONE_TEST_FILTER)" +
+        "FIFTYONE_CLOUD_ENDPOINT|FIFTYONE_TEST_FILTER|" +
+        "51D_RESOURCE_KEY|51D_CLOUD_ENDPOINT)" +
         "(?![A-Za-z0-9_])|" +
         @"\bLEGACY_[A-Z_]*ENV_VARS?\b",
         RegexOptions.CultureInvariant);
@@ -242,12 +243,14 @@ public class EnvironmentVariableNamesTests
             new[]
             {
                 "\"SUPER_RESOURCE_KEY",
+                "\"51D_RESOURCE_KEY",
                 "$env:FIFTYONE_TEST_FILTER",
                 "@{ FIFTYONE_CLOUD_ENDPOINT",
                 "LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR",
             },
             OldNames(
                 "GetEnvironmentVariable(\"SUPER_RESOURCE_KEY\") " +
+                "{ \"51D_RESOURCE_KEY\", " +
                 "$env:FIFTYONE_TEST_FILTER " +
                 "-ExampleEnv @{ FIFTYONE_CLOUD_ENDPOINT = 'x' } " +
                 "LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR"));
