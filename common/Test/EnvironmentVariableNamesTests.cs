@@ -25,15 +25,17 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace FiftyOne.Common.Tests;
 
 /// <summary>
 /// Every 51Degrees environment variable name in this repository starts with
 /// an underscore, because a POSIX shell cannot set a name that starts with a
-/// digit. The test reads every file git tracks, which leaves out build
-/// output and the submodules, and fails on any name that starts with the
-/// digit.
+/// digit, and each setting has one name with nothing read in its place. The
+/// tests read every file git tracks, which leaves out build output and the
+/// submodules, and fail on any name that starts with the digit and on any
+/// old name that is still read or set.
 /// </summary>
 [TestClass]
 public class EnvironmentVariableNamesTests
@@ -111,7 +113,8 @@ public class EnvironmentVariableNamesTests
     /// <summary>
     /// Each name in the line that starts with <see cref="DigitInitial"/> and
     /// is not the end of a longer name, such as one with a leading
-    /// underscore.
+    /// underscore. The name is matched in any case, because Windows reads an
+    /// environment variable name in any case.
     /// </summary>
     private static List<string> DigitInitialNames(string line)
     {
@@ -120,8 +123,13 @@ public class EnvironmentVariableNamesTests
         while (at < line.Length)
         {
             if (at + DigitInitial.Length <= line.Length &&
-                string.CompareOrdinal(
-                    line, at, DigitInitial, 0, DigitInitial.Length) == 0 &&
+                string.Compare(
+                    line,
+                    at,
+                    DigitInitial,
+                    0,
+                    DigitInitial.Length,
+                    StringComparison.OrdinalIgnoreCase) == 0 &&
                 (at == 0 || !IsNameCharacter(line[at - 1])))
             {
                 var end = at;
@@ -140,24 +148,60 @@ public class EnvironmentVariableNamesTests
         return names;
     }
 
-    [TestMethod]
-    public void TheNameMatcherFindsOnlyNamesThatStartWithTheDigit()
+    /// <summary>
+    /// This file, which names every old name on purpose.
+    /// </summary>
+    private const string ThisFile =
+        "common/Test/EnvironmentVariableNamesTests.cs";
+
+    /// <summary>
+    /// An old name read or set as an environment variable, or a constant
+    /// held to fall back to one. A .NET read takes the name as a string, so
+    /// a quoted name is matched, along with the forms the PowerShell scripts
+    /// use. A quoted name inside brackets is a dictionary key, such as a
+    /// page template's placeholder, and is left alone. The names keep their
+    /// case, because the cloud's query string parameter resource_key is not
+    /// an environment variable.
+    /// </summary>
+    private static readonly Regex OldName = new Regex(
+        @"(?:(?<!\[)[""']|\$env:|\$\{env:|Env:|@\{\s*|;\s*)" +
+        "(?:RESOURCE_KEY|SUPER_RESOURCE_KEY|RESOURCE_KEY_CLOUD_V5_BESPOKE|" +
+        "LICENSE_KEY|DEVICEDETECTIONLICENSEKEY_DOTNET|" +
+        "DEVICEDETECTIONDATAFILE|IPINTELLIGENCEDATAFILE|FOD_CLOUD_API_URL|" +
+        "FIFTYONE_CLOUD_ENDPOINT|FIFTYONE_TEST_FILTER)" +
+        "(?![A-Za-z0-9_])|" +
+        @"\bLEGACY_[A-Z_]*ENV_VARS?\b",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Each old name the line reads, sets or holds.
+    /// </summary>
+    private static List<string> OldNames(string line)
     {
-        var digitInitial = DigitInitial + "DD_PATH";
-        var line =
-            $"export {digitInitial}=a _{digitInitial}=b X{digitInitial}";
-        CollectionAssert.AreEqual(
-            new[] { digitInitial },
-            DigitInitialNames(line));
+        var names = new List<string>();
+        foreach (Match match in OldName.Matches(line))
+        {
+            names.Add(match.Value);
+        }
+        return names;
     }
 
-    [TestMethod]
-    public void NoFileNamesAVariableThatStartsWithADigit()
+    /// <summary>
+    /// Every match in the tracked files apart from <paramref name="skip"/>,
+    /// as the path, the line number and the text matched.
+    /// </summary>
+    private static List<string> FindInTrackedFiles(
+        Func<string, List<string>> find,
+        string skip)
     {
         var root = RepositoryRoot();
         var found = new List<string>();
         foreach (var relative in TrackedFiles(root))
         {
+            if (relative == skip)
+            {
+                continue;
+            }
             var path = Path.Combine(
                 root, relative.Replace('/', Path.DirectorySeparatorChar));
             // A submodule is tracked as a directory, and its files belong to
@@ -170,17 +214,73 @@ public class EnvironmentVariableNamesTests
             var lines = text.Split('\n');
             for (var index = 0; index < lines.Length; index++)
             {
-                foreach (var name in DigitInitialNames(lines[index]))
+                foreach (var name in find(lines[index]))
                 {
                     found.Add($"{relative}:{index + 1}: {name}");
                 }
             }
         }
+        return found;
+    }
+
+    [TestMethod]
+    public void TheNameMatcherFindsOnlyNamesThatStartWithTheDigit()
+    {
+        var digitInitial = DigitInitial + "DD_PATH";
+        var lower = digitInitial.ToLowerInvariant();
+        var line =
+            $"export {digitInitial}=a _{digitInitial}=b X{digitInitial} " +
+            $"{lower}=c";
+        CollectionAssert.AreEqual(
+            new[] { digitInitial, lower },
+            DigitInitialNames(line));
+    }
+
+    [TestMethod]
+    public void TheOldNameMatcherFindsReadsAndSetsOnly()
+    {
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "\"SUPER_RESOURCE_KEY",
+                "$env:FIFTYONE_TEST_FILTER",
+                "@{ FIFTYONE_CLOUD_ENDPOINT",
+                "LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR",
+            },
+            OldNames(
+                "GetEnvironmentVariable(\"SUPER_RESOURCE_KEY\") " +
+                "$env:FIFTYONE_TEST_FILTER " +
+                "-ExampleEnv @{ FIFTYONE_CLOUD_ENDPOINT = 'x' } " +
+                "LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR"));
+        CollectionAssert.AreEqual(
+            Array.Empty<string>(),
+            OldNames(
+                "[\"RESOURCE_KEY\"] = ResourceKey {{RESOURCE_KEY}} " +
+                "\"_51DEGREES_RESOURCE_KEY\" \"RESOURCE_KEYS\" " +
+                "LICENSE_KEY_ENV_VAR resource_key=abc"));
+    }
+
+    [TestMethod]
+    public void NoFileNamesAVariableThatStartsWithADigit()
+    {
+        var found = FindInTrackedFiles(DigitInitialNames, null);
         Assert.AreEqual(
             0,
             found.Count,
             $"{found.Count} names start with a digit, which a POSIX shell " +
             "cannot set, so each must start with an underscore:\n" +
+            string.Join("\n", found));
+    }
+
+    [TestMethod]
+    public void NoFileReadsAnOldName()
+    {
+        var found = FindInTrackedFiles(OldNames, ThisFile);
+        Assert.AreEqual(
+            0,
+            found.Count,
+            $"{found.Count} old names are still read, set or held to fall " +
+            "back to, so each must use its _51DEGREES_ name alone:\n" +
             string.Join("\n", found));
     }
 }
