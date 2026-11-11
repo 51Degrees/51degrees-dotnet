@@ -93,13 +93,11 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
         {
             if (string.IsNullOrWhiteSpace(resourceKey))
             {
-                Assert.Inconclusive(
-                    "Skipped because no resource key reached this test. " +
-                    "Set one of these environment variables: " +
-                    ExampleUtils
-                        .CLOUD_RESOURCE_KEY_ENV_VAR_DESCRIPTION + ". The " +
-                    "Accept-CH cases also need the per header keys named " +
-                    "in Parameters.GetEnvVars.");
+                Assert.Fail(LiveCloudKey.NoKey(
+                    "device",
+                    "the SetHeaderBrowserAccept-CH, " +
+                    "SetHeaderHardwareAccept-CH and " +
+                    "SetHeaderPlatformAccept-CH properties"));
             }
 
             ResourceKey = resourceKey;
