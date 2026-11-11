@@ -129,13 +129,17 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
                     indexes,
                     "An engine built with no names has its table once it " +
                     "is built, before anything is processed.");
-                foreach (var property in context.Engine.Properties
-                    .Where(p => p.Available))
+                var inFile = DataFileNames(context);
+                foreach (var name in inFile)
                 {
                     Assert.IsTrue(
-                        indexes.ContainsKey(property.Name),
-                        $"'{property.Name}' is in the first data file.");
+                        indexes.ContainsKey(name),
+                        $"'{name}' is in the first data file.");
                 }
+                Assert.AreEqual(
+                    inFile.Count,
+                    indexes.Count,
+                    "The table holds only the first data file's names.");
                 CollectionAssert.AreEquivalent(
                     Enumerable.Range(0, indexes.Count).ToList(),
                     indexes.Values.ToList(),
@@ -199,8 +203,7 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
             {
                 var table = RefreshKeepsTable(context, asn);
                 AssertReadAsNewFile(expected, context, table.Keys);
-                foreach (var name in expected.Engine.Properties
-                    .Select(p => p.Name)
+                foreach (var name in DataFileNames(expected)
                     .Where(n => table.ContainsKey(n) == false))
                 {
                     Assert.IsFalse(
@@ -209,6 +212,18 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
                         "index and no value.");
                 }
             }
+        }
+
+        /// <summary>
+        /// The names of the properties the engine's data file has, leaving
+        /// out the Ip and IpV6 properties the engine adds from the evidence.
+        /// </summary>
+        private static List<string> DataFileNames(Context context)
+        {
+            return context.Engine.Properties
+                .OfType<PropertyMetaDataIpi>()
+                .Select(p => p.Name)
+                .ToList();
         }
 
         private static IReadOnlyDictionary<string, int> RefreshKeepsTable(
