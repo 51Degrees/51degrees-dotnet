@@ -56,6 +56,17 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         ICloudRequestEngine
     {
         /// <summary>
+        /// The prefixes after query, header and cookie, highest
+        /// precedence first, as evidence.md lists them.
+        /// </summary>
+        private static readonly string[] OTHER_PREFIX_PRECEDENCE =
+        {
+            Core.Constants.EVIDENCE_SERVER_PREFIX,
+            "fiftyone",
+            "location",
+        };
+
+        /// <summary>
         /// Separator as a character array.
         /// </summary>
         private static readonly char[] EVIDENCE_SEPARATOR_CHAR_ARRAY = 
@@ -807,20 +818,22 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             LicenseKeyMask.MaskText(text, new[] { _endpointsAndKeys.LicenseKey });
 
         /// <summary>
-        /// Generate the Content to send in the POST request. The evidence keys
-        /// e.g. 'query.' and 'header.' have an order of precedence. These are
-        /// added to the evidence in reverse order, if there is conflict then 
-        /// the queryData value is overwritten. 
-        /// 
-        /// 'query.' evidence should take precedence over all other evidence.
-        /// If there are evidence keys other than 'query.' that conflict then
-        /// this is unexpected so an error will be logged.
+        /// Generate the Content to send in the POST request. Each Evidence
+        /// value is sent under its key with the prefix removed. Keys ignore
+        /// letter case, so one name under two prefixes is one field, sent
+        /// with the name and value of the key that wins by the precedence
+        /// in evidence.md, being query, header, cookie, server, fiftyone
+        /// and location, then any other prefix alphabetically. The groups
+        /// are added lowest precedence first, so a later key replaces an
+        /// earlier one, and a replacement by a key other than a query key
+        /// is logged as a warning.
         /// </summary>
         /// <param name="data"></param>
         /// <returns>Evidence in a FormUrlEncodedContent object</returns>
         private FormUrlEncodedContent GetContent(IFlowData data)
         {
-            var queryData = new Dictionary<string, string>();
+            var queryData = new Dictionary<string, string>(
+                StringComparer.OrdinalIgnoreCase);
 
             queryData.Add("resource", _endpointsAndKeys.ResourceKey);
 
@@ -831,9 +844,12 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
             var evidence = data.GetEvidence().AsDictionary();
 
-            // Add evidence in reverse alphabetical order, excluding special
-            // keys, and the web request a web integration adds for usage
-            // sharing, which is an object rather than a value to send.
+            // Add the other evidence lowest precedence first, being other
+            // prefixes in reverse alphabetical order of the prefix in lower
+            // case, then of the whole key, then location,
+            // fiftyone and server, leaving out the web request a web
+            // integration adds for usage sharing, which is an object rather
+            // than a value to send.
             AddQueryData(queryData, evidence, evidence
                 .Where(e =>
                     KeyHasPrefix(e, Core.Constants.EVIDENCE_QUERY_PREFIX) == false &&
@@ -841,7 +857,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     KeyHasPrefix(e, Core.Constants.EVIDENCE_COOKIE_PREFIX) == false &&
                     string.Equals(e.Key, Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
                         StringComparison.OrdinalIgnoreCase) == false)
-                .OrderByDescending(e => e.Key));
+                .OrderByDescending(e => OtherPrefixRank(e.Key))
+                .ThenByDescending(e => PrefixOf(e.Key).ToLowerInvariant(),
+                    StringComparer.Ordinal)
+                .ThenByDescending(e => e.Key.ToLowerInvariant(),
+                    StringComparer.Ordinal));
             // Add cookie evidence.
             AddQueryData(queryData, evidence, evidence
                 .Where(e => KeyHasPrefix(e, Core.Constants.EVIDENCE_COOKIE_PREFIX)));
@@ -856,6 +876,41 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             return content;
         }
         
+        /// <summary>
+        /// The prefix of an Evidence key, being the part before its first
+        /// separator, or the whole key where it has none.
+        /// </summary>
+        /// <param name="key">The Evidence key.</param>
+        /// <returns>The prefix.</returns>
+        private static string PrefixOf(string key)
+        {
+            int separatorIndex = key.IndexOfAny(EVIDENCE_SEPARATOR_CHAR_ARRAY);
+            return separatorIndex >= 0
+                ? key.Substring(0, separatorIndex)
+                : key;
+        }
+
+        /// <summary>
+        /// The precedence of a key that is not a query, header or cookie
+        /// key, lower first, being server, fiftyone and location as
+        /// evidence.md lists them, then any other prefix.
+        /// </summary>
+        /// <param name="key">The Evidence key.</param>
+        /// <returns>The rank, where a lower rank wins.</returns>
+        private static int OtherPrefixRank(string key)
+        {
+            var prefix = PrefixOf(key);
+            for (int i = 0; i < OTHER_PREFIX_PRECEDENCE.Length; i++)
+            {
+                if (prefix.Equals(OTHER_PREFIX_PRECEDENCE[i],
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+            return OTHER_PREFIX_PRECEDENCE.Length;
+        }
+
         /// <summary>
         /// Check that the key of a KeyValuePair has the given prefix.
         /// </summary>
@@ -960,8 +1015,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                             $"'{item.Key}={item.Value}' evidence conflicts " +
                             $"with '{string.Join("', '", conflicts)}'");
                     }
-                    // Overwrite the existing queryParameter value.
-                    queryData[suffix] = item.Value.ToString();
+                    // Replace the existing field, name and value, so the
+                    // name sent is the winning key's.
+                    queryData.Remove(suffix);
+                    queryData.Add(suffix, item.Value.ToString());
                 }
             }
         }
