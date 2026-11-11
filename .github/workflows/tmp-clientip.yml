@@ -1,0 +1,37 @@
+name: Temporary client IP parser tests
+
+# Temporary. Builds the IP Intelligence on-premise tests, with the native
+# library, and runs the client IP parser tests on a tmp/ branch.
+
+on:
+  push:
+    branches: ['tmp/clientip-*']
+
+jobs:
+  client-ip-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submodules, without the data
+        run: >-
+          git submodule update --init --depth 1
+          cxx
+          pipeline/Core/Configuration/Validation
+          pipeline/JavaScriptBuilderElement/Templates
+          pipeline/owid-dotnet
+          pipeline/DerivedProperty/Scripts
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Test
+        shell: pwsh
+        run: |
+          git log --oneline -3
+          dotnet test ip-intelligence/Tests/OnPremise.Tests/FiftyOne.IpIntelligence.OnPremise.Tests.csproj `
+            -c Release --nologo -p:FiftyOneReferences=Project -p:Platform=x64 `
+            --filter 'FullyQualifiedName~ClientIpParserTests' `
+            --logger 'console;verbosity=normal'
+          if ($LASTEXITCODE -ne 0) { exit 1 }

@@ -59,6 +59,13 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests
         [DataRow("82.132.237.238:34947, 10.0.0.1", "82.132.237.238", "82.132.237.238")]
         // Surrounding whitespace.
         [DataRow(" 1.2.3.4 ", "1.2.3.4", "1.2.3.4")]
+        // An IPv4-mapped IPv6 address is its IPv4 address, however it
+        // is written.
+        [DataRow("::ffff:8.8.8.8", "8.8.8.8", "8.8.8.8")]
+        [DataRow("::ffff:808:808", "8.8.8.8", "8.8.8.8")]
+        [DataRow("0:0:0:0:0:ffff:808:808", "8.8.8.8", "8.8.8.8")]
+        [DataRow("[::ffff:8.8.8.8]", "8.8.8.8", "8.8.8.8")]
+        [DataRow("[::ffff:8.8.8.8]:443", "8.8.8.8", "8.8.8.8")]
         public void TryParse_ValidValue_ReturnsAddress(
             string rawValue,
             string expectedAddress,
