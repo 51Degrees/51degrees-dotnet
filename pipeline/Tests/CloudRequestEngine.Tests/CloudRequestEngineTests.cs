@@ -394,7 +394,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         /// in two letter cases is one field. It is sent once, with the name
         /// and value of the key that wins by the precedence in evidence.md,
         /// being query, header, cookie, server, fiftyone and location, then
-        /// any other prefix alphabetically.
+        /// any other prefix alphabetically. Two other prefixes are compared
+        /// as prefixes, in lower case, so ab ranks before ab-c and _x before
+        /// a.
         /// </summary>
         [TestMethod]
         [DataRow("header.User-Agent=A", "query.user-agent=B", "user-agent=B")]
@@ -405,6 +407,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         [DataRow("fiftyone.Value=A", "server.value=B", "value=B")]
         [DataRow("server.Value=A", "a.value=B", "Value=A")]
         [DataRow("b.Value=A", "a.value=B", "value=B")]
+        [DataRow("ab-c.Value=A", "ab.value=B", "value=B")]
+        [DataRow("a.Value=A", "_x.value=B", "value=B")]
         public void Process_OneNameInTwoCases_SentOnceByPrecedence(
             string first,
             string second,
