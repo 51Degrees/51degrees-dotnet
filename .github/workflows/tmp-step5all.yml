@@ -1,0 +1,34 @@
+name: Temporary JavaScript builder tests, every one
+
+# Temporary. Runs every JavaScript Builder Element test on a tmp/ branch.
+
+on:
+  push:
+    branches: ['tmp/step5all-*']
+
+jobs:
+  step5-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submodules, without the data
+        run: >-
+          git submodule update --init --depth 1
+          pipeline/Core/Configuration/Validation
+          pipeline/JavaScriptBuilderElement/Templates
+          pipeline/owid-dotnet
+          pipeline/DerivedProperty/Scripts
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Test
+        shell: pwsh
+        run: |
+          git log --oneline -3
+          dotnet test pipeline/Tests/JavaScriptBuilderElementTests/FiftyOne.Pipeline.JavaScriptBuilderElementTests.csproj `
+            -c Release --nologo `
+            --logger 'console;verbosity=normal'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
