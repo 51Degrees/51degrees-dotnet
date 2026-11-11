@@ -187,7 +187,8 @@ git log --follow -m -- pipeline/README.md
 
 ## License
 
-[European Union Public Licence v1.2](LICENSE)
+[European Union Public Licence v1.2](LICENSE), with the additional terms in
+[NOTICE](NOTICE), which every source file also states.
 
 ## Find out more
 
