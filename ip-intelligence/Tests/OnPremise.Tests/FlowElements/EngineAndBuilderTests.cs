@@ -72,6 +72,8 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
             // The engine frees the keys it is given, so each call gets new
             // ones.
             swigEngine.Setup(e => e.getKeys()).Returns(() => new VectorStringSwig());
+            swigEngine.Setup(e => e.getRequiredProperties())
+                .Returns(() => new VectorStringSwig());
             swigEngine.Setup(e => e.getMetaData()).Returns(swigMetaData.Object);
             swigEngine.Setup(e => e.getPublishedTime()).Returns(date.Object);
             swigEngine.Setup(e => e.getUpdateAvailableTime()).Returns(date.Object);
