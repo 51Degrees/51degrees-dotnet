@@ -1,0 +1,35 @@
+name: Temporary Cloud Request Engine license key tests
+
+# Temporary. Runs the Cloud Request Engine license key tests on a tmp/ branch.
+
+on:
+  push:
+    branches: ['tmp/cre129-*']
+
+jobs:
+  cre-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submodules, without the data
+        run: >-
+          git submodule update --init --depth 1
+          pipeline/Core/Configuration/Validation
+          pipeline/JavaScriptBuilderElement/Templates
+          pipeline/owid-dotnet
+          pipeline/DerivedProperty/Scripts
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Test
+        shell: pwsh
+        run: |
+          git log --oneline -3
+          dotnet test pipeline/Tests/CloudRequestEngine.Tests/FiftyOne.Pipeline.CloudRequestEngine.Tests.csproj `
+            -c Release --nologo `
+            --filter 'FullyQualifiedName~CloudRequestEngineLicenseKeyTests' `
+            --logger 'console;verbosity=normal'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
