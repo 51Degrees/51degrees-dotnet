@@ -126,7 +126,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         private static string Generate(
             GeneratorService gen,
             HashSet<string> allowed,
-            IReadOnlyList<Uri> tdls,
+            IReadOnlyList<string> tdls,
             bool annotations)
         {
             var sb = new StringBuilder();
@@ -259,7 +259,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
             var text = Generate(
                 gen,
                 new HashSet<string> { "Search" },
-                Array.Empty<Uri>(),
+                Array.Empty<string>(),
                 annotations: true);
 
             var wildcard = WildcardBlock(text);
@@ -287,7 +287,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
             var text = Generate(
                 gen,
                 new HashSet<string> { "Search" },
-                Array.Empty<Uri>(),
+                Array.Empty<string>(),
                 annotations: false);
 
             Assert.DoesNotContain("# N:", text, "PlainText must not annotate crawlers");
@@ -303,8 +303,8 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
             var gen = BuildGenerator();
             var tdls = new[]
             {
-                new Uri("https://example.com/terms-v1"),
-                new Uri("https://example.com/terms-v2"),
+                "https://example.com/terms-v1",
+                "https://example.com/terms-v2",
             };
 
             var text = Generate(gen, new HashSet<string> { "Search" }, tdls, annotations: true);
@@ -332,8 +332,8 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
             var allowed = new HashSet<string> { "Search" };
             var tdls = new[]
             {
-                new Uri("https://example.com/terms-v1"),
-                new Uri("https://example.com/terms-v2"),
+                "https://example.com/terms-v1",
+                "https://example.com/terms-v2",
             };
 
             var plain = Generate(gen, allowed, tdls, annotations: false);
@@ -355,7 +355,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
             var text = Generate(
                 gen,
                 new HashSet<string>(),
-                Array.Empty<Uri>(),
+                Array.Empty<string>(),
                 annotations: true);
 
             Assert.AreEqual(
@@ -396,7 +396,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
             var text = Generate(
                 gen,
                 new HashSet<string>(),
-                Array.Empty<Uri>(),
+                Array.Empty<string>(),
                 annotations: false);
 
             Assert.AreEqual(
@@ -442,7 +442,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
             var text = Generate(
                 BuildNoValueGenerator(),
                 new HashSet<string>(),
-                Array.Empty<Uri>(),
+                Array.Empty<string>(),
                 annotations: false);
 
             Assert.AreEqual(
@@ -462,7 +462,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
                 everythingAllowed
                     ? new HashSet<string> { "AI", "N/A" }
                     : new HashSet<string>(),
-                Array.Empty<Uri>(),
+                Array.Empty<string>(),
                 annotations: true);
 
             Assert.Contains("# N: Example crawler", text);
