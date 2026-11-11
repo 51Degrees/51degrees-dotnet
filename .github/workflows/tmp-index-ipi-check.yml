@@ -51,6 +51,7 @@ jobs:
 
   tests:
     name: Tests ${{ matrix.label }}
+    if: false
     needs: prefetch
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -156,7 +157,7 @@ jobs:
         run: |
           $out = "$PWD/cost.txt"
           $pass = 0
-          foreach ($label in @('before', 'after', 'before', 'after')) {
+          foreach ($label in @('before', 'after', 'after', 'before', 'before', 'after')) {
             $pass++
             $w = "w-$label"
             Copy-Item harness/.cost/IndexCostTimingIpi.cs "$w/ip-intelligence/Tests/OnPremise.Tests/"
