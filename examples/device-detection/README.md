@@ -37,9 +37,7 @@ A paid subscription is needed for:
 - The TAC and native model hardware profile properties
 
 To use the resource key in the example it can be supplied as an environment
-variable called "_51DEGREES_RESOURCE_KEY". The legacy environment variable name
-"SUPER_RESOURCE_KEY" is still supported, with the aligned "_51DEGREES_RESOURCE_KEY"
-name checked first.
+variable called "_51DEGREES_RESOURCE_KEY".
 
 Some on-premise examples require you to provide a license key. You can find
 out about resource keys and license keys at our [pricing
@@ -51,9 +49,7 @@ The on-premise examples need a device detection data file. The examples locate
 the file in the following order:
 
 1. The "_51DEGREES_DD_PATH" environment variable, which can be set to an
-   explicit path to the data file. The legacy "DEVICEDETECTIONDATAFILE"
-   environment variable is also still supported, and is checked after
-   "_51DEGREES_DD_PATH".
+   explicit path to the data file.
 2. The data submodule of this repository, `cxx/data`. When the free 'Lite'
    file is missing, the example downloads it there with the data
    repository's script, and prints the command it runs.

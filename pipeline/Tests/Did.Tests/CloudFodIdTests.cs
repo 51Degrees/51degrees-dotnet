@@ -37,7 +37,7 @@ namespace FiftyOne.Did.Tests
     /// <remarks>
     /// <para>
     /// The test uses a single resource key from the environment. Set
-    /// <c>_51DEGREES_RESOURCE_KEY</c> (or the legacy <c>SUPER_RESOURCE_KEY</c>)
+    /// <c>_51DEGREES_RESOURCE_KEY</c>
     /// to a key whose properties include <c>fodid.*</c>. With no key set the
     /// test is inconclusive.
     /// </para>
@@ -65,16 +65,9 @@ namespace FiftyOne.Did.Tests
     public class CloudFodIdTests
     {
         /// <summary>
-        /// The aligned environment variable name used to supply the resource
-        /// key. Checked before the legacy name.
+        /// The environment variable name used to supply the resource key.
         /// </summary>
         private const string ResourceKeyEnvVar = "_51DEGREES_RESOURCE_KEY";
-
-        /// <summary>
-        /// The legacy environment variable name, checked when
-        /// <see cref="ResourceKeyEnvVar"/> is not set.
-        /// </summary>
-        private const string LegacyResourceKeyEnvVar = "SUPER_RESOURCE_KEY";
 
         /// <summary>
         /// The 51Degrees cloud V4 JSON endpoint.
@@ -163,17 +156,12 @@ namespace FiftyOne.Did.Tests
         };
 
         /// <summary>
-        /// The resource key from the environment, preferring the aligned name
-        /// and falling back to the legacy name. <c>null</c> when neither is
-        /// set.
+        /// The resource key from the environment, or <c>null</c> when it is
+        /// not set.
         /// </summary>
         private static string? ResourceKey()
         {
             var key = Environment.GetEnvironmentVariable(ResourceKeyEnvVar);
-            if (string.IsNullOrWhiteSpace(key))
-            {
-                key = Environment.GetEnvironmentVariable(LegacyResourceKeyEnvVar);
-            }
             return string.IsNullOrWhiteSpace(key) ? null : key;
         }
 
@@ -191,8 +179,7 @@ namespace FiftyOne.Did.Tests
                     $"  - bash env var:        export {ResourceKeyEnvVar}=<your-key>\n" +
                     $"  - inline, single run:  dotnet test --filter " +
                     $"FullyQualifiedName~CloudFodIdTests -e {ResourceKeyEnvVar}=<your-key>\n" +
-                    $"The legacy variable {LegacyResourceKeyEnvVar} is also " +
-                    $"accepted. Get a free key that includes 51Did from " +
+                    $"Get a free key that includes 51Did from " +
                     $"https://configure.51degrees.com/N57Wygby");
                 return;
             }

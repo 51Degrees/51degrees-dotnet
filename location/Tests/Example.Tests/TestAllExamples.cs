@@ -45,7 +45,7 @@ namespace FiftyOne.GeoLocation.Example.Tests
         [TestInitialize]
         public void Init()
         {
-            var resourceKey = Environment.GetEnvironmentVariable("SUPER_RESOURCE_KEY");
+            var resourceKey = Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
             ResourceKey = string.IsNullOrWhiteSpace(resourceKey) == false ? 
                 resourceKey : "!!YOUR_RESOURCE_KEY!!";
 

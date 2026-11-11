@@ -63,8 +63,8 @@ using System.Net.Http;
 /// # Command Line Usage
 /// The data file path is provided via the first command line argument. Here's how it works:
 /// 
-/// 1. First argument: Data file path (optional - checks the _51DEGREES_IPI_PATH and legacy
-///    IPINTELLIGENCEDATAFILE environment variables, then defaults to Constants.ENTERPRISE_IPI_DATA_FILE_NAME)
+/// 1. First argument: Data file path (optional - checks the _51DEGREES_IPI_PATH
+///    environment variable, then defaults to Constants.ENTERPRISE_IPI_DATA_FILE_NAME)
 /// 2. Second argument: License key (optional when using --data-update-url)
 /// 3. Option: --data-update-url for custom URL
 ///
@@ -478,11 +478,6 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
         {
             var dataFile = Environment.GetEnvironmentVariable(
                 Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
-            if (string.IsNullOrWhiteSpace(dataFile))
-            {
-                dataFile = Environment.GetEnvironmentVariable(
-                    Constants.LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
-            }
             if (string.IsNullOrWhiteSpace(dataFile))
             {
                 dataFile = Constants.ENTERPRISE_IPI_DATA_FILE_NAME;

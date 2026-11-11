@@ -30,9 +30,7 @@ The on-premise examples need an IP Intelligence data file. The examples locate
 the file in the following order:
 
 1. The "_51DEGREES_IPI_PATH" environment variable, which can be set to an
-   explicit path to the data file. The legacy "IPINTELLIGENCEDATAFILE"
-   environment variable is also still supported, and is checked after
-   "_51DEGREES_IPI_PATH".
+   explicit path to the data file.
 2. The data submodule of this repository, `cxx/data`. When an example asks
    for a free 'Lite' file that is missing, it downloads the file there with
    the data repository's script, and prints the command it runs.
@@ -129,9 +127,7 @@ cost with it.
 A resource key configured with the properties needed to run the cloud examples
 can be created for free [here](https://configure.51degrees.com/1QWJwHxl?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud). To
 use the resource key in the examples it can be supplied as an environment
-variable called "_51DEGREES_RESOURCE_KEY". The legacy environment variable
-names "RESOURCE_KEY" and "SUPER_RESOURCE_KEY" are still supported, with the
-aligned "_51DEGREES_RESOURCE_KEY" name checked first.
+variable called "_51DEGREES_RESOURCE_KEY".
 
 * In order to test cloud examples against a custom endpoint - you need to launch `OnPremise/Mixed/GettingStarted-API` example 
 and keep it running while launching other examples.  Depending on the IDE you use this can be either done conveniently from the IDE, or 

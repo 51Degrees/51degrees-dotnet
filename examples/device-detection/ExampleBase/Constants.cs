@@ -51,18 +51,9 @@ namespace FiftyOne.DeviceDetection.Examples
 
         /// <summary>
         /// Environment variable key used to supply an explicit path to the
-        /// device detection data file. This is the agreed 51Degrees runtime
-        /// name and is checked before any other variable name.
+        /// device detection data file.
         /// </summary>
         public const string DD_PATH_ENV_VAR = "_51DEGREES_DD_PATH";
-
-        /// <summary>
-        /// Legacy environment variable key used to supply an explicit path to
-        /// the device detection data file. Retained for backwards
-        /// compatibility and checked when
-        /// <see cref="DD_PATH_ENV_VAR"/> is not set.
-        /// </summary>
-        public const string LEGACY_DEVICE_DETECTION_DATA_FILE_ENV_VAR = "DEVICEDETECTIONDATAFILE";
 
         /// <summary>
         /// Every environment variable that can supply an explicit path to the
@@ -70,8 +61,7 @@ namespace FiftyOne.DeviceDetection.Examples
         /// </summary>
         public static readonly string[] DATA_FILE_ENV_VARS = new string[]
         {
-            DD_PATH_ENV_VAR,
-            LEGACY_DEVICE_DETECTION_DATA_FILE_ENV_VAR
+            DD_PATH_ENV_VAR
         };
 
         /// <summary>
