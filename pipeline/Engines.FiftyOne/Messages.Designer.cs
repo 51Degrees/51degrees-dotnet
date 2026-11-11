@@ -160,6 +160,51 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {0} usage sharing entries were not sent, because sending did not finish within {1} ms when closing down..
+        /// </summary>
+        internal static string MessageShareUsageNotSentOnClose {
+            get {
+                return ResourceManager.GetString("MessageShareUsageNotSentOnClose", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} usage sharing entries were not sent, as sending was paused after failed sends when usage sharing closed..
+        /// </summary>
+        internal static string MessageShareUsageNotSentWhilePaused {
+            get {
+                return ResourceManager.GetString("MessageShareUsageNotSentWhilePaused", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The usage sharing queue is full at {0} entries, so usage data is being discarded..
+        /// </summary>
+        internal static string MessageShareUsageQueueFull {
+            get {
+                return ResourceManager.GetString("MessageShareUsageQueueFull", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Usage sharing paused for {0} seconds after failed sends. Usage data is still queued, up to the maximum queue size, and sending starts again when the pause ends..
+        /// </summary>
+        internal static string MessageShareUsagePaused {
+            get {
+                return ResourceManager.GetString("MessageShareUsagePaused", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Usage sharing resumed after a send succeeded..
+        /// </summary>
+        internal static string MessageShareUsageResumed {
+            get {
+                return ResourceManager.GetString("MessageShareUsageResumed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Share usage element registered to {0} Pipelines. Unable to populate flow element information.
         /// </summary>
         internal static string MessageShareUsageTooManyPipelines {

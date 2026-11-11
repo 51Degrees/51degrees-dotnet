@@ -203,6 +203,51 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests.Helpers
         }
 
         /// <summary>
+        /// Run a signed request that also carries the web request, as a web
+        /// integration adds it under 'server.http-request'.
+        /// </summary>
+        /// <param name="signed">The signature headers.</param>
+        /// <param name="webRequest">The web request's values.</param>
+        /// <param name="extraEvidence">
+        /// Evidence to add beyond the signature headers, or null.
+        /// </param>
+        /// <returns>What the element made of it.</returns>
+        public IAgentSignatureData ProcessSignedWithWebRequest(
+            SignedRequest signed,
+            IReadOnlyDictionary<string, object> webRequest,
+            IDictionary<string, string> extraEvidence = null)
+        {
+            var evidence = new Dictionary<string, string>
+            {
+                { "header.signature", signed.Signature },
+                { "header.signature-input", signed.SignatureInput },
+                { "header.host", "example.com" },
+                { "header.protocol", "https" },
+            };
+            if (signed.SignatureAgent != null)
+            {
+                evidence["header.signature-agent"] = signed.SignatureAgent;
+            }
+            if (extraEvidence != null)
+            {
+                foreach (var entry in extraEvidence)
+                {
+                    evidence[entry.Key] = entry.Value;
+                }
+            }
+            using (var data = Pipeline.CreateFlowData())
+            {
+                foreach (var entry in evidence)
+                {
+                    data.AddEvidence(entry.Key, entry.Value);
+                }
+                data.AddEvidence("server.http-request", webRequest);
+                data.Process();
+                return data.Get<IAgentSignatureData>();
+            }
+        }
+
+        /// <summary>
         /// Run a request built from one of the standard's test vectors.
         /// </summary>
         /// <param name="vector">The vector.</param>

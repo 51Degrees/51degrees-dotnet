@@ -31,6 +31,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 
 [assembly: InternalsVisibleTo("FiftyOne.Pipeline.Web.Tests, PublicKey=0024000004800000940000000602000000240000525341310004000001000100c3a631e6634ea697e19c6d2fedc285bdc7f0447a5583e1ac3c5ed3502b7633e691f899a265c42a5611122a23fd2bc882e4e412384a5d4183271782416cf016b06e6648273d44896e95ce482bb8b13054ba6a6f41d393c3f3f2e5780d620e50cb67c248882e4427bf007b7c77fdd65f832c7f4a3fef9dc18e39f792d1a37cc980")]
+[assembly: InternalsVisibleTo("FiftyOne.Pipeline.Web.Shared, PublicKey=0024000004800000940000000602000000240000525341310004000001000100c3a631e6634ea697e19c6d2fedc285bdc7f0447a5583e1ac3c5ed3502b7633e691f899a265c42a5611122a23fd2bc882e4e412384a5d4183271782416cf016b06e6648273d44896e95ce482bb8b13054ba6a6f41d393c3f3f2e5780d620e50cb67c248882e4427bf007b7c77fdd65f832c7f4a3fef9dc18e39f792d1a37cc980")]
 [assembly: InternalsVisibleTo("FiftyOne.Pipeline.Core.Tests, PublicKey=0024000004800000940000000602000000240000525341310004000001000100c3a631e6634ea697e19c6d2fedc285bdc7f0447a5583e1ac3c5ed3502b7633e691f899a265c42a5611122a23fd2bc882e4e412384a5d4183271782416cf016b06e6648273d44896e95ce482bb8b13054ba6a6f41d393c3f3f2e5780d620e50cb67c248882e4427bf007b7c77fdd65f832c7f4a3fef9dc18e39f792d1a37cc980")]
 
 namespace FiftyOne.Pipeline.Core.Data
@@ -60,6 +61,13 @@ namespace FiftyOne.Pipeline.Core.Data
         /// True if this instance has been processed
         /// </summary>
         private bool _processed = false;
+
+        /// <summary>
+        /// A copy of the evidence taken when processing started, which
+        /// leaves out any value a Flow Element adds or replaces while
+        /// processing. Null until then.
+        /// </summary>
+        private IReadOnlyDictionary<string, object> _suppliedEvidence;
 
         /// <summary>
         /// Logger.
@@ -462,6 +470,16 @@ namespace FiftyOne.Pipeline.Core.Data
         }
 
         /// <summary>
+        /// The evidence as it was when processing started, without the
+        /// values that Flow Elements added or replaced while processing.
+        /// Before processing starts it is the evidence held now.
+        /// </summary>
+        internal IReadOnlyDictionary<string, object> GetSuppliedEvidence()
+        {
+            return _suppliedEvidence ?? _evidence.AsDictionary();
+        }
+
+        /// <summary>
         /// Try to get the data value from evidence.
         /// </summary>
         /// <param name="key">The evidence key.</param>
@@ -560,6 +578,13 @@ namespace FiftyOne.Pipeline.Core.Data
                 throw new PipelineException(Messages.ExceptionFlowDataAlreadyProcessed);
             }
             _processed = true;
+            var supplied = new Dictionary<string, object>(
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in _evidence.AsDictionary())
+            {
+                supplied[entry.Key] = entry.Value;
+            }
+            _suppliedEvidence = supplied;
             PipelineInternal.Process(this);
         }
 

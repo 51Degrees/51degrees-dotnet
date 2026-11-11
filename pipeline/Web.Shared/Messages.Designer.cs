@@ -61,6 +61,15 @@ namespace FiftyOne.Pipeline.Web.Shared {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The web application root could not be applied to &apos;{0}&apos;, the value of &apos;{1}&apos;..
+        /// </summary>
+        public static string ExceptionApplicationRootNotApplied {
+            get {
+                return ResourceManager.GetString("ExceptionApplicationRootNotApplied", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The pipeline configuration file &apos;{0}&apos; is not valid. See inner exception for details..
         /// </summary>
         public static string ExceptionInvalidConfiguration {

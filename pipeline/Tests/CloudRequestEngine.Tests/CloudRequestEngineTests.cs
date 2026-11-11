@@ -24,6 +24,7 @@ using FiftyOne.Common.TestHelpers;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -51,6 +52,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
 
         private string _jsonResponse = "{'device':{'value':'1'}}";
         private HttpStatusCode _jsonResponseStatus = HttpStatusCode.OK;
+        // When set, the mocked JSON answer waits for it, so a test can
+        // hold the cloud service's answer back.
+        private ManualResetEventSlim _jsonResponseGate;
+        private const int JsonResponseGateMs = 10000;
+        private const int ProcessReturnMs = 2000;
         private string _evidenceKeysResponse = "['query.User-Agent']";
         private HttpStatusCode _evidenceKeysResponseStatus = HttpStatusCode.OK;
         private string _accessiblePropertiesResponse =
@@ -108,6 +114,114 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                ),
                ItExpr.IsAny<CancellationToken>()
             );
+        }
+
+        /// <summary>
+        /// The engine sends only the Evidence the cloud accepts, never
+        /// 'resource', 'license', 'licence' or 'values' from Evidence, as the
+        /// Processing section of cloud-request-engine.md says. Other
+        /// Evidence is sent with the usual precedence.
+        /// </summary>
+        [TestMethod]
+        public void Evidence_ResourceLicenseValuesLeftOut()
+        {
+            string resourceKey = "resource_key";
+            string licenseKey = "license_key";
+            string capturedContent = null;
+
+            _handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+            _handlerMock
+               .Protected()
+               .Setup<Task<HttpResponseMessage>>(
+                  "SendAsync",
+                  ItExpr.Is<HttpRequestMessage>(r =>
+                      r.RequestUri.AbsolutePath.ToLower().EndsWith("json")),
+                  ItExpr.IsAny<CancellationToken>())
+               .ReturnsAsync((HttpRequestMessage req, CancellationToken ct) =>
+               {
+                   capturedContent = req.Content.ReadAsStringAsync(
+                       TestContext.CancellationToken).Result;
+                   return new HttpResponseMessage()
+                   {
+                       StatusCode = _jsonResponseStatus,
+                       Content = new StringContent(_jsonResponse),
+                   };
+               });
+            _handlerMock
+               .Protected()
+               .Setup<Task<HttpResponseMessage>>(
+                  "SendAsync",
+                  ItExpr.Is<HttpRequestMessage>(r =>
+                      r.RequestUri.AbsolutePath.ToLower().EndsWith("evidencekeys")),
+                  ItExpr.IsAny<CancellationToken>())
+               .ReturnsAsync(() => new HttpResponseMessage()
+               {
+                   StatusCode = _evidenceKeysResponseStatus,
+                   Content = new StringContent(_evidenceKeysResponse),
+               });
+            _handlerMock
+               .Protected()
+               .Setup<Task<HttpResponseMessage>>(
+                  "SendAsync",
+                  ItExpr.Is<HttpRequestMessage>(r =>
+                      r.RequestUri.AbsolutePath.ToLower().EndsWith("accessibleproperties")),
+                  ItExpr.IsAny<CancellationToken>())
+               .ReturnsAsync(() => new HttpResponseMessage()
+               {
+                   StatusCode = _accessiblePropertiesResponseStatus,
+                   Content = new StringContent(_accessiblePropertiesResponse),
+               });
+
+            _httpClient = new HttpClient(_handlerMock.Object);
+            var engine = new CloudRequestEngineBuilder(
+                _loggerFactory,
+                _httpClient)
+                .SetResourceKey(resourceKey)
+                .SetLicenseKey(licenseKey)
+                .Build();
+
+            using (var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build())
+            {
+                var data = pipeline.CreateFlowData();
+                data.AddEvidence("query.Resource", "evidence_resource");
+                data.AddEvidence("query.LICENSE", "evidence_license");
+                data.AddEvidence("query.Licence", "evidence_licence");
+                data.AddEvidence("query.Values", "evidence_values");
+                data.AddEvidence("header.resource", "header_resource");
+                data.AddEvidence("cookie.License", "cookie_license");
+                data.AddEvidence("query.other", "query_other");
+                data.AddEvidence("header.other", "header_other");
+                data.AddEvidence("cookie.cookie-only", "cookie_only");
+                data.Process();
+            }
+
+            var fields = capturedContent.Split('&')
+                .Select(p => p.Split(new[] { '=' }, 2))
+                .ToList();
+            var names = fields.Select(f => f[0]).ToList();
+
+            Assert.AreEqual(1, names.Count(n => n == "resource"));
+            Assert.AreEqual(1, names.Count(n => n == "license"));
+            Assert.AreEqual(1, names.Count(n => n == "other"));
+            Assert.IsFalse(names.Any(n =>
+                n.Equals("values", StringComparison.OrdinalIgnoreCase) ||
+                n.Equals("licence", StringComparison.OrdinalIgnoreCase)));
+            Assert.IsFalse(names.Any(n => n != "resource" &&
+                n.Equals("resource", StringComparison.OrdinalIgnoreCase)));
+            Assert.IsFalse(names.Any(n => n != "license" &&
+                n.Equals("license", StringComparison.OrdinalIgnoreCase)));
+            Assert.AreEqual(resourceKey,
+                fields.Single(f => f[0] == "resource")[1]);
+            Assert.AreEqual(licenseKey,
+                fields.Single(f => f[0] == "license")[1]);
+            Assert.DoesNotContain("evidence_", capturedContent);
+            Assert.DoesNotContain("header_resource", capturedContent);
+            Assert.DoesNotContain("cookie_license", capturedContent);
+            Assert.AreEqual("query_other",
+                fields.Single(f => f[0] == "other")[1]);
+            Assert.AreEqual("cookie_only",
+                fields.Single(f => f[0] == "cookie-only")[1]);
         }
 
         /// <summary>
@@ -437,6 +551,65 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                ),
                ItExpr.IsAny<CancellationToken>()
             );
+        }
+
+        /// <summary>
+        /// A license key that the cloud service repeats in an error answer
+        /// never appears in full in the exception or the log entries.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/c9939a787cc71f711e3c82755308482fc1cf63ce/pipeline-specification/features/logging.md#license-keys">Specification</see>
+        /// </summary>
+        [TestMethod]
+        [DataRow("{'errors':['The license key ABCDEFGH12345678 is not valid']}", HttpStatusCode.BadRequest)]
+        [DataRow("{'detail':'License ABCDEFGH12345678 refused'}", HttpStatusCode.InternalServerError)]
+        [DataRow("{'warnings':['Key ABCDEFGH12345678 expires soon'],'device':{'value':'1'}}", HttpStatusCode.OK)]
+        public void Process_LicenseKeyInErrorAnswer_OnlyMaskedFormAppears(
+            string answer,
+            HttpStatusCode status)
+        {
+            const string licenseKey = "ABCDEFGH12345678";
+            const string masked = "************5678";
+            _jsonResponse = answer;
+            _jsonResponseStatus = status;
+            ConfigureMockedClient(r => true);
+            var loggerFactory = new TestLoggerFactory();
+            var engine = new CloudRequestEngineBuilder(
+                loggerFactory,
+                _httpClient)
+                .SetResourceKey("resource_key")
+                .SetLicenseKey(licenseKey)
+                .Build();
+
+            var text = new System.Text.StringBuilder();
+            using (var pipeline = new PipelineBuilder(loggerFactory)
+                .AddFlowElement(engine).Build())
+            {
+                var data = pipeline.CreateFlowData();
+                data.AddEvidence("query.User-Agent", "iPhone");
+                try
+                {
+                    data.Process();
+                }
+                catch (Exception ex)
+                {
+                    text.AppendLine(ex.ToString());
+                }
+            }
+            foreach (var logger in loggerFactory.Loggers)
+            {
+                foreach (var entry in logger.ExtendedEntries)
+                {
+                    text.AppendLine(entry.Message);
+                    text.AppendLine(entry.Exception?.ToString());
+                }
+            }
+
+            var all = text.ToString();
+            Assert.IsFalse(all.Contains(licenseKey),
+                "The key appears in full in:" + Environment.NewLine + all);
+            Assert.IsFalse(all.Contains("ABCDEFGH"),
+                "The start of the key appears in:" + Environment.NewLine + all);
+            Assert.IsTrue(all.Contains(masked),
+                "The masked key is missing from:" + Environment.NewLine + all);
         }
 
         /// <summary>
@@ -979,14 +1152,14 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                     _accessiblePropertiesResponse,
             };
 
-            _jsonResponse = "Status code: 404, '*json' method not found";
-            _jsonResponseStatus = HttpStatusCode.NotFound;
+            _jsonResponse = "Status code: 500, '*json' method not found";
+            _jsonResponseStatus = HttpStatusCode.InternalServerError;
 
-            _evidenceKeysResponse = "Status code: 404, '*evidencekeys' method not found";
-            _evidenceKeysResponseStatus = HttpStatusCode.NotFound;
+            _evidenceKeysResponse = "Status code: 500, '*evidencekeys' method not found";
+            _evidenceKeysResponseStatus = HttpStatusCode.InternalServerError;
 
-            _accessiblePropertiesResponse = "Status code: 404, '*accessibleproperties' method not found";
-            _accessiblePropertiesResponseStatus = HttpStatusCode.NotFound;
+            _accessiblePropertiesResponse = "Status code: 500, '*accessibleproperties' method not found";
+            _accessiblePropertiesResponseStatus = HttpStatusCode.InternalServerError;
 
             using (var flowData = pipeline.CreateFlowData())
             {
@@ -1026,6 +1199,100 @@ cloudEx.Message, "Exception message did not contain the expected text.");
             }
         }
 
+        /// <summary>
+        /// Only an answer that says the cloud service is in trouble counts
+        /// towards the recovery period, which every request shares. The
+        /// next request after one of these answers is stopped.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/28a2a5045321cef51b49a9d3ac920a0528d06831/pipeline-specification/pipeline-elements/cloud-request-engine.md#failures-that-count">Specification</see>
+        /// </summary>
+        [TestMethod]
+        [DataRow(HttpStatusCode.TooManyRequests, "{'errors':['Slow down']}")]
+        [DataRow(HttpStatusCode.InternalServerError, "{'errors':['Fault']}")]
+        [DataRow(HttpStatusCode.BadGateway, "Bad gateway")]
+        [DataRow(HttpStatusCode.ServiceUnavailable, "{'errors':['Busy']}")]
+        [DataRow(HttpStatusCode.OK, "this is not JSON")]
+        public void RecoveryPeriod_ServiceTrouble_Counts(
+            HttpStatusCode status, string body)
+        {
+            var second = ProcessTwiceWithOneFailureToEnterRecovery(status, body);
+
+            Assert.IsInstanceOfType<PipelineTemporarilyUnavailableException>(
+                second.InnerException,
+                "The failure should have started the recovery period.");
+        }
+
+        /// <summary>
+        /// An answer from 400 to 499, other than 429, is about the content
+        /// of the one request, so it does not count and the next request
+        /// reaches the cloud service.
+        /// </summary>
+        [TestMethod]
+        [DataRow(HttpStatusCode.BadRequest)]
+        [DataRow(HttpStatusCode.RequestTimeout)]
+        [DataRow(HttpStatusCode.Unauthorized)]
+        [DataRow(HttpStatusCode.Forbidden)]
+        [DataRow(HttpStatusCode.NotFound)]
+        [DataRow(HttpStatusCode.UnprocessableEntity)]
+        [DataRow((HttpStatusCode)499)]
+        public void RecoveryPeriod_AnswerAboutOneRequest_DoesNotCount(
+            HttpStatusCode status)
+        {
+            var second = ProcessTwiceWithOneFailureToEnterRecovery(
+                status, "{'errors':['Evidence not accepted']}");
+
+            Assert.IsNull(second,
+                "The second request should have reached the cloud service.");
+        }
+
+        /// <summary>
+        /// Process one request that gets the given answer, then one that
+        /// gets a good answer, with the engine set to enter recovery after
+        /// one failure.
+        /// </summary>
+        /// <returns>
+        /// The exception from the second request, or null if it worked.
+        /// </returns>
+        private AggregateException ProcessTwiceWithOneFailureToEnterRecovery(
+            HttpStatusCode status, string body)
+        {
+            ConfigureMockedClient(_ => true);
+            var engine = new CloudRequestEngineBuilder(
+                _loggerFactory,
+                _httpClient)
+                .SetResourceKey("resource_key")
+                .SetUseExponentialBackoff(false)
+                .SetRecoverySeconds(30)
+                .SetFailuresToEnterRecovery(1)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build();
+            var goodResponse = _jsonResponse;
+
+            _jsonResponse = body;
+            _jsonResponseStatus = status;
+            using (var flowData = pipeline.CreateFlowData())
+            {
+                flowData.AddEvidence("query.User-Agent", "iPhone");
+                Assert.ThrowsExactly<AggregateException>(() => flowData.Process());
+            }
+
+            _jsonResponse = goodResponse;
+            _jsonResponseStatus = HttpStatusCode.OK;
+            using (var flowData = pipeline.CreateFlowData())
+            {
+                flowData.AddEvidence("query.User-Agent", "iPhone");
+                try
+                {
+                    flowData.Process();
+                    return null;
+                }
+                catch (AggregateException ex)
+                {
+                    return ex;
+                }
+            }
+        }
+
         [TestMethod]
         public void ValidateErrorHandling_RetryAfterNotJson_AfterRecovery()
         {
@@ -1051,14 +1318,14 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                     _accessiblePropertiesResponse,
             };
 
-            _jsonResponse = "Status code: 404, '*json' method not found";
-            _jsonResponseStatus = HttpStatusCode.NotFound;
+            _jsonResponse = "Status code: 500, '*json' method not found";
+            _jsonResponseStatus = HttpStatusCode.InternalServerError;
 
-            _evidenceKeysResponse = "Status code: 404, '*evidencekeys' method not found";
-            _evidenceKeysResponseStatus = HttpStatusCode.NotFound;
+            _evidenceKeysResponse = "Status code: 500, '*evidencekeys' method not found";
+            _evidenceKeysResponseStatus = HttpStatusCode.InternalServerError;
 
-            _accessiblePropertiesResponse = "Status code: 404, '*accessibleproperties' method not found";
-            _accessiblePropertiesResponseStatus = HttpStatusCode.NotFound;
+            _accessiblePropertiesResponse = "Status code: 500, '*accessibleproperties' method not found";
+            _accessiblePropertiesResponseStatus = HttpStatusCode.InternalServerError;
 
             using (var flowData = pipeline.CreateFlowData())
             {
@@ -1122,14 +1389,14 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                     _accessiblePropertiesResponse,
             };
 
-            _jsonResponse = "Status code: 404, '*json' method not found";
-            _jsonResponseStatus = HttpStatusCode.NotFound;
+            _jsonResponse = "Status code: 500, '*json' method not found";
+            _jsonResponseStatus = HttpStatusCode.InternalServerError;
 
-            _evidenceKeysResponse = "Status code: 404, '*evidencekeys' method not found";
-            _evidenceKeysResponseStatus = HttpStatusCode.NotFound;
+            _evidenceKeysResponse = "Status code: 500, '*evidencekeys' method not found";
+            _evidenceKeysResponseStatus = HttpStatusCode.InternalServerError;
 
-            _accessiblePropertiesResponse = "Status code: 404, '*accessibleproperties' method not found";
-            _accessiblePropertiesResponseStatus = HttpStatusCode.NotFound;
+            _accessiblePropertiesResponse = "Status code: 500, '*accessibleproperties' method not found";
+            _accessiblePropertiesResponseStatus = HttpStatusCode.InternalServerError;
 
             using (var flowData = pipeline.CreateFlowData())
             {
@@ -1490,6 +1757,153 @@ cloudEx.Message, "Exception message did not contain the expected text.");
             data2.Process();
 
             Assert.AreEqual(hit, data2.GetFromElement(engine).CacheHit, $"cache hit {(hit ? "should" : "shouldn't")} occur.");
+        }
+
+        /// <summary>
+        /// A response with a top-level fodid member holds a 51Did created for
+        /// that one request, so it is never stored in the cache or served from
+        /// it. Two requests with the same Evidence each go to the cloud service
+        /// and each receive the 51Did it created.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
+        /// </summary>
+        [TestMethod]
+        [DataRow("fodid")]
+        [DataRow("FODID")]
+        [DataRow("Fodid")]
+        public void Cache_ResponseWithFodid_NeverStoredOrServed(
+            string member)
+        {
+            ConfigureMockedClient(r => true);
+            var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
+                .SetResourceKey("resource_key")
+                .SetCacheSize(10)
+                .SetCacheHitOrMiss(true)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build();
+
+            _jsonResponse =
+                $"{{'device':{{'ismobile':true}},'{member}':'first'}}";
+            using (var first = pipeline.CreateFlowData())
+            {
+                first.AddEvidence("query.User-Agent", "iPhone");
+                first.Process();
+                Assert.IsFalse(first.GetFromElement(engine).CacheHit);
+                StringAssert.Contains(
+                    first.GetFromElement(engine).JsonResponse, "first");
+            }
+
+            _jsonResponse =
+                $"{{'device':{{'ismobile':true}},'{member}':'second'}}";
+            using (var second = pipeline.CreateFlowData())
+            {
+                second.AddEvidence("query.User-Agent", "iPhone");
+                second.Process();
+                Assert.IsFalse(second.GetFromElement(engine).CacheHit,
+                    "A response with a 51Did must not be served from the cache.");
+                var json = second.GetFromElement(engine).JsonResponse;
+                StringAssert.Contains(json, "second");
+                Assert.IsFalse(json.Contains("first"));
+            }
+
+            VerifyJsonRequests(Times.Exactly(2));
+        }
+
+        /// <summary>
+        /// A response without a top-level fodid member is cached as before,
+        /// including one with a fodid member further down.
+        /// </summary>
+        [TestMethod]
+        [DataRow("{'device':{'ismobile':true}}")]
+        [DataRow("{'device':{'fodid':'nested'}}")]
+        public void Cache_ResponseWithoutTopLevelFodid_StillCached(string response)
+        {
+            ConfigureMockedClient(r => true);
+            var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
+                .SetResourceKey("resource_key")
+                .SetCacheSize(10)
+                .SetCacheHitOrMiss(true)
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build();
+
+            _jsonResponse = response;
+            for (int i = 0; i < 2; i++)
+            {
+                using (var data = pipeline.CreateFlowData())
+                {
+                    data.AddEvidence("query.User-Agent", "iPhone");
+                    data.Process();
+                    Assert.AreEqual(i == 1, data.GetFromElement(engine).CacheHit);
+                }
+            }
+
+            VerifyJsonRequests(Times.Once());
+        }
+
+        /// <summary>
+        /// With lazy loading and a results cache, Process returns before the
+        /// cloud service answers, and whether the result is cached is decided
+        /// once the answer has arrived. A response without a 51Did is then
+        /// served from the cache, and one with a 51Did is not.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/advanced-features/lazy-loading.md">Specification</see>
+        /// </summary>
+        [TestMethod]
+        [DataRow("{'device':{'ismobile':true}}", true)]
+        [DataRow("{'device':{'ismobile':true},'fodid':'one'}", false)]
+        public void Cache_LazyLoading_ProcessReturnsBeforeTheAnswer(
+            string response, bool hit)
+        {
+            ConfigureMockedClient(r => true);
+            var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
+                .SetResourceKey("resource_key")
+                .SetCacheSize(10)
+                .SetCacheHitOrMiss(true)
+                .SetLazyLoading(new LazyLoadingConfiguration(JsonResponseGateMs))
+                .Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(engine).Build();
+
+            _jsonResponse = response;
+            using (var gate = new ManualResetEventSlim(false))
+            using (var first = pipeline.CreateFlowData())
+            {
+                _jsonResponseGate = gate;
+                first.AddEvidence("query.User-Agent", "iPhone");
+                var process = Task.Run(() => first.Process());
+                var returned = process.Wait(ProcessReturnMs);
+                gate.Set();
+                Assert.IsTrue(returned,
+                    "Process must return before the cloud service answers.");
+                Assert.IsTrue(first.GetFromElement(engine).ProcessTask
+                    .Wait(JsonResponseGateMs));
+                StringAssert.Contains(
+                    first.GetFromElement(engine).JsonResponse, "ismobile");
+            }
+            _jsonResponseGate = null;
+
+            using (var second = pipeline.CreateFlowData())
+            {
+                second.AddEvidence("query.User-Agent", "iPhone");
+                second.Process();
+                Assert.IsTrue(second.GetFromElement(engine).ProcessTask
+                    .Wait(JsonResponseGateMs));
+                Assert.AreEqual(hit, second.GetFromElement(engine).CacheHit,
+                    $"cache hit {(hit ? "should" : "shouldn't")} occur.");
+            }
+
+            VerifyJsonRequests(hit ? Times.Once() : Times.Exactly(2));
+        }
+
+        private void VerifyJsonRequests(Times times)
+        {
+            _handlerMock.Protected().Verify(
+                "SendAsync",
+                times,
+                ItExpr.Is<HttpRequestMessage>(req =>
+                    req.Method == HttpMethod.Post &&
+                    req.RequestUri.AbsolutePath.ToLower().EndsWith("json")),
+                ItExpr.IsAny<CancellationToken>());
         }
 
         /// <summary>
@@ -2294,10 +2708,14 @@ cloudEx.Message, "Exception message did not contain the expected text.");
             else 
             { 
                // Prepare the expected response of the mocked http call
-               setup.ReturnsAsync(() => new HttpResponseMessage()
+               setup.ReturnsAsync(() =>
                 {
-                    StatusCode = _jsonResponseStatus,
-                    Content = new StringContent(_jsonResponse),
+                    _jsonResponseGate?.Wait(JsonResponseGateMs);
+                    return new HttpResponseMessage()
+                    {
+                        StatusCode = _jsonResponseStatus,
+                        Content = new StringContent(_jsonResponse),
+                    };
                 })
                .Verifiable();
             }

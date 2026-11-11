@@ -22,6 +22,7 @@
 
 using System;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
@@ -133,7 +134,9 @@ namespace FiftyOne.Pipeline.Web
                     // to create the pipeline from configuration.
                     pipeline = CreatePipelineFromConfig(
                         configuration,
-                        pipelineBuilder);
+                        pipelineBuilder,
+                        serviceProvider.GetService<IWebHostEnvironment>()
+                            ?.ContentRootPath);
                 }
                 else
                 {
@@ -158,12 +161,18 @@ namespace FiftyOne.Pipeline.Web
         /// a pipeline builder instance to use when constructing the
         /// <see cref="IPipeline"/>.
         /// </param>
+        /// <param name="contentRoot">
+        /// The content root of the web application. A data file path that
+        /// starts with '~/' or '~\' is resolved against it. Null leaves
+        /// such paths as they are.
+        /// </param>
         /// <returns>
         /// A new <see cref="IPipeline"/> instance
         /// </returns>
         private static IPipeline CreatePipelineFromConfig(
             IConfiguration config,
-            IPipelineBuilderFromConfiguration pipelineBuilder)
+            IPipelineBuilderFromConfiguration pipelineBuilder,
+            string contentRoot)
         {
             // Get Pipeline options to check that it is present
             var section = config.GetRequiredSection("PipelineOptions");
@@ -188,6 +197,13 @@ namespace FiftyOne.Pipeline.Web
                 webOptionsSection.Bind(options, (o) => { o.ErrorOnUnknownConfiguration = true; });
             }
             // ---------
+
+            if (contentRoot != null)
+            {
+                ApplicationRootPaths.ResolvePaths(
+                    options,
+                    p => ApplicationRootPaths.CombineWithRoot(contentRoot, p));
+            }
 
             if (options.SequenceElementEnabled)
             {

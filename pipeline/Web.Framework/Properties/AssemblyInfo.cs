@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following
@@ -55,3 +56,5 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
+
+[assembly: InternalsVisibleTo("FiftyOne.Pipeline.Web.Framework.Tests, PublicKey=0024000004800000940000000602000000240000525341310004000001000100c3a631e6634ea697e19c6d2fedc285bdc7f0447a5583e1ac3c5ed3502b7633e691f899a265c42a5611122a23fd2bc882e4e412384a5d4183271782416cf016b06e6648273d44896e95ce482bb8b13054ba6a6f41d393c3f3f2e5780d620e50cb67c248882e4427bf007b7c77fdd65f832c7f4a3fef9dc18e39f792d1a37cc980")]
