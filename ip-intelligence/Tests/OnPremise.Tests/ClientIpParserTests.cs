@@ -49,6 +49,13 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests
         // Bracketed IPv6, with and without a port.
         [DataRow("[2001:db8::1]:443", "2001:db8::1", "2001:db8::1")]
         [DataRow("[2001:db8::1]", "2001:db8::1", "2001:db8::1")]
+        // An IPv4-mapped IPv6 address is its IPv4 address, however it
+        // is written.
+        [DataRow("::ffff:8.8.8.8", "8.8.8.8", "8.8.8.8")]
+        [DataRow("::ffff:808:808", "8.8.8.8", "8.8.8.8")]
+        [DataRow("0:0:0:0:0:ffff:808:808", "8.8.8.8", "8.8.8.8")]
+        [DataRow("[::ffff:8.8.8.8]", "8.8.8.8", "8.8.8.8")]
+        [DataRow("[::ffff:8.8.8.8]:443", "8.8.8.8", "8.8.8.8")]
         public void TryParse_ValidValue_ReturnsAddress(
             string rawValue,
             string expectedAddress,
