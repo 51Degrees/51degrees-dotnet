@@ -259,10 +259,24 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 element.Enqueue(ip);
             }
 
+            var messageTimes = new List<long>();
+            var sinceDispose = new System.Diagnostics.Stopwatch();
+            _httpHandler.SetupResponse(request =>
+            {
+                StoreRequestXml(request);
+                messageTimes.Add(sinceDispose.ElapsedMilliseconds);
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        "<empty />", Encoding.UTF8, "application/xml"),
+                };
+            });
+
             ThreadPool.GetMinThreads(out var minWorker, out _);
             ThreadPool.GetAvailableThreads(out var availableWorker, out _);
             var sinceQueued = System.Diagnostics.Stopwatch.StartNew();
             var probe = Task.Run(() => sinceQueued.Elapsed.TotalMilliseconds);
+            sinceDispose.Start();
             var watch = System.Diagnostics.Stopwatch.StartNew();
             element.Dispose();
             watch.Stop();
@@ -274,6 +288,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 $"pending={ThreadPool.PendingWorkItemCount} " +
                 $"probeDelayMs={probeDelay:F0} " +
                 $"disposeMs={watch.ElapsedMilliseconds} " +
+                $"messageAtMs={string.Join(",", messageTimes)} " +
                 $"messages={_xmlContent.Count} queuedLeft={element.Queued}");
 
             var sent = _xmlContent

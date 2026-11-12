@@ -6,6 +6,32 @@ on:
       - 'tmp/dispose-**'
 
 jobs:
+  name_lookup:
+    name: Cost of the host name lookup
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Time the lookup the static part of the message makes
+        run: |
+          mkdir -p /tmp/lookup && cd /tmp/lookup
+          dotnet new console -o . --framework net8.0 >/dev/null
+          cat > Program.cs <<'EOF'
+          using System.Diagnostics;
+          using System.Net;
+          for (int i = 0; i < 3; i++)
+          {
+              var watch = Stopwatch.StartNew();
+              var addresses = Dns.GetHostAddresses(Dns.GetHostName());
+              watch.Stop();
+              System.Console.WriteLine(
+                  $"LOOKUP call={i} ms={watch.ElapsedMilliseconds} " +
+                  $"addresses={addresses.Length} host={Dns.GetHostName()}");
+          }
+          EOF
+          dotnet run -c Release
+
   mac_x64:
     name: Mac_x64_Release repeat
     runs-on: macos-15-intel
