@@ -141,6 +141,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         {
             Environment.SetEnvironmentVariable(
                 Constants.CLOUD_ENDPOINT_ENV_VAR, null);
+#pragma warning disable CS0618 // The old name is still read.
+            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, null);
+#pragma warning restore CS0618
         }
 
         private CloudRequestEngineBuilder NewBuilder()
