@@ -33,8 +33,9 @@ using System.Reflection;
 namespace FiftyOne.IpIntelligence.Example.Tests.Cloud;
 
 /// <summary>
-/// Tests that the examples still read the resource key from the old names
-/// of its environment variable when the new name is not set.
+/// Tests that the examples still read the resource key, the data file
+/// path and the cloud endpoint from the old names of their environment
+/// variables when the new name is not set.
 /// The tests change the environment of the whole process, so they run
 /// apart from the tests that read it.
 /// </summary>
@@ -46,8 +47,44 @@ public class OldEnvironmentNamesTests
     private static readonly string[] OldResourceKeyNames =
         { "51DEGREES_RESOURCE_KEY", "RESOURCE_KEY", "SUPER_RESOURCE_KEY" };
 
+    private const string DataFileName = "_51DEGREES_IPI_PATH";
+    private static readonly string[] OldDataFileNames =
+        { "51DEGREES_IPI_PATH", "IPINTELLIGENCEDATAFILE" };
+    private const string EndpointName = "_51DEGREES_CLOUD_ENDPOINT";
+    private static readonly string[] OldEndpointNames =
+        { "51D_CLOUD_ENDPOINT" };
+
+    /// <summary>
+    /// A data file name that is not in the repository, so that only the
+    /// environment can supply a path for it.
+    /// </summary>
+    private const string NoSuchFile = "no-such-file-for-this-test.ipi";
+
     private static IEnumerable<string> AllNames() =>
-        new[] { ResourceKeyName }.Concat(OldResourceKeyNames);
+        new[] { ResourceKeyName, DataFileName, EndpointName }
+            .Concat(OldResourceKeyNames)
+            .Concat(OldDataFileNames)
+            .Concat(OldEndpointNames);
+
+    /// <summary>
+    /// The endpoint as the examples read it. The helper is called by name,
+    /// so that a helper without it fails the test and not the build.
+    /// </summary>
+    private static string Endpoint()
+    {
+        var oldNames = typeof(ExampleUtils)
+            .GetField("OLD_CLOUD_END_POINT_ENV_VARS")
+            ?.GetValue(null) as string[];
+        Assert.IsNotNull(
+            oldNames, "ExampleUtils has no OLD_CLOUD_END_POINT_ENV_VARS.");
+        CollectionAssert.AreEqual(OldEndpointNames, oldNames);
+        var read = typeof(ExampleUtils).GetMethod(
+            "FromEnvironment",
+            new[] { typeof(string), typeof(string[]) });
+        Assert.IsNotNull(read, "ExampleUtils has no FromEnvironment.");
+        return (string)read.Invoke(
+            null, new object[] { EndpointName, oldNames });
+    }
 
     private readonly Dictionary<string, string> _previous =
         new Dictionary<string, string>();
@@ -111,6 +148,51 @@ public class OldEnvironmentNamesTests
         Environment.SetEnvironmentVariable(OldResourceKeyNames[0], "old-key");
 
         Assert.AreEqual("new-key", ExampleUtils.GetResourceKeyFromEnv());
+        Assert.AreEqual(string.Empty, _error.ToString());
+    }
+
+    [TestMethod]
+    public void DataFile_OnlyAnOldNameSet_GivesThatPath()
+    {
+        foreach (var oldName in OldDataFileNames)
+        {
+            Environment.SetEnvironmentVariable(oldName, "path-" + oldName);
+            Assert.AreEqual(
+                "path-" + oldName,
+                ExampleUtils.FindDataFile(NoSuchFile),
+                oldName);
+            Environment.SetEnvironmentVariable(oldName, null);
+        }
+    }
+
+    [TestMethod]
+    public void DataFile_NewNameSet_WinsOverAnOldName()
+    {
+        Environment.SetEnvironmentVariable(DataFileName, "new-path");
+        Environment.SetEnvironmentVariable(OldDataFileNames[0], "old-path");
+
+        Assert.AreEqual("new-path", ExampleUtils.FindDataFile(NoSuchFile));
+        Assert.AreEqual(string.Empty, _error.ToString());
+    }
+
+    [TestMethod]
+    public void Endpoint_OnlyTheOldNameSet_GivesThatEndpoint()
+    {
+        Environment.SetEnvironmentVariable(OldEndpointNames[0], "old-url");
+
+        Assert.AreEqual("old-url", Endpoint());
+        Assert.AreEqual(
+            Deprecation(OldEndpointNames[0], EndpointName),
+            _error.ToString());
+    }
+
+    [TestMethod]
+    public void Endpoint_NewNameSet_WinsOverTheOldName()
+    {
+        Environment.SetEnvironmentVariable(EndpointName, "new-url");
+        Environment.SetEnvironmentVariable(OldEndpointNames[0], "old-url");
+
+        Assert.AreEqual("new-url", Endpoint());
         Assert.AreEqual(string.Empty, _error.ToString());
     }
 

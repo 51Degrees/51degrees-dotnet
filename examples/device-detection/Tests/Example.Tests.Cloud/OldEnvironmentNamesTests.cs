@@ -27,15 +27,16 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using PmpSettings = FiftyOne.Examples.Cloud.PmpWeb.Settings;
 
 #nullable disable
 
 namespace FiftyOne.DeviceDetection.Example.Tests.Cloud;
 
 /// <summary>
-/// Tests that the examples still read the resource key and the data file
-/// path from the old names of their environment variables when the new
-/// name is not set.
+/// Tests that the examples still read the resource key, the data file
+/// path and the cloud endpoint from the old names of their environment
+/// variables when the new name is not set.
 /// The tests change the environment of the whole process, so they run
 /// apart from the tests that read it.
 /// </summary>
@@ -50,10 +51,46 @@ public class OldEnvironmentNamesTests
     private static readonly string[] OldDataFileNames =
         { "51DEGREES_DD_PATH", "DEVICEDETECTIONDATAFILE" };
 
+    private const string EndpointName = "_51DEGREES_CLOUD_ENDPOINT";
+    private static readonly string[] OldEndpointNames =
+        { "51D_CLOUD_ENDPOINT", "FIFTYONE_CLOUD_ENDPOINT" };
+
+    /// <summary>
+    /// The second name the preference page example reads its key from.
+    /// </summary>
+    private const string PmpSecondKeyName = "_51DEGREES_RESOURCE_KEY_51DID";
+    private const string OldPmpKeyName = "51DEGREES_RESOURCE_KEY";
+    private const string OldPmpEndpointName = "51DEGREES_CLOUD_ENDPOINT";
+
     private static IEnumerable<string> AllNames() =>
-        new[] { ResourceKeyName, DataFileName }
+        new[]
+        {
+            ResourceKeyName, DataFileName, EndpointName, PmpSecondKeyName,
+            OldPmpKeyName, OldPmpEndpointName,
+        }
             .Concat(OldResourceKeyNames)
-            .Concat(OldDataFileNames);
+            .Concat(OldDataFileNames)
+            .Concat(OldEndpointNames);
+
+    /// <summary>
+    /// The endpoint as the examples read it. The helper is called by name,
+    /// so that a helper without it fails the test and not the build.
+    /// </summary>
+    private static string Endpoint()
+    {
+        var oldNames = typeof(ExampleUtils)
+            .GetField("OLD_CLOUD_END_POINT_ENV_VARS")
+            ?.GetValue(null) as string[];
+        Assert.IsNotNull(
+            oldNames, "ExampleUtils has no OLD_CLOUD_END_POINT_ENV_VARS.");
+        CollectionAssert.AreEqual(OldEndpointNames, oldNames);
+        var read = typeof(ExampleUtils).GetMethod(
+            "FromEnvironment",
+            new[] { typeof(string), typeof(string[]) });
+        Assert.IsNotNull(read, "ExampleUtils has no FromEnvironment.");
+        return (string)read.Invoke(
+            null, new object[] { EndpointName, oldNames });
+    }
 
     private readonly Dictionary<string, string> _previous =
         new Dictionary<string, string>();
@@ -141,6 +178,62 @@ public class OldEnvironmentNamesTests
         Environment.SetEnvironmentVariable(OldDataFileNames[0], "old-path");
 
         Assert.AreEqual("new-path", ExampleUtils.GetDataFilePathFromEnv());
+        Assert.AreEqual(string.Empty, _error.ToString());
+    }
+
+    [TestMethod]
+    public void Endpoint_OnlyAnOldNameSet_GivesThatEndpoint()
+    {
+        foreach (var oldName in OldEndpointNames)
+        {
+            Environment.SetEnvironmentVariable(oldName, "url-" + oldName);
+            Assert.AreEqual("url-" + oldName, Endpoint(), oldName);
+            Environment.SetEnvironmentVariable(oldName, null);
+        }
+    }
+
+    [TestMethod]
+    public void Endpoint_NewNameSet_WinsOverAnOldName()
+    {
+        Environment.SetEnvironmentVariable(EndpointName, "new-url");
+        Environment.SetEnvironmentVariable(OldEndpointNames[0], "old-url");
+
+        Assert.AreEqual("new-url", Endpoint());
+        Assert.AreEqual(string.Empty, _error.ToString());
+    }
+
+    [TestMethod]
+    public void PmpSettings_OnlyOldNamesSet_GivesThoseValues()
+    {
+        Environment.SetEnvironmentVariable(OldPmpKeyName, "old-key");
+        Environment.SetEnvironmentVariable(
+            OldPmpEndpointName, "https://old.example/api/v4/");
+
+        var settings = PmpSettings.FromEnvironment();
+
+        Assert.AreEqual("old-key", settings.ResourceKey);
+        Assert.AreEqual(OldPmpKeyName, settings.ResourceKeyVariable);
+        Assert.AreEqual("https://old.example", settings.CloudEndpoint);
+        Assert.AreEqual(
+            Deprecation(OldPmpKeyName, ResourceKeyName) +
+            Deprecation(OldPmpEndpointName, EndpointName),
+            _error.ToString());
+    }
+
+    [TestMethod]
+    public void PmpSettings_NewNamesSet_WinOverTheOldNames()
+    {
+        Environment.SetEnvironmentVariable(ResourceKeyName, "new-key");
+        Environment.SetEnvironmentVariable(
+            EndpointName, "https://new.example/api/v4/");
+        Environment.SetEnvironmentVariable(OldPmpKeyName, "old-key");
+        Environment.SetEnvironmentVariable(
+            OldPmpEndpointName, "https://old.example/api/v4/");
+
+        var settings = PmpSettings.FromEnvironment();
+
+        Assert.AreEqual("new-key", settings.ResourceKey);
+        Assert.AreEqual("https://new.example", settings.CloudEndpoint);
         Assert.AreEqual(string.Empty, _error.ToString());
     }
 

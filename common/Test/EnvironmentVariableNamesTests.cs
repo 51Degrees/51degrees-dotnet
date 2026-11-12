@@ -210,8 +210,8 @@ public class EnvironmentVariableNamesTests
     private static readonly HashSet<string> OldNameFiles =
         new HashSet<string>(StringComparer.Ordinal)
         {
-            "ci/run-integration-tests.ps1",
-            "ci/run-unit-tests.ps1",
+            "ci/test-filter.ps1",
+            "common/Test/TestFilterScriptTests.cs",
             "device-detection/Tests/Cloud.Tests/LiveCloudKey.cs",
             "device-detection/Tests/Cloud.Tests/" +
                 "LiveCloudKeyOldNamesTests.cs",
@@ -230,15 +230,19 @@ public class EnvironmentVariableNamesTests
                 "OldEnvironmentNamesTests.cs",
             "ip-intelligence/Tests/CloudTests/LiveCloudKey.cs",
             "ip-intelligence/Tests/CloudTests/LiveCloudKeyOldNamesTests.cs",
+            "location/Tests/Example.Tests/OldResourceKeyNameTests.cs",
             "location/Tests/Example.Tests/TestAllExamples.cs",
             "location/Tests/GeoLocation.Tests/Constants.cs",
+            "location/Tests/GeoLocation.Tests/OldResourceKeyNameTests.cs",
             "pipeline/Examples/CloudRequestEngine/GettingStarted/Program.cs",
             "pipeline/Examples/Did/CreatorContextWeb/Program.cs",
             "pipeline/Tests/Did.Cloud.Tests/LiveCloudKey.cs",
             "pipeline/Tests/Did.Cloud.Tests/LiveCloudKeyOldNamesTests.cs",
+            "pipeline/Tests/Did.Examples.Tests/EnvironmentSettingTests.cs",
             "pipeline/Tests/Did.Tests/CloudDidClientTests.cs",
             "pipeline/Tests/Did.Tests/LiveCloudKey.cs",
             "pipeline/Tests/Did.Tests/LiveCloudKeyOldNamesTests.cs",
+            "pipeline/Tests/Did.Tests/OldLicenceKeyNameTests.cs",
         };
 
     /// <summary>
