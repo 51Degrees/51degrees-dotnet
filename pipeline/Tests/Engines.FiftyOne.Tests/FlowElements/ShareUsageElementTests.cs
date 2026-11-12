@@ -242,6 +242,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// <summary>
         /// On disposal every entry still queued is sent, in as many messages
         /// as it takes, each holding at most twice the minimum entries.
+        /// Disposal is given no time bound, because the subject here is that
+        /// everything queued is sent and not how soon the runner gets round
+        /// to the work. The two tests below cover the bound itself.
         /// See the <see href="https://github.com/51Degrees/specifications/blob/rc/pipeline-specification/pipeline-elements/usage-sharing-element.md#cleanup">Specification</see>
         /// </summary>
         [TestMethod]
@@ -249,7 +252,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         {
             const int minimumEntries = 2;
             var element = new QueueOpenShareUsageElement(
-                _logger, _httpClient, minimumEntries, 100, _tracker.Object);
+                _logger, _httpClient, minimumEntries, 100, _tracker.Object,
+                Timeout.Infinite);
             element.AddPipeline(_pipeline.Object);
             var clientIps = Enumerable.Range(1, 11)
                 .Select(i => $"10.2.0.{i}")
