@@ -118,8 +118,9 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb
             var dataFile = dataFileOverride;
             if (string.IsNullOrWhiteSpace(dataFile))
             {
-                dataFile = Environment.GetEnvironmentVariable(
-                    Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
+                dataFile = Examples.ExampleUtils.FromEnvironment(
+                    Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
+                    Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS);
             }
             if (string.IsNullOrWhiteSpace(dataFile))
             {

@@ -65,6 +65,17 @@ namespace FiftyOne.DeviceDetection.Examples
         };
 
         /// <summary>
+        /// The old names of
+        /// <see cref="DD_PATH_ENV_VAR"/>,
+        /// read in this order only when that variable is not set.
+        /// </summary>
+        public static readonly string[] OLD_DATA_FILE_ENV_VARS = new string[]
+        {
+            "51DEGREES_DD_PATH",
+            "DEVICEDETECTIONDATAFILE",
+        };
+
+        /// <summary>
         /// Environment variable key for the evidence file to use for the tests.
         /// </summary>
         public const string EVIDENCE_FILE_ENV_VAR = "EVIDENCEFILE";

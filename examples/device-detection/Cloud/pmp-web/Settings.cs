@@ -61,6 +61,19 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public const string CLOUD_ENDPOINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
         /// <summary>
+        /// The old name of <see cref="RESOURCE_KEY_ENV_VAR"/>, read only
+        /// when neither that variable nor
+        /// <see cref="CI_RESOURCE_KEY_ENV_VAR"/> is set.
+        /// </summary>
+        public const string OLD_RESOURCE_KEY_ENV_VAR = "51DEGREES_RESOURCE_KEY";
+
+        /// <summary>
+        /// The old name of <see cref="CLOUD_ENDPOINT_ENV_VAR"/>, read only
+        /// when that variable is not set.
+        /// </summary>
+        public const string OLD_CLOUD_ENDPOINT_ENV_VAR = "51DEGREES_CLOUD_ENDPOINT";
+
+        /// <summary>
         /// The cloud used when no endpoint variable is set.
         /// </summary>
         public const string DEFAULT_CLOUD_ENDPOINT =
@@ -116,6 +129,11 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
                 RESOURCE_KEY_ENV_VAR, CI_RESOURCE_KEY_ENV_VAR);
             if (key == null)
             {
+                (keyVariable, key) = FirstOld(
+                    RESOURCE_KEY_ENV_VAR, OLD_RESOURCE_KEY_ENV_VAR);
+            }
+            if (key == null)
+            {
                 throw new InvalidOperationException(
                     $"No resource key is set. Set the environment variable " +
                     $"'{RESOURCE_KEY_ENV_VAR}' to a 51Degrees resource key " +
@@ -126,6 +144,11 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
             }
 
             var (endpointVariable, endpoint) = First(CLOUD_ENDPOINT_ENV_VAR);
+            if (endpoint == null)
+            {
+                (endpointVariable, endpoint) = FirstOld(
+                    CLOUD_ENDPOINT_ENV_VAR, OLD_CLOUD_ENDPOINT_ENV_VAR);
+            }
             return new Settings(
                 key,
                 keyVariable!,
@@ -237,6 +260,26 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
                 }
             }
             return (null, null);
+        }
+
+        /// <summary>
+        /// The old name with its value where it holds one that is not
+        /// blank, reported on the error stream as deprecated, or two nulls
+        /// where it does not.
+        /// </summary>
+        private static (string? Name, string? Value) FirstOld(
+            string newName,
+            string oldName)
+        {
+            var (name, value) = First(oldName);
+            if (value != null)
+            {
+                Console.Error.WriteLine(
+                    $"The environment variable {oldName} is deprecated " +
+                    $"and {newName} replaces it. Set {newName} to the " +
+                    "same value instead.");
+            }
+            return (name, value);
         }
 
         /// <summary>

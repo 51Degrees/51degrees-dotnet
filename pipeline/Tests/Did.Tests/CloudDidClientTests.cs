@@ -77,7 +77,27 @@ namespace FiftyOne.Did.Tests
         private static string? LicenceKey() =>
             FirstSet(
                 "_51DEGREES_LICENSE_KEY_51DID",
-                "_51DEGREES_LICENSE_KEY");
+                "_51DEGREES_LICENSE_KEY")
+            ?? OldLicenceKey();
+
+        // True once the old licence key name has been reported.
+        private static bool _oldNameReported;
+
+        // The licence key from its old name, read only when no new name
+        // is set, and reported once on the error stream as deprecated.
+        private static string? OldLicenceKey()
+        {
+            var key = FirstSet("LICENSE_KEY");
+            if (key != null && _oldNameReported == false)
+            {
+                _oldNameReported = true;
+                Console.Error.WriteLine(
+                    "The environment variable LICENSE_KEY is deprecated " +
+                    "and _51DEGREES_LICENSE_KEY replaces it. Set " +
+                    "_51DEGREES_LICENSE_KEY to the same value instead.");
+            }
+            return key;
+        }
 
         private static string? FirstSet(params string[] names)
         {

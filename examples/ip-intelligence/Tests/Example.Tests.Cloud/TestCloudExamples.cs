@@ -233,8 +233,9 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
                 CreateNoWindow = true,
             };
             startInfo.Environment[ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR] = _resourceKey;
-            var endPoint = Environment.GetEnvironmentVariable(
-                ExampleUtils.CLOUD_END_POINT_ENV_VAR);
+            var endPoint = ExampleUtils.FromEnvironment(
+                ExampleUtils.CLOUD_END_POINT_ENV_VAR,
+                ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
             if (string.IsNullOrWhiteSpace(endPoint) == false)
             {
                 startInfo.Environment[ExampleUtils.CLOUD_END_POINT_ENV_VAR] = endPoint;

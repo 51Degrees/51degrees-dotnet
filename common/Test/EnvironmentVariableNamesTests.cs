@@ -215,6 +215,7 @@ public class EnvironmentVariableNamesTests
             "device-detection/Tests/Cloud.Tests/LiveCloudKey.cs",
             "device-detection/Tests/Cloud.Tests/" +
                 "LiveCloudKeyOldNamesTests.cs",
+            "examples/device-detection/Cloud/pmp-web/Settings.cs",
             "examples/device-detection/ExampleBase/Constants.cs",
             "examples/device-detection/ExampleBase/ExampleUtils.cs",
             "examples/device-detection/Tests/Example.Tests.Cloud/" +
@@ -229,8 +230,13 @@ public class EnvironmentVariableNamesTests
                 "OldEnvironmentNamesTests.cs",
             "ip-intelligence/Tests/CloudTests/LiveCloudKey.cs",
             "ip-intelligence/Tests/CloudTests/LiveCloudKeyOldNamesTests.cs",
+            "location/Tests/Example.Tests/TestAllExamples.cs",
+            "location/Tests/GeoLocation.Tests/Constants.cs",
+            "pipeline/Examples/CloudRequestEngine/GettingStarted/Program.cs",
+            "pipeline/Examples/Did/CreatorContextWeb/Program.cs",
             "pipeline/Tests/Did.Cloud.Tests/LiveCloudKey.cs",
             "pipeline/Tests/Did.Cloud.Tests/LiveCloudKeyOldNamesTests.cs",
+            "pipeline/Tests/Did.Tests/CloudDidClientTests.cs",
             "pipeline/Tests/Did.Tests/LiveCloudKey.cs",
             "pipeline/Tests/Did.Tests/LiveCloudKeyOldNamesTests.cs",
         };

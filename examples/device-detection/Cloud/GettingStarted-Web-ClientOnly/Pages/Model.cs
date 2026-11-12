@@ -48,8 +48,9 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb.ClientOnly.P
         public Model()
         {
             ResourceKey = ExampleUtils.GetResourceKeyFromEnv();
-            var cloudEndPoint = Environment.GetEnvironmentVariable(
-                ExampleUtils.CLOUD_END_POINT_ENV_VAR);
+            var cloudEndPoint = ExampleUtils.FromEnvironment(
+                ExampleUtils.CLOUD_END_POINT_ENV_VAR,
+                ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
             CloudEndPoint = cloudEndPoint == null ?
                 DEFAULT_END_POINT :
                 cloudEndPoint;

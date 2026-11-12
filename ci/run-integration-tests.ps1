@@ -21,8 +21,17 @@ $PSNativeCommandUseErrorActionPreference = $true
 $Filter = "^FiftyOne\.(?!DeviceDetection\.Example\.Tests\.Web\.dll$).*Examples?\.Tests.*\.dll$"
 # A run can be narrowed to some assemblies by setting _51DEGREES_TEST_FILTER,
 # which the probe workflow does.
-if ($env:_51DEGREES_TEST_FILTER) {
-    $Filter = $env:_51DEGREES_TEST_FILTER
+# FIFTYONE_TEST_FILTER is the old name, read only when the new one is not
+# set.
+$TestFilter = $env:_51DEGREES_TEST_FILTER
+if (-not $TestFilter -and $env:FIFTYONE_TEST_FILTER) {
+    Write-Warning ("The environment variable FIFTYONE_TEST_FILTER is " +
+        "deprecated and _51DEGREES_TEST_FILTER replaces it. Set " +
+        "_51DEGREES_TEST_FILTER to the same value instead.")
+    $TestFilter = $env:FIFTYONE_TEST_FILTER
+}
+if ($TestFilter) {
+    $Filter = $TestFilter
 }
 # A test is treated as hung after 20 minutes, the limit the separate examples
 # repository allowed, because the IP Intelligence examples load the 6 GB

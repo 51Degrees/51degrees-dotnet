@@ -19,8 +19,17 @@ $OldStyle = "^FiftyOne\.(Pipeline\.Web\.Framework\.Tests|DeviceDetection\.Tests\
 $Filter = "^FiftyOne\.(?!Pipeline\.Web\.Framework\.Tests\.dll$)(?!DeviceDetection\.Tests\.Framework\.dll$)(?!.*Examples?\.Tests)(?!.*TestHelpers).*Tests?(\.Core|\.Framework)?\.dll$"
 # A run can be narrowed to some assemblies by setting _51DEGREES_TEST_FILTER,
 # which the probe workflow does.
-if ($env:_51DEGREES_TEST_FILTER) {
-    $Filter = $env:_51DEGREES_TEST_FILTER
+# FIFTYONE_TEST_FILTER is the old name, read only when the new one is not
+# set.
+$TestFilter = $env:_51DEGREES_TEST_FILTER
+if (-not $TestFilter -and $env:FIFTYONE_TEST_FILTER) {
+    Write-Warning ("The environment variable FIFTYONE_TEST_FILTER is " +
+        "deprecated and _51DEGREES_TEST_FILTER replaces it. Set " +
+        "_51DEGREES_TEST_FILTER to the same value instead.")
+    $TestFilter = $env:FIFTYONE_TEST_FILTER
+}
+if ($TestFilter) {
+    $Filter = $TestFilter
 }
 
 # The SDK-style assemblies run in parallel lanes, which ci/run-test-lanes.ps1
@@ -36,7 +45,7 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-if ($BuildMethod -eq "msbuild" -and -not $env:_51DEGREES_TEST_FILTER) {
+if ($BuildMethod -eq "msbuild" -and -not $TestFilter) {
     ./dotnet/run-unit-tests.ps1 `
         -RepoName $RepoName `
         -Name $Name `

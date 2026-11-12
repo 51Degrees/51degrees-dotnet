@@ -75,6 +75,85 @@ public static class ExampleUtils
     public const string CLOUD_END_POINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
     /// <summary>
+    /// The old names of
+    /// <see cref="CLOUD_END_POINT_ENV_VAR"/>,
+    /// read in this order only when that variable is not set.
+    /// </summary>
+    public static readonly string[] OLD_CLOUD_END_POINT_ENV_VARS = new string[]
+    {
+        "51D_CLOUD_ENDPOINT",
+        "FIFTYONE_CLOUD_ENDPOINT",
+    };
+
+    /// <summary>
+    /// The old names of
+    /// <see cref="CLOUD_RESOURCE_KEY_ENV_VAR"/>,
+    /// read in this order only when that variable is not set.
+    /// </summary>
+    public static readonly string[] OLD_CLOUD_RESOURCE_KEY_ENV_VARS = new string[]
+    {
+        "SUPER_RESOURCE_KEY",
+    };
+
+    private static readonly HashSet<string> _oldNamesReported =
+        new HashSet<string>();
+
+    /// <summary>
+    /// The value of an environment variable. When it is not set, the value
+    /// of the first of its old names that is set, with each old name
+    /// reported once on the error stream as deprecated.
+    /// </summary>
+    /// <param name="name">The variable's name.</param>
+    /// <param name="oldNames">
+    /// The names the variable had before, in the order they are tried.
+    /// </param>
+    /// <returns>
+    /// The value, or what <paramref name="name"/> holds when no old name
+    /// is set either.
+    /// </returns>
+    public static string FromEnvironment(
+        string name,
+        params string[] oldNames)
+    {
+        var value = Environment.GetEnvironmentVariable(name);
+        if (string.IsNullOrWhiteSpace(value) == false)
+        {
+            return value;
+        }
+        foreach (var oldName in oldNames)
+        {
+            var oldValue = Environment.GetEnvironmentVariable(oldName);
+            if (string.IsNullOrWhiteSpace(oldValue) == false)
+            {
+                ReportOldName(oldName, name);
+                return oldValue;
+            }
+        }
+        return value;
+    }
+
+    /// <summary>
+    /// Say once on the error stream that an old environment variable name
+    /// supplied a value, and which name replaces it.
+    /// </summary>
+    /// <param name="oldName">The old name that was read.</param>
+    /// <param name="newName">The name that replaces it.</param>
+    public static void ReportOldName(string oldName, string newName)
+    {
+        lock (_oldNamesReported)
+        {
+            if (_oldNamesReported.Add(oldName) == false)
+            {
+                return;
+            }
+        }
+        Console.Error.WriteLine(
+            $"The environment variable {oldName} is deprecated and " +
+            $"{newName} replaces it. Set {newName} to the same value " +
+            "instead.");
+    }
+
+    /// <summary>
     /// Message displayed when a resource key leaves some of the
     /// properties used by an example without values.
     /// </summary>
@@ -443,6 +522,15 @@ public static class ExampleUtils
             var path = Environment.GetEnvironmentVariable(name);
             if (string.IsNullOrWhiteSpace(path) == false)
             {
+                return path;
+            }
+        }
+        foreach (var oldName in Constants.OLD_DATA_FILE_ENV_VARS)
+        {
+            var path = Environment.GetEnvironmentVariable(oldName);
+            if (string.IsNullOrWhiteSpace(path) == false)
+            {
+                ReportOldName(oldName, Constants.DD_PATH_ENV_VAR);
                 return path;
             }
         }
@@ -833,6 +921,17 @@ public static class ExampleUtils
             if (string.IsNullOrWhiteSpace(value) == false)
             {
                 envVarName = name;
+                return value;
+            }
+        }
+
+        foreach (var oldName in OLD_CLOUD_RESOURCE_KEY_ENV_VARS)
+        {
+            var value = Environment.GetEnvironmentVariable(oldName);
+            if (string.IsNullOrWhiteSpace(value) == false)
+            {
+                ReportOldName(oldName, CLOUD_RESOURCE_KEY_ENV_VAR);
+                envVarName = oldName;
                 return value;
             }
         }
