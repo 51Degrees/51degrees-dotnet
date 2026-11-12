@@ -145,6 +145,9 @@ namespace FiftyOne.Did.Tests
             Assert.AreEqual(OldUrl, client.Endpoint);
         }
 
+#if NET9_0_OR_GREATER
+        // .NET 8 deletes a variable that is set to an empty value, so an
+        // empty value can only be set up from .NET 9.
         [TestMethod]
         public void NewNameEmpty_OldNameSet_GivesTheOldEndpoint()
         {
@@ -155,6 +158,17 @@ namespace FiftyOne.Did.Tests
 
             Assert.AreEqual(OldUrl, client.Endpoint);
         }
+
+        [TestMethod]
+        public void NewNameEmpty_OldNameNotSet_GivesTheDefault()
+        {
+            Environment.SetEnvironmentVariable(NewName, string.Empty);
+
+            using var client = NewClient();
+
+            Assert.AreEqual(DidClient.DefaultEndpoint, client.Endpoint);
+        }
+#endif
 
         [TestMethod]
         public void BothNamesSet_NewNameWins()

@@ -151,8 +151,9 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb
             var dataFile = dataFileOverride;
             if (string.IsNullOrWhiteSpace(dataFile))
             {
-                dataFile = Environment.GetEnvironmentVariable(
-                    Examples.Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
+                dataFile = Examples.ExampleUtils.FromEnvironment(
+                    Examples.Constants.IPI_PATH_ENV_VAR,
+                    Examples.Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS);
             }
             if (string.IsNullOrWhiteSpace(dataFile))
             {
@@ -163,7 +164,7 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb
             {
                 throw new Exception($"A data file must be specified as a command line " +
                     $"argument, in the appsettings.json file, or in the " +
-                    $"'{Examples.Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR}' environment " +
+                    $"'{Examples.Constants.IPI_PATH_ENV_VAR}' environment " +
                     $"variable.");
             }
             // The data file location provided in the configuration may be using an absolute or

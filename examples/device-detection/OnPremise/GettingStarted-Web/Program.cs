@@ -131,7 +131,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedWeb
             {
                 throw new Exception($"A data file must be specified in the " +
                     $"appsettings.json file or the " +
-                    $"'{Constants.DD_PATH_ENV_VAR}' environment variable.");
+                    $"'{Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR}' environment variable.");
             }
             // The data file location provided in the configuration may be using an absolute or
             // relative path. If it is relative then search for a matching file using the

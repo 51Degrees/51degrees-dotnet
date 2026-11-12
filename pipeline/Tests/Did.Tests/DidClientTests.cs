@@ -154,8 +154,13 @@ namespace FiftyOne.Did.Tests
         {
             var previous = Environment.GetEnvironmentVariable(
                 DidClient.CloudEndpointEnvironmentVariable);
+#pragma warning disable CS0618 // The old name is still read.
+            const string oldName = DidClient.EndpointEnvironmentVariable;
+#pragma warning restore CS0618
+            var previousOld = Environment.GetEnvironmentVariable(oldName);
             try
             {
+                Environment.SetEnvironmentVariable(oldName, null);
                 Environment.SetEnvironmentVariable(
                     DidClient.CloudEndpointEnvironmentVariable,
                     "https://private.example/api/v4");
@@ -175,6 +180,7 @@ namespace FiftyOne.Did.Tests
             {
                 Environment.SetEnvironmentVariable(
                     DidClient.CloudEndpointEnvironmentVariable, previous);
+                Environment.SetEnvironmentVariable(oldName, previousOld);
             }
         }
 

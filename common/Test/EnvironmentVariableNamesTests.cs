@@ -32,11 +32,10 @@ namespace FiftyOne.Common.Tests;
 /// <summary>
 /// Every 51Degrees environment variable name in this repository starts with
 /// an underscore, because a POSIX shell cannot set a name that starts with a
-/// digit, and each setting has one name with nothing read in its place. The
-/// one exception is the cloud endpoint, whose old name the packages read
-/// when the new name is unset or empty. The tests read every file git
-/// tracks, which leaves out build output and the submodules, and fail on
-/// any name that starts with the digit and on any old name that is still
+/// digit. A name a release read is still read when the new name is not set,
+/// in the files listed in <see cref="OldNameFiles"/>. The tests read every
+/// file git tracks, which leaves out build output and the submodules, and
+/// fail on any name that starts with the digit and on any old name that is
 /// read or set anywhere else.
 /// </summary>
 [TestClass]
@@ -204,6 +203,59 @@ public class EnvironmentVariableNamesTests
         match == "\"" + OldEndpointName;
 
     /// <summary>
+    /// The only files that may hold the other old names, being the code
+    /// that reads an old name when the new one is not set, and the tests of
+    /// that read.
+    /// </summary>
+    private static readonly HashSet<string> OldNameFiles =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "ci/test-filter.ps1",
+            "common/Test/TestFilterScriptTests.cs",
+            "device-detection/Tests/Cloud.Tests/LiveCloudKey.cs",
+            "device-detection/Tests/Cloud.Tests/" +
+                "LiveCloudKeyOldNamesTests.cs",
+            "examples/device-detection/Cloud/pmp-web/Settings.cs",
+            "examples/device-detection/ExampleBase/Constants.cs",
+            "examples/device-detection/ExampleBase/ExampleUtils.cs",
+            "examples/device-detection/Tests/Example.Tests.Cloud/" +
+                "OldEnvironmentNamesTests.cs",
+            "examples/device-detection/Tests/Example.Tests.Web.Cloud/" +
+                "LiveCloudKey.cs",
+            "examples/device-detection/Tests/Example.Tests.Web.Cloud/" +
+                "LiveCloudKeyOldNamesTests.cs",
+            "examples/ip-intelligence/Examples/Constants.cs",
+            "examples/ip-intelligence/Examples/ExampleUtils.cs",
+            "examples/ip-intelligence/Tests/Example.Tests.Cloud/" +
+                "OldEnvironmentNamesTests.cs",
+            "ip-intelligence/Tests/CloudTests/LiveCloudKey.cs",
+            "ip-intelligence/Tests/CloudTests/LiveCloudKeyOldNamesTests.cs",
+            "location/Tests/Example.Tests/OldResourceKeyNameTests.cs",
+            "location/Tests/Example.Tests/TestAllExamples.cs",
+            "location/Tests/GeoLocation.Tests/Constants.cs",
+            "location/Tests/GeoLocation.Tests/OldResourceKeyNameTests.cs",
+            "pipeline/Examples/CloudRequestEngine/GettingStarted/Program.cs",
+            "pipeline/Examples/Did/CreatorContextWeb/Program.cs",
+            "pipeline/Tests/CloudRequestEngine.Examples.Tests/" +
+                "GettingStartedOldNamesTests.cs",
+            "pipeline/Tests/Did.Cloud.Tests/LiveCloudKey.cs",
+            "pipeline/Tests/Did.Cloud.Tests/LiveCloudKeyOldNamesTests.cs",
+            "pipeline/Tests/Did.Examples.Tests/EnvironmentSettingTests.cs",
+            "pipeline/Tests/Did.Tests/CloudDidClientTests.cs",
+            "pipeline/Tests/Did.Tests/LiveCloudKey.cs",
+            "pipeline/Tests/Did.Tests/LiveCloudKeyOldNamesTests.cs",
+            "pipeline/Tests/Did.Tests/OldLicenceKeyNameTests.cs",
+        };
+
+    /// <summary>
+    /// True when the file may hold the match, as one of the files that
+    /// read old names or as the cloud endpoint's old name where it is kept.
+    /// </summary>
+    private static bool IsKeptOldName(string relative, string match) =>
+        OldNameFiles.Contains(relative) ||
+        IsKeptOldEndpointName(relative, match);
+
+    /// <summary>
     /// Each old name the line reads, sets or holds.
     /// </summary>
     private static List<string> OldNames(string line)
@@ -319,9 +371,23 @@ public class EnvironmentVariableNamesTests
     }
 
     [TestMethod]
+    public void OtherOldNamesAreKeptOnlyInTheFilesThatReadThem()
+    {
+        foreach (var file in OldNameFiles)
+        {
+            Assert.IsTrue(IsKeptOldName(file, "\"SUPER_RESOURCE_KEY"), file);
+        }
+        Assert.IsFalse(IsKeptOldName(
+            "pipeline/CloudRequestEngine/Constants.cs",
+            "\"SUPER_RESOURCE_KEY"));
+        Assert.IsFalse(IsKeptOldName(ThisFile, "\"SUPER_RESOURCE_KEY"));
+    }
+
+    [TestMethod]
     public void NoFileNamesAVariableThatStartsWithADigit()
     {
-        var found = FindInTrackedFiles(DigitInitialNames, null);
+        var found = FindInTrackedFiles(
+            DigitInitialNames, null, IsKeptOldName);
         Assert.AreEqual(
             0,
             found.Count,
@@ -334,13 +400,13 @@ public class EnvironmentVariableNamesTests
     public void NoFileReadsAnOldName()
     {
         var found = FindInTrackedFiles(
-            OldNames, ThisFile, IsKeptOldEndpointName);
+            OldNames, ThisFile, IsKeptOldName);
         Assert.AreEqual(
             0,
             found.Count,
             $"{found.Count} old names are still read, set or held to fall " +
-            "back to, so each must use its _51DEGREES_ name alone, apart " +
-            $"from {OldEndpointName} in the files that keep it:\n" +
+            "back to outside the files that keep them, so each must use " +
+            "its _51DEGREES_ name alone:\n" +
             string.Join("\n", found));
     }
 }

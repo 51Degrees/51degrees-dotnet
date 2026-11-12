@@ -127,7 +127,7 @@ public class TestExamples
             string.IsNullOrWhiteSpace(DataFile) || File.Exists(DataFile) == false,
             $"This test requires an on-premise IP Intelligence data file. Place a " +
             $"'{Constants.ENTERPRISE_IPI_DATA_FILE_NAME}' file in the repository or " +
-            $"set the '{Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR}' environment " +
+            $"set the '{Constants.IPI_PATH_ENV_VAR}' environment " +
             $"variable to its path.");
     }
 

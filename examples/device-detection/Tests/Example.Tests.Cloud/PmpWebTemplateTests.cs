@@ -82,22 +82,22 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         public void SetUp()
         {
             originalResourceKey = Environment.GetEnvironmentVariable(
-                Settings.RESOURCE_KEY_ENV_VAR);
+                Settings.RESOURCE_KEY_VARIABLE);
             originalCloudEndpoint = Environment.GetEnvironmentVariable(
-                Settings.CLOUD_ENDPOINT_ENV_VAR);
+                Settings.CLOUD_ENDPOINT_VARIABLE);
             Environment.SetEnvironmentVariable(
-                Settings.RESOURCE_KEY_ENV_VAR, AWKWARD_RESOURCE_KEY);
+                Settings.RESOURCE_KEY_VARIABLE, AWKWARD_RESOURCE_KEY);
             Environment.SetEnvironmentVariable(
-                Settings.CLOUD_ENDPOINT_ENV_VAR, CLOUD_ENDPOINT);
+                Settings.CLOUD_ENDPOINT_VARIABLE, CLOUD_ENDPOINT);
         }
 
         [TestCleanup]
         public void TearDown()
         {
             Environment.SetEnvironmentVariable(
-                Settings.RESOURCE_KEY_ENV_VAR, originalResourceKey);
+                Settings.RESOURCE_KEY_VARIABLE, originalResourceKey);
             Environment.SetEnvironmentVariable(
-                Settings.CLOUD_ENDPOINT_ENV_VAR, originalCloudEndpoint);
+                Settings.CLOUD_ENDPOINT_VARIABLE, originalCloudEndpoint);
         }
 
         /// <summary>

@@ -395,21 +395,27 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             CheckCredentials();
 
             // If any of the endpoints are not set, then use the environment variable if
-            // specified, or the default base url if not.
-            var endpoint = EndpointFromEnvironment() ??
-                Constants.CLOUD_URI_DEFAULT;
+            // specified, or the default base url if not. The environment
+            // is not read when every endpoint has been set.
+            if (string.IsNullOrWhiteSpace(_dataEndpoint) ||
+                string.IsNullOrWhiteSpace(_propertiesEndpoint) ||
+                string.IsNullOrWhiteSpace(_evidenceKeysEndpoint))
+            {
+                var endpoint = EndpointFromEnvironment() ??
+                    Constants.CLOUD_URI_DEFAULT;
 
-            if (string.IsNullOrWhiteSpace(_dataEndpoint))
-            {
-                SetDataEndpoint(endpoint + Constants.DATA_FILENAME);
-            }
-            if (string.IsNullOrWhiteSpace(_propertiesEndpoint))
-            {
-                SetPropertiesEndpoint(endpoint + Constants.PROPERTIES_FILENAME);
-            }
-            if (string.IsNullOrWhiteSpace(_evidenceKeysEndpoint))
-            {
-                SetEvidenceKeysEndpoint(endpoint + Constants.EVIDENCE_KEYS_FILENAME);
+                if (string.IsNullOrWhiteSpace(_dataEndpoint))
+                {
+                    SetDataEndpoint(endpoint + Constants.DATA_FILENAME);
+                }
+                if (string.IsNullOrWhiteSpace(_propertiesEndpoint))
+                {
+                    SetPropertiesEndpoint(endpoint + Constants.PROPERTIES_FILENAME);
+                }
+                if (string.IsNullOrWhiteSpace(_evidenceKeysEndpoint))
+                {
+                    SetEvidenceKeysEndpoint(endpoint + Constants.EVIDENCE_KEYS_FILENAME);
+                }
             }
 
             var engine = BuildEngine();
@@ -440,7 +446,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
         /// <summary>
         /// The cloud service URL the environment gives, or null when no
-        /// variable is set. <see cref="Constants.CLOUD_ENDPOINT_ENV_VAR"/>
+        /// variable holds one. <see cref="Constants.CLOUD_ENDPOINT_ENV_VAR"/>
         /// is read first. The old variable is read only when that one is
         /// unset or empty, and reading a value from it is logged as
         /// deprecated once in the process.
@@ -460,7 +466,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             var oldEndpoint = Environment.GetEnvironmentVariable(oldName);
             if (string.IsNullOrEmpty(oldEndpoint))
             {
-                return endpoint;
+                return null;
             }
 
             if (Interlocked.Exchange(ref _oldEndpointNameLogged, 1) == 0)

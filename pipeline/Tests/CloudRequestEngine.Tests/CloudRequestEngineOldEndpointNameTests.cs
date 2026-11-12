@@ -46,6 +46,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         private const string OldName = "FOD_CLOUD_API_URL";
         private const string NewUrl = "http://localhost/new_name/";
         private const string OldUrl = "http://localhost/old_name/";
+        private const string GivenUrl = "http://localhost/given/";
 
         /// <summary>
         /// Records the address of every request and answers the two
@@ -152,6 +153,19 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         }
 
         /// <summary>
+        /// Build an engine with its endpoint given in code, which the
+        /// environment does not change.
+        /// </summary>
+        private void BuildWithEndpoint(ILoggerFactory loggers)
+        {
+            using var engine = new CloudRequestEngineBuilder(
+                    loggers, new HttpClient(_handler))
+                .SetEndPoint(GivenUrl)
+                .SetResourceKey("abcdefgh")
+                .Build();
+        }
+
+        /// <summary>
         /// Every request the build made went to an address under
         /// <paramref name="endpoint"/>.
         /// </summary>
@@ -191,6 +205,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             AssertEveryRequestWentTo(OldUrl);
         }
 
+#if NET9_0_OR_GREATER
+        // .NET 8 deletes a variable that is set to an empty value, so an
+        // empty value can only be set up from .NET 9.
         [TestMethod]
         public void NewNameEmpty_OldNameSet_GivesTheOldEndpoint()
         {
@@ -200,6 +217,61 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             Build(OldNameLoggers);
 
             AssertEveryRequestWentTo(OldUrl);
+        }
+
+        [TestMethod]
+        public void NewNameEmpty_OldNameNotSet_GivesTheDefault()
+        {
+            Environment.SetEnvironmentVariable(NewName, string.Empty);
+
+            Build(new RecordingLoggerFactory());
+
+            AssertEveryRequestWentTo(Constants.CLOUD_URI_DEFAULT);
+        }
+#endif
+
+        [TestMethod]
+        public void EndpointGiven_WinsOverBothNames()
+        {
+            Environment.SetEnvironmentVariable(NewName, NewUrl);
+            Environment.SetEnvironmentVariable(OldName, OldUrl);
+
+            BuildWithEndpoint(new RecordingLoggerFactory());
+
+            AssertEveryRequestWentTo(GivenUrl);
+        }
+
+        [TestMethod]
+        public void EndpointGiven_OldNameIsNotReported()
+        {
+            Environment.SetEnvironmentVariable(OldName, OldUrl);
+            var loggers = new RecordingLoggerFactory();
+            // The deprecation is logged once in a process, so this test
+            // runs as a process that has not logged it, and puts the
+            // record back for the tests that follow.
+            var logged = typeof(CloudRequestEngineBuilder).GetField(
+                "_oldEndpointNameLogged",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(
+                logged,
+                "CloudRequestEngineBuilder has no _oldEndpointNameLogged.");
+            var previous = logged.GetValue(null);
+            logged.SetValue(null, 0);
+            try
+            {
+                BuildWithEndpoint(loggers);
+            }
+            finally
+            {
+                logged.SetValue(null, previous);
+            }
+
+            AssertEveryRequestWentTo(GivenUrl);
+            Assert.AreEqual(
+                0,
+                Deprecations(loggers.Logger).Count,
+                "Every endpoint was given, so the old name was not used " +
+                "and nothing is said about it.");
         }
 
         [TestMethod]
