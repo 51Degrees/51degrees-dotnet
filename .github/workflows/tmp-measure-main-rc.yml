@@ -1,0 +1,226 @@
+name: Measure main against rc
+
+# A throwaway measurement for the 12 November release decision. It builds
+# main and rc whole on one runner, fetches one set of data files that both
+# trees read, and then runs the repository's own performance step for each
+# tree in turn, taking turns so any drift in the runner falls on both
+# equally. Nothing here changes the repository, and the branch is deleted
+# once the run finishes.
+
+on:
+  push:
+    branches:
+      - 'tmp/measure-main-rc'
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  Measure:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu-22.04
+            label: Ubuntu_x64_Release
+            arch: x64
+            buildmethod: dotnet
+          - image: windows-latest
+            label: Windows_x64_Release
+            arch: x64
+            buildmethod: msbuild
+    name: Measure - ${{ matrix.label }}
+    runs-on: ${{ matrix.image }}
+    timeout-minutes: 330
+    steps:
+      - name: Checkout Common
+        uses: actions/checkout@v6
+        with:
+          repository: 51Degrees/common-ci
+
+      - name: Measure
+        env:
+          SECRETS: ${{ toJSON(secrets) }}
+          ARCH: ${{ matrix.arch }}
+          BUILD_METHOD: ${{ matrix.buildmethod }}
+          ROUNDS: '8'
+          WEB_ROUNDS: '3'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+
+          $RepoName = '51degrees-dotnet'
+          $Arch = $env:ARCH
+          $BuildMethod = $env:BUILD_METHOD
+          $Rounds = [int]$env:ROUNDS
+          $WebRounds = [int]$env:WEB_ROUNDS
+
+          $S = ConvertFrom-Json -AsHashtable $env:SECRETS
+          $Keys = @{
+              TestResourceKey = $S['_51DEGREES_RESOURCE_KEY_BESPOKE']
+              AcceptCHBrowserKey = $S['ACCEPTCH_BROWSER_KEY']
+              AcceptCHHardwareKey = $S['ACCEPTCH_HARDWARE_KEY']
+              AcceptCHPlatformKey = $S['ACCEPTCH_PLATFORM_KEY']
+              AcceptCHNoneKey = $S['ACCEPTCH_NONE_KEY']
+              DeviceDetection = $S['DEVICE_DETECTION_KEY']
+          }
+
+          # The same short drive the shared build and test step maps, because
+          # the example output paths are long and there are two trees here.
+          if ($IsWindows) {
+              subst W: (Get-Location).Path
+              Set-Location W:\
+          }
+
+          $trees = @(
+              @{ Label = 'main'; Dir = 'm'; Branch = 'main' },
+              @{ Label = 'rc'; Dir = 'r'; Branch = 'rc' }
+          )
+
+          foreach ($t in $trees) {
+              Write-Host "::group::Clone $($t.Branch)"
+              New-Item -ItemType Directory -Force -Path $t.Dir | Out-Null
+              ./steps/clone-repo.ps1 -RepoName $RepoName -OrgName 51Degrees -Branch $t.Branch -DestinationDir $t.Dir
+              $t.Repo = "$($t.Dir)/$RepoName"
+              $t.Sha = (git -C $t.Repo rev-parse HEAD)
+              Write-Host "$($t.Branch) is at $($t.Sha)"
+              Write-Host "::endgroup::"
+          }
+
+          # One set of data files in ./assets serves both trees, because the
+          # repository's own fetch step keeps anything already downloaded.
+          foreach ($t in $trees) {
+              $t.Options = @{
+                  RepoName = $t.Repo
+                  Name = $t.Label
+                  Arch = $Arch
+                  Configuration = 'Release'
+                  BuildMethod = $BuildMethod
+                  Keys = $Keys
+                  DeviceDetection = $S['DEVICE_DETECTION_KEY']
+                  DeviceDetectionUrl = $S['DEVICE_DETECTION_URL']
+                  IpIntelligenceUrl = $S['IPI_DATA_FILE_URL']
+                  StrongNameKeyBase64 = $S['STRONG_NAME_KEY_BASE64']
+              }
+              Write-Host "::group::Fetch assets for $($t.Label)"
+              ./steps/run-script.ps1 "./$($t.Repo)/ci/fetch-assets.ps1" $t.Options
+              Write-Host "::endgroup::"
+          }
+
+          # The IP Intelligence evidence is generated from random addresses, so
+          # the second tree reads the first tree's file rather than its own.
+          $from = "$($trees[0].Repo)/cxx/data/ip-intelligence"
+          $to = "$($trees[1].Repo)/cxx/data/ip-intelligence"
+          foreach ($file in @('evidence.yml', 'evidence.csv')) {
+              if (Test-Path "$from/$file") {
+                  Copy-Item -Force "$from/$file" "$to/$file"
+                  Write-Host "Both trees read $from/$file"
+              }
+          }
+
+          foreach ($t in $trees) {
+              Write-Host "::group::Setup environment for $($t.Label)"
+              ./steps/run-script.ps1 "./$($t.Repo)/ci/setup-environment.ps1" $t.Options
+              Write-Host "::endgroup::"
+              Write-Host "::group::Build $($t.Label)"
+              ./steps/run-script.ps1 "./$($t.Repo)/ci/build-project.ps1" $t.Options
+              Write-Host "::endgroup::"
+          }
+
+          if ($IsWindows) { Get-PSDrive -PSProvider FileSystem | Out-String | Write-Host } else { df -h }
+
+          # Rounds take turns, main then rc. The web overhead is measured in
+          # the last few rounds only, because it costs more than the two
+          # console measures together.
+          $failures = @()
+          $total = $Rounds + $WebRounds
+          for ($i = 1; $i -le $total; $i++) {
+              foreach ($t in $trees) {
+                  $round = '{0:d2}' -f $i
+                  $env:SKIP_WEB_PERFORMANCE = ($i -gt $Rounds) ? 'false' : 'true'
+                  $env:_51DEGREES_DD_PATH = Join-Path (Get-Location) "$($t.Repo)/cxx/data/device-detection/TAC-HashV41.hash"
+                  Write-Host "::group::Round $round $($t.Label)"
+                  try {
+                      $o = $t.Options.Clone()
+                      $o.Name = "$($t.Label)_$round"
+                      ./steps/run-script.ps1 "./$($t.Repo)/ci/run-performance-tests.ps1" $o
+                  } catch {
+                      Write-Host "::warning title=Round $round $($t.Label) did not finish::$_"
+                      $failures += "round $round $($t.Label): $_"
+                  }
+                  Write-Host "::endgroup::"
+              }
+          }
+
+          function Get-Median {
+              param([double[]]$Values)
+              $sorted = @($Values | Sort-Object)
+              $n = $sorted.Count
+              if ($n -eq 0) { return $null }
+              if ($n % 2) { return $sorted[[int](($n - 1) / 2)] }
+              return ($sorted[$n / 2 - 1] + $sorted[$n / 2]) / 2
+          }
+
+          $readings = @()
+          foreach ($t in $trees) {
+              $folder = "$($t.Repo)/test-results/performance-summary"
+              if (-not (Test-Path $folder)) { continue }
+              foreach ($file in Get-ChildItem "$folder/results_*.json") {
+                  $measure = switch -Wildcard ($file.Name) {
+                      '*_ipi.json' { 'IP Intelligence lookups per second' }
+                      '*_web.json' { 'Web request overhead, ms' }
+                      default { 'Detections per second' }
+                  }
+                  $json = Get-Content $file.FullName -Raw | ConvertFrom-Json
+                  $readings += [pscustomobject]@{
+                      Tree = $t.Label
+                      Measure = $measure
+                      File = $file.Name
+                      Higher = $json.HigherIsBetter.DetectionsPerSecond
+                      Lower = $json.LowerIsBetter.MsPerDetection
+                  }
+              }
+          }
+
+          Write-Host "::group::Every reading"
+          $readings | Sort-Object Measure, File | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
+          Write-Host "::endgroup::"
+
+          $lines = @("| Measure | Tree | Rounds | Median | Lowest | Highest | rc change |", "| --- | --- | --- | --- | --- | --- | --- |")
+          foreach ($measure in ($readings.Measure | Sort-Object -Unique)) {
+              $value = ($measure -eq 'Web request overhead, ms') ? 'Lower' : 'Higher'
+              $medians = @{}
+              foreach ($t in $trees) {
+                  $set = @($readings | Where-Object { $_.Measure -eq $measure -and $_.Tree -eq $t.Label } | ForEach-Object { $_.$value })
+                  if (-not $set) { continue }
+                  $medians[$t.Label] = Get-Median $set
+                  $change = ''
+                  if ($t.Label -eq 'rc' -and $medians['main']) {
+                      $change = '{0:n2} %' -f ((($medians['rc'] - $medians['main']) / $medians['main']) * 100)
+                  }
+                  $lines += '| {0} | {1} | {2} | {3:n0} | {4:n0} | {5:n0} | {6} |' -f $measure, $t.Label, $set.Count, $medians[$t.Label], ($set | Measure-Object -Minimum).Minimum, ($set | Measure-Object -Maximum).Maximum, $change
+              }
+          }
+          $table = $lines -join "`n"
+          Write-Host "BEGIN SUMMARY TABLE"
+          Write-Host $table
+          Write-Host "END SUMMARY TABLE"
+          $summary = @(
+              "## ${env:ARCH} on $($env:RUNNER_OS), main $($trees[0].Sha) against rc $($trees[1].Sha)",
+              "",
+              $table
+          ) -join "`n"
+          $summary | Out-File -Append $env:GITHUB_STEP_SUMMARY
+
+          if ($failures) {
+              Write-Host "::warning title=Rounds that did not finish::$($failures -join '; ')"
+          }
+
+      - name: Upload results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: measurement-${{ matrix.label }}
+          path: ${{ github.workspace }}/*/51degrees-dotnet/test-results/performance-summary/results_*.json
+          if-no-files-found: warn
