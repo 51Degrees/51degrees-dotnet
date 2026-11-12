@@ -41,7 +41,11 @@ jobs:
 
       - name: Measure
         env:
-          SECRETS: ${{ toJSON(secrets) }}
+          DEVICE_DETECTION_KEY: ${{ secrets.DEVICE_DETECTION_KEY }}
+          DEVICE_DETECTION_URL: ${{ secrets.DEVICE_DETECTION_URL }}
+          IPI_DATA_FILE_URL: ${{ secrets.IPI_DATA_FILE_URL }}
+          STRONG_NAME_KEY_BASE64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
+          TEST_RESOURCE_KEY: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
           ARCH: ${{ matrix.arch }}
           BUILD_METHOD: ${{ matrix.buildmethod }}
           ROUNDS: '8'
@@ -56,14 +60,11 @@ jobs:
           $Rounds = [int]$env:ROUNDS
           $WebRounds = [int]$env:WEB_ROUNDS
 
-          $S = ConvertFrom-Json -AsHashtable $env:SECRETS
+          # Only the keys the on-premise performance examples and the web
+          # overhead test read. The cloud keys take no part in any of them.
           $Keys = @{
-              TestResourceKey = $S['_51DEGREES_RESOURCE_KEY_BESPOKE']
-              AcceptCHBrowserKey = $S['ACCEPTCH_BROWSER_KEY']
-              AcceptCHHardwareKey = $S['ACCEPTCH_HARDWARE_KEY']
-              AcceptCHPlatformKey = $S['ACCEPTCH_PLATFORM_KEY']
-              AcceptCHNoneKey = $S['ACCEPTCH_NONE_KEY']
-              DeviceDetection = $S['DEVICE_DETECTION_KEY']
+              TestResourceKey = $env:TEST_RESOURCE_KEY
+              DeviceDetection = $env:DEVICE_DETECTION_KEY
           }
 
           # The same short drive the shared build and test step maps, because
@@ -98,10 +99,10 @@ jobs:
                   Configuration = 'Release'
                   BuildMethod = $BuildMethod
                   Keys = $Keys
-                  DeviceDetection = $S['DEVICE_DETECTION_KEY']
-                  DeviceDetectionUrl = $S['DEVICE_DETECTION_URL']
-                  IpIntelligenceUrl = $S['IPI_DATA_FILE_URL']
-                  StrongNameKeyBase64 = $S['STRONG_NAME_KEY_BASE64']
+                  DeviceDetection = $env:DEVICE_DETECTION_KEY
+                  DeviceDetectionUrl = $env:DEVICE_DETECTION_URL
+                  IpIntelligenceUrl = $env:IPI_DATA_FILE_URL
+                  StrongNameKeyBase64 = $env:STRONG_NAME_KEY_BASE64
               }
               Write-Host "::group::Fetch assets for $($t.Label)"
               ./steps/run-script.ps1 "./$($t.Repo)/ci/fetch-assets.ps1" $t.Options
