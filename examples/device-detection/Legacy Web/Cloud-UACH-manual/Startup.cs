@@ -49,7 +49,7 @@ using Microsoft.Extensions.DependencyInjection;
 /// properties you are interested in as well as any associated license keys 
 /// that entitle you to increased request limits and/or paid-for properties.
 /// 
-/// You can create a free resource key using the 51Degrees [Configurator](https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-legacy-web-cloud-uach-manual-startup.cs&amp;utm_term=header).
+/// You can create a free resource key using the 51Degrees [configuration page](https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-legacy-web-cloud-uach-manual-startup.cs&amp;utm_term=header).
 /// The properties used in this example are:
 ///   HardwareVendor, HardwareName, DeviceType
 ///   PlatformVendor, PlatformName, PlatformVersion

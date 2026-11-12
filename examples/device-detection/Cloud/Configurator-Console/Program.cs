@@ -30,7 +30,7 @@ using System.Net.Http;
 using System.Text;
 
 /// <summary>
-/// This example is displayed at the end of the [Configurator](https://51degrees.com/configure/?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-configurator-console-program.cs&amp;utm_term=header)
+/// This example is displayed at the end of the [configuration page](https://51degrees.com/configure/?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-configurator-console-program.cs&amp;utm_term=header)
 /// process, which is used to create resource keys for use with the 51Degrees cloud service.
 /// 
 /// It shows how to call the cloud with the newly created key and how to access the values 

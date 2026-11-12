@@ -42,7 +42,7 @@ The API can either use our cloud service to get its data or it can use a local
 You will require a [resource
 key](https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud) to use the
 Cloud API. You can create resource keys using our
-[configurator](https://51degrees.com/configure/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud), see our
+[configuration page](https://51degrees.com/configure/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud), see our
 [documentation](https://51degrees.com/documentation/_services__configurator.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud)
 on how to use this.
 

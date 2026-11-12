@@ -52,7 +52,7 @@ Tests that need a data file locate it in the following order:
 
 You will require [resource keys](https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon)
 to use the Cloud API, as described on our website. Get resource keys from
-our [configurator](https://51degrees.com/configure/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon), see our [documentation](https://51degrees.com/documentation/_services__configurator.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon) on
+our [configuration page](https://51degrees.com/configure/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon), see our [documentation](https://51degrees.com/documentation/_services__configurator.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon) on
 how to use this.
 
 The cloud property tiers changed in May 2026. Of the IP intelligence

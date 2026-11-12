@@ -40,7 +40,7 @@ using System.Threading.Tasks;
 /// properties you are interested in as well as any associated license keys 
 /// that entitle you to increased request limits and/or paid-for properties.
 /// 
-/// You can create a resource key using the 51Degrees [Configurator](https://51degrees.com/configure?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-gettingstarted-program.cs&amp;utm_term=gettingstarted).
+/// You can create a resource key using the 51Degrees [configuration page](https://51degrees.com/configure?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-gettingstarted-program.cs&amp;utm_term=gettingstarted).
 /// 
 /// Required NuGet Dependencies:
 /// - [FiftyOne.GeoLocation](https://www.nuget.org/packages/FiftyOne.GeoLocation/)
