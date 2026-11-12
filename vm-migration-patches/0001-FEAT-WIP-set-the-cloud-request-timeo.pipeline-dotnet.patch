@@ -1,0 +1,285 @@
+From d00873aaee561b78ca30c34a18071b5325da0fbe Mon Sep 17 00:00:00 2001
+From: Oleksandr Lazarenko <oleksandr.lazarenko@postindustria.com>
+Date: Thu, 12 Nov 2026 14:36:39 -0500
+Subject: [PATCH] FEAT: WIP set the cloud request timeout on the pipeline
+ builder
+
+Work in progress, saved before a machine move. Not yet tested.
+---
+ FiftyOne.Did/FiftyOne.Did.xml                 |  32 ++--
+ .../FlowElements/CloudPipelineBuilderBase.cs  |  28 ++++
+ .../CloudPipelineBuilderBaseTests.cs          | 152 ++++++++++++++++++
+ 3 files changed, 196 insertions(+), 16 deletions(-)
+ create mode 100644 Tests/FiftyOne.Pipeline.CloudRequestEngine.Tests/CloudPipelineBuilderBaseTests.cs
+
+diff --git a/FiftyOne.Did/FiftyOne.Did.xml b/FiftyOne.Did/FiftyOne.Did.xml
+index 41fa20cd..db837af0 100644
+--- a/FiftyOne.Did/FiftyOne.Did.xml
++++ b/FiftyOne.Did/FiftyOne.Did.xml
+@@ -2279,22 +2279,6 @@
+             the consumer rather than at the creator that made it.
+             </summary>
+         </member>
+-        <member name="T:Owid.Client.Model.ConfigurationPublicKeyStore">
+-            <summary>
+-            Default <see cref="T:Owid.Client.Model.IPublicKeyStore"/> backed by the single key in
+-            <see cref="T:Owid.Client.Model.Configuration.OwidConfiguration"/>. A creator with one long-lived key has
+-            no key history, so the date is ignored.
+-            </summary>
+-        </member>
+-        <member name="M:Owid.Client.Model.ConfigurationPublicKeyStore.#ctor(Owid.Client.Model.Configuration.OwidConfiguration)">
+-            <summary>
+-            Designated constructor.
+-            </summary>
+-            <param name="configuration">The OWID creator configuration.</param>
+-        </member>
+-        <member name="M:Owid.Client.Model.ConfigurationPublicKeyStore.GetPublicKey(System.Nullable{System.UInt32})">
+-            <inheritdoc/>
+-        </member>
+         <member name="T:Owid.Client.Model.Configuration.OwidConfiguration">
+             <summary>
+             Configuration for <see cref="T:Owid.Client.Creator"/>
+@@ -2318,6 +2302,22 @@
+             The PEM format public key for the OWID creator.
+             </summary>
+         </member>
++        <member name="T:Owid.Client.Model.ConfigurationPublicKeyStore">
++            <summary>
++            Default <see cref="T:Owid.Client.Model.IPublicKeyStore"/> backed by the single key in
++            <see cref="T:Owid.Client.Model.Configuration.OwidConfiguration"/>. A creator with one long-lived key has
++            no key history, so the date is ignored.
++            </summary>
++        </member>
++        <member name="M:Owid.Client.Model.ConfigurationPublicKeyStore.#ctor(Owid.Client.Model.Configuration.OwidConfiguration)">
++            <summary>
++            Designated constructor.
++            </summary>
++            <param name="configuration">The OWID creator configuration.</param>
++        </member>
++        <member name="M:Owid.Client.Model.ConfigurationPublicKeyStore.GetPublicKey(System.Nullable{System.UInt32})">
++            <inheritdoc/>
++        </member>
+         <member name="T:Owid.Client.Model.DatedPublicKey">
+             <summary>
+             A signing public key together with the moment it comes into force.
+diff --git a/FiftyOne.Pipeline.CloudRequestEngine/FlowElements/CloudPipelineBuilderBase.cs b/FiftyOne.Pipeline.CloudRequestEngine/FlowElements/CloudPipelineBuilderBase.cs
+index 8fb1aab5..3e6c0dde 100644
+--- a/FiftyOne.Pipeline.CloudRequestEngine/FlowElements/CloudPipelineBuilderBase.cs
++++ b/FiftyOne.Pipeline.CloudRequestEngine/FlowElements/CloudPipelineBuilderBase.cs
+@@ -20,6 +20,7 @@
+  * such notice(s) shall fulfill the requirements of that article.
+  * ********************************************************************* */
+ 
++using FiftyOne.Pipeline.Core.Attributes;
+ using FiftyOne.Pipeline.Core.FlowElements;
+ using FiftyOne.Pipeline.Engines.Configuration;
+ using FiftyOne.Pipeline.Engines.FlowElements;
+@@ -73,6 +74,12 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
+         /// </summary>
+         protected string CloudRequestOrigin { get; set; } = string.Empty;
+ 
++        /// <summary>
++        /// The timeout in seconds to use for requests to the cloud service.
++        /// </summary>
++        protected int CloudRequestTimeoutSeconds { get; set; }
++            = Constants.CLOUD_REQUEST_TIMEOUT_DEFAULT_SECONDS;
++
+         /// <summary>
+         /// Constructor
+         /// </summary>
+@@ -218,6 +225,26 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
+             return this as TBuilder;
+         }
+ 
++        /// <summary>
++        /// The timeout to use for requests to the cloud service.
++        /// This budget covers the whole request, including the DNS lookup and
++        /// TLS handshake, so the first request made by a process can need
++        /// noticeably longer than later ones.
++        /// </summary>
++        /// <param name="timeoutSeconds">
++        /// The timeout to use, in seconds. A value of zero or less means the
++        /// request will never time out.
++        /// </param>
++        /// <returns>
++        /// This builder
++        /// </returns>
++        [DefaultValue(Constants.CLOUD_REQUEST_TIMEOUT_DEFAULT_SECONDS)]
++        public TBuilder SetCloudRequestTimeOutSeconds(int timeoutSeconds)
++        {
++            CloudRequestTimeoutSeconds = timeoutSeconds;
++            return this as TBuilder;
++        }
++
+         /// <summary>
+         /// Create and return a new pipeline based on the configuration
+         /// so far.
+@@ -272,6 +299,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
+             {
+                 cloudRequestEngineBuilder.SetCloudRequestOrigin(CloudRequestOrigin);
+             }
++            cloudRequestEngineBuilder.SetTimeOutSeconds(CloudRequestTimeoutSeconds);
+             var cloudRequestEngine = cloudRequestEngineBuilder.Build();
+ 
+             // Add the cloud request engine as the first element.
+diff --git a/Tests/FiftyOne.Pipeline.CloudRequestEngine.Tests/CloudPipelineBuilderBaseTests.cs b/Tests/FiftyOne.Pipeline.CloudRequestEngine.Tests/CloudPipelineBuilderBaseTests.cs
+new file mode 100644
+index 00000000..1c8de3ca
+--- /dev/null
++++ b/Tests/FiftyOne.Pipeline.CloudRequestEngine.Tests/CloudPipelineBuilderBaseTests.cs
+@@ -0,0 +1,152 @@
++/* *********************************************************************
++ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
++ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
++ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
++ *
++ * This Original Work is licensed under the European Union Public Licence
++ * (EUPL) v.1.2 and is subject to its terms as set out below.
++ *
++ * If a copy of the EUPL was not distributed with this file, You can obtain
++ * one at https://opensource.org/licenses/EUPL-1.2.
++ *
++ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
++ * amended by the European Commission) shall be deemed incompatible for
++ * the purposes of the Work and the provisions of the compatibility
++ * clause in Article 5 of the EUPL shall not apply.
++ *
++ * If using the Work as, or as part of, a network application, by
++ * including the attribution notice(s) required under Article 5 of the EUPL
++ * in the end user terms of the application under an appropriate heading,
++ * such notice(s) shall fulfill the requirements of that article.
++ * ********************************************************************* */
++
++using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
++using Microsoft.Extensions.Logging;
++using Microsoft.VisualStudio.TestTools.UnitTesting;
++using Moq;
++using Moq.Protected;
++using System;
++using System.Net;
++using System.Net.Http;
++using System.Threading;
++using System.Threading.Tasks;
++
++namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
++{
++    /// <summary>
++    /// Tests for the settings that <see cref="CloudPipelineBuilderBase{T}"/>
++    /// passes on to the cloud request engine it builds.
++    /// </summary>
++    [TestClass]
++    public class CloudPipelineBuilderBaseTests
++    {
++        /// <summary>
++        /// Minimal concrete builder. The base class is abstract and every
++        /// real subclass lives in a downstream repository, so the tests need
++        /// their own to exercise it.
++        /// </summary>
++        private class TestCloudPipelineBuilder
++            : CloudPipelineBuilderBase<TestCloudPipelineBuilder>
++        {
++            public TestCloudPipelineBuilder(
++                ILoggerFactory loggerFactory,
++                HttpClient httpClient)
++                : base(loggerFactory, httpClient)
++            {
++            }
++        }
++
++        private HttpClient _httpClient;
++
++        [TestInitialize]
++        public void Init()
++        {
++            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
++            // The engine calls both discovery endpoints as it warms up. The
++            // content does not matter here, only that the calls complete.
++            handlerMock
++                .Protected()
++                .Setup<Task<HttpResponseMessage>>(
++                    "SendAsync",
++                    ItExpr.IsAny<HttpRequestMessage>(),
++                    ItExpr.IsAny<CancellationToken>())
++                .ReturnsAsync(() => new HttpResponseMessage()
++                {
++                    StatusCode = HttpStatusCode.OK,
++                    Content = new StringContent("{}"),
++                });
++
++            _httpClient = new HttpClient(handlerMock.Object);
++            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, "");
++        }
++
++        /// <summary>
++        /// A pipeline built without touching the timeout must keep the
++        /// documented default, so adding the setter changes nothing for
++        /// callers who do not use it.
++        /// </summary>
++        [TestMethod]
++        public void CloudRequestTimeOut_Default_IsUnchanged()
++        {
++            using (new TestCloudPipelineBuilder(new LoggerFactory(), _httpClient)
++                .SetResourceKey("abcdefgh")
++                .Build())
++            {
++                Assert.AreEqual(
++                    TimeSpan.FromSeconds(
++                        Constants.CLOUD_REQUEST_TIMEOUT_DEFAULT_SECONDS),
++                    _httpClient.Timeout,
++                    "A pipeline built through the fluent builder should use " +
++                    "the default cloud request timeout.");
++            }
++        }
++
++        /// <summary>
++        /// The point of the change: a timeout set on the pipeline builder
++        /// must reach the cloud request engine it builds.
++        /// </summary>
++        [TestMethod]
++        public void CloudRequestTimeOut_IsPassedToTheEngine()
++        {
++            using (new TestCloudPipelineBuilder(new LoggerFactory(), _httpClient)
++                .SetResourceKey("abcdefgh")
++                .SetCloudRequestTimeOutSeconds(30)
++                .Build())
++            {
++                Assert.AreEqual(
++                    TimeSpan.FromSeconds(30),
++                    _httpClient.Timeout,
++                    "The timeout set on the pipeline builder should be used " +
++                    "for requests to the cloud service.");
++            }
++        }
++
++        /// <summary>
++        /// Zero or less means 'never time out' rather than 'time out
++        /// immediately', which is what the setter documents.
++        /// </summary>
++        [TestMethod]
++        public void CloudRequestTimeOut_ZeroOrLess_MeansInfinite()
++        {
++            using (new TestCloudPipelineBuilder(new LoggerFactory(), _httpClient)
++                .SetResourceKey("abcdefgh")
++                .SetCloudRequestTimeOutSeconds(0)
++                .Build())
++            {
++                Assert.AreEqual(
++                    Timeout.InfiniteTimeSpan,
++                    _httpClient.Timeout,
++                    "A timeout of zero should disable the timeout entirely.");
++            }
++        }
++
++        [TestCleanup]
++        public void Cleanup()
++        {
++            // The client is deliberately not disposed: the strict mock has no
++            // setup for HttpMessageHandler.Dispose, and each test gets a fresh
++            // client from Init anyway.
++            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, "");
++        }
++    }
++}
+-- 
+2.47.3
+

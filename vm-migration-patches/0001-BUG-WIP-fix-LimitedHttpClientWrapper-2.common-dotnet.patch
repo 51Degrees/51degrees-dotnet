@@ -1,0 +1,190 @@
+From 89471c52f605db042b21ea603697ee80f1df9b63 Mon Sep 17 00:00:00 2001
+From: Oleksandr Lazarenko <oleksandr.lazarenko@postindustria.com>
+Date: Thu, 12 Nov 2026 14:36:41 -0500
+Subject: [PATCH] BUG: WIP fix LimitedHttpClientWrapper (#298)
+
+Work in progress, saved before a machine move. Not yet tested.
+---
+ FiftyOne.Common.Test/Issue298ReproTests.cs    | 123 ++++++++++++++++++
+ .../Services/LimitedHttpClientWrapper.cs      |  31 +++--
+ 2 files changed, 144 insertions(+), 10 deletions(-)
+ create mode 100644 FiftyOne.Common.Test/Issue298ReproTests.cs
+
+diff --git a/FiftyOne.Common.Test/Issue298ReproTests.cs b/FiftyOne.Common.Test/Issue298ReproTests.cs
+new file mode 100644
+index 0000000..5765065
+--- /dev/null
++++ b/FiftyOne.Common.Test/Issue298ReproTests.cs
+@@ -0,0 +1,123 @@
++using FiftyOne.Common.Services;
++using FiftyOne.Common.TestHelpers;
++using Microsoft.Extensions.Logging;
++using System;
++using System.Net;
++using System.Net.Http;
++using System.Threading;
++using System.Threading.Tasks;
++
++namespace FiftyOne.Common.Tests
++{
++    [TestClass]
++    public class Issue298ReproTests
++    {
++        private class GatedHandler : HttpMessageHandler
++        {
++            public int Entered;
++            public TaskCompletionSource<bool> Gate =
++                new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
++            protected override async Task<HttpResponseMessage> SendAsync(
++                HttpRequestMessage request, CancellationToken cancellationToken)
++            {
++                Interlocked.Increment(ref Entered);
++                await Gate.Task;
++                return new HttpResponseMessage(HttpStatusCode.OK);
++            }
++        }
++
++        private static LimitedHttpClientWrapper Create(HttpClient client, int max) =>
++            new LimitedHttpClientWrapper(
++                new TestLoggerFactory().CreateLogger<LimitedHttpClientWrapper>(), client, max);
++
++        [TestMethod]
++        public void SyncThrow_MalformedUri_ReleasesSlot()
++        {
++            var limiter = Create(new HttpClient(new GatedHandler()), 1);
++            Assert.ThrowsExactly<UriFormatException>(
++                () => limiter.GetAsync("http://[", CancellationToken.None));
++            Assert.AreEqual(0, limiter.CurrentRequests);
++        }
++
++        [TestMethod]
++        public void SyncThrow_DisposedClient_ReleasesSlot()
++        {
++            var client = new HttpClient(new GatedHandler());
++            client.Dispose();
++            var limiter = Create(client, 1);
++            Assert.ThrowsExactly<ObjectDisposedException>(
++                () => limiter.GetAsync("http://51degrees.com", CancellationToken.None));
++            Assert.AreEqual(0, limiter.CurrentRequests);
++        }
++
++        [TestMethod]
++        public void SyncThrow_WedgesWrapperForGood()
++        {
++            var handler = new GatedHandler();
++            handler.Gate.SetResult(true);
++            var limiter = Create(new HttpClient(handler), 1);
++            try { limiter.GetAsync("http://[", CancellationToken.None); } catch (UriFormatException) { }
++            var good = limiter.GetAsync("http://51degrees.com", CancellationToken.None).Result;
++            Assert.IsNotNull(good, "valid request refused after one malformed request");
++        }
++
++        [TestMethod]
++        public void Burst_NeverExceedsCap()
++        {
++            const int Cap = 1, Threads = 32, Rounds = 300;
++            int worst = 0, breaches = 0;
++            for (var round = 0; round < Rounds; round++)
++            {
++                var handler = new GatedHandler();
++                var limiter = Create(new HttpClient(handler), Cap);
++                var barrier = new Barrier(Threads);
++                var threads = new Thread[Threads];
++                for (var i = 0; i < Threads; i++)
++                {
++                    threads[i] = new Thread(() =>
++                    {
++                        barrier.SignalAndWait();
++                        limiter.GetAsync("http://51degrees.com", CancellationToken.None);
++                    });
++                    threads[i].Start();
++                }
++                foreach (var t in threads) { t.Join(); }
++                worst = Math.Max(worst, handler.Entered);
++                if (handler.Entered > Cap) { breaches++; }
++                handler.Gate.SetResult(true);
++            }
++            Assert.AreEqual(0, breaches, $"cap {Cap} breached in {breaches}/{Rounds} rounds, worst {worst} in flight");
++        }
++    }
++}
++namespace FiftyOne.Common.Tests
++{
++    [TestClass]
++    public class Issue298CallerInputTests
++    {
++        [TestMethod]
++        [DataRow(-12000)]
++        [DataRow(-6000)]
++        [DataRow(70000)]
++        public void RawLatitudeOfLength(int length)
++        {
++            var limiter = new LimitedHttpClientWrapper(
++                new FiftyOne.Common.TestHelpers.TestLoggerFactory()
++                    .CreateLogger<LimitedHttpClientWrapper>(),
++                new System.Net.Http.HttpClient(), 500);
++            var lat = length < 0 ? new string((char)0xE9, -length) : new string((char)97, length);
++            try
++            {
++                var t = limiter.GetAsync("https://nominatim.invalid/reverse?lat=" + lat + "&lon=1&zoom=18&format=json",
++                    new System.Threading.CancellationToken(true));
++                System.Console.WriteLine($"len {length}: returned task, status {t.Status}");
++            }
++            catch (System.Exception exception)
++            {
++                System.Console.WriteLine($"len {length}: SYNC THROW {exception.GetType().Name}: {exception.Message}");
++            }
++            System.Threading.Thread.Sleep(50);
++            System.Console.WriteLine($"len {length}: CurrentRequests after = {limiter.CurrentRequests}");
++        }
++    }
++}
+diff --git a/FiftyOne.Common/Services/LimitedHttpClientWrapper.cs b/FiftyOne.Common/Services/LimitedHttpClientWrapper.cs
+index 2a38e32..f94dc91 100644
+--- a/FiftyOne.Common/Services/LimitedHttpClientWrapper.cs
++++ b/FiftyOne.Common/Services/LimitedHttpClientWrapper.cs
+@@ -101,20 +101,31 @@ namespace FiftyOne.Common.Services
+         private Task<HttpResponseMessage> WrapRequest(
+             Func<Task<HttpResponseMessage>> getResponse)
+         {
+-            if (_currentRequests < _maxConcurrent)
++            // Reserve the slot and test the cap in one atomic step. Testing
++            // first and incrementing after let concurrent callers all pass
++            // the test together and exceed the cap.
++            if (Interlocked.Increment(ref _currentRequests) > _maxConcurrent)
+             {
+-                Interlocked.Increment(ref _currentRequests);
+-                var request = getResponse();
+-                request.ContinueWith(t =>
+-                {
+-                    Interlocked.Decrement(ref _currentRequests);
+-                });
+-                return request;
++                Interlocked.Decrement(ref _currentRequests);
++                return Task.FromResult<HttpResponseMessage>(null);
+             }
+-            else
++            Task<HttpResponseMessage> request;
++            try
+             {
+-                return Task.FromResult<HttpResponseMessage>(null);
++                request = getResponse();
++            }
++            catch
++            {
++                // A synchronous throw (e.g. a malformed URI or a disposed
++                // client) means the continuation below is never attached, so
++                // the slot must be released here or it is lost until restart.
++                Interlocked.Decrement(ref _currentRequests);
++                throw;
+             }
++            request.ContinueWith(
++                t => Interlocked.Decrement(ref _currentRequests),
++                TaskScheduler.Default);
++            return request;
+         }
+     }
+ }
+-- 
+2.47.3
+

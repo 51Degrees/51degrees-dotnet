@@ -1,0 +1,39 @@
+From 645ba2c8aa2f43f6bd0c7818defd08957702a7e6 Mon Sep 17 00:00:00 2001
+From: Oleksandr Lazarenko <oleksandr.lazarenko@postindustria.com>
+Date: Thu, 12 Nov 2026 14:36:59 -0500
+Subject: [PATCH] BUILD: WIP update packages with dotnet-outdated
+
+Work in progress, saved before a machine move. Not yet tested.
+---
+ ci/update-packages.ps1 | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/ci/update-packages.ps1 b/ci/update-packages.ps1
+index 3ca53d9..8d89b7b 100644
+--- a/ci/update-packages.ps1
++++ b/ci/update-packages.ps1
+@@ -1,12 +1,13 @@
+-
+ param(
+     [Parameter(Mandatory=$true)]
+-    [string]$RepoName,
+-    [string]$ProjectDir = ".",
+-    [string]$Name
++    [string]$RepoName
+ )
+ 
+-./dotnet/run-update-dependencies.ps1 -RepoName $RepoName -ProjectDir $Solution -Name $Name
+-
++# Target the solution rather than the repository root. dotnet-outdated is
++# recursive, so from the root it reaches every project in the tree, including
++# any that a git submodule brings in; those belong to another repository, and
++# the commit step cannot stage them. Scoping to the solution keeps the update
++# to the projects this repository owns.
++./dotnet/outdated.ps1 -RepoName:$RepoName -Target "FiftyOne.GeoLocation.sln"
+ 
+-exit $LASTEXITCODE
+\ No newline at end of file
++exit $LASTEXITCODE
+-- 
+2.47.3
+
