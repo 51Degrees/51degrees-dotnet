@@ -36,8 +36,11 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud;
 /// Tests that the examples still read the resource key and the data file
 /// path from the old names of their environment variables when the new
 /// name is not set.
+/// The tests change the environment of the whole process, so they run
+/// apart from the tests that read it.
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public class OldEnvironmentNamesTests
 {
     private const string ResourceKeyName = "_51DEGREES_RESOURCE_KEY";

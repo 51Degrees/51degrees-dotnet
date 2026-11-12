@@ -34,8 +34,11 @@ namespace FiftyOne.Did.Cloud.Tests;
 /// <summary>
 /// Tests that the resource key for the live cloud tests is still read from
 /// the old names of its environment variable when no new name is set.
+/// The tests change the environment of the whole process, so they run
+/// apart from the tests that read it.
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public class LiveCloudKeyOldNamesTests
 {
     private static readonly string[] OldNames = { "51DEGREES_RESOURCE_KEY" };
