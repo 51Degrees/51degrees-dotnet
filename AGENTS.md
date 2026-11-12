@@ -215,6 +215,19 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   `TextWriter.Null`, and the IP Intelligence one checks only a few words of
   it.
 
+## Environment variable names
+
+[common-ci's list of environment variable names](https://github.com/51Degrees/common-ci/blob/18f9a570ed862a0b7e1ecb1c55a8319f35f02491/environment-variables.md)
+holds every environment variable name that the packages, tests, examples and
+CI scripts of every language read, with what each name holds and the
+deprecated names each replaced. The list decides. Use the names it gives, and
+when a change needs a new name, or reads an old name again, change
+[`environment-variables.json`](https://github.com/51Degrees/common-ci/blob/18f9a570ed862a0b7e1ecb1c55a8319f35f02491/environment-variables.json)
+in common-ci in the same piece of work. This repository's own name
+check, [`common/Test/EnvironmentVariableNamesTests.cs`](common/Test/EnvironmentVariableNamesTests.cs), still keeps a
+list of its own. Where the two differ, common-ci's list is the one to
+follow.
+
 ## References between the folders
 
 A project that uses a package built in another folder declares a
