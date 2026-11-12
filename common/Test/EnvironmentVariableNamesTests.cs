@@ -236,6 +236,8 @@ public class EnvironmentVariableNamesTests
             "location/Tests/GeoLocation.Tests/OldResourceKeyNameTests.cs",
             "pipeline/Examples/CloudRequestEngine/GettingStarted/Program.cs",
             "pipeline/Examples/Did/CreatorContextWeb/Program.cs",
+            "pipeline/Tests/CloudRequestEngine.Examples.Tests/" +
+                "GettingStartedOldNamesTests.cs",
             "pipeline/Tests/Did.Cloud.Tests/LiveCloudKey.cs",
             "pipeline/Tests/Did.Cloud.Tests/LiveCloudKeyOldNamesTests.cs",
             "pipeline/Tests/Did.Examples.Tests/EnvironmentSettingTests.cs",
