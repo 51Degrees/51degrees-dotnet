@@ -71,7 +71,7 @@ using System.Web.UI;
 /// the same as those that will be available in the configuration file. 
 /// 
 /// Note that you will need to create a 'resource key' using our
-/// [configuration page](https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx.cs&amp;utm_term=header) site in order to get this example to
+/// [configuration page](https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx.cs&amp;utm_term=header) in order to get this example to
 /// work. The previous link will pre-populate a free key with the free properties. A key created
 /// at [this link](https://51degrees.com/configure/hYzn3TV3?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx.cs&amp;utm_term=header) with a paid subscription also
 /// includes the paid properties used by this example.
