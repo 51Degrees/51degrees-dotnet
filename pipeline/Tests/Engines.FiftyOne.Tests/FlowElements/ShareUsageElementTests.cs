@@ -259,7 +259,22 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 element.Enqueue(ip);
             }
 
+            ThreadPool.GetMinThreads(out var minWorker, out _);
+            ThreadPool.GetAvailableThreads(out var availableWorker, out _);
+            var sinceQueued = System.Diagnostics.Stopwatch.StartNew();
+            var probe = Task.Run(() => sinceQueued.Elapsed.TotalMilliseconds);
+            var watch = System.Diagnostics.Stopwatch.StartNew();
             element.Dispose();
+            watch.Stop();
+            var probeDelay = probe.Result;
+            System.Console.WriteLine(
+                $"DISPOSEDIAG cores={System.Environment.ProcessorCount} " +
+                $"minWorker={minWorker} availableWorkerBefore={availableWorker} " +
+                $"threadCount={ThreadPool.ThreadCount} " +
+                $"pending={ThreadPool.PendingWorkItemCount} " +
+                $"probeDelayMs={probeDelay:F0} " +
+                $"disposeMs={watch.ElapsedMilliseconds} " +
+                $"messages={_xmlContent.Count} queuedLeft={element.Queued}");
 
             var sent = _xmlContent
                 .SelectMany(xml => Regex.Matches(xml, "<ClientIP>([^<]+)</ClientIP>")
