@@ -58,7 +58,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
 
             Assert.IsFalse(
                 string.IsNullOrWhiteSpace(_resourceKey),
-                $"Environment variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}' " +
+                $"Environment variable '{ExampleUtils.RESOURCE_KEY_ENV_VAR}' " +
                 $"is not set. Obtain a resource key at " +
                 $"https://configure.51degrees.com and export it to run this test.");
         }
@@ -232,13 +232,13 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
                 WorkingDirectory = examplePath,
                 CreateNoWindow = true,
             };
-            startInfo.Environment[ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR] = _resourceKey;
+            startInfo.Environment[ExampleUtils.RESOURCE_KEY_ENV_VAR] = _resourceKey;
             var endPoint = ExampleUtils.FromEnvironment(
-                ExampleUtils.CLOUD_END_POINT_ENV_VAR,
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
                 ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
             if (string.IsNullOrWhiteSpace(endPoint) == false)
             {
-                startInfo.Environment[ExampleUtils.CLOUD_END_POINT_ENV_VAR] = endPoint;
+                startInfo.Environment[ExampleUtils.CLOUD_ENDPOINT_ENV_VAR] = endPoint;
             }
 
             using var process = new Process { StartInfo = startInfo };

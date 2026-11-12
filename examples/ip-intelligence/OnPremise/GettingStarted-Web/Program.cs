@@ -119,7 +119,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb
             if (string.IsNullOrWhiteSpace(dataFile))
             {
                 dataFile = Examples.ExampleUtils.FromEnvironment(
-                    Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
+                    Constants.IPI_PATH_ENV_VAR,
                     Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS);
             }
             if (string.IsNullOrWhiteSpace(dataFile))
@@ -131,7 +131,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb
             {
                 throw new Exception($"A data file must be specified as a command line " +
                     $"argument, in the appsettings.json file, or in the " +
-                    $"'{Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR}' environment variable.");
+                    $"'{Constants.IPI_PATH_ENV_VAR}' environment variable.");
             }
             // The data file location provided in the configuration may be using an absolute or
             // relative path. If it is relative then search for a matching file using the

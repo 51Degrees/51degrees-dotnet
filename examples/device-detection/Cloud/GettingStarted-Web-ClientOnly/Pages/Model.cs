@@ -34,7 +34,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb.ClientOnly.P
 
         /// <summary>
         /// Cloud end point provided by the environment variable with the key 
-        /// <see cref="ExampleUtils.CLOUD_END_POINT_ENV_VAR"/>. Will default
+        /// <see cref="ExampleUtils.CLOUD_ENDPOINT_ENV_VAR"/>. Will default
         /// to 
         /// </summary>
         public string? CloudEndPoint { get; private set; }
@@ -49,7 +49,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb.ClientOnly.P
         {
             ResourceKey = ExampleUtils.GetResourceKeyFromEnv();
             var cloudEndPoint = ExampleUtils.FromEnvironment(
-                ExampleUtils.CLOUD_END_POINT_ENV_VAR,
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
                 ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
             CloudEndPoint = cloudEndPoint == null ?
                 DEFAULT_END_POINT :

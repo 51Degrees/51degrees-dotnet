@@ -193,7 +193,7 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.GettingStartedConsole
                         serviceProvider.GetRequiredService<ILogger<Program>>().LogError(
                             $"No resource key specified in the configuration file " +
                             $"'appsettings.json' or the environment variable " +
-                            $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud " +
+                            $"'{ExampleUtils.RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud " +
                             $"service is accessed using a 'ResourceKey'. For more information " +
                             $"see " +
                             $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=resource-key-required. " +

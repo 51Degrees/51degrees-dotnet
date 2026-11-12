@@ -165,13 +165,13 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.GetAllProperties
             // Optional custom cloud endpoint via env var. If unset, the SDK
             // defaults to cloud.51degrees.com.
             string cloudEndPoint = ExampleUtils.FromEnvironment(
-                ExampleUtils.CLOUD_END_POINT_ENV_VAR,
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
                 ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS) ?? "";
 
             if (string.IsNullOrWhiteSpace(resourceKey))
             {
                 Console.WriteLine($"No resource key specified on the command line or in the " +
-                    $"environment variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. " +
+                    $"environment variable '{ExampleUtils.RESOURCE_KEY_ENV_VAR}'. " +
                     $"Obtain a resource key at https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-getallproperties-console-program.cs&utm_term=resource-key-required and supply it " +
                     $"as the first argument or via that environment variable.");
             }

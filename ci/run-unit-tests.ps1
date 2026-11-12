@@ -19,15 +19,7 @@ $OldStyle = "^FiftyOne\.(Pipeline\.Web\.Framework\.Tests|DeviceDetection\.Tests\
 $Filter = "^FiftyOne\.(?!Pipeline\.Web\.Framework\.Tests\.dll$)(?!DeviceDetection\.Tests\.Framework\.dll$)(?!.*Examples?\.Tests)(?!.*TestHelpers).*Tests?(\.Core|\.Framework)?\.dll$"
 # A run can be narrowed to some assemblies by setting _51DEGREES_TEST_FILTER,
 # which the probe workflow does.
-# FIFTYONE_TEST_FILTER is the old name, read only when the new one is not
-# set.
-$TestFilter = $env:_51DEGREES_TEST_FILTER
-if (-not $TestFilter -and $env:FIFTYONE_TEST_FILTER) {
-    Write-Warning ("The environment variable FIFTYONE_TEST_FILTER is " +
-        "deprecated and _51DEGREES_TEST_FILTER replaces it. Set " +
-        "_51DEGREES_TEST_FILTER to the same value instead.")
-    $TestFilter = $env:FIFTYONE_TEST_FILTER
-}
+$TestFilter = & "$PSScriptRoot/test-filter.ps1"
 if ($TestFilter) {
     $Filter = $TestFilter
 }

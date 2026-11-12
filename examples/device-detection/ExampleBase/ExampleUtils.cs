@@ -72,16 +72,33 @@ public static class ExampleUtils
     /// to use when running cloud examples. Can be used to override the
     /// appsettings.json configuration for testing custom end points.
     /// </summary>
-    public const string CLOUD_END_POINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
+    public const string CLOUD_ENDPOINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
     /// <summary>
+    /// An old environment variable for the end point URL, read only when
+    /// <see cref="CLOUD_ENDPOINT_ENV_VAR"/> is not set.
+    /// </summary>
+    [System.Obsolete("Use CLOUD_ENDPOINT_ENV_VAR, which names the environment " +
+        "variable that replaces this one.")]
+    public const string CLOUD_END_POINT_ENV_VAR = "51D_CLOUD_ENDPOINT";
+
+    /// <summary>
+    /// An old environment variable for the resource key, read only when
+    /// <see cref="CLOUD_RESOURCE_KEY_ENV_VAR"/> is not set.
+    /// </summary>
+    [System.Obsolete("Use CLOUD_RESOURCE_KEY_ENV_VAR, which names the environment " +
+        "variable that replaces this one.")]
+    public const string LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR = "SUPER_RESOURCE_KEY";
+
+#pragma warning disable CS0618 // The old names are listed to be read.
+    /// <summary>
     /// The old names of
-    /// <see cref="CLOUD_END_POINT_ENV_VAR"/>,
+    /// <see cref="CLOUD_ENDPOINT_ENV_VAR"/>,
     /// read in this order only when that variable is not set.
     /// </summary>
     public static readonly string[] OLD_CLOUD_END_POINT_ENV_VARS = new string[]
     {
-        "51D_CLOUD_ENDPOINT",
+        CLOUD_END_POINT_ENV_VAR,
         "FIFTYONE_CLOUD_ENDPOINT",
     };
 
@@ -92,8 +109,9 @@ public static class ExampleUtils
     /// </summary>
     public static readonly string[] OLD_CLOUD_RESOURCE_KEY_ENV_VARS = new string[]
     {
-        "SUPER_RESOURCE_KEY",
+        LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR,
     };
+#pragma warning restore CS0618
 
     private static readonly HashSet<string> _oldNamesReported =
         new HashSet<string>();
@@ -522,15 +540,11 @@ public static class ExampleUtils
             var path = Environment.GetEnvironmentVariable(name);
             if (string.IsNullOrWhiteSpace(path) == false)
             {
-                return path;
-            }
-        }
-        foreach (var oldName in Constants.OLD_DATA_FILE_ENV_VARS)
-        {
-            var path = Environment.GetEnvironmentVariable(oldName);
-            if (string.IsNullOrWhiteSpace(path) == false)
-            {
-                ReportOldName(oldName, Constants.DD_PATH_ENV_VAR);
+                if (name != Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR)
+                {
+                    ReportOldName(
+                        name, Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR);
+                }
                 return path;
             }
         }

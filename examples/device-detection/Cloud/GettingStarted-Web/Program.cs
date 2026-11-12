@@ -149,7 +149,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb
 
             // override the cloud endpoint from the environment, regardless of the resource key
             string endpoint = ExampleUtils.FromEnvironment(
-                ExampleUtils.CLOUD_END_POINT_ENV_VAR,
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
                 ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
             if (string.IsNullOrEmpty(endpoint) == false)
             {

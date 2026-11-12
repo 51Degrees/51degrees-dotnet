@@ -69,7 +69,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
             }
 
             var cloudEndPoint = ExampleUtils.FromEnvironment(
-                ExampleUtils.CLOUD_END_POINT_ENV_VAR,
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
                 ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
             if(string.IsNullOrWhiteSpace(cloudEndPoint) == false)
             {

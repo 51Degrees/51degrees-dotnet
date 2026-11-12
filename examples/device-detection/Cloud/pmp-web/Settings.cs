@@ -44,12 +44,21 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         /// <summary>
         /// The resource key the pages and the pipeline use. Read first.
         /// </summary>
-        public const string RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
+        public const string RESOURCE_KEY_VARIABLE = "_51DEGREES_RESOURCE_KEY";
+
+        /// <summary>
+        /// The old name of <see cref="RESOURCE_KEY_VARIABLE"/>, read only
+        /// when neither that variable nor
+        /// <see cref="CI_RESOURCE_KEY_ENV_VAR"/> is set.
+        /// </summary>
+        [System.Obsolete("Use RESOURCE_KEY_VARIABLE, which names the environment " +
+            "variable that replaces this one.")]
+        public const string RESOURCE_KEY_ENV_VAR = "51DEGREES_RESOURCE_KEY";
 
         /// <summary>
         /// The name continuous integration sets a resource key carrying the
         /// 51Did product in, read only when
-        /// <see cref="RESOURCE_KEY_ENV_VAR"/> is not set.
+        /// <see cref="RESOURCE_KEY_VARIABLE"/> is not set.
         /// </summary>
         public const string CI_RESOURCE_KEY_ENV_VAR =
             "_51DEGREES_RESOURCE_KEY_51DID";
@@ -58,20 +67,15 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         /// The cloud the pages load the PMP and the client script from,
         /// and the pipeline asks.
         /// </summary>
-        public const string CLOUD_ENDPOINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
+        public const string CLOUD_ENDPOINT_VARIABLE = "_51DEGREES_CLOUD_ENDPOINT";
 
         /// <summary>
-        /// The old name of <see cref="RESOURCE_KEY_ENV_VAR"/>, read only
-        /// when neither that variable nor
-        /// <see cref="CI_RESOURCE_KEY_ENV_VAR"/> is set.
-        /// </summary>
-        public const string OLD_RESOURCE_KEY_ENV_VAR = "51DEGREES_RESOURCE_KEY";
-
-        /// <summary>
-        /// The old name of <see cref="CLOUD_ENDPOINT_ENV_VAR"/>, read only
+        /// The old name of <see cref="CLOUD_ENDPOINT_VARIABLE"/>, read only
         /// when that variable is not set.
         /// </summary>
-        public const string OLD_CLOUD_ENDPOINT_ENV_VAR = "51DEGREES_CLOUD_ENDPOINT";
+        [System.Obsolete("Use CLOUD_ENDPOINT_VARIABLE, which names the environment " +
+            "variable that replaces this one.")]
+        public const string CLOUD_ENDPOINT_ENV_VAR = "51DEGREES_CLOUD_ENDPOINT";
 
         /// <summary>
         /// The cloud used when no endpoint variable is set.
@@ -126,28 +130,32 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public static Settings FromEnvironment()
         {
             var (keyVariable, key) = First(
-                RESOURCE_KEY_ENV_VAR, CI_RESOURCE_KEY_ENV_VAR);
+                RESOURCE_KEY_VARIABLE, CI_RESOURCE_KEY_ENV_VAR);
             if (key == null)
             {
+#pragma warning disable CS0618 // The old name is the one read here.
                 (keyVariable, key) = FirstOld(
-                    RESOURCE_KEY_ENV_VAR, OLD_RESOURCE_KEY_ENV_VAR);
+                    RESOURCE_KEY_VARIABLE, RESOURCE_KEY_ENV_VAR);
+#pragma warning restore CS0618
             }
             if (key == null)
             {
                 throw new InvalidOperationException(
                     $"No resource key is set. Set the environment variable " +
-                    $"'{RESOURCE_KEY_ENV_VAR}' to a 51Degrees resource key " +
+                    $"'{RESOURCE_KEY_VARIABLE}' to a 51Degrees resource key " +
                     "that includes the 51Did properties. The name " +
                     $"'{CI_RESOURCE_KEY_ENV_VAR}' is read when it is not " +
                     "set. A resource key can be " +
                     "created at https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-settings.cs&utm_term=resource-key-required");
             }
 
-            var (endpointVariable, endpoint) = First(CLOUD_ENDPOINT_ENV_VAR);
+            var (endpointVariable, endpoint) = First(CLOUD_ENDPOINT_VARIABLE);
             if (endpoint == null)
             {
+#pragma warning disable CS0618 // The old name is the one read here.
                 (endpointVariable, endpoint) = FirstOld(
-                    CLOUD_ENDPOINT_ENV_VAR, OLD_CLOUD_ENDPOINT_ENV_VAR);
+                    CLOUD_ENDPOINT_VARIABLE, CLOUD_ENDPOINT_ENV_VAR);
+#pragma warning restore CS0618
             }
             return new Settings(
                 key,

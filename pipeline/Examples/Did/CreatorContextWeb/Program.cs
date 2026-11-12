@@ -79,27 +79,8 @@ using Examples.Did.CreatorContextWeb;
 using FiftyOne.Did.Client;
 using Microsoft.AspNetCore.Mvc;
 
-// Get an environment variable. When it is not set its old name is read,
-// and a value read from the old name is reported as deprecated.
-static string? FromEnvironment(string name, string oldName)
-{
-    var value = Environment.GetEnvironmentVariable(name);
-    if (string.IsNullOrWhiteSpace(value) == false)
-    {
-        return value;
-    }
-    var oldValue = Environment.GetEnvironmentVariable(oldName);
-    if (string.IsNullOrWhiteSpace(oldValue))
-    {
-        return value;
-    }
-    Console.Error.WriteLine(
-        $"The environment variable {oldName} is deprecated and {name} "
-        + $"replaces it. Set {name} to the same value instead.");
-    return oldValue;
-}
-
-var resource = FromEnvironment("_51DEGREES_RESOURCE_KEY", "RESOURCE_KEY");
+var resource = EnvironmentSetting.Read(
+    "_51DEGREES_RESOURCE_KEY", "RESOURCE_KEY");
 if (string.IsNullOrEmpty(resource))
 {
     Console.Error.WriteLine(
@@ -107,7 +88,8 @@ if (string.IsNullOrEmpty(resource))
         + "resource key of the page.");
     return 1;
 }
-var licence = FromEnvironment("_51DEGREES_LICENSE_KEY", "LICENSE_KEY");
+var licence = EnvironmentSetting.Read(
+    "_51DEGREES_LICENSE_KEY", "LICENSE_KEY");
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5100";
 if (string.IsNullOrEmpty(licence))
 {
