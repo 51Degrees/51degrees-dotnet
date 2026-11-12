@@ -30,6 +30,7 @@ using Moq;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
@@ -290,6 +291,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         public void ShareUsageElement_Dispose_EndpointNeverAnswers_Bounded()
         {
             const int boundMilliseconds = 500;
+            const int minimumEntries = 2;
+            const int queued = 11;
             using (var release = new ManualResetEventSlim(false))
             {
                 _httpHandler.SetupResponse(request =>
@@ -298,10 +301,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                     return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
                 });
                 var element = new QueueOpenShareUsageElement(
-                    _logger, _httpClient, 2, 100, _tracker.Object,
+                    _logger, _httpClient, minimumEntries, 100, _tracker.Object,
                     boundMilliseconds);
                 element.AddPipeline(_pipeline.Object);
-                for (int i = 1; i <= 11; i++)
+                for (int i = 1; i <= queued; i++)
                 {
                     element.Enqueue($"10.3.0.{i}");
                 }
@@ -317,7 +320,20 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                     w => w.Contains("not sent")),
                     "Expected one warning that entries were not sent.");
                 var warning = _logger.WarningEntries.First(w => w.Contains("not sent"));
-                StringAssert.Contains(warning, "7 ");
+                // The warning opens with the entries still queued. Disposal
+                // starts one message, which the endpoint never answers, so
+                // the count is the queue less however many of that message's
+                // entries it had taken when the time ran out. A message holds
+                // at most twice the minimum entries.
+                var notSent = int.Parse(
+                    warning.Split(' ')[0], CultureInfo.InvariantCulture);
+                Assert.IsGreaterThanOrEqualTo(
+                    queued - minimumEntries * 2, notSent,
+                    $"The warning said {notSent} entries were not sent, " +
+                    $"which is fewer than one message can account for.");
+                Assert.IsLessThanOrEqualTo(queued, notSent,
+                    $"The warning said {notSent} entries were not sent, " +
+                    $"which is more than were queued.");
             }
         }
 
@@ -669,13 +685,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// When data WAS processed, disposing must still send exactly one message.
         /// (Equivalent intent to ShareUsageElement_SendOnCleanup; kept explicit so
         /// the #224 fix is verified end-to-end.)
+        /// Disposal is given no time bound, because the subject is that the
+        /// queued entry is sent and not how soon the runner gets round to it.
         /// </summary>
         [TestMethod]
         public void ShareUsageElement_StillSendsOnCleanup_WhenDataProcessed()
         {
             // Arrange.
-            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(),
-                new List<KeyValuePair<string, string>>());
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, 2, 100, _tracker.Object, Timeout.Infinite);
+            element.AddPipeline(_pipeline.Object);
 
             var evidenceData = new Dictionary<string, object>()
             {
@@ -684,11 +703,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             var data = MockFlowData.CreateFromEvidence(evidenceData, false);
 
             // Act - one item processed (below MinEntriesPerMessage so nothing sent yet).
-            _shareUsageElement.Process(data.Object);
+            element.Process(data.Object);
             _httpHandler.VerifySendCalled(0);
 
-            _shareUsageElement.Dispose();
-            Thread.Sleep(200);
+            // Disposal waits for the send, so nothing here waits on a clock.
+            element.Dispose();
 
             // Assert - the queued item is flushed exactly once on dispose.
             _httpHandler.VerifySendCalled(1);
