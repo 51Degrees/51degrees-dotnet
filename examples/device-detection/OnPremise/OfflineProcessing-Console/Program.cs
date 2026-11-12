@@ -23,6 +23,7 @@
 
 // Ignore Spelling: Yaml
 
+using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines;
 using Microsoft.Extensions.Logging;
@@ -70,7 +71,19 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.OfflineProcessing
         public class Example : ExampleBase
         {
             /// <summary>
-            /// Process a YAML representation of evidence - and create a YAML output containing 
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            internal const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-offlineprocessing-console-program.cs&utm_term=enterprise-data-file";
+
+            /// <summary>
+            /// True once a record has been written with a property that the
+            /// data file in use does not have.
+            /// </summary>
+            public bool NeedsEnterprise { get; private set; }
+
+            /// <summary>
+            /// Process a YAML representation of evidence - and create a YAML output containing
             /// the processed evidence.
             /// </summary>
             /// <param name="dataFile">
@@ -188,13 +201,20 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.OfflineProcessing
                     output.Add("device.browserversion", device.BrowserVersion.GetHumanReadable());
 
                     // Other fields can easily be added when available in the source data file.
-                    // The following could be uncommented when used with a paid for Enterprise
-                    // data file. See https://51degrees.com/developers/property-dictionary?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=analyseevidence
+                    // Only the Enterprise data file has the hardware properties, so with the
+                    // free Lite data file they are recorded as needing it. See
+                    // https://51degrees.com/developers/property-dictionary?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=analyseevidence
                     // for a full list of available properties.
-
-                    //output.Add("device.hardwarevendor", device.HardwareVendor.GetHumanReadable());
-                    //output.Add("device.hardwaremodel", device.HardwareModel.GetHumanReadable());
-                    //output.Add("device.hardwarename", device.HardwareName.GetHumanReadable());
+                    var engine = pipeline.GetElement<DeviceDetectionHashEngine>();
+                    output.Add("device.hardwarevendor", EnterpriseValue(engine,
+                        nameof(device.HardwareVendor),
+                        () => device.HardwareVendor.GetHumanReadable()));
+                    output.Add("device.hardwaremodel", EnterpriseValue(engine,
+                        nameof(device.HardwareModel),
+                        () => device.HardwareModel.GetHumanReadable()));
+                    output.Add("device.hardwarename", EnterpriseValue(engine,
+                        nameof(device.HardwareName),
+                        () => device.HardwareName.GetHumanReadable()));
 
                     // DeviceId is a unique identifier for the combination of hardware, operating
                     // system, browser and crawler that has been detected.
@@ -213,9 +233,27 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.OfflineProcessing
                     return output;
                 }
             }
+
+            /// <summary>
+            /// The value of a property only the Enterprise data file has, or
+            /// that it needs the Enterprise data file when the data file in
+            /// use does not have it.
+            /// </summary>
+            private string EnterpriseValue(
+                DeviceDetectionHashEngine engine,
+                string property,
+                Func<string> value)
+            {
+                if (ExampleUtils.HasProperty(engine, property))
+                {
+                    return value();
+                }
+                NeedsEnterprise = true;
+                return ExampleUtils.NEEDS_ENTERPRISE;
+            }
         }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             // Use the supplied path for the data file or find the lite file that is included
             // in the repository.
@@ -224,8 +262,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.OfflineProcessing
                 // project space, or you may specify another file as a command line parameter.
                 //
                 // Note that the Lite data file contains a more limited set of properties than the
-                // Enterprise data file. Find out about the Enterprise data file on our pricing page:
-                // https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=main
+                // Enterprise data file. Contact us for a copy of the Enterprise data file:
+                // https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-offlineprocessing-console-program.cs&utm_term=main
                 ExampleUtils.FindDataFile(Constants.LITE_HASH_DATA_FILE_NAME);
             // Do the same for the yaml evidence file.
             var evidenceFile = args.Length > 1 ? args[1] :
@@ -252,7 +290,12 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.OfflineProcessing
                     new ExampleWriterYaml(output))
                 using (var reader = new StreamReader(File.OpenRead(evidenceFile)))
                 {
-                    new Example().Run(dataFile, reader, loggerFactory, writer);
+                    var example = new Example();
+                    example.Run(dataFile, reader, loggerFactory, writer);
+                    if (example.NeedsEnterprise)
+                    {
+                        ExampleUtils.WriteEnterpriseNote(Console.Out, Example.ContactUs);
+                    }
                 }
                 logger.LogInformation($"Processing complete. See results in: '{outputFile}'");
             }

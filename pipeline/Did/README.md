@@ -1,5 +1,7 @@
 # FiftyOne.Did
 
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious")
+
 Strongly-typed .NET parser for the 51Did (51Degrees Identifier)
 returned by the 51Degrees Cloud service, and the client a server uses
 to verify a 51Did and redeem its creator context result.
@@ -173,7 +175,9 @@ using FiftyOne.Did.Model;
 
 // Either base64 alphabet is accepted, the standard one with padding as
 // the cloud issues it, or the URL-safe one without padding as a page
-// puts it in a link.
+// puts it in a link. White space around the value is ignored. A value
+// with white space inside it, or with characters from both alphabets,
+// is refused.
 if (FodId.TryParse(valueFromThePage, out var fodId, out var status) == false)
 {
     // fodId is null and status says which of the expected problems it
@@ -202,7 +206,7 @@ the OWID reader named it.
 | `Parsed` | A structurally valid 51Did whose payload meets the minimum for its type. Says nothing about the signature. |
 | `MissingInput` | Nothing was supplied. Null, empty and whitespace-only values all report this. |
 | `InvalidInputType` | The input arrived in a form the surface cannot read. |
-| `InvalidBase64` | The string is not valid base64 in either alphabet, so there are no bytes. |
+| `InvalidBase64` | The string is not valid base64 in one alphabet, so there are no bytes. White space inside the string, and characters from both alphabets, report this. |
 | `UnsupportedVersion` | The first byte names an OWID version the library does not know. |
 | `UnexpectedEnd` | The data stopped in the middle of an envelope field. |
 | `InvalidDomainEncoding` | The creator domain is not terminated, or is longer than the published maximum. |
@@ -314,7 +318,7 @@ from server code. Create one for the process and reuse it, because it
 caches the signing public keys. The resource key is the page's key and
 is public by nature. The licence key is server side only and is needed
 to redeem where the account holds licence keys. The endpoint defaults
-to `https://cloud.51degrees.com/api/v4/`, or to the `FOD_CLOUD_API_URL`
+to `https://cloud.51degrees.com/api/v4/`, or to the `_51DEGREES_CLOUD_ENDPOINT`
 environment variable when that is set, which is the same variable the
 cloud request engine honours, and a trailing slash is optional.
 

@@ -1,4 +1,6 @@
-# ![51Degrees](https://51degrees.com/img/logo.png?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=top "Data rewards the curious") IP Intelligence Engine Examples
+# IP Intelligence Engine Examples
+
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious")
 
 This repository contains the examples for [[ip-intelligence-dotnet](https://github.com/51Degrees/51degrees-dotnet/tree/main/ip-intelligence)].
 
@@ -27,10 +29,8 @@ The console example downloads the free files itself when it needs them and they 
 The on-premise examples need an IP Intelligence data file. The examples locate
 the file in the following order:
 
-1. The "51DEGREES_IPI_PATH" environment variable, which can be set to an
-   explicit path to the data file. The legacy "IPINTELLIGENCEDATAFILE"
-   environment variable is also still supported, and is checked after
-   "51DEGREES_IPI_PATH".
+1. The "_51DEGREES_IPI_PATH" environment variable, which can be set to an
+   explicit path to the data file.
 2. The data submodule of this repository, `cxx/data`. When an example asks
    for a free 'Lite' file that is missing, it downloads the file there with
    the data repository's script, and prints the command it runs.
@@ -77,6 +77,11 @@ data file, because the free lite file does not carry the location data they
 analyse. `LocationAnalysis-Console` runs against the lite
 file too, reporting the properties it does not carry as `NotAvailable`.
 
+`Compare-Console` takes the data file, the truth CSV file, the output path and
+the performance profile, all optional and in that order. The profile defaults
+to `LowMemory`, which keeps the data file on disk. Pass `MaxPerformance` for
+speed where the machine has as much free RAM as the data file is large.
+
 `Metrics-Console` samples the address ranges in the data file rather than
 visiting every address. Optional command line arguments follow the data file and
 output path:
@@ -86,15 +91,15 @@ output path:
 | Sample percentage        | 0.1            | Proportion of each range to sample, where 1 is 100% and analyses every address in the range. |
 | Max samples per range    | 8              | Most addresses taken from any one range. |
 | Range percentage         | 1              | Proportion of the ranges in the data file to include. |
-| Performance profile      | MaxPerformance | Profile the engine is built with. |
+| Performance profile      | LowMemory      | Profile the engine is built with. Pass MaxPerformance for speed. |
 | Max profiles without range | 100000       | Give up scanning once this many profiles in a row carry no range. 0 scans the whole file. |
 
 The per-range cap is what makes a run finish at all: a single IPv6 range holds
 more addresses than could ever be enumerated, so the sample percentage on its
 own does not limit the work.
 
-The last two arguments are what make a run over a whole enterprise data file
-take minutes rather than hours.
+Choosing `MaxPerformance` and the last argument are what make a run over a
+whole enterprise data file take minutes rather than hours.
 
 The data file holds two kinds of network profile: the ranges the example needs
 are on registration profiles carrying `IpRangeStart`, `IpRangeEnd` and who the
@@ -105,11 +110,12 @@ rather than reading through the rest. Measured on an enterprise file, that is
 601,443 ranges in the first 603,531 profiles followed by 993,628 profiles that
 can add nothing.
 
-`MaxPerformance` holds the data file in memory instead of paging it from disk,
-which the scan is far more sensitive to than detection is - reading a profile's
-values measured 166 a second against 2,013 under the two profiles. It needs as
-much free RAM as the data file is large, so drop to `Balanced` or `LowMemory`
-where that is not available.
+`LowMemory`, the default, pages the data file from disk, so the example runs on
+a machine with less free RAM than the data file is large. `MaxPerformance`
+holds the data file in memory instead. Reading a profile's values measured 166
+a second under `LowMemory` against 2,013 under `MaxPerformance`, so the scan is
+far more sensitive to the profile than detection is. Pass `MaxPerformance` for
+speed where the machine has as much free RAM as the data file is large.
 
 Lower the range percentage on top of these when an approximate analysis is
 enough. Discarding a range before its values are read takes almost all of its
@@ -121,9 +127,7 @@ cost with it.
 A resource key configured with the properties needed to run the cloud examples
 can be created for free [here](https://configure.51degrees.com/1QWJwHxl?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud). To
 use the resource key in the examples it can be supplied as an environment
-variable called "51DEGREES_RESOURCE_KEY". The legacy environment variable
-names "RESOURCE_KEY" and "SUPER_RESOURCE_KEY" are still supported, with the
-aligned "51DEGREES_RESOURCE_KEY" name checked first.
+variable called "_51DEGREES_RESOURCE_KEY".
 
 * In order to test cloud examples against a custom endpoint - you need to launch `OnPremise/Mixed/GettingStarted-API` example 
 and keep it running while launching other examples.  Depending on the IDE you use this can be either done conveniently from the IDE, or 
@@ -144,7 +148,7 @@ just using `dotnet run` in the `OnPremise/Mixed/GettingStarted-API` directory fr
 
 The **Mixed examples** demonstrate how to combine Device Detection and IP Intelligence engines within a single application:
 
-- **Mixed/GettingStarted-Console**: A console application that processes both device detection (from User-Agent / User-Agent Client Hints) and IP intelligence (from IP address) in parallel using the 51Degrees Pipeline API.
+- **Mixed/GettingStarted-Console**: A console application that processes both device detection (from User-Agent / User-Agent Client Hints) and IP intelligence (from IP address), one after the other, using the 51Degrees Pipeline API.
 
 - **Mixed/GettingStarted-Web**: An ASP.NET Core web application featuring:
   - Combined device detection and IP intelligence results in a two-column layout
@@ -183,11 +187,11 @@ Most runnable examples have an associated test. The exceptions, and why:
 
 The example tests are integration tests and need the same inputs the examples do:
 
-- **Cloud example tests** require a resource key in the `51DEGREES_RESOURCE_KEY`
+- **Cloud example tests** require a resource key in the `_51DEGREES_RESOURCE_KEY`
   environment variable (see the [Cloud](#cloud) section). Without it these tests
   fail with a message explaining how to obtain one.
 - **On-premise example tests** require the enterprise IP Intelligence data file
-  (located automatically, or via `51DEGREES_IPI_PATH`) and the **Mixed** examples
+  (located automatically, or via `_51DEGREES_IPI_PATH`) and the **Mixed** examples
   additionally require a device detection data file. When a required data file is
   absent, those tests report **inconclusive** rather than failing, so the gap is
   visible without being masked as a regression.

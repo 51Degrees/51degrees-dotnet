@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 #
 # A tagged family is compared with its own tags. A family with no tag yet is
 # compared with the highest listed version of its package on NuGet, because
-# the version Directory.Build.props records is a file anyone can change.
+# the FirstVersion packages.json gives it is a file anyone can change.
 
 # The package whose NuGet history stands for each family.
 $FamilyPackages = @{
@@ -58,8 +58,8 @@ $refused = @()
 $versions = Get-FamilyVersions -RepoName $RepoName
 foreach ($name in $versions.Keys) {
     $family = $versions[$name]
-    if (-not $family.Changed) {
-        Write-Host "$name is unchanged since its last tag, so it is not published."
+    if (-not $family.Release) {
+        Write-Host "$name stays at $($family.Last), so it is not published."
         continue
     }
     $global:LASTEXITCODE = 0

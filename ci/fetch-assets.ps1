@@ -39,13 +39,17 @@ if ($IpIntelligenceUrl) {
     Write-Host "::warning title=No License Key::No IP Intelligence data file URL, so the Enterprise file is not downloaded and the tests that need it are skipped."
 }
 
-# The free files the tests and examples read. The data repository's script
-# keeps the ones copied in above and downloads the rest, which include the
-# Asn file the IP Intelligence tests use.
-pwsh -NoProfile -File "$data/get-data-files.ps1" "51Degrees-LiteV4.1.hash" "20000 Evidence Records.yml" "20000 User Agents.csv" "51Degrees-IPIV4AsnIpiV41.ipi"
-if ($LASTEXITCODE -ne 0) {
-    throw "The data repository's script did not download every free data file."
-}
+# The other free files the tests and examples read, which are the Asn file the
+# IP Intelligence tests use and the Lite file that the IP Intelligence examples
+# use when they are run with no settings. They are assets too, so a test job
+# restores them from the run's cache rather than downloading them.
+$asn = "51Degrees-IPIV4AsnIpiV41.ipi"
+$lite = "51Degrees-LiteIpiV41.ipi"
+./steps/fetch-assets.ps1 -Assets $asn, $lite
+Copy-Item "assets/$asn" $ipIntelligenceData
+# The asset is fetched under its own name, and the examples look for the name
+# the data repository saves it as.
+New-Item -ItemType SymbolicLink -Force -Target "$PWD/assets/$lite" -Path "$ipIntelligenceData/51Degrees-LiteV41.ipi"
 
 # The evidence files the IP Intelligence tests and examples read.
 Push-Location $ipIntelligenceData

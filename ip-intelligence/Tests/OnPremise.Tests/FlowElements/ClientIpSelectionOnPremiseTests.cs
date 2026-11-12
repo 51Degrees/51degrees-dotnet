@@ -108,8 +108,11 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
             }
         }
 
+        /// <summary>
+        /// A list is not one address, so no entry of it is read.
+        /// </summary>
         [TestMethod]
-        public void Process_ForwardedList_FirstEntryUsed()
+        public void Process_ForwardedList_NotRead()
         {
             using (var flowData = Wrapper.Pipeline.CreateFlowData())
             {
@@ -117,10 +120,29 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
                 flowData.Process();
 
                 var data = flowData.Get<IIpIntelligenceData>();
+                Assert.IsFalse(data.Ip.HasValue,
+                    "No entry of a forwarded list should be read.");
+            }
+        }
+
+        /// <summary>
+        /// A value that is not read does not hide a value under a key that
+        /// comes later in the data file's order.
+        /// </summary>
+        [TestMethod]
+        public void Process_ValueNotRead_LaterKeyUsed()
+        {
+            using (var flowData = Wrapper.Pipeline.CreateFlowData())
+            {
+                flowData.AddEvidence(
+                    "server.true-client-ip-51d", "1.2.3.4, 5.6.7.8");
+                flowData.AddEvidence("server.client-ip", "8.8.8.8");
+                flowData.Process();
+
+                var data = flowData.Get<IIpIntelligenceData>();
                 Assert.IsTrue(data.Ip.HasValue,
-                    "A comma-separated forwarded list must be accepted.");
-                Assert.AreEqual(IPAddress.Parse("1.2.3.4"), data.Ip.Value,
-                    "The first entry of a forwarded list is the client.");
+                    "The address under the later key should be read.");
+                Assert.AreEqual(IPAddress.Parse("8.8.8.8"), data.Ip.Value);
             }
         }
 

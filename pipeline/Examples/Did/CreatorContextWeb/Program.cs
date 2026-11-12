@@ -65,12 +65,9 @@
 // last two at most once a minute.
 //
 // Environment variables:
-//   _51DEGREES_RESOURCE_KEY  the resource key, required (the legacy
-//                            RESOURCE_KEY is read when it is not set)
+//   _51DEGREES_RESOURCE_KEY  the resource key, required
 //   _51DEGREES_LICENSE_KEY   a licence key of the same account, optional
-//                            (the legacy LICENSE_KEY is read when it is
-//                            not set)
-//   FOD_CLOUD_API_URL        the API base including the /api/v4/ segment,
+//   _51DEGREES_CLOUD_ENDPOINT        the API base including the /api/v4/ segment,
 //                            defaults to https://cloud.51degrees.com/api/v4/
 //                            and is the same variable the cloud request
 //                            engine and DidClient honour
@@ -82,25 +79,15 @@ using Examples.Did.CreatorContextWeb;
 using FiftyOne.Did.Client;
 using Microsoft.AspNetCore.Mvc;
 
-// The aligned _51DEGREES_RESOURCE_KEY environment variable is checked
-// first, then the legacy RESOURCE_KEY variable.
 var resource = Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
 if (string.IsNullOrEmpty(resource))
 {
-    resource = Environment.GetEnvironmentVariable("RESOURCE_KEY");
-}
-if (string.IsNullOrEmpty(resource))
-{
     Console.Error.WriteLine(
-        "Set _51DEGREES_RESOURCE_KEY (or the legacy RESOURCE_KEY) to the "
+        "Set _51DEGREES_RESOURCE_KEY to the "
         + "resource key of the page.");
     return 1;
 }
 var licence = Environment.GetEnvironmentVariable("_51DEGREES_LICENSE_KEY");
-if (string.IsNullOrEmpty(licence))
-{
-    licence = Environment.GetEnvironmentVariable("LICENSE_KEY");
-}
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5100";
 if (string.IsNullOrEmpty(licence))
 {
@@ -117,7 +104,7 @@ if (string.IsNullOrEmpty(licence))
         + "unreadable where it holds some.");
 }
 
-// One client for the process. It reads FOD_CLOUD_API_URL itself and
+// One client for the process. It reads _51DEGREES_CLOUD_ENDPOINT itself and
 // normalises the base to end in one slash, and the page is given the same
 // base so every URL, here and in the browser, is base plus its path. A
 // host other than cloud.51degrees.com would be used to (a) use an on

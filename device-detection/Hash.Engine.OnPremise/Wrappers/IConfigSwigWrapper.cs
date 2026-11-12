@@ -55,6 +55,10 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Wrappers
 
         void setTempDirectories(VectorStringSwig dirs);
 
+        void setIndexedProperties(VectorStringSwig names);
+
+        VectorStringSwig getIndexedProperties();
+
         void setUseTempFile(bool useTemp);
     }
 }

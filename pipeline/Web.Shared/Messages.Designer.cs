@@ -61,6 +61,15 @@ namespace FiftyOne.Pipeline.Web.Shared {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The web application root could not be applied to &apos;{0}&apos;, the value of &apos;{1}&apos;..
+        /// </summary>
+        public static string ExceptionApplicationRootNotApplied {
+            get {
+                return ResourceManager.GetString("ExceptionApplicationRootNotApplied", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The pipeline configuration file &apos;{0}&apos; is not valid. See inner exception for details..
         /// </summary>
         public static string ExceptionInvalidConfiguration {
@@ -78,6 +87,15 @@ namespace FiftyOne.Pipeline.Web.Shared {
             }
         }
         
+        /// <summary>
+        ///   Looks up a localized string similar to Client-side evidence needs the SequenceElement, but SequenceElementEnabled is false and the SequenceElement is not in the configured elements. To resolve this error, either disable client-side evidence or add the SequenceElement to your Pipeline..
+        /// </summary>
+        public static string ExceptionNoSequenceElement {
+            get {
+                return ResourceManager.GetString("ExceptionNoSequenceElement", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to Client-side JavaScript has been requested from the Pipeline. However, the JavaScriptBuilderElement is not present. To resolve this error, either disable client-side evidence or ensure the JavaScriptBuilderElement is added to your Pipeline..
         /// </summary>

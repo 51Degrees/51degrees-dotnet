@@ -47,9 +47,11 @@ using System.Text;
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Metadata-Console/Program.cs). 
 /// 
-/// This example requires an enterprise IP Intelligence data file (.ipi). 
+/// By default the example uses the free Lite IP Intelligence data file, which it downloads when
+/// it is missing, and lists the properties that file has. The enterprise data file adds the
+/// location, range and connection properties.
 /// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-metadata-console-program.cs&amp;utm_term=header).
-/// 
+///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
 /// - [Microsoft.Extensions.Logging.Console](https://www.nuget.org/packages/Microsoft.Extensions.Logging.Console/)
@@ -60,6 +62,12 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Metadata
     {
         public class Example : ExampleBase
         {
+            /// <summary>
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-ip-intelligence-onpremise-metadata-console-program.cs&utm_term=enterprise-data-file";
+
             public void Run(string dataFile, ILoggerFactory loggerFactory, TextWriter output)
             {
                 // Build a new on-premise IP Intelligence engine with the low memory performance profile.
@@ -84,6 +92,10 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Metadata
                     OutputProfileDetails(ddEngine, output);
                     OutputEvidenceKeyDetails(ddEngine, output);
 
+                    if (ExampleUtils.IsFreeDataFile(ddEngine))
+                    {
+                        ExampleUtils.WriteEnterpriseOffer(output, ContactUs);
+                    }
                     ExampleUtils.CheckDataFile(ddEngine, loggerFactory.CreateLogger<Program>());
                 }
             }
@@ -244,16 +256,16 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Metadata
         }
 
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
-            // Use the supplied path for the data file or find the lite file that is included
-            // in the repository.
+            // Use the supplied path for the data file or find the free Lite file that the
+            // data repository links, downloading it when it is missing.
             var dataFile = args.Length > 0 ? args[0] :
                 // In this example, by default, the 51degrees IP Intelligence data file needs to be somewhere in the
                 // project space, or you may specify another file as a command line parameter.
                 //
                 // For testing, contact us to obtain an enterprise data file: https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=main
-                Examples.ExampleUtils.FindDataFile(Constants.ENTERPRISE_IPI_DATA_FILE_NAME);
+                Examples.ExampleUtils.FindDataFile(Constants.LITE_IPI_DATA_FILE_NAME);
 
             File.WriteAllText("Metadata_DataFileName.txt", dataFile);
 
@@ -268,9 +280,10 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.Metadata
             else
             {
                 logger.LogError("Failed to find a IP Intelligence data file. Make sure the " +
-                    "Enterprise data file is in cxx/data/ip-intelligence. A different " +
-                    "file can be specified by supplying the full path as a command " +
-                    "line argument");
+                    "submodules have been fetched by running " +
+                    "`git submodule update --init --recursive`, so that the free Lite " +
+                    "file can be downloaded. A different file can be specified by " +
+                    "supplying the full path as a command line argument");
             }
 
             // Dispose the logger to ensure any messages get flushed

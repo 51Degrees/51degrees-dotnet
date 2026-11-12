@@ -92,9 +92,11 @@ using System.Threading.Tasks;
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Compare-Console/Program.cs). 
 /// 
-/// This example requires an enterprise IP Intelligence data file (.ipi). 
+/// This example requires an enterprise IP Intelligence data file (.ipi), as the location
+/// properties it compares are only in that file. Run with the free Lite data file, which it
+/// uses by default, it says which properties it needs and where to ask for a copy, and stops.
 /// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-compare-console-program.cs&amp;utm_term=header).
-/// 
+///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
 /// - [Microsoft.Extensions.Logging.Console](https://www.nuget.org/packages/Microsoft.Extensions.Logging.Console/)
@@ -107,6 +109,34 @@ public class Program
     /// Time interval to wait between logging progress.
     /// </summary>
     private static readonly TimeSpan _logBuild = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// The performance profile the engine is built with, unless the fourth
+    /// command line argument names another. LowMemory keeps the
+    /// multi-gigabyte Enterprise data file on disk rather than loading it
+    /// into memory. Pass MaxPerformance for speed where the machine has as
+    /// much free RAM as the data file is large.
+    /// </summary>
+    private const PerformanceProfiles DEFAULT_PERFORMANCE_PROFILE =
+        PerformanceProfiles.LowMemory;
+
+    /// <summary>
+    /// Where to ask for a copy of the Enterprise data file, tagged with this
+    /// example.
+    /// </summary>
+    private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-ip-intelligence-onpremise-compare-console-program.cs&utm_term=enterprise-data-file";
+
+    /// <summary>
+    /// The properties the comparison needs, which only the Enterprise data
+    /// file has.
+    /// </summary>
+    private static readonly List<string> LocationProperties = new List<string>
+    {
+        "Latitude",
+        "Longitude",
+        "LocationConfidence",
+        "Areas"
+    };
 
     /// <summary>
     /// A record of latitude, longitude, IP address, and a date time that is
@@ -398,7 +428,12 @@ public class Program
         /// Stream to write the output to.
         /// </summary>
         public StreamWriter Output;
-                
+
+        /// <summary>
+        /// Performance profile the engine is built with.
+        /// </summary>
+        public PerformanceProfiles PerformanceProfile;
+
         /// <summary>
         /// Logger factory for reporting progress.
         /// </summary>
@@ -423,7 +458,8 @@ public class Program
                 configuration.CsvTruthFile,
                 configuration.Output,
                 configuration.LoggerFactory,
-                stoppingToken);
+                stoppingToken,
+                performanceProfile: configuration.PerformanceProfile);
             hostApplicationLifetime.StopApplication();
         }
     }
@@ -443,6 +479,10 @@ public class Program
         /// <param name="loggerFactory"></param>
         /// <param name="stoppingToken"></param>
         /// <param name="logger"></param>
+        /// <param name="performanceProfile">
+        /// Profile the engine is built with, see
+        /// <see cref="DEFAULT_PERFORMANCE_PROFILE"/>.
+        /// </param>
         /// <returns>Allow passing in of an external logger
         /// for automated comparison</returns>
         public static async Task Run(
@@ -451,12 +491,15 @@ public class Program
             TextWriter output,
             ILoggerFactory loggerFactory,
             CancellationToken stoppingToken,
-            ILogger logger = null)
+            ILogger logger = null,
+            PerformanceProfiles performanceProfile =
+                DEFAULT_PERFORMANCE_PROFILE)
         {
             // The pipeline that Run builds does not dispose the engine, so
             // that one engine can serve many truth files. It is disposed
             // here instead.
-            using var ipiEngine = BuildEngine(dataFile, loggerFactory);
+            using var ipiEngine = BuildEngine(
+                dataFile, loggerFactory, performanceProfile);
             await Run(
                 ipiEngine,
                 csvTruthFile,
@@ -476,31 +519,34 @@ public class Program
         /// </summary>
         /// <param name="dataFile"></param>
         /// <param name="loggerFactory"></param>
+        /// <param name="performanceProfile">
+        /// Profile the engine is built with, see
+        /// <see cref="DEFAULT_PERFORMANCE_PROFILE"/>.
+        /// </param>
         /// <returns></returns>
         public static IpiOnPremiseEngine BuildEngine(
             string dataFile,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            PerformanceProfiles performanceProfile =
+                DEFAULT_PERFORMANCE_PROFILE)
         {
             // Ensure that batch latency mode is always enabled.
             GCSettings.LatencyMode = GCLatencyMode.Batch;
 
-            // Build a new on-premise IP Intelligence engine with the LowMemory
-            // profile so the large data file is paged from disk, not loaded into RAM.
+            // Build a new on-premise IP Intelligence engine.
             return new IpiOnPremiseEngineBuilder(loggerFactory)
-                // LowMemory keeps the (multi-gigabyte) IP Intelligence data file on
-                // disk rather than loading it entirely into memory. See the
-                // documentation for more detail on this and other configuration options.
+                // LowMemory, the default, keeps the (multi-gigabyte) IP
+                // Intelligence data file on disk rather than loading it
+                // entirely into memory. See the documentation for more
+                // detail on this and other configuration options.
                 // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-compare-console-program.cs&utm_term=run
-                .SetPerformanceProfile(PerformanceProfiles.LowMemory)
+                .SetPerformanceProfile(performanceProfile)
                 // inhibit auto-update of the data file for this test
                 .SetAutoUpdate(false)
                 .SetDataFileSystemWatcher(false)
                 .SetDataUpdateOnStartup(false)
                 // Set to only return from processing the properties needed.
-                .SetProperty("Latitude")
-                .SetProperty("Longitude")
-                .SetProperty("LocationConfidence")
-                .SetProperty("Areas")
+                .SetProperties(LocationProperties)
                 // Optimize for the expected parallel workload.
                 .SetConcurrency((ushort)Environment.ProcessorCount)
                 .Build(dataFile, false);
@@ -1134,12 +1180,13 @@ public class Program
         }
     }
 
-    static void Main(string[] args)
+    public static void Main(string[] args)
     {
         var configuration = new Configuration
         {
-            // Use the supplied path for the data file or find the lite file that
-            // is included in the repository.
+            // Use the supplied path for the data file or find the free Lite
+            // file that the data repository links, downloading it when it is
+            // missing.
             DataFile = args.Length > 0 ? args[0] :
             // In this example, by default, the 51Degrees IP Intelligence data
             // file needs to be somewhere in the project space, or you may
@@ -1148,26 +1195,47 @@ public class Program
             // For testing, contact us to obtain an enterprise data file:
             // https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-compare-console-program.cs&utm_term=main
                 Examples.ExampleUtils.FindDataFile(
-                    Constants.ENTERPRISE_IPI_DATA_FILE_NAME),
-
-            // Get the of the CSV file containing source truth.
-            CsvTruthFile = args.Length > 1 
-            ? args[1] 
-            : Examples.ExampleUtils.FindFile(
-                    Constants.GEOIP_COMPARISON_EVIDENCE_FILE_NAME),
+                    Constants.LITE_IPI_DATA_FILE_NAME),
         };
 
         // Get the location for the output file. Use the same location as the
         // evidence if a path is not supplied on the command line.
         var outputFile = args.Length > 2 ? args[2] : "compare-output.csv";
 
+        // Get the performance profile, or use the default.
+        configuration.PerformanceProfile = args.Length > 3 ?
+            Enum.Parse<PerformanceProfiles>(args[3], true) :
+            DEFAULT_PERFORMANCE_PROFILE;
+
         File.WriteAllText("Metrics_DataFileName.txt", configuration.DataFile);
 
         // Configure a logger to output to the console.
         configuration.LoggerFactory = LoggerFactory.Create(b => b.AddConsole());
-        
-        if (configuration.DataFile != null)
+
+        if (configuration.DataFile == null)
         {
+            var logger = configuration.LoggerFactory.CreateLogger<Program>();
+            logger.LogError("Failed to find a IP Intelligence data file. " +
+                "Make sure the submodules have been fetched by running " +
+                "`git submodule update --init --recursive`, so that the free " +
+                "Lite file can be downloaded. A different file can be specified " +
+                "by supplying the full path as a command line argument");
+        }
+        // The free data files have none of the properties the comparison
+        // needs, so with one of them the example says so and stops.
+        else if (ExampleUtils.LacksEnterpriseProperties(
+            configuration.DataFile,
+            "Comparing known locations with IP Intelligence",
+            LocationProperties,
+            Console.Out,
+            ContactUs) == false)
+        {
+            // Get the of the CSV file containing source truth.
+            configuration.CsvTruthFile = args.Length > 1
+                ? args[1]
+                : Examples.ExampleUtils.FindFile(
+                    Constants.GEOIP_COMPARISON_EVIDENCE_FILE_NAME);
+
             using var output = File.CreateText(outputFile);
             configuration.Output = output;
             var builder = Host.CreateApplicationBuilder([]);
@@ -1175,14 +1243,6 @@ public class Program
             builder.Services.AddHostedService<Worker>();
             using var host = builder.Build();
             host.Run();
-        }
-        else
-        {
-            var logger = configuration.LoggerFactory.CreateLogger<Program>();
-            logger.LogError("Failed to find a IP Intelligence data file. " +
-                "Make sure the Enterprise data file is in " +
-                "cxx/data/ip-intelligence. A different file can be specified " +
-                "by supplying the full path as a command line argument");
         }
 
         // Dispose the logger to ensure any messages get flushed

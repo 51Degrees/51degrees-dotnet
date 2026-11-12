@@ -120,8 +120,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedWeb
 
             // An explicit data file path supplied in an environment variable takes
             // precedence over the value in the configuration file. The
-            // '51DEGREES_DD_PATH' variable is checked first, followed by
-            // '_51DEGREES_DD_PATH' and then the legacy 'DEVICEDETECTIONDATAFILE'.
+            // variable is '_51DEGREES_DD_PATH'.
             var dataFile = ExampleUtils.GetDataFilePathFromEnv();
             if (string.IsNullOrWhiteSpace(dataFile))
             {

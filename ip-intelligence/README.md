@@ -1,8 +1,8 @@
 # 51Degrees IP Intelligence Engines
 
-![51Degrees](https://51degrees.com/img/logo.png?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=51degrees-ip-intelligence-engines "Data rewards the curious") **Pipeline API**
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious") **Pipeline API**
 
-[Developer Documentation](https://51degrees.com/documentation/apis/ip-intelligence-dotnet/index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=51degrees-ip-intelligence-engines "developer documentation")
+[Developer Documentation](https://51degrees.com/documentation/_ip_intelligence__quickstart.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=51degrees-ip-intelligence-engines "developer documentation")
 
 ## Introduction
 
@@ -22,8 +22,8 @@ The Pipeline engines are written in C# and target .NET Standard 2.0. Example and
 projects mostly target .NET 8.0 though in some cases, projects are available
 targeting other frameworks.
 
-For runtime dependencies, see our
-[dependencies](https://51degrees.com/documentation/_info__dependencies.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=dependencies)
+For the .NET versions we test against, see the
+[tested versions](https://51degrees.com/documentation/_product_summaries__tested_versions.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=dependencies)
 page. The `ci/options.json` file lists the tested and packaged .NET versions
 and operating systems automatic tests are performed with. The solution will
 likely operate with other versions.
@@ -42,9 +42,7 @@ The scripts in the [data](https://github.com/51Degrees/data) repository, which i
 Tests that need a data file locate it in the following order:
 
 1. The "_51DEGREES_IPI_PATH" environment variable, which can be set to an
-   explicit path to the data file. The legacy "IPINTELLIGENCEDATAFILE"
-   environment variable is also still supported, and is checked after
-   "_51DEGREES_IPI_PATH".
+   explicit path to the data file.
 2. A search of the folder hierarchy, walking up from the working directory,
    for the expected data file name.
 3. The free 'Lite' data file in its expected location, which is
@@ -68,9 +66,7 @@ used by the examples. See our [pricing page](https://51degrees.com/pricing?utm_s
 subscription with more properties.
 
 Examples and tests read the resource key from an environment variable called
-"_51DEGREES_RESOURCE_KEY". The legacy environment variable names
-"51D_RESOURCE_KEY" and "SUPER_RESOURCE_KEY" are still supported, with the
-aligned "_51DEGREES_RESOURCE_KEY" name checked first.
+"_51DEGREES_RESOURCE_KEY".
 
 ## Solutions and projects
 
@@ -186,7 +182,7 @@ For complete documentation on the Pipeline API and associated engines, see the
 ## Find out more
 
 - [IP Intelligence](https://51degrees.com/ip-intelligence?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=find-out-more-ip-intelligence)
-- [IP Intelligence documentation](https://51degrees.com/documentation/_ip_intelligence__index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=find-out-more-documentation)
+- [IP Intelligence documentation](https://51degrees.com/documentation/_ip_intelligence__quickstart.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=find-out-more-documentation)
 - [Getting started](https://51degrees.com/documentation/_ip_intelligence__quickstart.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=find-out-more-getting-started)
 - [Pricing](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=find-out-more-pricing)
 - https://github.com/51Degrees/51degrees-dotnet

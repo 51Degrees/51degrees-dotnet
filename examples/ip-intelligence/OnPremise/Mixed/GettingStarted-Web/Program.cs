@@ -38,8 +38,8 @@ using Microsoft.Extensions.Hosting;
 /// @example OnPremise/Mixed/GettingStarted-Web/Program.cs
 /// 
 /// This example demonstrates using both Device Detection and IP Intelligence 
-/// engines in a single web application pipeline. The engines process evidence 
-/// in parallel for optimal performance.
+/// engines in a single web application pipeline. The pipeline runs both
+/// engines on the same evidence, one after the other.
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Mixed/GettingStarted-Web/Program.cs). 
 /// 
@@ -147,18 +147,12 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb
 
             // Use the command line argument if provided. Otherwise, an explicit data file
             // path supplied in an environment variable takes precedence over the value in
-            // the configuration file. The aligned '51DEGREES_IPI_PATH' variable is checked
-            // first, followed by the legacy 'IPINTELLIGENCEDATAFILE' variable.
+            // the configuration file. The variable is '_51DEGREES_IPI_PATH'.
             var dataFile = dataFileOverride;
             if (string.IsNullOrWhiteSpace(dataFile))
             {
                 dataFile = Environment.GetEnvironmentVariable(
                     Examples.Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
-            }
-            if (string.IsNullOrWhiteSpace(dataFile))
-            {
-                dataFile = Environment.GetEnvironmentVariable(
-                    Examples.Constants.LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
             }
             if (string.IsNullOrWhiteSpace(dataFile))
             {

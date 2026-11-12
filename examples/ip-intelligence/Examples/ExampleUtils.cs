@@ -35,32 +35,16 @@ public static class ExampleUtils
 {
     /// <summary>
     /// The default environment variable key used to get the resource key
-    /// to use when running cloud examples. This aligned name is checked
-    /// first, before any legacy variable names.
+    /// to use when running cloud examples.
     /// </summary>
-    public const string CLOUD_RESOURCE_KEY_ENV_VAR = "51DEGREES_RESOURCE_KEY";
-
-    /// <summary>
-    /// The legacy environment variable key used to get the resource key
-    /// to use when running cloud examples. Retained for backwards
-    /// compatibility and checked when <see cref="CLOUD_RESOURCE_KEY_ENV_VAR"/>
-    /// is not set.
-    /// </summary>
-    public const string LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR = "RESOURCE_KEY";
-
-    /// <summary>
-    /// The legacy environment variable key used by other 51Degrees
-    /// repositories to get the resource key. Retained for backwards
-    /// compatibility and checked last.
-    /// </summary>
-    public const string LEGACY_SUPER_RESOURCE_KEY_ENV_VAR = "SUPER_RESOURCE_KEY";
+    public const string CLOUD_RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
 
     /// <summary>
     /// The default environment variable key used to get the end point URL
     /// to use when running cloud examples. Can be used to override the
     /// appsettings.json configuration for testing custom end points.
     /// </summary>
-    public const string CLOUD_END_POINT_ENV_VAR = "51D_CLOUD_ENDPOINT";
+    public const string CLOUD_END_POINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
     /// <summary>
     /// Timeout used when searching for files.
@@ -171,12 +155,17 @@ public static class ExampleUtils
 
     /// <summary>
     /// Sent with each download, so that downloads by these examples can be
-    /// counted.
+    /// counted. It is left out inside GitHub Actions, where the data
+    /// repository's script names the build instead, so that test runs are
+    /// not counted as people using the examples.
     /// </summary>
     private const string DownloadSource = "examples-51degrees-dotnet";
 
     private static readonly bool IsWindows =
         Environment.OSVersion.Platform == PlatformID.Win32NT;
+
+    private static readonly bool InGitHubActions =
+        Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
 
     /// <summary>
     /// The data repository's download script for this platform.
@@ -316,14 +305,30 @@ public static class ExampleUtils
         string filename)
     {
         var script = Path.Combine(data, DataScript);
-        var start = IsWindows ?
-            new ProcessStartInfo(
-                "powershell",
+        ProcessStartInfo start;
+        if (IsWindows)
+        {
+            var powerShell = PowerShell();
+            start = new ProcessStartInfo(
+                powerShell,
                 $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\" " +
-                $"\"{filename}\" -Source {DownloadSource}") :
-            new ProcessStartInfo(
+                $"\"{filename}\"" +
+                (InGitHubActions ? "" : $" -Source {DownloadSource}"));
+            if (powerShell == WindowsPowerShell)
+            {
+                // Started from PowerShell 7, Windows PowerShell inherits its
+                // module path and then cannot load its own commands.
+                start.Environment.Remove("PSModulePath");
+            }
+        }
+        else
+        {
+            start = new ProcessStartInfo(
                 "sh",
-                $"\"{script}\" -s {DownloadSource} \"{filename}\"");
+                $"\"{script}\" " +
+                (InGitHubActions ? "" : $"-s {DownloadSource} ") +
+                $"\"{filename}\"");
+        }
         start.UseShellExecute = false;
         var command = $"{start.FileName} {start.Arguments}";
         Console.WriteLine($"'{filename}' is missing, so downloading it with:");
@@ -350,13 +355,36 @@ public static class ExampleUtils
         return null;
     }
 
+    private const string WindowsPowerShell = "powershell";
+
     /// <summary>
-    /// Get the path to an IP Intelligence data file. The environment
-    /// variables are checked first for an explicit path. The aligned
-    /// variable named by <see cref="Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR"/>
-    /// takes precedence over the legacy variable named by
-    /// <see cref="Constants.LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR"/>.
-    /// If neither is set, the folder hierarchy is searched for the
+    /// PowerShell 7 when it is on the path, otherwise Windows PowerShell.
+    /// </summary>
+    private static string PowerShell()
+    {
+        var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+        foreach (var folder in path.Split(Path.PathSeparator))
+        {
+            try
+            {
+                if (File.Exists(Path.Combine(folder.Trim('"'), "pwsh.exe")))
+                {
+                    return "pwsh";
+                }
+            }
+            // A malformed entry on the path cannot hold PowerShell 7.
+            catch (ArgumentException)
+            {
+            }
+        }
+        return WindowsPowerShell;
+    }
+
+    /// <summary>
+    /// Get the path to an IP Intelligence data file. The variable named
+    /// by <see cref="Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR"/> is
+    /// checked first for an explicit path. If it is not set, the folder
+    /// hierarchy is searched for the
     /// supplied file name using <see cref="FindFile(string, DirectoryInfo)"/>.
     /// </summary>
     /// <param name="filename">
@@ -376,11 +404,6 @@ public static class ExampleUtils
     {
         var path = Environment.GetEnvironmentVariable(
             Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            path = Environment.GetEnvironmentVariable(
-                Constants.LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
-        }
         if (string.IsNullOrWhiteSpace(path))
         {
             path = FindFile(filename, dir);
@@ -404,8 +427,8 @@ public static class ExampleUtils
     }
 
     /// <summary>
-    /// Display information about the data file and log warnings if specific requirements
-    /// are not met.
+    /// Log a warning if the data file is old. An example run on a free data
+    /// file says what the Enterprise data file adds in its own output.
     /// </summary>
     /// <param name="engine"></param>
     /// <param name="logger"></param>
@@ -420,16 +443,9 @@ public static class ExampleUtils
                     $"for a more precise detection. The latest lite " +
                     $"data file is downloaded by running get-data-files.ps1 -Update or " +
                     $"get-data-files.sh -u in the data repository, the cxx/data submodule, " +
-                    $"from GitHub https://github.com/51Degrees/data. Find out " +
+                    $"from GitHub https://github.com/51Degrees/data. Contact us " +
                     $"about the Enterprise data file, which includes automatic daily " +
-                    $"updates, on our pricing page: https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-fiftyone.ipintelligence.examples-exampleutils.cs&utm_term=data-file-age-warning");
-            }
-            if (info.Tier == "Lite")
-            {
-                logger.LogWarning($"This example is using the 'Lite' data file. This is " +
-                    $"used for illustration, and has limited accuracy and capabilities. " +
-                    $"Find out about the Enterprise data file on our pricing page: " +
-                    $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-fiftyone.ipintelligence.examples-exampleutils.cs&utm_term=lite-data-file");
+                    $"updates, at https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-fiftyone.ipintelligence.examples-exampleutils.cs&utm_term=data-file-age-warning");
             }
         }
     }
@@ -512,36 +528,21 @@ public static class ExampleUtils
     }
 
     /// <summary>
-    /// Get the resource key from the environment. The aligned
-    /// '51DEGREES_RESOURCE_KEY' variable is checked first, followed by
-    /// the legacy 'RESOURCE_KEY' and 'SUPER_RESOURCE_KEY' variables.
+    /// Get the resource key from the '_51DEGREES_RESOURCE_KEY'
+    /// environment variable.
     /// </summary>
     /// <returns>
     /// The resource key, or null if no environment variable is set.
     /// </returns>
     public static string GetResourceKeyFromEnv()
     {
-        var key = Environment.GetEnvironmentVariable(
+        return Environment.GetEnvironmentVariable(
             CLOUD_RESOURCE_KEY_ENV_VAR);
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            key = Environment.GetEnvironmentVariable(
-                LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR);
-        }
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            key = Environment.GetEnvironmentVariable(
-                LEGACY_SUPER_RESOURCE_KEY_ENV_VAR);
-        }
-        return key;
     }
 
     /// <summary>
     /// Get the resource key from the environment and run the action with
-    /// the value, or an empty string if no resource key is set. The
-    /// aligned '51DEGREES_RESOURCE_KEY' variable is checked first,
-    /// followed by the legacy 'RESOURCE_KEY' and 'SUPER_RESOURCE_KEY'
-    /// variables.
+    /// the value, or an empty string if no resource key is set.
     /// </summary>
     /// <param name="setValue"></param>
     public static void GetResourceKeyFromEnv(Action<string> setValue)

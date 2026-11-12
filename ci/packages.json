@@ -1,0 +1,68 @@
+[
+  {
+    "Name": "common",
+    "Path": "common",
+    "ExtraPaths": ["Directory.Build.targets"],
+    "DependsOn": [],
+    "Publish": true,
+    "Property": "FiftyOneCommonVersion",
+    "Solutions": ["common/FiftyOne.Common.sln"]
+  },
+  {
+    "Name": "caching",
+    "Path": "caching",
+    "ExtraPaths": ["Directory.Build.targets"],
+    "DependsOn": [],
+    "Publish": true,
+    "Property": "FiftyOneCachingVersion",
+    "Solutions": ["caching/FiftyOne.Caching.sln"]
+  },
+  {
+    "Name": "pipeline",
+    "Path": "pipeline",
+    "ExtraPaths": ["Directory.Build.targets"],
+    "DependsOn": ["common", "caching"],
+    "Publish": true,
+    "Ignore": ["**/performance-tests/**"],
+    "Property": "FiftyOnePipelineVersion",
+    "Solutions": [
+      "pipeline/FiftyOne.Pipeline.sln",
+      "pipeline/FiftyOne.Pipeline.Elements.sln",
+      "pipeline/FiftyOne.CloudRequestEngine.sln"
+    ],
+    "Framework": ["pipeline/FiftyOne.Pipeline.Web.sln"]
+  },
+  {
+    "Name": "device-detection",
+    "Path": "device-detection",
+    "ExtraPaths": ["cxx", "Directory.Build.targets"],
+    "DependsOn": ["pipeline"],
+    "Publish": true,
+    "Ignore": ["**/performance-tests/**"],
+    "Property": "FiftyOneDeviceDetectionVersion",
+    "Solutions": ["device-detection/FiftyOne.DeviceDetection.Core.slnf"],
+    "Framework": ["device-detection/FiftyOne.DeviceDetection.sln"],
+    "Platform": true
+  },
+  {
+    "Name": "ip-intelligence",
+    "Path": "ip-intelligence",
+    "ExtraPaths": ["cxx", "Directory.Build.targets"],
+    "DependsOn": ["pipeline"],
+    "Publish": true,
+    "Ignore": ["**/performance-tests/**"],
+    "Property": "FiftyOneIpIntelligenceVersion",
+    "Solutions": ["ip-intelligence/FiftyOne.IpIntelligence.sln"],
+    "Platform": true,
+    "NotOn": ["x86"]
+  },
+  {
+    "Name": "location",
+    "Path": "location",
+    "ExtraPaths": ["Directory.Build.targets"],
+    "DependsOn": ["pipeline"],
+    "Publish": true,
+    "Property": "FiftyOneGeoLocationVersion",
+    "Solutions": ["location/FiftyOne.GeoLocation.sln"]
+  }
+]

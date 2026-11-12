@@ -84,7 +84,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                     Content = new StringContent(@"[""fiftyone.resource-key""]"),
                 });
             _httpClient = new HttpClient(handler.Object);
-            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, "");
+            Environment.SetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR, null);
         }
 
         /// <summary>

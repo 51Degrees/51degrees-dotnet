@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Caching;
 using FiftyOne.Pipeline.Engines.Configuration;
@@ -28,7 +29,9 @@ using FiftyOne.Pipeline.Engines.Data;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.Engines.FlowElements
@@ -58,6 +61,23 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         private bool _cacheHitOrMiss;
 
         /// <summary>
+        /// <see cref="FlowElementBase{T, TMeta}.CreateElementData"/> as the
+        /// delegate that GetOrAdd takes, made once rather than for every
+        /// request.
+        /// </summary>
+        private readonly Func<IPipeline, T> _createElementData;
+
+        /// <summary>
+        /// The list <see cref="FlowElementBase{T, TMeta}.Properties"/> last
+        /// returned, and the read only projection of it that
+        /// <see cref="IAspectEngine.Properties"/> returns. Held as one
+        /// object so a reader on another thread never sees a projection
+        /// paired with the wrong list.
+        /// </summary>
+        private Tuple<IList<TMeta>, IList<IAspectPropertyMetaData>>
+            _propertiesProjection;
+
+        /// <summary>
         /// The tier to which the current data source belongs.
         /// For 51Degrees this will usually be one of:
         /// Lite
@@ -72,14 +92,33 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         public LazyLoadingConfiguration LazyLoadingConfiguration { get; private set; }
 
         /// <summary>
-        /// Provide an implementation for the non-generic, 
+        /// Provide an implementation for the non-generic,
         /// aspect-specific version of the meta-data property.
         /// </summary>
+        /// <remarks>
+        /// Every caller gets the same read only list until
+        /// <see cref="FlowElementBase{T, TMeta}.Properties"/> returns a
+        /// different list, so the projection is not made again for every
+        /// request.
+        /// </remarks>
         IList<IAspectPropertyMetaData> IAspectEngine.Properties
         {
             get
             {
-                return Properties.Cast<IAspectPropertyMetaData>().ToList();
+                var source = Properties;
+                var cached = Volatile.Read(ref _propertiesProjection);
+                if (cached == null ||
+                    ReferenceEquals(cached.Item1, source) == false)
+                {
+                    cached = Tuple.Create<IList<TMeta>,
+                        IList<IAspectPropertyMetaData>>(
+                        source,
+                        source.Cast<IAspectPropertyMetaData>()
+                            .ToList()
+                            .AsReadOnly());
+                    Volatile.Write(ref _propertiesProjection, cached);
+                }
+                return cached.Item2;
             }
         }
 
@@ -104,6 +143,7 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
             Func<IPipeline, FlowElementBase<T, TMeta>, T> aspectDataFactory)
             : base(logger, aspectDataFactory)
         {
+            _createElementData = CreateElementData;
         }
 
         /// <summary>
@@ -187,6 +227,42 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         }
 
         /// <summary>
+        /// Whether a result may be stored in the results cache and served
+        /// from it. A result that holds a value created for the one request
+        /// that asked for it must not be, because a later request with the
+        /// same Evidence would receive that value. The default is true.
+        /// With lazy loading this runs inside the processing task, so an
+        /// override must read the result without waiting for lazy loading,
+        /// for example with <c>TryGet</c>, or it waits for the task it runs
+        /// in.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
+        /// </summary>
+        /// <param name="aspectData">
+        /// The result of processing, or a result found in the cache.
+        /// </param>
+        /// <returns>True if the result may be cached.</returns>
+        protected virtual bool CanCache(T aspectData)
+        {
+            return true;
+        }
+
+        /// <summary>
+        /// Add the result of processing to the cache, if there is a cache and
+        /// the result may be cached.
+        /// </summary>
+        private void AddToCache(IFlowData data)
+        {
+            if (_cache != null)
+            {
+                var result = data.GetFromElement(this);
+                if (CanCache(result))
+                {
+                    _cache.Put(data, result);
+                }
+            }
+        }
+
+        /// <summary>
         /// Private method that checks if the result is already in the cache
         /// or not.
         /// If it is then the result is added to 'data', if not then 
@@ -200,7 +276,7 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         {
             T cacheResult = default(T);
 
-            // If there is a cache then check if the result 
+            // If there is a cache then check if the result
             // is already in there.
             if (_cache != null)
             {
@@ -209,6 +285,12 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                     cacheResult = (T)_cache[data];
                 }
                 catch (InvalidCastException) { }
+                // A result that must not be served from the cache is
+                // processed again.
+                if (cacheResult != null && CanCache(cacheResult) == false)
+                {
+                    cacheResult = default(T);
+                }
             }
             // If we don't have a result from the cache then 
             // run through the normal processing.
@@ -218,43 +300,44 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                 // element's key then use it. Otherwise, create a new
                 // aspect data instance and add it to the flow data.
                 T aspectData =
-                    data.GetOrAdd(ElementDataKeyTyped, CreateElementData);
+                    data.GetOrAdd(ElementDataKeyTyped, _createElementData);
                 if (aspectData.Engines.Contains(this) == false)
                 {
-                    (aspectData as AspectDataBase).AddEngine(this);
+                    Internal(aspectData).AddEngine(this);
                 }
 
                 // Start the engine processing
                 if (LazyLoadingConfiguration != null)
                 {
                     // If lazy loading is configured then create a task
-                    // to do the processing and assign the task to the 
-                    // aspect data property.
+                    // to do the processing and assign the task to the
+                    // aspect data property. The data is checked first, so
+                    // no task starts for data that cannot hold one.
+                    // Whether the result is cached is decided in the
+                    // task, once processing has finished, so that Process
+                    // still returns at once.
+                    var aspectDataInternal = Internal(aspectData);
                     var task = Task.Run(() =>
                     {
                         ProcessEngine(data, aspectData);
+                        AddToCache(data);
                     });
-                    (aspectData as AspectDataBase).AddProcessTask(task);
+                    aspectDataInternal.AddProcessTask(task);
                 }
                 else
                 {
                     // If not lazy loading, just start processing.
                     ProcessEngine(data, aspectData);
-                }
-                // If there is a cache then add the result 
-                // of processing to the cache.
-                if (_cache != null)
-                {
-                    _cache.Put(data, data.GetFromElement(this));
+                    AddToCache(data);
                 }
             }
             else
             {
                 // If this aspect engine is configured to record cache hits,
                 // set the cache hit value on the cached aspect data.
-                if (_cacheHitOrMiss) 
+                if (_cacheHitOrMiss)
                 {
-                    (cacheResult as AspectDataBase).SetCacheHit();
+                    Internal(cacheResult).SetCacheHit();
                 }
 
                 // We have a result from the cache so add it 
@@ -264,6 +347,30 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                     return cacheResult;
                 });
             }
+        }
+
+        /// <summary>
+        /// The members of the aspect data that this engine writes besides
+        /// its values, which every <see cref="AspectDataBase"/> has.
+        /// </summary>
+        /// <exception cref="PipelineException">
+        /// Thrown, naming the data's type, when the data does not derive
+        /// from <see cref="AspectDataBase"/>. Going on without them would
+        /// let lazy loading read values before processing had finished.
+        /// </exception>
+        private IAspectDataInternal Internal(T aspectData)
+        {
+            if (aspectData is IAspectDataInternal result)
+            {
+                return result;
+            }
+            throw new PipelineException(string.Format(
+                CultureInfo.InvariantCulture,
+                "The engine '{0}' cannot process aspect data of type " +
+                "'{1}', because the data does not derive from '{2}'.",
+                GetType().Name,
+                aspectData == null ? "null" : aspectData.GetType().FullName,
+                nameof(AspectDataBase)));
         }
 
         /// <summary>

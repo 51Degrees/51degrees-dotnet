@@ -174,6 +174,9 @@
   <data name="MissingPropertyMessageDataUpgradeRequired" xml:space="preserve">
     <value>This is because your license or data file does not include this property. It is available with the {0} license/data for the {1}. To upgrade, see https://51degrees.com/pricing?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-messages.resx&amp;utm_term=missingpropertymessagedataupgraderequired.</value>
   </data>
+  <data name="MissingPropertyMessageDataUpgradeRequiredNoTiers" xml:space="preserve">
+    <value>This is because your license or data file does not include this property. To see which licenses include it, see https://51degrees.com/pricing?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-messages.resx&amp;utm_term=missingpropertymessagedataupgraderequirednotiers.</value>
+  </data>
   <data name="MissingPropertyMessageCloudRequestFailed" xml:space="preserve">
     <value>This is because an upstream cloud request failed, so no data was available to populate the property.</value>
   </data>

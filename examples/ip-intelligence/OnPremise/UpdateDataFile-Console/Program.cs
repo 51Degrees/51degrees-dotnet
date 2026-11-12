@@ -21,9 +21,11 @@
  * ********************************************************************* */
 
 using FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements;
+using FiftyOne.Pipeline.Engines;
 using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.CommandLine;
 using System.IO;
@@ -61,10 +63,14 @@ using System.Net.Http;
 /// # Command Line Usage
 /// The data file path is provided via the first command line argument. Here's how it works:
 /// 
-/// 1. First argument: Data file path (optional - checks the 51DEGREES_IPI_PATH and legacy
-///    IPINTELLIGENCEDATAFILE environment variables, then defaults to Constants.ENTERPRISE_IPI_DATA_FILE_NAME)
+/// 1. First argument: Data file path (optional - checks the _51DEGREES_IPI_PATH
+///    environment variable, then defaults to Constants.ENTERPRISE_IPI_DATA_FILE_NAME)
 /// 2. Second argument: License key (optional when using --data-update-url)
 /// 3. Option: --data-update-url for custom URL
+///
+/// With neither a license key nor a custom URL, the example shows the free Asn data file, which
+/// it downloads when it is missing, says what an update needs and where to ask for a key, and
+/// stops.
 /// 
 /// So to run the example, you would use:
 /// 
@@ -236,10 +242,10 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                     var metadata = ExampleUtils.GetDataFileInfo(dataFile, EngineBuilder);
                     // and output the results
                     Examples.ExampleUtils.LogDataFileInfo(metadata, Logger);
-                    if (metadata.Tier.Equals("Lite"))
+                    if (metadata.Free)
                     {
                         Logger.LogError("Will not download an 'Enterprise' data file over the top of " +
-                                "a 'Lite' data file, please supply another location.");
+                                "a free data file, please supply another location.");
                         throw new ArgumentException("File supplied has wrong data tier");
                     }
                     Logger.LogInformation("Existing data file will be replaced with downloaded data file");
@@ -284,9 +290,12 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                         // file to a temporary file (createTempDataCopy parameter == true).
                         //
                         // For automatic updates from the distributor service you will need to provide a license key.
-                        // A license key can be obtained with a subscription from https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=run
+                        // Contact us for a license key at https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=run
                         // For testing with a custom URL, no license key is required.
                         .UseOnPremise(dataFile, licenseKey ?? string.Empty, true)
+                        // LowMemory keeps the multi-gigabyte Enterprise data
+                        // file on disk rather than loading it into memory.
+                        .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                         // Enable update on startup, the auto update system
                         // will be used to check for an update before the
                         // IP Intelligence engine is created. This will block
@@ -377,8 +386,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                 if (licenseKey == null)
                 {
                     logger.LogError("In order to test this example you will need a 51Degrees " +
-                                    "Enterprise license which can be obtained on a trial basis or purchased " +
-                                    "from our pricing page https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=license-key-required. You must supply the " +
+                                    "Enterprise license, which you can ask for at " +
+                                    "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=license-key-required. You must supply the " +
                                     "license key " + KEY_SUBMISSION_PATHS);
                     throw new ArgumentException("No license key available", nameof(licenseKey));
                 }
@@ -426,6 +435,41 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
         private const string KEY_SUBMISSION_PATHS = "as the second command line argument to this program, or " + KEY_SUBMISSION_ALT_PATH;
 
         /// <summary>
+        /// Where to ask for a license key and a copy of the Enterprise data
+        /// file, tagged with this example.
+        /// </summary>
+        private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-ip-intelligence-onpremise-updatedatafile-console-program.cs&utm_term=licence-key";
+
+        /// <summary>
+        /// Without a license key or an update address there is no update to
+        /// download, so the example shows the free Asn data file it would
+        /// start from, and says what an update needs.
+        /// </summary>
+        private static void ExplainUpdates(TextWriter output)
+        {
+            var dataFile = Examples.ExampleUtils.FindDataFile(
+                Constants.ASN_IPI_DATA_FILE_NAME);
+            if (dataFile != null && File.Exists(dataFile))
+            {
+                var builder = new IpiOnPremiseEngineBuilder(NullLoggerFactory.Instance);
+                builder
+                    .SetPerformanceProfile(PerformanceProfiles.LowMemory)
+                    .SetAutoUpdate(false)
+                    .SetDataFileSystemWatcher(false)
+                    .SetDataUpdateOnStartup(false);
+                var info = ExampleUtils.GetDataFileInfo(dataFile, builder);
+                output.WriteLine($"The data file in use, '{info.Filepath}', was " +
+                    $"published on {info.PublishDate:d}" +
+                    (info.Free ? " and is a free data file." : "."));
+            }
+            output.WriteLine();
+            output.WriteLine("Updating the data file downloads the Enterprise data " +
+                "file, which needs a licence key, given " + KEY_SUBMISSION_PATHS +
+                ", or the address of a copy you host, given with --data-update-url. " +
+                $"Contact us for a key and a copy at {ContactUs}");
+        }
+
+        /// <summary>
         /// When no data file is specified on the command line, check the
         /// environment variables for an explicit path before falling back to
         /// the default file name.
@@ -434,11 +478,6 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
         {
             var dataFile = Environment.GetEnvironmentVariable(
                 Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
-            if (string.IsNullOrWhiteSpace(dataFile))
-            {
-                dataFile = Environment.GetEnvironmentVariable(
-                    Constants.LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
-            }
             if (string.IsNullOrWhiteSpace(dataFile))
             {
                 dataFile = Constants.ENTERPRISE_IPI_DATA_FILE_NAME;
@@ -494,12 +533,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                 
                 if (string.IsNullOrWhiteSpace(licenseKeyValue) && string.IsNullOrWhiteSpace(dataUpdateUrlValue))
                 {
-                    Console.Error.WriteLine("In order to test this example you will need a 51Degrees " +
-                                          "Enterprise license which can be obtained on a trial basis or purchased " +
-                                          "from our pricing page https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=license-key-or-update-url-required. You must supply the " +
-                                          "license key " + KEY_SUBMISSION_PATHS + 
-                                          ", or provide a custom data update URL using --data-update-url");
-                    return 1;
+                    ExplainUpdates(Console.Out);
+                    return 0;
                 }
                 
                 // Work out where the data file is if we don't have an absolute path.

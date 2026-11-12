@@ -71,7 +71,9 @@ using System.Threading.Tasks;
 ///
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Metrics-Console/Program.cs). 
 /// 
-/// This example requires an enterprise IP Intelligence data file (.ipi). 
+/// This example requires an enterprise IP Intelligence data file (.ipi), as the location
+/// properties it measures are only in that file. Run with the free Lite data file, which it
+/// uses by default, it says which properties it needs and where to ask for a copy, and stops.
 /// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-metrics-console-program.cs&amp;utm_term=header).
 /// 
 /// Required NuGet Dependencies:
@@ -478,19 +480,21 @@ public class Program
     private const double DEFAULT_RANGE_PERCENTAGE = 1;
 
     /// <summary>
-    /// The performance profile the engine is built with.
+    /// The performance profile the engine is built with, unless the sixth
+    /// command line argument names another.
     ///
     /// This example walks the profile metadata of the whole data file, which
     /// is a very different workload to detection. Reading the property values
     /// of a profile measured 166 a second under LowMemory against 2,013 a
     /// second under MaxPerformance on the same file - paging the data back
-    /// from disk dominates everything else the example does. MaxPerformance
-    /// holds the data file in memory, so it needs as much free RAM as the
-    /// file is large; drop to Balanced or LowMemory where that is not
-    /// available.
+    /// from disk dominates everything else the example does. LowMemory keeps
+    /// the data file on disk, so the example runs on a machine with less free
+    /// RAM than the file is large. Pass MaxPerformance for speed where the
+    /// machine has that much free RAM, because it holds the data file in
+    /// memory.
     /// </summary>
     private const PerformanceProfiles DEFAULT_PERFORMANCE_PROFILE =
-        PerformanceProfiles.MaxPerformance;
+        PerformanceProfiles.LowMemory;
 
     /// <summary>
     /// Give up scanning once this many profiles in a row have produced no
@@ -502,6 +506,20 @@ public class Program
     /// 2,088.
     /// </summary>
     private const int DEFAULT_MAX_PROFILES_WITHOUT_RANGE = 100_000;
+
+    /// <summary>
+    /// Where to ask for a copy of the Enterprise data file, tagged with this
+    /// example.
+    /// </summary>
+    private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-ip-intelligence-onpremise-metrics-console-program.cs&utm_term=enterprise-data-file";
+
+    /// <summary>
+    /// The properties the metrics are grouped by and measured with, which
+    /// only the Enterprise data file has.
+    /// </summary>
+    private static List<string> MetricsProperties =>
+        typeof(Key).GetProperties().Select(i => i.Name).Concat(
+            AreaIndex.Properties).ToList();
 
     public class Counter
     {
@@ -980,9 +998,7 @@ public class Program
                 .SetDataFileSystemWatcher(false)
                 .SetDataUpdateOnStartup(false)
                 // Set to only return from processing the properties needed.
-                .SetProperties(
-                    typeof(Key).GetProperties().Select(i => i.Name).Concat(
-                        AreaIndex.Properties).ToList())
+                .SetProperties(MetricsProperties)
                 // Optimize for the expected parallel workload. One handle per
                 // consumer, plus one for the producer, which reads profile
                 // metadata from the same pool while the consumers are
@@ -1382,19 +1398,19 @@ public class Program
         }
     }
 
-    static void Main(string[] args)
+    public static void Main(string[] args)
     {
         var configuration = new Configuration
         {
-            // Use the supplied path for the data file or find the lite file that is included
-            // in the repository.
+            // Use the supplied path for the data file or find the free Lite file that the
+            // data repository links, downloading it when it is missing.
             DataFile = args.Length > 0 ? args[0] :
             // In this example, by default, the 51degrees IP Intelligence data file needs to be somewhere in the
             // project space, or you may specify another file as a command line parameter.
             //
             // For testing, contact us to obtain an enterprise data file: https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metrics-console-program.cs&utm_term=main
             Examples.ExampleUtils.FindDataFile(
-                Constants.ENTERPRISE_IPI_DATA_FILE_NAME)
+                Constants.LITE_IPI_DATA_FILE_NAME)
         };
 
         // Get the location for the output file. Use the same location as the
@@ -1444,7 +1460,22 @@ public class Program
             }));
         var logger = configuration.LoggerFactory.CreateLogger<Program>();
 
-        if (configuration.DataFile != null)
+        if (configuration.DataFile == null)
+        {
+            logger.LogError("Failed to find a IP Intelligence data file. Make sure the " +
+                "submodules have been fetched by running " +
+                "`git submodule update --init --recursive`, so that the free Lite " +
+                "file can be downloaded. A different file can be specified by " +
+                "supplying the full path as a command line argument");
+        }
+        // The free data files have none of the properties the metrics need,
+        // so with one of them the example says so and stops.
+        else if (ExampleUtils.LacksEnterpriseProperties(
+            configuration.DataFile,
+            "Measuring the location areas",
+            MetricsProperties,
+            Console.Out,
+            ContactUs) == false)
         {
             logger.LogInformation($"Found IPI data file: {configuration.DataFile}");
             using var output = File.CreateText(outputFile);
@@ -1461,13 +1492,6 @@ public class Program
                 o.ShutdownTimeout = TimeSpan.FromMinutes(5));
             using var host = builder.Build();
             host.Run();
-        }
-        else
-        {
-            logger.LogError("Failed to find a IP Intelligence data file. Make sure the " +
-                "Enterprise data file is in cxx/data/ip-intelligence. A different " +
-                "file can be specified by supplying the full path as a command " +
-                "line argument");
         }
 
         // Dispose the logger to ensure any messages get flushed

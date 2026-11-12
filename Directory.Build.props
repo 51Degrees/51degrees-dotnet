@@ -54,6 +54,17 @@
   </PropertyGroup>
 
   <!--
+    The .NET 10 SDK prunes package references that the framework already
+    provides, for every target framework of a project that targets net10.0.
+    On net8.0 that would drop System.Text.Json 8.0.6 from the
+    FiftyOne.Pipeline.Engines package, so the net8.0 builds restore without
+    pruning and their dependencies stay as they were.
+  -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <RestoreEnablePackagePruning>false</RestoreEnablePackagePruning>
+  </PropertyGroup>
+
+  <!--
     Examples, tests, tools and performance tests are never packed, as the
     specification says. A project under one of those folders can still set
     IsPackable itself.
@@ -70,12 +81,12 @@
     update changes them here.
   -->
   <PropertyGroup>
-    <FiftyOneCommonVersion>5.1.8</FiftyOneCommonVersion>
-    <FiftyOneCachingVersion>4.5.2</FiftyOneCachingVersion>
-    <FiftyOnePipelineVersion>4.5.128</FiftyOnePipelineVersion>
-    <FiftyOneDeviceDetectionVersion>4.5.179</FiftyOneDeviceDetectionVersion>
-    <FiftyOneIpIntelligenceVersion>4.5.154</FiftyOneIpIntelligenceVersion>
-    <FiftyOneGeoLocationVersion>4.5.195</FiftyOneGeoLocationVersion>
+    <FiftyOneCommonVersion>5.1.9</FiftyOneCommonVersion>
+    <FiftyOneCachingVersion>4.5.3</FiftyOneCachingVersion>
+    <FiftyOnePipelineVersion>4.5.129</FiftyOnePipelineVersion>
+    <FiftyOneDeviceDetectionVersion>4.5.180</FiftyOneDeviceDetectionVersion>
+    <FiftyOneIpIntelligenceVersion>4.5.155</FiftyOneIpIntelligenceVersion>
+    <FiftyOneGeoLocationVersion>4.5.196</FiftyOneGeoLocationVersion>
   </PropertyGroup>
 
 </Project>

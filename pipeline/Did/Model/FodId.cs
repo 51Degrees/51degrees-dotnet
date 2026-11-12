@@ -271,7 +271,9 @@ namespace FiftyOne.Did.Model
         /// The encoded envelope, which may be anything at all. The standard
         /// alphabet with padding, as the cloud issues it, and the URL-safe
         /// alphabet with or without padding, as a page puts it in a link,
-        /// are both accepted, and surrounding whitespace is ignored. See
+        /// are both accepted, and white space around the value is ignored.
+        /// White space inside the value, or characters from both alphabets,
+        /// give <see cref="FodIdParseStatus.InvalidBase64"/>. See
         /// <see cref="NormaliseBase64"/>.
         /// </param>
         /// <param name="fodId">
@@ -298,8 +300,15 @@ namespace FiftyOne.Did.Model
             // string, because the OWID reader accepts the standard alphabet
             // only and the URL-safe form is how a page puts a 51Did in a
             // link.
+            var base64 = NormaliseBase64(value);
+            if (value != null && base64 == null)
+            {
+                fodId = null;
+                status = FodIdParseStatus.InvalidBase64;
+                return false;
+            }
             if (Owid.Client.Model.Owid.TryParse(
-                    NormaliseBase64(value),
+                    base64,
                     out var owid,
                     out var owidStatus) == false)
             {
@@ -374,8 +383,8 @@ namespace FiftyOne.Did.Model
         /// </exception>
         /// <exception cref="FormatException">
         /// Thrown when <paramref name="base64"/> is not valid Base64 in
-        /// either alphabet, or decodes to bytes that are not an OWID
-        /// envelope. The message names the
+        /// one alphabet, has white space inside it, or decodes to bytes
+        /// that are not an OWID envelope. The message names the
         /// <see cref="FodIdParseStatus"/> found.
         /// </exception>
         public FodId(string base64) : this(Parse(base64, nameof(base64)))
@@ -399,8 +408,8 @@ namespace FiftyOne.Did.Model
         /// </exception>
         /// <exception cref="FormatException">
         /// Thrown when <paramref name="base64"/> is not valid Base64 in
-        /// either alphabet, or decodes to bytes that are not an OWID
-        /// envelope.
+        /// one alphabet, has white space inside it, or decodes to bytes
+        /// that are not an OWID envelope.
         /// </exception>
         public static FodId FromBase64(string base64) => new FodId(base64);
 
@@ -414,19 +423,40 @@ namespace FiftyOne.Did.Model
         public string AsBase64Url() => ToBase64Url(this.AsBase64());
 
         /// <summary>
+        /// The characters for the values 62 and 63 that only the standard
+        /// alphabet uses.
+        /// </summary>
+        private static readonly char[] StandardOnly = { '+', '/' };
+
+        /// <summary>
+        /// The characters for the values 62 and 63 that only the URL-safe
+        /// alphabet uses.
+        /// </summary>
+        private static readonly char[] UrlSafeOnly = { '-', '_' };
+
+        /// <summary>
         /// Restores a base64 string in either alphabet to the standard
         /// alphabet with padding, as <c>Convert.FromBase64String</c>
-        /// expects. Leading and trailing whitespace is removed first, so a
-        /// value read from a file or a header with a trailing newline
-        /// behaves as the clean value does, then <c>-</c> becomes
-        /// <c>+</c>, <c>_</c> becomes <c>/</c>, and padding is added when
-        /// the trimmed length modulo 4 is 2 or 3. A value already in the
-        /// standard form is returned unchanged apart from that trim.
+        /// expects. White space before and after the text is removed
+        /// first, being every character with the Unicode White_Space
+        /// property, so a value read from a file or a header with a
+        /// trailing newline behaves as the clean value does. Then
+        /// <c>-</c> becomes <c>+</c>, <c>_</c> becomes <c>/</c>, and
+        /// padding is added when the trimmed length modulo 4 is 2 or 3. A
+        /// value already in the standard form is returned unchanged apart
+        /// from that trim.
         /// </summary>
+        /// <remarks>
+        /// A text with white space inside it, or with a character from
+        /// each alphabet such as both <c>+</c> and <c>-</c>, is refused, as
+        /// the 51Did specification requires. The issuer writes neither, so
+        /// either is a sign of a damaged value, such as a <c>+</c> a form
+        /// decoder turned into a space or a value converted only in part.
+        /// </remarks>
         /// <param name="value">The base64 in either alphabet.</param>
         /// <returns>
         /// The standard form, or <c>null</c> when <paramref name="value"/>
-        /// is <c>null</c>.
+        /// is <c>null</c> or is refused.
         /// </returns>
         public static string? NormaliseBase64(string? value)
         {
@@ -435,9 +465,23 @@ namespace FiftyOne.Did.Model
                 return null;
             }
             // Trim before anything else, because the padding below is
-            // decided by the length and whitespace would make that length
+            // decided by the length and white space would make that length
             // wrong.
-            var base64 = value.Trim().Replace('-', '+').Replace('_', '/');
+            var text = value.Trim();
+            foreach (var character in text)
+            {
+                if (char.IsWhiteSpace(character))
+                {
+                    return null;
+                }
+            }
+            // Checked before the mapping below, which would hide a mix.
+            if (text.IndexOfAny(StandardOnly) >= 0 &&
+                text.IndexOfAny(UrlSafeOnly) >= 0)
+            {
+                return null;
+            }
+            var base64 = text.Replace('-', '+').Replace('_', '/');
             switch (base64.Length % 4)
             {
                 case 2: return base64 + "==";
@@ -697,8 +741,10 @@ namespace FiftyOne.Did.Model
             {
                 throw new ArgumentNullException(paramName);
             }
+            var standard = NormaliseBase64(base64) ?? throw ExceptionFor(
+                FodIdParseStatus.InvalidBase64, paramName);
             if (Owid.Client.Model.Owid.TryParse(
-                    NormaliseBase64(base64),
+                    standard,
                     out var owid,
                     out var owidStatus) == false)
             {

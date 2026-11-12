@@ -41,9 +41,8 @@ namespace FiftyOne.Did.Tests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Set <c>_51DEGREES_RESOURCE_KEY</c> (or the legacy
-    /// <c>SUPER_RESOURCE_KEY</c>) to a key whose properties include
-    /// <c>fodid.*</c>. With no key set the tests are inconclusive.
+    /// The resource key is found by <see cref="LiveCloudKey"/>, which fails
+    /// the tests when none is set, and has to carry the FODid product.
     /// <c>_51DEGREES_LICENSE_KEY_51DID</c>, then
     /// <c>_51DEGREES_LICENSE_KEY</c> (or <c>LICENSE_KEY</c>), is read for
     /// the license key and is optional. When one is set it must belong to
@@ -75,14 +74,10 @@ namespace FiftyOne.Did.Tests
             Timeout = TimeSpan.FromSeconds(30),
         };
 
-        private static string? ResourceKey() =>
-            FirstSet("_51DEGREES_RESOURCE_KEY", "SUPER_RESOURCE_KEY");
-
         private static string? LicenceKey() =>
             FirstSet(
                 "_51DEGREES_LICENSE_KEY_51DID",
-                "_51DEGREES_LICENSE_KEY",
-                "LICENSE_KEY");
+                "_51DEGREES_LICENSE_KEY");
 
         private static string? FirstSet(params string[] names)
         {
@@ -98,40 +93,28 @@ namespace FiftyOne.Did.Tests
         }
 
         /// <summary>
-        /// A client for the key in the environment, or null with the test
-        /// marked inconclusive when there is none.
+        /// A client for the key in the environment, failing the test when
+        /// there is none.
         /// </summary>
-        private static DidClient? ClientOrInconclusive()
-        {
-            var resourceKey = ResourceKey();
-            if (resourceKey == null)
-            {
-                Assert.Inconclusive(
-                    "No resource key supplied for the live cloud 51Did client " +
-                    "tests. Set _51DEGREES_RESOURCE_KEY (or the legacy " +
-                    "SUPER_RESOURCE_KEY) to a key whose properties include " +
-                    "fodid.* and re-run. Get a free key that includes 51Did " +
-                    "from https://configure.51degrees.com/N57Wygby");
-                return null;
-            }
-            return new DidClient(resourceKey, LicenceKey());
-        }
+        private static DidClient Client() =>
+            new DidClient(
+                LiveCloudKey.Require(
+                    "FODid",
+                    "a non-marketing 51Did, which they verify and redeem"),
+                LicenceKey());
 
         /// <summary>
         /// Creates a 51Did through the cloud json endpoint and parses it,
-        /// or marks the test inconclusive when the key returns none.
+        /// failing the test when the key returns none.
         /// </summary>
-        private static async Task<FodId?> CreateAsync(DidClient client)
-        {
-            var encoded = await CreateEncodedAsync(client);
-            return encoded == null ? null : FodId.FromBase64(encoded);
-        }
+        private static async Task<FodId> CreateAsync(DidClient client) =>
+            FodId.FromBase64(await CreateEncodedAsync(client));
 
         /// <summary>
-        /// The 51Did exactly as the cloud json endpoint returned it, or null
-        /// with the test marked inconclusive when the key returns none.
+        /// The 51Did exactly as the cloud json endpoint returned it, failing
+        /// the test when the key returns none.
         /// </summary>
-        private static async Task<string?> CreateEncodedAsync(DidClient client)
+        private static async Task<string> CreateEncodedAsync(DidClient client)
         {
             var url =
                 $"{client.Endpoint}json?resource={Uri.EscapeDataString(client.ResourceKey)}" +
@@ -144,26 +127,31 @@ namespace FiftyOne.Did.Tests
                 $"Cloud creation request failed " +
                 $"({(int)response.StatusCode} {response.StatusCode}): {body}");
             using var document = JsonDocument.Parse(body);
-            if (document.RootElement.TryGetProperty("fodid", out var fodid) == false
-                || fodid.TryGetProperty("idprobglobal", out var id) == false
-                || id.ValueKind != JsonValueKind.String
-                || string.IsNullOrEmpty(id.GetString()))
+            JsonElement? fodid =
+                document.RootElement.TryGetProperty("fodid", out var element)
+                    ? element
+                    : null;
+            var id = fodid is JsonElement found
+                && found.TryGetProperty("idprobglobal", out var value)
+                && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
+            if (string.IsNullOrEmpty(id))
             {
-                Assert.Inconclusive(
-                    "The resource key returned no fodid.idprobglobal, so " +
-                    "there is no 51Did to verify. Use a key whose properties " +
-                    "include fodid.*. Response: " + body);
-                return null;
+                Assert.Fail(LiveCloudKey.Missing(
+                    "fodid.idprobglobal",
+                    LiveCloudKey.NullReason(fodid, "idprobglobal"),
+                    "FODid"));
             }
-            return id.GetString()!;
+            return id;
         }
 
         /// <summary>
         /// Seals a creator context result for the 51Did, standing in for
-        /// the browser call the client does not carry, or null when the
-        /// host returns none.
+        /// the browser call the client does not carry, failing the test
+        /// when the host returns none.
         /// </summary>
-        private static async Task<string?> SealAsync(
+        private static async Task<string> SealAsync(
             DidClient client, string encoded, string challenge)
         {
             var url =
@@ -176,19 +164,40 @@ namespace FiftyOne.Did.Tests
                 $"verify-context request failed " +
                 $"({(int)response.StatusCode} {response.StatusCode}): {body}");
             using var document = JsonDocument.Parse(body);
-            return document.RootElement.TryGetProperty("result", out var result)
+            var root = document.RootElement;
+            var sealedResult = root.TryGetProperty("result", out var result)
                 && result.ValueKind == JsonValueKind.String
                 ? result.GetString()
                 : null;
+            if (string.IsNullOrEmpty(sealedResult))
+            {
+                var errors = root.TryGetProperty("errors", out var listed)
+                    ? listed.GetRawText()
+                    : "no reason given";
+                Assert.Fail(
+                    "The cloud answered verify-context without a sealed " +
+                    $"result ({errors}), which the production cloud " +
+                    $"returns, so the host at {client.Endpoint} holds no " +
+                    "creator context secret.");
+            }
+            return sealedResult;
         }
+
+        /// <summary>
+        /// The failure for a host that answers 404 for the creator context,
+        /// which the production cloud offers.
+        /// </summary>
+        private static void NoCreatorContext(NotSupportedException e) =>
+            Assert.Fail(
+                "The cloud answered without the creator context " +
+                $"({e.Message}), which the production cloud offers, so " +
+                "the host the test called is not configured for it.");
 
         [TestMethod]
         public async Task Create_VerifyOffline_VerifyThroughCloud()
         {
-            using var client = ClientOrInconclusive();
-            if (client == null) { return; }
+            using var client = Client();
             var fodId = await CreateAsync(client);
-            if (fodId == null) { return; }
 
             var key = await client.PublicKeyForAsync(fodId);
             Assert.IsNotNull(key,
@@ -209,10 +218,8 @@ namespace FiftyOne.Did.Tests
         [TestMethod]
         public async Task Redeem_GarbageResult_IsUnreadable()
         {
-            using var client = ClientOrInconclusive();
-            if (client == null) { return; }
+            using var client = Client();
             var fodId = await CreateAsync(client);
-            if (fodId == null) { return; }
 
             RedeemResult result;
             try
@@ -222,8 +229,7 @@ namespace FiftyOne.Did.Tests
             }
             catch (NotSupportedException e)
             {
-                Assert.Inconclusive(
-                    "The host does not offer the creator context: " + e.Message);
+                NoCreatorContext(e);
                 return;
             }
 
@@ -237,20 +243,11 @@ namespace FiftyOne.Did.Tests
         [TestMethod]
         public async Task Redeem_SealedResult_ReadsVerdictWithLicenseKey()
         {
-            using var client = ClientOrInconclusive();
-            if (client == null) { return; }
+            using var client = Client();
             var encoded = await CreateEncodedAsync(client);
-            if (encoded == null) { return; }
 
             var challenge = Guid.NewGuid().ToString("N");
             var sealedResult = await SealAsync(client, encoded, challenge);
-            if (sealedResult == null)
-            {
-                Assert.Inconclusive(
-                    "verify-context returned no sealed result, so the host " +
-                    "holds no creator context secret.");
-                return;
-            }
 
             RedeemResult result;
             try
@@ -259,8 +256,7 @@ namespace FiftyOne.Did.Tests
             }
             catch (NotSupportedException e)
             {
-                Assert.Inconclusive(
-                    "The host does not offer the creator context: " + e.Message);
+                NoCreatorContext(e);
                 return;
             }
 

@@ -23,6 +23,7 @@
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Data;
+using FiftyOne.Pipeline.Engines.FlowElements;
 using FiftyOne.Pipeline.Engines.FiftyOne.Data;
 using Microsoft.Extensions.Logging;
 using System;
@@ -121,8 +122,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 
             if (_pipelineConfigs.TryGetValue(data.Pipeline, out PipelineConfig config) == false)
             {
-                config = PopulateConfig(data.Pipeline);
-                config = _pipelineConfigs.GetOrAdd(data.Pipeline, config);
+                config = PopulateConfig(data.Pipeline, out bool complete);
+                if (complete)
+                {
+                    config = _pipelineConfigs.GetOrAdd(data.Pipeline, config);
+                }
             }
 
             var elementData = data.GetOrAdd(
@@ -224,12 +228,19 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Executed on first request in order to build some collections 
-        /// from the meta-data exposed by the Pipeline.
+        /// Executed on a request in order to build some collections from the
+        /// meta-data exposed by the Pipeline. The result is kept only once
+        /// every engine has its properties, because an engine whose list of
+        /// properties could not be fetched has none to contribute yet.
         /// </summary>
-        private PipelineConfig PopulateConfig(IPipeline pipeline)
+        /// <param name="pipeline">The Pipeline to read.</param>
+        /// <param name="complete">
+        /// True if every engine in the Pipeline has loaded its properties.
+        /// </param>
+        private PipelineConfig PopulateConfig(IPipeline pipeline, out bool complete)
         {
             var config = new PipelineConfig();
+            complete = AllPropertiesLoaded(pipeline.FlowElements);
 
             // Populate the collection that contains a list of the
             // properties with names starting with 'SetHeader'
@@ -248,6 +259,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             }
 
             return config;
+        }
+
+        // The Pipeline lists the elements inside parallel groups too.
+        private static bool AllPropertiesLoaded(IEnumerable<IFlowElement> elements)
+        {
+            return elements.All(e =>
+                (e is IAspectEngine engine && engine.HasLoadedProperties == false) == false);
         }
 
         private static string GetResponseHeaderName(string propertyName)

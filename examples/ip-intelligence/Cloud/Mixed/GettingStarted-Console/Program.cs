@@ -50,7 +50,7 @@ using FiftyOne.DeviceDetection.Cloud.FlowElements;
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/Cloud/Mixed/GettingStarted-Console/Program.cs).
 ///
-/// To run this example, create a Resource Key for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&amp;utm_term=header and supply it via the appsettings.json file or the 51DEGREES_RESOURCE_KEY environment variable. By default the pipeline talks to cloud.51degrees.com; set 51D_CLOUD_ENDPOINT to point at a self-hosted Cloud service instead.
+/// To run this example, create a Resource Key for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&amp;utm_term=header and supply it via the appsettings.json file or the _51DEGREES_RESOURCE_KEY environment variable. By default the pipeline talks to cloud.51degrees.com; set _51DEGREES_CLOUD_ENDPOINT to point at a self-hosted Cloud service instead.
 ///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
@@ -156,7 +156,8 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Mixed.GettingStartedConsole
                     // Add the evidence values to the flow data
                     data.AddEvidence(evidence);
 
-                    // Process the flow data - both engines will run in parallel
+                    // Process the flow data. The pipeline runs both engines, one
+                    // after the other.
                     data.Process();
 
                     message = new StringBuilder();

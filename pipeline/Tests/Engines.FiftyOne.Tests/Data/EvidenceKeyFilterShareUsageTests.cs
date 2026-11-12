@@ -183,5 +183,108 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
             Assert.IsTrue(filter.Include("query.id.usage"));
             Assert.IsTrue(filter.Include("header.user-agent"));
         }
+
+        /// <summary>
+        /// The Cookie header carries every cookie, including the ones the
+        /// cookie rule leaves out, so it is never shared, even when all
+        /// evidence is. The cookies starting 51D_ are still shared as their
+        /// own 'cookie.' evidence.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_TheCookieHeaderIsNotShared()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("header.cookie"));
+            Assert.IsFalse(filter.Include("header.Cookie"));
+            Assert.IsTrue(filter.Include("header.user-agent"));
+            Assert.IsTrue(filter.Include("cookie.51d_screenpixelswidth"));
+
+            var shareAll = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsFalse(shareAll.Include("header.cookie"));
+            Assert.IsFalse(shareAll.Include("header.Cookie"));
+            Assert.IsTrue(shareAll.Include("header.user-agent"));
+            Assert.IsTrue(shareAll.Include("cookie.51d_screenpixelswidth"));
+        }
+
+        /// <summary>
+        /// A cookie that does not start 51D_ is not shared unless all
+        /// evidence is, whatever the session setting, so the ASP.NET
+        /// session cookie is not shared by the filter that decides what is
+        /// sent.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_TheSessionCookieIsNotShared()
+        {
+            foreach (var includeSession in new[] { false, true })
+            {
+                var filter = new EvidenceKeyFilterShareUsage(
+                    new List<string>(),
+                    new List<string>(),
+                    includeSession,
+                    "asp.net_sessionid");
+
+                Assert.IsFalse(
+                    filter.Include("cookie.asp.net_sessionid"),
+                    "includeSession=" + includeSession);
+                Assert.IsFalse(filter.Include("cookie.other"));
+                Assert.IsTrue(filter.Include("cookie.51d_screenpixelswidth"));
+            }
+
+            var shareAll = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsTrue(shareAll.Include("cookie.asp.net_sessionid"));
+        }
+
+        /// <summary>
+        /// The session setting still lets the tracker tell visitors apart,
+        /// so the filter that makes the repeat tracker's key includes the
+        /// session cookie when the setting is on and leaves it out when it
+        /// is off. That filter decides nothing about what is sent.
+        /// </summary>
+        [TestMethod]
+        public void Tracker_TheSessionCookieIsKeyedOnlyWhenSessionIsTracked()
+        {
+            var tracked = new EvidenceKeyFilterShareUsageTracker(
+                new List<string>(),
+                new List<string>(),
+                true,
+                "asp.net_sessionid");
+            var untracked = new EvidenceKeyFilterShareUsageTracker(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsTrue(tracked.Include("cookie.asp.net_sessionid"));
+            Assert.IsTrue(tracked.Include("cookie.ASP.NET_SessionId"));
+            Assert.IsFalse(tracked.Include("cookie.other"));
+            Assert.IsFalse(untracked.Include("cookie.asp.net_sessionid"));
+        }
+
+        /// <summary>
+        /// Keys are compared without regard to case, so a prefix written in
+        /// capitals gets the same answer as the prefix in lower case.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_PrefixIsCaseInsensitive()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("COOKIE.other"));
+            Assert.IsTrue(filter.Include("COOKIE.51D_ScreenPixelsWidth"));
+            Assert.IsFalse(filter.Include("Header.Cookie"));
+            Assert.IsFalse(filter.Include("SESSION.other"));
+            Assert.IsTrue(filter.Include("HEADER.user-agent"));
+        }
     }
 }

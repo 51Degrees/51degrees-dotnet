@@ -23,6 +23,7 @@
 using FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements;
 using FiftyOne.IpIntelligence.Engine.OnPremise.Interop;
 using FiftyOne.IpIntelligence.Engine.OnPremise.Wrappers;
+using FiftyOne.Pipeline.Engines;
 using FiftyOne.Pipeline.Engines.Caching;
 using FiftyOne.Pipeline.Engines.Configuration;
 using FiftyOne.Pipeline.Engines.FiftyOne.Data;
@@ -40,6 +41,7 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
     public class EngineAndBuilderTests
     {
         IpiOnPremiseEngineBuilder _builder;
+        SwigFactory _factory;
 
         /// <summary>
         /// Setup the builder to create a mock swig engine that will mostly 
@@ -70,6 +72,8 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
             // The engine frees the keys it is given, so each call gets new
             // ones.
             swigEngine.Setup(e => e.getKeys()).Returns(() => new VectorStringSwig());
+            swigEngine.Setup(e => e.getRequiredProperties())
+                .Returns(() => new VectorStringSwig());
             swigEngine.Setup(e => e.getMetaData()).Returns(swigMetaData.Object);
             swigEngine.Setup(e => e.getPublishedTime()).Returns(date.Object);
             swigEngine.Setup(e => e.getUpdateAvailableTime()).Returns(date.Object);
@@ -79,6 +83,7 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
             factory.EngineFromData = (a, b, c, d) => { return swigEngine.Object; };
 
             // Assign the factory to the builder
+            _factory = factory;
             _builder.SwigFactory = factory;
             _builder.SetAutoUpdate(false)
                 .SetDataFileSystemWatcher(false);
@@ -93,6 +98,85 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
         {
             using var engine = _builder.Build(new MemoryStream());
             Assert.AreEqual(engine, engine.DataFiles.ElementAt(0).Engine);
+        }
+
+        /// <summary>
+        /// An engine built without a performance profile uses Balanced, as
+        /// the specification says, rather than the native configuration's
+        /// own default, which loads everything into memory.
+        /// </summary>
+        [TestMethod]
+        public void EngineBuilder_NoProfile_UsesBalanced()
+        {
+            using var balanced = new ConfigIpiSwig();
+            balanced.setBalanced();
+
+            Assert.AreEqual(Describe(balanced), BuildAndDescribeConfig());
+        }
+
+        /// <summary>
+        /// A performance profile the caller sets still decides, so
+        /// MaxPerformance loads everything into memory.
+        /// </summary>
+        [TestMethod]
+        public void EngineBuilder_MaxPerformance_UsesInMemory()
+        {
+            using var balanced = new ConfigIpiSwig();
+            balanced.setBalanced();
+            using var inMemory = new ConfigIpiSwig();
+            inMemory.setMaxPerformance();
+            Assert.AreNotEqual(Describe(balanced), Describe(inMemory),
+                "Balanced and MaxPerformance must differ for this test to " +
+                "mean anything.");
+
+            _builder.SetPerformanceProfile(PerformanceProfiles.MaxPerformance);
+
+            Assert.AreEqual(Describe(inMemory), BuildAndDescribeConfig());
+        }
+
+        /// <summary>
+        /// Build an engine and describe the native configuration the
+        /// builder gave it.
+        /// </summary>
+        private string BuildAndDescribeConfig()
+        {
+            string described = null;
+            var create = _factory.EngineFromData;
+            _factory.EngineFromData = (data, size, config, properties) =>
+            {
+                described = Describe(config.Object);
+                return create(data, size, config, properties);
+            };
+            using (_builder.Build(new MemoryStream()))
+            {
+            }
+            Assert.IsNotNull(described, "The engine was not created.");
+            return described;
+        }
+
+        /// <summary>
+        /// The number of entries loaded and the cache capacity of each
+        /// collection, which are what a performance profile sets.
+        /// </summary>
+        private static string Describe(ConfigIpiSwig config)
+        {
+            var collections = new[]
+            {
+                ("strings", config.getStrings()),
+                ("components", config.getComponents()),
+                ("maps", config.getMaps()),
+                ("properties", config.getProperties()),
+                ("values", config.getValues()),
+                ("profiles", config.getProfiles()),
+                ("graphs", config.getGraphs()),
+                ("profileGroups", config.getProfileGroups()),
+                ("profileOffsets", config.getProfileOffsets()),
+                ("propertyTypes", config.getPropertyTypes()),
+                ("graph", config.getGraph()),
+            };
+            return string.Join("; ", collections.Select(c =>
+                $"{c.Item1} loaded {c.Item2.getLoaded()} " +
+                $"capacity {c.Item2.getCapacity()}"));
         }
 
         /// <summary>

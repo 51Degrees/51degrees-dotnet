@@ -95,21 +95,21 @@ dotnet run --project examples/device-detection/OnPremise/GettingStarted-Console
 The IP Intelligence example looks for the paid Enterprise file,
 `51Degrees-EnterpriseIpiV41.ipi`, so it never downloads the Lite file. Download
 the Lite file first, as "Data files" says, then give its path in the
-`51DEGREES_IPI_PATH` environment variable. The name starts with a digit, so on
-Linux and macOS set it with `env`.
+`_51DEGREES_IPI_PATH` environment variable. On Linux and macOS run these.
 
 ```
-env 51DEGREES_IPI_PATH="$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi" dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
+export _51DEGREES_IPI_PATH="$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
+dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
 ```
 
 In PowerShell, on any system, run these.
 
 ```
-${env:51DEGREES_IPI_PATH} = "$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
+$env:_51DEGREES_IPI_PATH = "$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
 dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
 ```
 
-`51DEGREES_DD_PATH` does the same for Device Detection, and a path given as
+`_51DEGREES_DD_PATH` does the same for Device Detection, and a path given as
 the first argument after `--` takes the place of either variable.
 
 ### Correct output
@@ -168,14 +168,15 @@ The Device Detection cloud example takes the key as its first argument or from
 has been filled in, which then wins.
 
 ```
-env _51DEGREES_RESOURCE_KEY=<key> dotnet run --project examples/device-detection/Cloud/GettingStarted-Console
+export _51DEGREES_RESOURCE_KEY=<key>
+dotnet run --project examples/device-detection/Cloud/GettingStarted-Console
 ```
 
 In PowerShell, set `$env:_51DEGREES_RESOURCE_KEY = '<key>'` first. The output
 has the same `Input values:` and `Results:` blocks for five properties. When
 the key lacks a property, the example ends by saying that some properties need
 a paid subscription. The IP Intelligence cloud example reads its key from
-`51DEGREES_RESOURCE_KEY` instead (`examples/ip-intelligence/README.md`).
+`_51DEGREES_RESOURCE_KEY` instead (`examples/ip-intelligence/README.md`).
 
 ### Pitfalls
 
@@ -188,12 +189,9 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   find a device detection data file` and asks for
   `git submodule update --init --recursive`, which fetches them. A zip
   download of the repository has no submodules, so clone with Git.
-- **The IP Intelligence example without `51DEGREES_IPI_PATH`.** It searches for
+- **The IP Intelligence example without `_51DEGREES_IPI_PATH`.** It searches for
   the Enterprise file name, gives up after 10 seconds and logs `Failed to find
   a IP Intelligence data file`, even when the Lite file is in place.
-- **global.json.** `pipeline` and `device-detection` each have a `global.json`
-  that asks for the .NET 8 SDK. Run `dotnet` from the repository root, as
-  above, unless .NET 8 is installed too.
 - **Project references.** `-p:FiftyOneReferences=Project`, which CI uses,
   builds the native engines from `cxx`. That needs CMake 3.24 or later, a
   C++17 compiler, PowerShell 7 and a platform such as `-p:Platform=x64`, as
@@ -226,8 +224,11 @@ The root `Directory.Build.targets` turns it into one or the other from the
 tests with `Project`, so a change that crosses folders is tested together.
 When a package's dependency changes, change the item, and when a version
 changes, change the `FiftyOne*Version` property in the root
-`Directory.Build.props`. The metadata that holds the path is `ProjectPath`,
-because `Project` is the name MSBuild gives a `ProjectReference` GUID.
+`Directory.Build.props`. A package that starts to reference a family it did
+not reference before also needs that family in its own family's `DependsOn` in
+`ci/packages.json`, or a release of the family it references leaves it at the
+old requirement. The metadata that holds the path is `ProjectPath`, because
+`Project` is the name MSBuild gives a `ProjectReference` GUID.
 
 Each folder that came from a separate repository keeps its own
 `Directory.Build.props`, which imports the root one on its first line. MSBuild
@@ -255,7 +256,10 @@ when a linked file is missing. The IP Intelligence translation resources are
 embedded from `cxx/data/ip-intelligence/Translations` with a wildcard, which
 embeds nothing if the folder is missing, and the translation tests then fail.
 CI puts the Enterprise files in the same folders, and `ci/fetch-assets.ps1`
-runs the script for the free files.
+copies or links the free files there from common-ci's assets, which each run
+caches once, so no test job downloads a data file. A file added to the data
+repository needs an entry in common-ci's `steps/fetch-assets.ps1` before CI
+can use it.
 
 ## Layout
 
@@ -271,17 +275,27 @@ at the top. `git log --follow -m` traces a file back through the import.
 
 ## Frameworks
 
-`pipeline` and `device-detection` keep a `global.json` that pins the SDK they
-were released with. `dotnet` run from the repository root uses the newest SDK
-installed, which builds every folder. The .NET Framework projects, which are
+Every package targets `net10.0` as well as the targets it had before, such as
+`netstandard2.0` or `net8.0`, so an application on .NET 10 gets a .NET 10
+build of each package. The library test projects target `net8.0` and
+`net10.0`, apart from `AgentSignatureStandardTests`, which tests the
+`netstandard2.0` build of the agent signature element on `net8.0`. Running
+every test therefore needs the .NET 8 runtime as well as the .NET 10 SDK.
+`pipeline` and `device-detection` keep a `global.json` that asks for the .NET
+10 SDK. `dotnet` run from the repository root uses the newest SDK installed,
+which builds every folder. The .NET Framework projects, which are
 the `Web.Framework` integration and the `Framework-Web` examples, are old-style
 projects that need `msbuild` on Windows.
 
 ## Versions
 
-Until the first release from this repository, each package family keeps the
-version its separate repository last published, held in the root
-`Directory.Build.props`.
+Each package family continues the version stream its separate repository had
+and is tagged `<family>/<version>`. A publish releases a family when a file
+under its folders changed since its last tag, and with it every family that
+depends on it, so that their packages require the new version. Only the
+patch number moves. `ci/packages.json` lists the families, their folders and
+the families each depends on, and `ci/README.md` says how the publish uses
+them.
 
 ## Pull requests
 

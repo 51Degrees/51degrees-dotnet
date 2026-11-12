@@ -1,8 +1,8 @@
 # 51Degrees Pipeline API
 
-![51Degrees](https://raw.githubusercontent.com/51Degrees/common-ci/main/images/logo/360x67.png "Data rewards the curious") **Pipeline API**
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious") **Pipeline API**
 
-[Developer Documentation](https://51degrees.com/pipeline-dotnet/index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=top "developer documentation")
+[Developer Documentation](https://51degrees.com/documentation/_pipeline_api__concepts__pipeline_basics.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=top "developer documentation")
 | NuGet | Package | NuGet | Package |
 | --- | --- | --- | --- |
 | [![NuGet](https://img.shields.io/nuget/v/FiftyOne.Pipeline.CloudRequestEngine.svg)](https://www.nuget.org/packages/FiftyOne.Pipeline.CloudRequestEngine) | CloudRequestEngine | [![NuGet](https://img.shields.io/nuget/v/FiftyOne.Pipeline.Examples.Shared.svg)](https://www.nuget.org/packages/FiftyOne.Pipeline.Examples.Shared) | Examples.Shared |
@@ -108,9 +108,9 @@ If you want examples that demonstrate how to use 51Degrees products such as devi
 | UsageSharing                              | Shows how to share usage with 51Degrees. This helps us to keep our products up to date and accurate. |
 | Did\CreatorContextWeb                     | A demo web server for the 51Did creator context flow, run the way production does, with the browser verifying and the server redeeming. See Examples\Did\README.md. |
 
-The CloudRequestEngine\GettingStarted example requires a resource key. It reads the aligned `_51DEGREES_RESOURCE_KEY` environment variable first, then the legacy `RESOURCE_KEY` variable. A resource key with the free properties used by the examples can be created at https://configure.51degrees.com/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=pipeline-examples.
+The CloudRequestEngine\GettingStarted example requires a resource key. It reads the `_51DEGREES_RESOURCE_KEY` environment variable. A resource key with the free properties used by the examples can be created at https://configure.51degrees.com/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=pipeline-examples.
 
-Every example that calls the 51Degrees cloud (CloudRequestEngine\GettingStarted and Did\CreatorContextWeb) reads the service to call from the `FOD_CLOUD_API_URL` environment variable, which is the API base including the `/api/v4/` segment and defaults to `https://cloud.51degrees.com/api/v4/`. This is the same variable the `CloudRequestEngineBuilder` honours when no endpoint is set. A host other than `cloud.51degrees.com` would be used to (a) use an on premise web server, or (b) use a privately hosted version of the 51Degrees cloud for performance reasons. This is the private hosting option of the cloud service. Both run the same service, so the examples work unchanged against either. The CustomFlowElement\4. Cloud Engine tutorial calls the star sign example service built for that tutorial rather than the 51Degrees cloud, so its endpoint is fixed.
+Every example that calls the 51Degrees cloud (CloudRequestEngine\GettingStarted and Did\CreatorContextWeb) reads the service to call from the `_51DEGREES_CLOUD_ENDPOINT` environment variable, which is the API base including the `/api/v4/` segment and defaults to `https://cloud.51degrees.com/api/v4/`. This is the same variable the `CloudRequestEngineBuilder` honours when no endpoint is set. A host other than `cloud.51degrees.com` would be used to (a) use an on premise web server, or (b) use a privately hosted version of the 51Degrees cloud for performance reasons. This is the private hosting option of the cloud service. Both run the same service, so the examples work unchanged against either. The CustomFlowElement\4. Cloud Engine tutorial calls the star sign example service built for that tutorial rather than the 51Degrees cloud, so its endpoint is fixed.
 
 ## Cancelling processing
 
@@ -189,6 +189,6 @@ For complete documentation on the Pipeline API and associated engines, see the [
 ## Find out more
 
 - [Build your own](https://51degrees.com/build-your-own?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=find-out-more-build-your-own)
-- [Pipeline API documentation](https://51degrees.com/documentation/_pipeline_api__index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=find-out-more-documentation)
+- [Pipeline API documentation](https://51degrees.com/documentation/_pipeline_api__concepts__pipeline_basics.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=find-out-more-documentation)
 - [Pipeline API examples](https://51degrees.com/documentation/_pipeline_api__examples__index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=find-out-more-examples)
 - https://github.com/51Degrees/51degrees-dotnet
