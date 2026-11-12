@@ -55,7 +55,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             "resource key does not include access to any properties under " +
             "'{0}'. Check or create a resource key with the properties you " +
             "need in the configurator at " +
-            "https://configure.51degrees.com?utm_source=code&utm_medium=comment" +
+            "https://51degrees.com/configure?utm_source=code&utm_medium=comment" +
             "&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline." +
             "cloudrequestengine-messages.resx&utm_term=" +
             "exceptionfailedtoloadproperties.";

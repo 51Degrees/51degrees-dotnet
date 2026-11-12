@@ -42,15 +42,15 @@ The API can either use our cloud service to get its data or it can use a local
 You will require a [resource
 key](https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud) to use the
 Cloud API. You can create resource keys using our
-[configurator](https://configure.51degrees.com/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud), see our
+[configurator](https://51degrees.com/configure/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud), see our
 [documentation](https://51degrees.com/documentation/_services__configurator.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud)
 on how to use this.
 
 The cloud property tiers changed in May 2026, so the examples and
 documentation now reflect what is free and what needs a paid subscription. A
-free resource key created [here](https://configure.51degrees.com/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) selects
+free resource key created [here](https://51degrees.com/configure/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) selects
 the free tier properties, whilst a key created
-[here](https://configure.51degrees.com/hYzn3TV3?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) also includes the paid properties
+[here](https://51degrees.com/configure/hYzn3TV3?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) also includes the paid properties
 used by the examples. See [pricing](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) to get a paid
 subscription with more properties.
 

@@ -122,7 +122,7 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
                     "that includes the 51Did properties. The name " +
                     $"'{CI_RESOURCE_KEY_ENV_VAR}' is read when it is not " +
                     "set. A resource key can be " +
-                    "created at https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-settings.cs&utm_term=resource-key-required");
+                    "created at https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-settings.cs&utm_term=resource-key-required");
             }
 
             var (endpointVariable, endpoint) = First(CLOUD_ENDPOINT_ENV_VAR);

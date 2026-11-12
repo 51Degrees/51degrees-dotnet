@@ -184,13 +184,13 @@
     <value>Property '{0}' not found in data for element '{1}'. </value>
   </data>
   <data name="MissingPropertyMessageProductNotInCloudResource" xml:space="preserve">
-    <value>This is because your resource key does not include access to any properties under '{0}'. Check or create a resource key with the properties you need in the configurator at https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-messages.resx&amp;utm_term=missingpropertymessageproductnotincloudresource.</value>
+    <value>This is because your resource key does not include access to any properties under '{0}'. Check or create a resource key with the properties you need in the configurator at https://51degrees.com/configure?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-messages.resx&amp;utm_term=missingpropertymessageproductnotincloudresource.</value>
   </data>
   <data name="MissingPropertyMessagePropertyExcluded" xml:space="preserve">
     <value>This is because the property has been excluded when configuring the engine.</value>
   </data>
   <data name="MissingPropertyMessagePropertyNotInCloudResource" xml:space="preserve">
-    <value>This is because your resource key does not include access to this property. The properties included for your key under '{0}' are {1}. Check or change your key in the configurator at https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-messages.resx&amp;utm_term=missingpropertymessagepropertynotincloudresource.</value>
+    <value>This is because your resource key does not include access to this property. The properties included for your key under '{0}' are {1}. Check or change your key in the configurator at https://51degrees.com/configure?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-messages.resx&amp;utm_term=missingpropertymessagepropertynotincloudresource.</value>
   </data>
   <data name="MissingPropertyMessageUnknown" xml:space="preserve">
     <value>The reason for this is unknown. Please check that the aspect and property name are correct.</value>

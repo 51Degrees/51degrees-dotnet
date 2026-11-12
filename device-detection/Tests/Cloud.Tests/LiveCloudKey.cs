@@ -47,7 +47,7 @@ internal static class LiveCloudKey
         "https://cloud.51degrees.com/api/v4/accessibleproperties?resource=<key>";
 
     private const string ConfigureUrl =
-        "https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=device-detection-tests-cloud.tests-livecloudkey.cs&utm_term=resource-key";
+        "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=device-detection-tests-cloud.tests-livecloudkey.cs&utm_term=resource-key";
 
     /// <summary>
     /// The key, failing the test when none of <see cref="Names"/> is set.
