@@ -35,10 +35,10 @@ jobs:
             pipeline/Tests/Engines.FiftyOne.Tests/FiftyOne.Pipeline.Engines.FiftyOne.Tests.csproj \
             -c Release -p:FiftyOneReferences=Project
 
-      - name: Run the assembly ten times
+      - name: Run the assembly fifteen times
         run: |
           failed=0
-          for i in $(seq 1 10); do
+          for i in $(seq 1 15); do
             echo "===== iteration $i ====="
             if dotnet test \
               pipeline/Tests/Engines.FiftyOne.Tests/FiftyOne.Pipeline.Engines.FiftyOne.Tests.csproj \
@@ -48,7 +48,7 @@ jobs:
               echo "iteration $i: the assembly FAILED"
               failed=$((failed+1))
             fi
-            grep -E "DISPOSEDIAG|(Passed|Failed) ShareUsageElement_Dispose_SendsEveryRemainingEntry|^(Passed|Failed)!" run-$i.log || true
-            grep -E "^\s+Failed [A-Za-z]" run-$i.log | sort | uniq -c || true
+            grep -E "DISPOSEDIAG|(Passed|Failed) ShareUsage[A-Za-z_]*(Dispose|Cleanup)[A-Za-z_]*|^(Passed|Failed)!" run-$i.log || true
+            grep -A 12 -E "^\s+Failed [A-Za-z]" run-$i.log || true
           done
-          echo "===== $failed of 10 iterations had a failing test ====="
+          echo "===== $failed of 15 iterations had a failing test ====="
