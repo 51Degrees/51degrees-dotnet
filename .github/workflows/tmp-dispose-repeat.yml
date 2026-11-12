@@ -12,6 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: The one submodule the Core project copies a file from
+        run: |
+          git submodule update --init --depth 1 \
+            pipeline/Core/Configuration/Validation
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
