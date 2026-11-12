@@ -33,9 +33,11 @@ namespace FiftyOne.Common.Tests;
 /// Every 51Degrees environment variable name in this repository starts with
 /// an underscore, because a POSIX shell cannot set a name that starts with a
 /// digit, and each setting has one name with nothing read in its place. The
-/// tests read every file git tracks, which leaves out build output and the
-/// submodules, and fail on any name that starts with the digit and on any
-/// old name that is still read or set.
+/// one exception is the cloud endpoint, whose old name the packages read
+/// when the new name is unset or empty. The tests read every file git
+/// tracks, which leaves out build output and the submodules, and fail on
+/// any name that starts with the digit and on any old name that is still
+/// read or set anywhere else.
 /// </summary>
 [TestClass]
 public class EnvironmentVariableNamesTests
@@ -174,6 +176,34 @@ public class EnvironmentVariableNamesTests
         RegexOptions.CultureInvariant);
 
     /// <summary>
+    /// The cloud endpoint's old name.
+    /// </summary>
+    private const string OldEndpointName = "FOD_CLOUD_API_URL";
+
+    /// <summary>
+    /// The only files that may hold <see cref="OldEndpointName"/>, being
+    /// the two packages that read it when the new name is unset or empty,
+    /// and the tests of that read.
+    /// </summary>
+    private static readonly HashSet<string> OldEndpointNameFiles =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "pipeline/CloudRequestEngine/Constants.cs",
+            "pipeline/Did/Client/DidClient.cs",
+            "pipeline/Tests/CloudRequestEngine.Tests/" +
+                "CloudRequestEngineOldEndpointNameTests.cs",
+            "pipeline/Tests/Did.Tests/DidClientOldEndpointNameTests.cs",
+        };
+
+    /// <summary>
+    /// True when <paramref name="match"/> is the cloud endpoint's old name
+    /// as a quoted string in one of the files that may hold it.
+    /// </summary>
+    private static bool IsKeptOldEndpointName(string relative, string match) =>
+        OldEndpointNameFiles.Contains(relative) &&
+        match == "\"" + OldEndpointName;
+
+    /// <summary>
     /// Each old name the line reads, sets or holds.
     /// </summary>
     private static List<string> OldNames(string line)
@@ -187,12 +217,14 @@ public class EnvironmentVariableNamesTests
     }
 
     /// <summary>
-    /// Every match in the tracked files apart from <paramref name="skip"/>,
-    /// as the path, the line number and the text matched.
+    /// Every match in the tracked files apart from <paramref name="skip"/>
+    /// and the matches <paramref name="allow"/> accepts for a path, as the
+    /// path, the line number and the text matched.
     /// </summary>
     private static List<string> FindInTrackedFiles(
         Func<string, List<string>> find,
-        string skip)
+        string skip,
+        Func<string, string, bool> allow = null)
     {
         var root = RepositoryRoot();
         var found = new List<string>();
@@ -216,6 +248,10 @@ public class EnvironmentVariableNamesTests
             {
                 foreach (var name in find(lines[index]))
                 {
+                    if (allow != null && allow(relative, name))
+                    {
+                        continue;
+                    }
                     found.Add($"{relative}:{index + 1}: {name}");
                 }
             }
@@ -263,6 +299,26 @@ public class EnvironmentVariableNamesTests
     }
 
     [TestMethod]
+    public void TheOldEndpointNameIsKeptOnlyInTheFilesThatReadIt()
+    {
+        var quoted = "\"" + OldEndpointName;
+        foreach (var file in OldEndpointNameFiles)
+        {
+            Assert.IsTrue(IsKeptOldEndpointName(file, quoted), file);
+            Assert.IsFalse(
+                IsKeptOldEndpointName(file, "\"RESOURCE_KEY"), file);
+            Assert.IsFalse(
+                IsKeptOldEndpointName(file, "$env:" + OldEndpointName),
+                file);
+        }
+        Assert.IsFalse(IsKeptOldEndpointName(
+            "pipeline/CloudRequestEngine/FlowElements/" +
+                "CloudRequestEngineBuilder.cs",
+            quoted));
+        Assert.IsFalse(IsKeptOldEndpointName(ThisFile, quoted));
+    }
+
+    [TestMethod]
     public void NoFileNamesAVariableThatStartsWithADigit()
     {
         var found = FindInTrackedFiles(DigitInitialNames, null);
@@ -277,12 +333,14 @@ public class EnvironmentVariableNamesTests
     [TestMethod]
     public void NoFileReadsAnOldName()
     {
-        var found = FindInTrackedFiles(OldNames, ThisFile);
+        var found = FindInTrackedFiles(
+            OldNames, ThisFile, IsKeptOldEndpointName);
         Assert.AreEqual(
             0,
             found.Count,
             $"{found.Count} old names are still read, set or held to fall " +
-            "back to, so each must use its _51DEGREES_ name alone:\n" +
+            "back to, so each must use its _51DEGREES_ name alone, apart " +
+            $"from {OldEndpointName} in the files that keep it:\n" +
             string.Join("\n", found));
     }
 }
