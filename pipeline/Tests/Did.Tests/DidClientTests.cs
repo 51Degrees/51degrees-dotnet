@@ -153,11 +153,11 @@ namespace FiftyOne.Did.Tests
         public void Endpoint_ReadFromEnvironmentWhenAbsent()
         {
             var previous = Environment.GetEnvironmentVariable(
-                DidClient.EndpointEnvironmentVariable);
+                DidClient.CloudEndpointEnvironmentVariable);
             try
             {
                 Environment.SetEnvironmentVariable(
-                    DidClient.EndpointEnvironmentVariable,
+                    DidClient.CloudEndpointEnvironmentVariable,
                     "https://private.example/api/v4");
                 using var fromEnvironment = new DidClient(
                     Resource, null, null, _handler.Client);
@@ -166,7 +166,7 @@ namespace FiftyOne.Did.Tests
                     fromEnvironment.Endpoint);
 
                 Environment.SetEnvironmentVariable(
-                    DidClient.EndpointEnvironmentVariable, null);
+                    DidClient.CloudEndpointEnvironmentVariable, null);
                 using var fromDefault = new DidClient(
                     Resource, null, null, _handler.Client);
                 Assert.AreEqual(DidClient.DefaultEndpoint, fromDefault.Endpoint);
@@ -174,7 +174,7 @@ namespace FiftyOne.Did.Tests
             finally
             {
                 Environment.SetEnvironmentVariable(
-                    DidClient.EndpointEnvironmentVariable, previous);
+                    DidClient.CloudEndpointEnvironmentVariable, previous);
             }
         }
 

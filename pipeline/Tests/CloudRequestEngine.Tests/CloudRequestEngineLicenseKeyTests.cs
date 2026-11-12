@@ -140,7 +140,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         public void Init()
         {
             Environment.SetEnvironmentVariable(
-                Constants.FOD_CLOUD_API_URL, null);
+                Constants.CLOUD_ENDPOINT_ENV_VAR, null);
         }
 
         private CloudRequestEngineBuilder NewBuilder()
