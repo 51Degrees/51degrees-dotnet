@@ -154,7 +154,7 @@ tests a License Key from `_51DEGREES_LICENSE_KEY`. See each folder's README
 for the keys and data files its tests use.
 
 Every environment variable name that the packages, tests, examples and CI
-scripts read is in [common-ci's list of environment variable names](https://github.com/51Degrees/common-ci/blob/18f9a570ed862a0b7e1ecb1c55a8319f35f02491/environment-variables.md),
+scripts read is in [common-ci's list of environment variable names](https://github.com/51Degrees/common-ci/blob/d8a9c596eabf69dd5581a08e9360cdd1c9b3d9e8/environment-variables.md),
 which decides.
 
 ## Regenerating the SWIG wrappers
