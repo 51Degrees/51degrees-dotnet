@@ -25,6 +25,7 @@ using Owid.Client;
 using Owid.Client.Model;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
@@ -77,7 +78,7 @@ namespace FiftyOne.Did.Client
     {
         /// <summary>
         /// The public cloud API base, used when no endpoint is given and
-        /// <see cref="EndpointEnvironmentVariable"/> is not set.
+        /// no environment variable holds one.
         /// </summary>
         public const string DefaultEndpoint =
             "https://cloud.51degrees.com/api/v4/";
@@ -88,8 +89,17 @@ namespace FiftyOne.Did.Client
         /// engine honours. A host other than the public cloud is used for
         /// a privately hosted copy of the same service.
         /// </summary>
-        public const string EndpointEnvironmentVariable =
+        public const string CloudEndpointEnvironmentVariable =
             "_51DEGREES_CLOUD_ENDPOINT";
+
+        /// <summary>
+        /// The old environment variable for the API base, read only when
+        /// <see cref="CloudEndpointEnvironmentVariable"/> is unset or
+        /// empty. Use <see cref="CloudEndpointEnvironmentVariable"/>.
+        /// </summary>
+        [Obsolete("Use CloudEndpointEnvironmentVariable, which names the " +
+            "environment variable that replaces this one.")]
+        public const string EndpointEnvironmentVariable = "FOD_CLOUD_API_URL";
 
         /// <summary>
         /// How old the whole key list may be before a lookup fetches all of
@@ -135,6 +145,10 @@ namespace FiftyOne.Did.Client
         private DateTimeOffset? _refetchedAt;
         private bool _disposed;
 
+        // 1 once the deprecation of the old environment variable has been
+        // written, so that a process writes it once.
+        private static int _oldEndpointNameTraced;
+
         /// <summary>
         /// Creates a client.
         /// </summary>
@@ -148,10 +162,14 @@ namespace FiftyOne.Did.Client
         /// </param>
         /// <param name="endpoint">
         /// The API base including <c>/api/v4/</c>. When null the
-        /// <see cref="EndpointEnvironmentVariable"/> is read, and when that
-        /// is unset too <see cref="DefaultEndpoint"/> is used. A value with
-        /// or without a trailing slash is accepted, and is normalised to
-        /// end in exactly one.
+        /// <see cref="CloudEndpointEnvironmentVariable"/> is read. When
+        /// that is unset or empty the old variable
+        /// <c>FOD_CLOUD_API_URL</c> is read, and a value read from it is
+        /// reported as deprecated once in the process, as a warning
+        /// written to <see cref="Trace"/>. When neither is set
+        /// <see cref="DefaultEndpoint"/> is used. A value with or without
+        /// a trailing slash is accepted, and is normalised to end in
+        /// exactly one.
         /// </param>
         /// <param name="httpClient">
         /// The transport to use, so a test can inject one. When null the
@@ -179,9 +197,7 @@ namespace FiftyOne.Did.Client
             }
             ResourceKey = resourceKey;
             _licenceKey = string.IsNullOrEmpty(licenceKey) ? null : licenceKey;
-            Endpoint = NormaliseEndpoint(
-                endpoint
-                ?? Environment.GetEnvironmentVariable(EndpointEnvironmentVariable));
+            Endpoint = NormaliseEndpoint(endpoint ?? EndpointFromEnvironment());
             _http = httpClient ?? new HttpClient();
             _ownsHttp = httpClient is null;
             _time = timeProvider ?? TimeProvider.System;
@@ -966,6 +982,39 @@ namespace FiftyOne.Did.Client
                 return;
             }
             candidates.Add(key);
+        }
+
+        // The API base the environment gives, or null when no variable is
+        // set. The old variable is read only when the new one is unset or
+        // empty.
+        private static string? EndpointFromEnvironment()
+        {
+            var endpoint = Environment.GetEnvironmentVariable(
+                CloudEndpointEnvironmentVariable);
+            if (string.IsNullOrEmpty(endpoint) == false)
+            {
+                return endpoint;
+            }
+
+#pragma warning disable CS0618 // The obsolete name is the one read here.
+            const string oldName = EndpointEnvironmentVariable;
+#pragma warning restore CS0618
+            var oldEndpoint = Environment.GetEnvironmentVariable(oldName);
+            if (string.IsNullOrEmpty(oldEndpoint))
+            {
+                return endpoint;
+            }
+
+            if (Interlocked.Exchange(ref _oldEndpointNameTraced, 1) == 0)
+            {
+                Trace.TraceWarning(
+                    $"The environment variable {oldName} is deprecated " +
+                    $"and {CloudEndpointEnvironmentVariable} replaces it. " +
+                    $"The cloud endpoint was read from {oldName}. Set " +
+                    $"{CloudEndpointEnvironmentVariable} to the same value " +
+                    "instead.");
+            }
+            return oldEndpoint;
         }
 
         private static string NormaliseEndpoint(string? endpoint)
