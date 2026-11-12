@@ -77,8 +77,7 @@ namespace FiftyOne.Did.Tests
         private static string? LicenceKey() =>
             FirstSet(
                 "_51DEGREES_LICENSE_KEY_51DID",
-                "_51DEGREES_LICENSE_KEY",
-                "LICENSE_KEY");
+                "_51DEGREES_LICENSE_KEY");
 
         private static string? FirstSet(params string[] names)
         {

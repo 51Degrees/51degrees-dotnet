@@ -59,26 +59,20 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         /// <summary>
         /// The required property index of each property name the engine was
         /// built with, so a read by name goes to the native getter that takes
-        /// the index. Null for an engine built with no names, which reads by
-        /// name.
+        /// the index. An engine built with no names has the names of its
+        /// first data file.
         /// </summary>
         /// <remarks>
-        /// The index is the place of the name in the list given at build, so
+        /// The index is the place of the name in the native engine's required
+        /// properties, which are fixed when the native engine is created, so
         /// it names the same property after any refresh. The table is made
-        /// once, from the native engine's required properties when the native
-        /// engine is created, and never again.
+        /// once, when the native engine is created, and never again.
         /// </remarks>
         internal IReadOnlyDictionary<string, int> PropertyIndexes
         {
             get;
             set;
         }
-
-        /// <summary>
-        /// True when the engine was built with a list of property names. Set
-        /// by the builder before the data file is added.
-        /// </summary>
-        internal bool BuiltWithPropertyNames { get; set; }
 
         /// <summary>
         /// Maps each name the native engine was built with to its required
@@ -291,10 +285,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
                 _engine = SwigFactory.CreateEngine(dataFile.DataFilePath, Config, PropertiesConfigSwig);
                 // The names and their indexes are fixed at build, so the
                 // table is made here and a refresh keeps it.
-                if (BuiltWithPropertyNames)
-                {
-                    PropertyIndexes = GetPropertyIndexes(_engine);
-                }
+                PropertyIndexes = GetPropertyIndexes(_engine);
             }
             else
             {
@@ -327,10 +318,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
                 _engine = SwigFactory.CreateEngine(data, data.Length, Config, PropertiesConfigSwig);
                 // The names and their indexes are fixed at build, so the
                 // table is made here and a refresh keeps it.
-                if (BuiltWithPropertyNames)
-                {
-                    PropertyIndexes = GetPropertyIndexes(_engine);
-                }
+                PropertyIndexes = GetPropertyIndexes(_engine);
             }
             else
             {

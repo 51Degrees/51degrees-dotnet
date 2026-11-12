@@ -43,7 +43,6 @@ internal static class LiveCloudKey
     {
         "_51DEGREES_RESOURCE_KEY",
         "_51DEGREES_RESOURCE_KEY_BESPOKE",
-        "51DEGREES_RESOURCE_KEY",
         "_51DEGREES_RESOURCE_KEY_51DID",
     };
 

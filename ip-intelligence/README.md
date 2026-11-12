@@ -42,9 +42,7 @@ The scripts in the [data](https://github.com/51Degrees/data) repository, which i
 Tests that need a data file locate it in the following order:
 
 1. The "_51DEGREES_IPI_PATH" environment variable, which can be set to an
-   explicit path to the data file. The legacy "IPINTELLIGENCEDATAFILE"
-   environment variable is also still supported, and is checked after
-   "_51DEGREES_IPI_PATH".
+   explicit path to the data file.
 2. A search of the folder hierarchy, walking up from the working directory,
    for the expected data file name.
 3. The free 'Lite' data file in its expected location, which is
@@ -68,9 +66,7 @@ used by the examples. See our [pricing page](https://51degrees.com/pricing?utm_s
 subscription with more properties.
 
 Examples and tests read the resource key from an environment variable called
-"_51DEGREES_RESOURCE_KEY". The legacy environment variable names
-"51D_RESOURCE_KEY" and "SUPER_RESOURCE_KEY" are still supported, with the
-aligned "_51DEGREES_RESOURCE_KEY" name checked first.
+"_51DEGREES_RESOURCE_KEY".
 
 ## Solutions and projects
 

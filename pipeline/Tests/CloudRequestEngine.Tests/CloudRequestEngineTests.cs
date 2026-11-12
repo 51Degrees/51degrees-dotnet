@@ -698,13 +698,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                   && r.Content.ReadAsStringAsync(TestContext.CancellationToken).Result.Contains($"User-Agent={userAgent}") // content contains user agent
             );
 
-#pragma warning disable CS0618 // Type or member is obsolete
-            // SetLicensekey is obsolete but we still want to test that
-            // it works as intended.
             var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
                 .SetResourceKey(resourceKey)
                 .SetLicenseKey(licenseKey)
-#pragma warning restore CS0618 // Type or member is obsolete
                 .Build();
 
             using (var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build())

@@ -318,7 +318,7 @@ from server code. Create one for the process and reuse it, because it
 caches the signing public keys. The resource key is the page's key and
 is public by nature. The licence key is server side only and is needed
 to redeem where the account holds licence keys. The endpoint defaults
-to `https://cloud.51degrees.com/api/v4/`, or to the `FOD_CLOUD_API_URL`
+to `https://cloud.51degrees.com/api/v4/`, or to the `_51DEGREES_CLOUD_ENDPOINT`
 environment variable when that is set, which is the same variable the
 cloud request engine honours, and a trailing slash is optional.
 

@@ -44,7 +44,6 @@ internal static class LiveCloudKey
     {
         "_51DEGREES_RESOURCE_KEY",
         "_51DEGREES_RESOURCE_KEY_BESPOKE",
-        "SUPER_RESOURCE_KEY",
     };
 
     private const string AccessiblePropertiesUrl =

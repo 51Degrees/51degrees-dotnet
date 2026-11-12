@@ -95,21 +95,21 @@ dotnet run --project examples/device-detection/OnPremise/GettingStarted-Console
 The IP Intelligence example looks for the paid Enterprise file,
 `51Degrees-EnterpriseIpiV41.ipi`, so it never downloads the Lite file. Download
 the Lite file first, as "Data files" says, then give its path in the
-`51DEGREES_IPI_PATH` environment variable. The name starts with a digit, so on
-Linux and macOS set it with `env`.
+`_51DEGREES_IPI_PATH` environment variable. On Linux and macOS run these.
 
 ```
-env 51DEGREES_IPI_PATH="$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi" dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
+export _51DEGREES_IPI_PATH="$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
+dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
 ```
 
 In PowerShell, on any system, run these.
 
 ```
-${env:51DEGREES_IPI_PATH} = "$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
+$env:_51DEGREES_IPI_PATH = "$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
 dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
 ```
 
-`51DEGREES_DD_PATH` does the same for Device Detection, and a path given as
+`_51DEGREES_DD_PATH` does the same for Device Detection, and a path given as
 the first argument after `--` takes the place of either variable.
 
 ### Correct output
@@ -168,14 +168,15 @@ The Device Detection cloud example takes the key as its first argument or from
 has been filled in, which then wins.
 
 ```
-env _51DEGREES_RESOURCE_KEY=<key> dotnet run --project examples/device-detection/Cloud/GettingStarted-Console
+export _51DEGREES_RESOURCE_KEY=<key>
+dotnet run --project examples/device-detection/Cloud/GettingStarted-Console
 ```
 
 In PowerShell, set `$env:_51DEGREES_RESOURCE_KEY = '<key>'` first. The output
 has the same `Input values:` and `Results:` blocks for five properties. When
 the key lacks a property, the example ends by saying that some properties need
 a paid subscription. The IP Intelligence cloud example reads its key from
-`51DEGREES_RESOURCE_KEY` instead (`examples/ip-intelligence/README.md`).
+`_51DEGREES_RESOURCE_KEY` instead (`examples/ip-intelligence/README.md`).
 
 ### Pitfalls
 
@@ -188,7 +189,7 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   find a device detection data file` and asks for
   `git submodule update --init --recursive`, which fetches them. A zip
   download of the repository has no submodules, so clone with Git.
-- **The IP Intelligence example without `51DEGREES_IPI_PATH`.** It searches for
+- **The IP Intelligence example without `_51DEGREES_IPI_PATH`.** It searches for
   the Enterprise file name, gives up after 10 seconds and logs `Failed to find
   a IP Intelligence data file`, even when the Lite file is in place.
 - **Project references.** `-p:FiftyOneReferences=Project`, which CI uses,
