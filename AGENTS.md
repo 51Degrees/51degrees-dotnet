@@ -256,7 +256,10 @@ when a linked file is missing. The IP Intelligence translation resources are
 embedded from `cxx/data/ip-intelligence/Translations` with a wildcard, which
 embeds nothing if the folder is missing, and the translation tests then fail.
 CI puts the Enterprise files in the same folders, and `ci/fetch-assets.ps1`
-runs the script for the free files.
+copies or links the free files there from common-ci's assets, which each run
+caches once, so no test job downloads a data file. A file added to the data
+repository needs an entry in common-ci's `steps/fetch-assets.ps1` before CI
+can use it.
 
 ## Layout
 
