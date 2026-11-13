@@ -95,7 +95,7 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         public TBuilder UseLazyLoading(int timeoutMilliseconds)
         {
             LazyLoading = true;
-            LazyLoadingTimeout = TimeSpan.FromSeconds(timeoutMilliseconds);
+            LazyLoadingTimeout = TimeSpan.FromMilliseconds(timeoutMilliseconds);
             return this as TBuilder;
         }
 
