@@ -197,12 +197,11 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         }
 
         /// <summary>
-        /// A TDL is written exactly as given, because the document it
-        /// names must not change. None of these values is rewritten to a
-        /// normal form.
+        /// Apart from the case of its scheme and host, a TDL is written as
+        /// given, because the document it names must not change. None of
+        /// these values is rewritten to a normal form.
         /// </summary>
         [DataRow("https://example.com")]
-        [DataRow("HTTPS://Example.COM/T")]
         [DataRow("https://a:443/x")]
         [DataRow("https://a/b/../c")]
         [DataRow("https://a/%7Eb")]
@@ -216,18 +215,61 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         }
 
         /// <summary>
+        /// A TDL's scheme and host are written in lower case, as RFC 3986
+        /// asks of a program that writes a URI in section 3.1 ("should
+        /// only produce lowercase scheme names") and section 3.2.2
+        /// ("producers and normalizers should use lowercase for registered
+        /// names and hexadecimal addresses ... while only using uppercase
+        /// letters for percent-encodings"). The user information, port,
+        /// path, query and fragment are kept as given, and a URI with no
+        /// authority has only its scheme lowered.
+        /// </summary>
+        [DataRow(
+            "HTTPS://Example.COM/Terms%20Of%20Use/1.txt?v=1#top",
+            "https://example.com/Terms%20Of%20Use/1.txt?v=1#top")]
+        [DataRow("HTTPS://Example.COM", "https://example.com")]
+        [DataRow(
+            "Https://User:PW@Example.COM:443/Path",
+            "https://User:PW@example.com:443/Path")]
+        [DataRow("HTTPS://[2001:DB8::A]/T", "https://[2001:db8::a]/T")]
+        [DataRow("HTTPS://[V1.AB:CD]/T", "https://[v1.ab:cd]/T")]
+        [DataRow("HTTPS://Ex%4a.COM/T", "https://ex%4A.com/T")]
+        [DataRow("HTTPS://Example.COM?Q=A#F", "https://example.com?Q=A#F")]
+        [DataRow("HTTPS://Example.COM#F", "https://example.com#F")]
+        [DataRow("HTTP://1.2.3.4:80/T", "http://1.2.3.4:80/T")]
+        [DataRow("URN:Example:Terms:1", "urn:Example:Terms:1")]
+        [DataRow("MAILTO:Terms@Example.COM", "mailto:Terms@Example.COM")]
+        [TestMethod]
+        public void SchemeAndHostAreWrittenInLowerCase(
+            string tdl,
+            string expected)
+        {
+            var text = WriteTdl(tdl, annotations: true);
+
+            Assert.Contains($"# Terms {expected}\n", text);
+            Assert.Contains($"TDL: {expected}\n", text);
+            Assert.DoesNotContain(tdl, text);
+        }
+
+        /// <summary>
         /// The overload that takes <see cref="Uri"/> values, kept for
-        /// callers of the published API, writes each address as it was
-        /// given and does not normalise it.
+        /// callers of the published API, writes each address from the text
+        /// it was given, as the overload taking strings does.
         /// </summary>
         [TestMethod]
-        public void UriOverloadWritesEachAddressAsGiven()
+        public void UriOverloadWritesEachAddressAsTheStringOverloadDoes()
         {
             IReadOnlyList<Uri> tdls = new[]
             {
                 new Uri("https://example.com"),
                 new Uri("HTTPS://Example.COM/T"),
                 new Uri("https://a/%7Eb"),
+            };
+            var expected = new[]
+            {
+                "https://example.com",
+                "https://example.com/T",
+                "https://a/%7Eb",
             };
             var gen = new GeneratorService(new RobotsTxtModel
             {
@@ -246,10 +288,10 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
             }
             var text = sb.ToString().Replace("\r\n", "\n");
 
-            foreach (var tdl in tdls)
+            foreach (var tdl in expected)
             {
-                Assert.Contains($"TDL: {tdl.OriginalString}\n", text);
-                Assert.Contains($"# Terms {tdl.OriginalString}\n", text);
+                Assert.Contains($"TDL: {tdl}\n", text);
+                Assert.Contains($"# Terms {tdl}\n", text);
             }
         }
 
