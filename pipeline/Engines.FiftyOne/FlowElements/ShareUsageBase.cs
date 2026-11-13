@@ -316,10 +316,23 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         private List<KeyValuePair<string, string>> _ignoreDataEvidenceFilter;
 
         private string _hostAddress;
+        private bool _hostAddressWaited;
         private IList<IElementPropertyMetaData> _properties;
 
         /// <summary>
-        /// Get the IP address of the machine that this code is running on.
+        /// Looks up the address of this machine once for the process. The
+        /// first element built starts it.
+        /// </summary>
+        private static readonly HostAddressLookup SharedHostAddress =
+            new HostAddressLookup(LookUpHostAddress);
+
+        /// <summary>
+        /// Get the IP address of the machine that this code is running on,
+        /// or an empty string while the lookup has not finished or if it
+        /// failed. The first read waits for the lookup for at most
+        /// <see cref="HostAddressWaitMilliseconds"/>, so a slow name lookup
+        /// cannot use up the time that disposal has for sending, and later
+        /// reads do not wait. Only a finished lookup's answer is kept.
         /// </summary>
         protected string HostAddress
         {
@@ -327,19 +340,48 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             {
                 if (_hostAddress == null)
                 {
-                    IPAddress[] addresses = Dns.GetHostAddresses(Dns.GetHostName());
-
-                    var address = addresses.FirstOrDefault(a => !IsLocalHost(a) &&
-                        a.AddressFamily == AddressFamily.InterNetwork);
-                    if (address == null)
+                    var wait = _hostAddressWaited ?
+                        0 :
+                        HostAddressWaitMilliseconds;
+                    _hostAddressWaited = true;
+                    if (HostAddressSource.TryGet(wait, out var address))
                     {
-                        address = addresses.FirstOrDefault(a => !IsLocalHost(a));
+                        _hostAddress = address;
                     }
-
-                    _hostAddress = address == null ? "" : address.ToString();
                 }
-                return _hostAddress;
+                return _hostAddress ?? string.Empty;
             }
+        }
+
+        /// <summary>
+        /// Where the address of this machine comes from.
+        /// </summary>
+        internal virtual HostAddressLookup HostAddressSource =>
+            SharedHostAddress;
+
+        /// <summary>
+        /// The longest in milliseconds that a send waits for the address of
+        /// this machine.
+        /// </summary>
+        internal virtual int HostAddressWaitMilliseconds =>
+            Constants.SHARE_USAGE_HOST_ADDRESS_WAIT_MILLISECONDS;
+
+        /// <summary>
+        /// Looks up the address of this machine by its name, preferring an
+        /// IPv4 address, and leaving out the loopback addresses.
+        /// </summary>
+        private static string LookUpHostAddress()
+        {
+            IPAddress[] addresses = Dns.GetHostAddresses(Dns.GetHostName());
+
+            var address = addresses.FirstOrDefault(a => !IsLocalHost(a) &&
+                a.AddressFamily == AddressFamily.InterNetwork);
+            if (address == null)
+            {
+                address = addresses.FirstOrDefault(a => !IsLocalHost(a));
+            }
+
+            return address == null ? "" : address.ToString();
         }
 
         /// <summary>
@@ -805,8 +847,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             _interval = TimeSpan.FromMinutes(repeatEvidenceIntervalMinutes);
             ShareUsageUri = new Uri(shareUsageUrl);
 
-            // Some data is going to stay the same on all requests so we can 
-            // gather that now.
+            // Some data is going to stay the same on all requests so we can
+            // gather that now. The address of this machine is looked up in
+            // the background, so that building the element does not wait.
+            SharedHostAddress.Start();
             _languageVersion = Environment.Version.ToString();
             _osVersion = Environment.OSVersion.VersionString;
 
@@ -1382,7 +1426,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// Get the part of the xml message that will be the same for every usage 
         /// sharing event on this machine.
         /// This is written once to a string in memory and then re-used for
-        /// future messages.
+        /// future messages. Until the lookup of the machine's address has
+        /// finished it is written again for each message, so that ServerIP
+        /// carries the address once the lookup has it.
         /// </summary>
         /// <returns></returns>
         private string GetStaticXml()
@@ -1416,6 +1462,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                             writer.WriteElementString("Platform", _osVersion);
                         }
 
+                        if (_hostAddress == null)
+                        {
+                            return result.ToString();
+                        }
                         _staticXml = result.ToString();
                     }
 
