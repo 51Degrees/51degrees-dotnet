@@ -14,8 +14,10 @@ $ErrorActionPreference = "Stop"
 # PackageReference, which dotnet-outdated finds but cannot change, because the
 # item is in an imported file. Their versions are the family versions in the
 # root Directory.Build.props, which publish-package.ps1 records.
-$OwnPackagePrefix = 'FiftyOne.'
+# dotnet-outdated's --exclude leaves out every package whose name contains the
+# text anywhere, ignoring case.
+$OwnPackageNameText = 'FiftyOne.'
 $solutions = @($Families | ForEach-Object { $_.Solutions + $_.Framework }) + ($ExampleSolutions | ForEach-Object { $_.Framework })
 foreach ($solution in $solutions | Where-Object { $_ } | Sort-Object -Unique) {
-    ./dotnet/outdated.ps1 -RepoName:$RepoName -Target $solution -ExtraArgs '--exclude', $OwnPackagePrefix
+    ./dotnet/outdated.ps1 -RepoName:$RepoName -Target $solution -ExtraArgs '--exclude', $OwnPackageNameText
 }
