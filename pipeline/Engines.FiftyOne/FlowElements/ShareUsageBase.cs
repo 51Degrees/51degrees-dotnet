@@ -340,8 +340,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             {
                 if (_hostAddress == null)
                 {
-                    _hostAddress = HostAddressSource.Get(
-                        HostAddressWaitMilliseconds);
+                    HostAddressSource.TryGet(
+                        HostAddressWaitMilliseconds, out var address);
+                    _hostAddress = address;
                 }
                 return _hostAddress;
             }

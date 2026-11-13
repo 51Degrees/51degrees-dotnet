@@ -61,21 +61,28 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Returns the address, starting the lookup if it has not started.
+        /// Gets the address, starting the lookup if it has not started.
         /// </summary>
         /// <param name="waitMilliseconds">
         /// The longest to wait for a lookup that has not finished.
         /// </param>
-        /// <returns>
+        /// <param name="address">
         /// The address, or an empty string if the lookup failed or did not
         /// finish within the wait.
+        /// </param>
+        /// <returns>
+        /// True if the lookup has finished, so the address will not change.
         /// </returns>
-        internal string Get(int waitMilliseconds)
+        internal bool TryGet(int waitMilliseconds, out string address)
         {
-            var address = _address.Value;
-            return address.Wait(waitMilliseconds) ?
-                address.Result :
-                string.Empty;
+            var lookup = _address.Value;
+            if (lookup.Wait(waitMilliseconds))
+            {
+                address = lookup.Result;
+                return true;
+            }
+            address = string.Empty;
+            return false;
         }
     }
 }
