@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using FiftyOne.Common.Wrappers.IO;
+using FiftyOne.Pipeline.Core.Services;
 using FiftyOne.Pipeline.Engines.Configuration;
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.Exceptions;
@@ -372,7 +373,6 @@ namespace FiftyOne.Pipeline.Engines.Services
 			var dataFile = engine.GetDataFileMetaData(dataFileIdentifier);
 			if(dataFile != null)
 			{ 
-				dataFile.Configuration.AutomaticUpdatesEnabled = false;
 				result = CheckForUpdate(dataFile, true);
 			}
 			else
@@ -1292,20 +1292,24 @@ namespace FiftyOne.Pipeline.Engines.Services
 			expectedMd5Hash = null;
 			
 			Uri url = dataFile.FormattedUri;
-            LogInfoMessage($"Checking for update from {url.AbsoluteUri}", dataFile);
+			// The URL carries the license keys, which must not appear in full
+			// in a log entry or an error message.
+			var licenseKeys = dataFile.Configuration.DataUpdateLicenseKeys;
+			string shownUrl = LicenseKeyMask.MaskUri(url, licenseKeys);
+            LogInfoMessage($"Checking for update from {shownUrl}", dataFile);
 
 			using (HttpRequestMessage message = new HttpRequestMessage(HttpMethod.Get, url))
 			{
 
 				// Get data file published date from meta-data.
 				// If it's not been set for some reason then use the 
-				// creation date of the file instead.
+				// last write time of the file instead.
 				DateTime publishDate = dataFile.DataPublishedDateTime;
 				if (dataFile.DataPublishedDateTime <= DateTime.MinValue &&
 					string.IsNullOrEmpty(dataFile.DataFilePath) == false &&
 					 _fileSystem.File.Exists(dataFile.DataFilePath))
 				{
-					publishDate = _fileSystem.File.GetCreationTimeUtc(dataFile.DataFilePath);
+					publishDate = _fileSystem.File.GetLastWriteTimeUtc(dataFile.DataFilePath);
 				}
 
 				// Set last-modified header to ensure that a file will only
@@ -1327,7 +1331,8 @@ namespace FiftyOne.Pipeline.Engines.Services
 				{
 					result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
 					throw new DataUpdateException($"Error accessing data update service at " +
-						$"'{url}' for engine '{dataFile.EngineType?.Name}'", ex, result);
+						$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'",
+						LicenseKeyMask.MaskException(ex, licenseKeys), result);
 				}
 
 				if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS)
@@ -1336,14 +1341,14 @@ namespace FiftyOne.Pipeline.Engines.Services
 					{
 						result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
 						throw new DataUpdateException($"No response from data update service at " +
-							$"'{url}' for engine '{dataFile.EngineType?.Name}'", result);
+							$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
 					}
 					else
 					{
 						if (response.IsSuccessStatusCode)
 						{
 							_logger.LogInformation(
-								$"Downloaded new data from '{url}' for engine " +
+								$"Downloaded new data from '{shownUrl}' for engine " +
 								$"'{dataFile.EngineType?.Name}'");
 
 							// If the response is successful then save the content to a 
@@ -1370,7 +1375,7 @@ namespace FiftyOne.Pipeline.Engines.Services
 								{
 									_logger.LogWarning(
 										$"No MD5 hash included in data update response for " +
-										$"'{url}'. Unable to verify data integrity");
+										$"'{shownUrl}'. Unable to verify data integrity");
 								}
 							}
 						}
@@ -1384,22 +1389,22 @@ namespace FiftyOne.Pipeline.Engines.Services
 									result = AutoUpdateStatus.
 										AUTO_UPDATE_ERR_429_TOO_MANY_ATTEMPTS;
 									throw new DataUpdateException($"Too many requests to " +
-										$"'{url}' for engine '{dataFile.EngineType?.Name}'", result);
+										$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
 								case HttpStatusCode.NotModified:
 									result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
 									_logger.LogInformation($"No data newer than " +
-										$"{publishDate} found at '{url}' for engine " +
+										$"{publishDate} found at '{shownUrl}' for engine " +
 										$"'{dataFile.EngineType?.Name}'"); ;
 									break;
 								case HttpStatusCode.Forbidden:
 									result = AutoUpdateStatus.AUTO_UPDATE_ERR_403_FORBIDDEN;
 									throw new DataUpdateException($"Access denied to data update service at " +
-										$"'{url}' for engine '{dataFile.EngineType?.Name}'", result);
+										$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
 								default:
 									result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
 									throw new DataUpdateException($"HTTP status code '{response.StatusCode}' " +
 										$"from data update service at " +
-										$"'{url}' for engine '{dataFile.EngineType?.Name}'", result);
+										$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
 							}
 						}
 					}

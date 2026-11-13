@@ -95,21 +95,21 @@ dotnet run --project examples/device-detection/OnPremise/GettingStarted-Console
 The IP Intelligence example looks for the paid Enterprise file,
 `51Degrees-EnterpriseIpiV41.ipi`, so it never downloads the Lite file. Download
 the Lite file first, as "Data files" says, then give its path in the
-`51DEGREES_IPI_PATH` environment variable. The name starts with a digit, so on
-Linux and macOS set it with `env`.
+`_51DEGREES_IPI_PATH` environment variable. On Linux and macOS run these.
 
 ```
-env 51DEGREES_IPI_PATH="$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi" dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
+export _51DEGREES_IPI_PATH="$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
+dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
 ```
 
 In PowerShell, on any system, run these.
 
 ```
-${env:51DEGREES_IPI_PATH} = "$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
+$env:_51DEGREES_IPI_PATH = "$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
 dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
 ```
 
-`51DEGREES_DD_PATH` does the same for Device Detection, and a path given as
+`_51DEGREES_DD_PATH` does the same for Device Detection, and a path given as
 the first argument after `--` takes the place of either variable.
 
 ### Correct output
@@ -168,14 +168,15 @@ The Device Detection cloud example takes the key as its first argument or from
 has been filled in, which then wins.
 
 ```
-env _51DEGREES_RESOURCE_KEY=<key> dotnet run --project examples/device-detection/Cloud/GettingStarted-Console
+export _51DEGREES_RESOURCE_KEY=<key>
+dotnet run --project examples/device-detection/Cloud/GettingStarted-Console
 ```
 
 In PowerShell, set `$env:_51DEGREES_RESOURCE_KEY = '<key>'` first. The output
 has the same `Input values:` and `Results:` blocks for five properties. When
 the key lacks a property, the example ends by saying that some properties need
 a paid subscription. The IP Intelligence cloud example reads its key from
-`51DEGREES_RESOURCE_KEY` instead (`examples/ip-intelligence/README.md`).
+`_51DEGREES_RESOURCE_KEY` instead (`examples/ip-intelligence/README.md`).
 
 ### Pitfalls
 
@@ -188,7 +189,7 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   find a device detection data file` and asks for
   `git submodule update --init --recursive`, which fetches them. A zip
   download of the repository has no submodules, so clone with Git.
-- **The IP Intelligence example without `51DEGREES_IPI_PATH`.** It searches for
+- **The IP Intelligence example without `_51DEGREES_IPI_PATH`.** It searches for
   the Enterprise file name, gives up after 10 seconds and logs `Failed to find
   a IP Intelligence data file`, even when the Lite file is in place.
 - **Project references.** `-p:FiftyOneReferences=Project`, which CI uses,
@@ -213,6 +214,19 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   file. The Device Detection example tests send the output to
   `TextWriter.Null`, and the IP Intelligence one checks only a few words of
   it.
+
+## Environment variable names
+
+[common-ci's list of environment variable names](https://github.com/51Degrees/common-ci/blob/d8a9c596eabf69dd5581a08e9360cdd1c9b3d9e8/environment-variables.md)
+holds every environment variable name that the packages, tests, examples and
+CI scripts of every language read, with what each name holds and the
+deprecated names each replaced. The list decides. Use the names it gives, and
+when a change needs a new name, or reads an old name again, change
+[`environment-variables.json`](https://github.com/51Degrees/common-ci/blob/d8a9c596eabf69dd5581a08e9360cdd1c9b3d9e8/environment-variables.json)
+in common-ci in the same piece of work. This repository's own name
+check, [`common/Test/EnvironmentVariableNamesTests.cs`](common/Test/EnvironmentVariableNamesTests.cs), still keeps a
+list of its own. Where the two differ, common-ci's list is the one to
+follow.
 
 ## References between the folders
 
@@ -255,7 +269,10 @@ when a linked file is missing. The IP Intelligence translation resources are
 embedded from `cxx/data/ip-intelligence/Translations` with a wildcard, which
 embeds nothing if the folder is missing, and the translation tests then fail.
 CI puts the Enterprise files in the same folders, and `ci/fetch-assets.ps1`
-runs the script for the free files.
+copies or links the free files there from common-ci's assets, which each run
+caches once, so no test job downloads a data file. A file added to the data
+repository needs an entry in common-ci's `steps/fetch-assets.ps1` before CI
+can use it.
 
 ## Layout
 

@@ -53,5 +53,9 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Wrappers
         IDateSwigWrapper getUpdateAvailableTime();
 
         string getDataFileTempPath();
+
+        VectorUInt32Swig getProfileIdsForPropertyValue(
+            string propertyName,
+            string valueName);
     }
 }

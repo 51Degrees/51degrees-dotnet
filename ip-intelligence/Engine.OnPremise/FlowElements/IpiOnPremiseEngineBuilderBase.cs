@@ -54,10 +54,16 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         /// <summary>
         /// The settings for the native configuration. Each engine gets a new
         /// configuration with these applied, which it owns and frees when it
-        /// is disposed, so a builder can build more than one engine.
+        /// is disposed, so a builder can build more than one engine. The
+        /// first is the Balanced performance profile, the default the
+        /// specification gives, so that a profile the caller sets is applied
+        /// after it and replaces it.
         /// </summary>
         private readonly List<Action<IConfigSwigWrapper>> _configSettings =
-            new List<Action<IConfigSwigWrapper>>();
+            new List<Action<IConfigSwigWrapper>>()
+            {
+                c => c.setBalanced()
+            };
 
         #endregion
 
@@ -115,6 +121,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         /// </summary>
         /// <param name="profileName">Name of the profile to use</param>
         /// <returns>This builder</returns>
+        [DefaultValue("Balanced")]
         public IpiOnPremiseEngineBuilderBase<TEngine> SetPerformanceProfile(
             string profileName)
         {
@@ -170,11 +177,28 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         }
 
         /// <summary>
-        /// Set the expected number of concurrent operations using the engine.
-        /// This sets the concurrency of the internal caches to avoid excessive
-        /// locking.
+        /// Set the expected number of operations that use the engine at the same
+        /// time. The native code uses it for every collection read from the data
+        /// file.
+        /// First, it sets the number of file handles in the pool, which is the
+        /// concurrency up to a fixed maximum of 64, because a process can only have
+        /// so many files open. An operation that has to read from the file when
+        /// every handle is in use waits until another operation releases one.
+        /// Second, it decides how each cache is split into parts, each with its own
+        /// lock, which avoids excessive locking. An item in use cannot be removed
+        /// from a cache, and any operation can need any part, so every part holds
+        /// at least the concurrency in items. The number of parts is the
+        /// concurrency, or fewer where needed so that every part holds that many
+        /// items, and a cache that holds fewer items than the concurrency in total
+        /// is made large enough to hold that many. No value stops the engine
+        /// building.
+        /// The concurrency has no effect when every collection is held in memory,
+        /// for example with the MaxPerformance profile.
         /// </summary>
-        /// <param name="concurrency">Expected concurrent accesses</param>
+        /// <param name="concurrency">
+        /// The expected number of operations that use the engine at
+        /// the same time.
+        /// </param>
         /// <returns>This builder</returns>
         public override IpiOnPremiseEngineBuilderBase<TEngine> SetConcurrency(
             ushort concurrency)
@@ -250,7 +274,6 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
                 engine.SwigFactory = SwigFactory;
                 engine.PropertiesConfigSwig = propertyConfig;
                 engine.Config = config;
-
                 // This must be last as the call results in RefreshData being
                 // triggered which requires the prior three properties to be set.
                 engine.AddDataFile(dataFile);

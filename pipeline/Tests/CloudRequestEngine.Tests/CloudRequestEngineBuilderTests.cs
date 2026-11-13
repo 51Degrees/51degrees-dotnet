@@ -91,8 +91,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                })
                .Verifiable();
 
-            // Un-set cloud URL environment variable.
+            // Un-set cloud URL environment variable, under both of its names.
+            Environment.SetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR, null);
+#pragma warning disable CS0618 // The old name is still read.
             Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, null);
+#pragma warning restore CS0618
         }
 
         /// <summary>
@@ -165,14 +168,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         [TestMethod]
         public void BuildEngine_ResourceKeyAndLicenseKey_Builds()
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            // SetLicenseKey is obsolete but the combination remains valid.
             var engine = new CloudRequestEngineBuilder(
                     new LoggerFactory(),
                     new HttpClient(_handlerMock.Object))
                 .SetResourceKey("abcdefgh")
                 .SetLicenseKey("licensekey")
-#pragma warning restore CS0618 // Type or member is obsolete
                 .Build();
 
             Assert.IsNotNull(engine);
@@ -193,7 +193,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         {
             var expectedUrl = "http://localhost/test_conf/";
 
-            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, "http://localhost/test_env/");
+            Environment.SetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR, "http://localhost/test_env/");
 
             Action<int> VerifyPublicPropsTimes = (timesExpected) => _handlerMock.Protected().Verify(
                "SendAsync",
@@ -250,7 +250,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         {
             var expectedUrl = "http://localhost/test_env/";
 
-            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, expectedUrl);
+            Environment.SetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR, expectedUrl);
 
             Action<int> VerifyPublicPropsTimes = (timesExpected) => _handlerMock.Protected().Verify(
                "SendAsync",
@@ -443,8 +443,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         [TestCleanup]
         public void Cleanup()
         {
-            // Un-set cloud URL environment variable.
+            // Un-set cloud URL environment variable, under both of its names.
+            Environment.SetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR, null);
+#pragma warning disable CS0618 // The old name is still read.
             Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, null);
+#pragma warning restore CS0618
         }
     }
 }

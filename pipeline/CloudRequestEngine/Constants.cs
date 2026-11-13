@@ -32,9 +32,19 @@ namespace FiftyOne.Pipeline.CloudRequestEngine
     public static class Constants
     {
         /// <summary>
-        /// This is the environment variable key which can be used to specify 
-        /// the  URL for the cloud service.
+        /// The environment variable that names the URL of the cloud
+        /// service.
         /// </summary>
+        public const string CLOUD_ENDPOINT_ENV_VAR =
+            "_51DEGREES_CLOUD_ENDPOINT";
+
+        /// <summary>
+        /// The old environment variable that names the URL of the cloud
+        /// service, read only when <see cref="CLOUD_ENDPOINT_ENV_VAR"/> is
+        /// unset or empty. Use <see cref="CLOUD_ENDPOINT_ENV_VAR"/>.
+        /// </summary>
+        [System.Obsolete("Use CLOUD_ENDPOINT_ENV_VAR, which names the "
+            + "environment variable that replaces this one.")]
         public const string FOD_CLOUD_API_URL = "FOD_CLOUD_API_URL";
 
         /// <summary>

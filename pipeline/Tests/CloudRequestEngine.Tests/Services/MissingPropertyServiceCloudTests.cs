@@ -130,7 +130,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests.Services
         public void MissingPropertyServiceCloud_GetReason_CloudRequestFailed_ShortCircuits()
         {
             var aspectData = new TestAspectData();
-            aspectData.MarkCloudRequestFailed();
+            ((IAspectDataInternal)aspectData).MarkCloudRequestFailed();
 
             Mock<ICloudAspectEngine> engine = new Mock<ICloudAspectEngine>();
             engine.SetupGet(e => e.ElementDataKey).Returns("testElement");

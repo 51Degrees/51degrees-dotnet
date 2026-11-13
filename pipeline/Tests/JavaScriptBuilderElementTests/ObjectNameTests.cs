@@ -53,6 +53,41 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
     {
         private const string CUSTOM_NAME = "myFod";
 
+        /// <summary>
+        /// The names the specification refuses that are not reserved words
+        /// of the language. They are eval, arguments, and the properties
+        /// of the browser's Window object that a top level var cannot
+        /// replace or that navigate the page away.
+        /// </summary>
+        private static readonly string[] _refusedNames =
+        {
+            "eval", "arguments", "window", "document", "top", "name",
+            "status", "history", "navigator", "closed", "location",
+            "frameElement", "isSecureContext", "crossOriginIsolated",
+            "trustedTypes", "crypto", "indexedDB", "localStorage",
+            "sessionStorage", "caches", "cookieStore", "speechSynthesis",
+            "styleMedia", "crashReport", "credentialless",
+            "customElements", "documentPictureInPicture", "fence",
+            "launchQueue", "originAgentCluster",
+        };
+
+        /// <summary>
+        /// Names the specification allows although they are properties of
+        /// the Window object, because a top level var can replace them.
+        /// </summary>
+        private static readonly string[] _allowedWindowNames =
+        {
+            "self", "frames", "parent", "opener", "length",
+        };
+
+        /// <summary>The refused names as test rows.</summary>
+        public static IEnumerable<object[]> RefusedNames =>
+            _refusedNames.Select(n => new object[] { n });
+
+        /// <summary>The allowed names as test rows.</summary>
+        public static IEnumerable<object[]> AllowedWindowNames =>
+            _allowedWindowNames.Select(n => new object[] { n });
+
         private const string DEFAULT_NAME =
             JavaScriptBuilder.Constants.BUILDER_DEFAULT_OBJECT_NAME;
 
@@ -223,6 +258,7 @@ console.log(JSON.stringify(result));
         [DataRow("class")]
         [DataRow("undefined")]
         [DataRow("fiftyoneDegreesManager")]
+        [DynamicData(nameof(RefusedNames))]
         public void ObjectName_FromEvidence_Invalid_UsesDefault(
             string requested)
         {
@@ -248,8 +284,9 @@ console.log(JSON.stringify(result));
                     });
                 Assert.Contains(parameters, script);
                 var rest = script.Replace(parameters, string.Empty);
-                Assert.DoesNotContain(
-                    $"var {requested}", rest,
+                Assert.IsFalse(
+                    Regex.IsMatch(rest,
+                        $@"var\s+{Regex.Escape(requested)}\s*=\s*new\s+fiftyoneDegreesManager"),
                     "The requested name was declared.");
                 Assert.DoesNotContain(
                     $"sessionKey = \"{requested}\"", rest,
@@ -281,6 +318,7 @@ console.log(JSON.stringify(result));
         [DataRow("var")]
         [DataRow("NaN")]
         [DataRow("fiftyoneDegreesManager")]
+        [DynamicData(nameof(RefusedNames))]
         public void ObjectName_FromConfiguration_Invalid_Refused(
             string configured)
         {
@@ -325,6 +363,7 @@ console.log(JSON.stringify(result));
         [DataRow("")]
         [DataRow("this")]
         [DataRow("fiftyoneDegreesManager")]
+        [DynamicData(nameof(RefusedNames))]
         public void ObjectName_FromConstructor_Invalid_Refused(
             string configured)
         {
@@ -360,13 +399,44 @@ console.log(JSON.stringify(result));
         [DataRow("NaN", false)]
         [DataRow("undefined", false)]
         [DataRow("fiftyoneDegreesManager", false)]
-        [DataRow("eval", true)]
-        [DataRow("arguments", true)]
+        [DataRow("eval", false)]
+        [DataRow("arguments", false)]
+        [DataRow("windows", true)]
+        [DataRow("Window", true)]
+        [DataRow("cachesX", true)]
         public void ObjectName_IsValidObjectName(string name, bool expected)
         {
             Assert.AreEqual(
                 expected,
                 JavaScriptBuilderElement.IsValidObjectName(name));
+        }
+
+        /// <summary>
+        /// Every name the specification refuses is refused.
+        /// </summary>
+        [DataTestMethod]
+        [DynamicData(nameof(RefusedNames))]
+        public void ObjectName_IsValidObjectName_Refused(string name)
+        {
+            Assert.IsFalse(JavaScriptBuilderElement.IsValidObjectName(name));
+        }
+
+        /// <summary>
+        /// Window properties that a top level var can replace stay
+        /// allowed, and the builder accepts them as the configured name.
+        /// </summary>
+        [DataTestMethod]
+        [DynamicData(nameof(AllowedWindowNames))]
+        public void ObjectName_WindowPropertyVarCanReplace_Allowed(
+            string name)
+        {
+            Assert.IsTrue(JavaScriptBuilderElement.IsValidObjectName(name));
+            var element = new JavaScriptBuilderElementBuilder(_loggerFactory)
+                .SetEndpoint("/json")
+                .SetObjectName(name)
+                .Build();
+            var script = Render(element, null);
+            AssertUsesName(script, name, DEFAULT_NAME);
         }
 
         /// <summary>

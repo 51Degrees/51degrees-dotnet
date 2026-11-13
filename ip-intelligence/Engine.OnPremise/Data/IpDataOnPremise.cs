@@ -68,6 +68,7 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
             IMissingPropertyService missingPropertyService)
             : base(logger, pipeline, engine, missingPropertyService)
         {
+            _engine = engine;
             _asDict = new Lazy<IReadOnlyDictionary<string, object>>(AsStrippedDictionary);
         }
 
@@ -81,6 +82,12 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
             new FiftyOne.Pipeline.Engines.Data.AspectPropertyValue<System.Net.IPAddress>();
 
         private readonly Lazy<IReadOnlyDictionary<string, object>> _asDict;
+
+        /// <summary>
+        /// The engine that made this data, which holds the index of each
+        /// property name it was built with.
+        /// </summary>
+        private readonly IpiOnPremiseEngine _engine;
 
         /// <summary>
         /// The reason reported for both echo properties when the request did
@@ -201,6 +208,27 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
 
         #region Private Methods
 
+        /// <summary>
+        /// Gets the results to read a property from, with the property's
+        /// required property index when the name is in the engine's table,
+        /// or -1 to read it by name.
+        /// </summary>
+        private ResultsIpiSwig GetResults(string propertyName, out int index)
+        {
+            var indexes = _engine?.PropertyIndexes;
+            if (indexes != null &&
+                indexes.TryGetValue(propertyName, out index))
+            {
+                var list = Results.ResultsList;
+                if (list.Count == 1)
+                {
+                    return list[0];
+                }
+            }
+            index = -1;
+            return GetResultsContainingProperty(propertyName);
+        }
+
         private ResultsIpiSwig GetResultsContainingProperty(string propertyName)
         {
             foreach (var results in Results.ResultsList)
@@ -231,11 +259,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<IReadOnlyList<IWeightedValue<bool>>> GetValuesAsWeightedBoolList(string propertyName)
         {
             var result = new AspectPropertyValue<IReadOnlyList<IWeightedValue<bool>>>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValuesAsWeightedBoolList(propertyName))
+                using (var value = index < 0 ?
+                    results.getValuesAsWeightedBoolList(propertyName) :
+                    results.getValuesAsWeightedBoolList(index))
                 {
                     if (value.hasValue())
                     {
@@ -256,11 +286,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<IReadOnlyList<IWeightedValue<double>>> GetValuesAsWeightedDoubleList(string propertyName)
         {
             var result = new AspectPropertyValue<IReadOnlyList<IWeightedValue<double>>>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValuesAsWeightedDoubleList(propertyName))
+                using (var value = index < 0 ?
+                    results.getValuesAsWeightedDoubleList(propertyName) :
+                    results.getValuesAsWeightedDoubleList(index))
                 {
                     if (value.hasValue())
                     {
@@ -281,11 +313,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<IReadOnlyList<IWeightedValue<float>>> GetValuesAsWeightedFloatList(string propertyName)
         {
             var result = new AspectPropertyValue<IReadOnlyList<IWeightedValue<float>>>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValuesAsWeightedDoubleList(propertyName))
+                using (var value = index < 0 ?
+                    results.getValuesAsWeightedDoubleList(propertyName) :
+                    results.getValuesAsWeightedDoubleList(index))
                 {
                     if (value.hasValue())
                     {
@@ -307,11 +341,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<IReadOnlyList<IWeightedValue<int>>> GetValuesAsWeightedIntegerList(string propertyName)
         {
             var result = new AspectPropertyValue<IReadOnlyList<IWeightedValue<int>>>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValuesAsWeightedIntegerList(propertyName))
+                using (var value = index < 0 ?
+                    results.getValuesAsWeightedIntegerList(propertyName) :
+                    results.getValuesAsWeightedIntegerList(index))
                 {
                     if (value.hasValue())
                     {
@@ -332,11 +368,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         public override IAspectPropertyValue<IReadOnlyList<string>> GetValues(string propertyName)
         {
             var result = new AspectPropertyValue<IReadOnlyList<string>>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValues(propertyName))
+                using (var value = index < 0 ?
+                    results.getValues(propertyName) :
+                    results.getValues(index))
                 {
                     if (value.hasValue())
                     {
@@ -357,11 +395,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<string> GetValueAsString(string propertyName)
         {
             var result = new AspectPropertyValue<string>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValueAsUTF8String(propertyName))
+                using (var value = index < 0 ?
+                    results.getValueAsUTF8String(propertyName) :
+                    results.getValueAsUTF8String(index))
                 {
                     if (value.hasValue())
                     {
@@ -382,11 +422,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<WktString> GetValueAsWktString(string propertyName)
         {
             var result = new AspectPropertyValue<WktString>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValueAsString(propertyName))
+                using (var value = index < 0 ?
+                    results.getValueAsString(propertyName) :
+                    results.getValueAsString(index))
                 {
                     if (value.hasValue())
                     {
@@ -404,11 +446,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<int> GetValueAsInteger(string propertyName)
         {
             var result = new AspectPropertyValue<int>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValueAsInteger(propertyName))
+                using (var value = index < 0 ?
+                    results.getValueAsInteger(propertyName) :
+                    results.getValueAsInteger(index))
                 {
                     if (value.hasValue())
                     {
@@ -426,11 +470,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<bool> GetValueAsBool(string propertyName)
         { 
             var result = new AspectPropertyValue<bool>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value =  results.getValueAsBool(propertyName))
+                using (var value = index < 0 ?
+                    results.getValueAsBool(propertyName) :
+                    results.getValueAsBool(index))
                 {
                     if (value.hasValue())
                     {
@@ -448,11 +494,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<double> GetValueAsDouble(string propertyName)
         {
             var result = new AspectPropertyValue<double>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValueAsDouble(propertyName))
+                using (var value = index < 0 ?
+                    results.getValueAsDouble(propertyName) :
+                    results.getValueAsDouble(index))
                 {
                     if (value.hasValue())
                     {
@@ -470,11 +518,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<float> GetValueAsFloat(string propertyName)
         {
             var result = new AspectPropertyValue<float>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValueAsDouble(propertyName))
+                using (var value = index < 0 ?
+                    results.getValueAsDouble(propertyName) :
+                    results.getValueAsDouble(index))
                 {
                     if (value.hasValue())
                     {
@@ -501,11 +551,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
             }
 
             var result = new AspectPropertyValue<IPAddress>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValueAsString(propertyName))
+                using (var value = index < 0 ?
+                    results.getValueAsString(propertyName) :
+                    results.getValueAsString(index))
                 {
                     if (value.hasValue())
                     {
@@ -523,11 +575,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>> GetValuesAsWeightedStringList(string propertyName)
         {
             var result = new AspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValuesAsWeightedUTF8StringList(propertyName))
+                using (var value = index < 0 ?
+                    results.getValuesAsWeightedUTF8StringList(propertyName) :
+                    results.getValuesAsWeightedUTF8StringList(index))
                 {
                     if (value.hasValue())
                     {
@@ -548,11 +602,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         protected override IAspectPropertyValue<IReadOnlyList<IWeightedValue<IPAddress>>> GetValuesAsWeightedIPList(string propertyName)
         {
             var result = new AspectPropertyValue<IReadOnlyList<IWeightedValue<IPAddress>>>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValuesAsWeightedStringList(propertyName))
+                using (var value = index < 0 ?
+                    results.getValuesAsWeightedStringList(propertyName) :
+                    results.getValuesAsWeightedStringList(index))
                 {
                     if (value.hasValue())
                     {
@@ -575,11 +631,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
             string propertyName, byte decimalPlaces)
         {
             var result = new AspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>();
-            var results = GetResultsContainingProperty(propertyName);
+            var results = GetResults(propertyName, out var index);
 
             if (results != null)
             {
-                using (var value = results.getValuesAsWeightedWKTStringList(propertyName, decimalPlaces))
+                using (var value = index < 0 ?
+                    results.getValuesAsWeightedWKTStringList(propertyName, decimalPlaces) :
+                    results.getValuesAsWeightedWKTStringList(index, decimalPlaces))
                 {
                     if (value.hasValue())
                     {

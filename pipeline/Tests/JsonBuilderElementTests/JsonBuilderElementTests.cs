@@ -22,6 +22,7 @@
 
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.Data.Types;
+using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Core.TypedMap;
 using FiftyOne.Pipeline.Engines.Data;
@@ -458,6 +459,52 @@ namespace FiftyOne.Pipeline.JsonBuilderElementTests
                 warnings.Select(w => w.ToString()).ToArray());
             // The data must still be there. A warning is not an error.
             Assert.IsNotNull(JObject.Parse(json)["empty-aspect"]);
+        }
+
+        /// <summary>
+        /// With no Sequence Element before it, the JSON Builder fails with
+        /// the message the specification gives, which is the same in every
+        /// language.
+        /// </summary>
+        [TestMethod]
+        public void JsonBuilder_NoSequenceElement_Message()
+        {
+            var pipeline = new PipelineBuilder(_loggerFactory)
+                .AddFlowElement(new JsonBuilderElementBuilder(_loggerFactory)
+                    .Build())
+                .Build();
+
+            using (var flowData = pipeline.CreateFlowData())
+            {
+                var thrown = Assert.ThrowsExactly<AggregateException>(
+                    () => flowData.Process());
+                var error = thrown.InnerExceptions.Single();
+                Assert.IsInstanceOfType(error, typeof(PipelineException));
+                Assert.AreEqual(
+                    "The JSON Builder needs a sequence number. Place a " +
+                    "Sequence Element before the JSON Builder in the " +
+                    "Pipeline.",
+                    error.Message);
+            }
+        }
+
+        /// <summary>
+        /// The Sequence Element's data is an Element Data like any other,
+        /// and the specification excludes only the Set Headers Element,
+        /// the Cloud Request Engine and the Usage Sharing Element, so the
+        /// JSON has a top level entry for it.
+        /// </summary>
+        [TestMethod]
+        public void JsonBuilder_SequenceElement_HasTopLevelEntry()
+        {
+            var json = ProcessWithWarnings(
+                new JsonBuilderElementBuilder(_loggerFactory).Build());
+
+            var sequence = JObject.Parse(json)["sequence"];
+            Assert.IsNotNull(sequence, "expected a sequence entry");
+            Assert.IsTrue(Guid.TryParse(
+                sequence["session-id"].ToString(), out _));
+            Assert.AreEqual(1, (int)sequence["sequence"]);
         }
 
         /// <summary>

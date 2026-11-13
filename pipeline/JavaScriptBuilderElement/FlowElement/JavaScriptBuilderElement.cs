@@ -134,9 +134,11 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         /// <summary>
         /// Words that match the identifier pattern but cannot be the name
         /// of the object. These are the reserved words of the language,
-        /// including those reserved only in strict mode, and the three
-        /// global values a top level var cannot replace (undefined, NaN and
-        /// Infinity), where the object would never be created. The last
+        /// including those reserved only in strict mode, the three global
+        /// values a top level var cannot replace (undefined, NaN and
+        /// Infinity), eval, and the properties of the browser's Window
+        /// object that a top level var cannot replace or that navigate the
+        /// page away, where the object would never be created. The last
         /// entry is the constructor the script defines and calls to create
         /// the object, so that name would clash with it. The other language
         /// builders use the same list.
@@ -152,6 +154,15 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
             "protected", "public", "return", "static", "super", "switch",
             "this", "throw", "true", "try", "typeof", "var", "void",
             "while", "with", "yield", "Infinity", "NaN", "undefined",
+            "eval", "arguments",
+            "window", "document", "top", "name", "status", "history",
+            "navigator", "closed", "location", "frameElement",
+            "isSecureContext", "crossOriginIsolated", "trustedTypes",
+            "crypto", "indexedDB", "localStorage", "sessionStorage",
+            "caches", "cookieStore", "speechSynthesis", "styleMedia",
+            "crashReport", "credentialless", "customElements",
+            "documentPictureInPicture", "fence", "launchQueue",
+            "originAgentCluster",
             "fiftyoneDegreesManager",
         };
 
@@ -585,14 +596,14 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         }
 
         /// <summary>
-        /// Get the sequence evidence if it exists.
+        /// Get the sequence from the Sequence Element's data.
         /// </summary>
         /// <remarks>
-        /// The sequence is written into the script as a number, so anything
-        /// other than a positive 32 bit integer, written as an integer or
-        /// as a string of digits, gives 1. With no Sequence Element in the
-        /// pipeline there is usually no sequence evidence, which also
-        /// gives 1.
+        /// With no Sequence Element in the pipeline there is no such data,
+        /// and the sequence is 1 whatever the request asked for. The sequence
+        /// is written into the script as a number, so anything other than a
+        /// positive 32 bit integer, written as an integer or as a string of
+        /// digits, gives 1 as well.
         /// </remarks>
         /// <param name="data"></param>
         /// <returns>The sequence, which is always at least 1.</returns>
@@ -603,9 +614,10 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
                 throw new ArgumentException(Messages.ExceptionFlowDataIsNull);
             }
 
-            // Get the sequence evidence if it exists.
             int sequence = 1;
-            if (data.TryGetEvidence(Engines.FiftyOne.Constants.EVIDENCE_SEQUENCE,
+            if (TryGetSequenceValue(
+                data,
+                Engines.FiftyOne.Constants.EVIDENCE_SEQUENCE_SUFIX,
                 out object sequenceObject))
             {
                 if ((sequenceObject is int sequenceValue ||
@@ -624,14 +636,14 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         }
 
         /// <summary>
-        /// Get the session-id evidence if it exists.
+        /// Get the session id from the Sequence Element's data.
         /// </summary>
         /// <remarks>
-        /// The session id is written into the script inside quotes, so a
-        /// session id that fails
-        /// <see cref="JavaScriptResource.IsValidSessionId(string)"/> gives
-        /// an empty string. This applies whether the Sequence Element
-        /// created the session id or the request carried it.
+        /// With no Sequence Element in the pipeline there is no such data,
+        /// and the session id is empty whatever the request asked for. The
+        /// session id is written into the script inside quotes, so one that
+        /// fails <see cref="JavaScriptResource.IsValidSessionId(string)"/>
+        /// is empty as well.
         /// </remarks>
         /// <param name="data"></param>
         /// <returns>The session id, or an empty string.</returns>
@@ -643,8 +655,9 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
             }
 
             string sessionId = string.Empty;
-            // Get the session-id evidence if it exists.
-            if (data.TryGetEvidence(Engines.FiftyOne.Constants.EVIDENCE_SESSIONID,
+            if (TryGetSequenceValue(
+                data,
+                Engines.FiftyOne.Constants.EVIDENCE_SESSIONID_SUFFIX,
                 out object objSessionId))
             {
                 sessionId = objSessionId?.ToString();
@@ -654,6 +667,34 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
                 }
             }
             return sessionId;
+        }
+
+        /// <summary>
+        /// Get one value from the Sequence Element's data.
+        /// </summary>
+        /// <remarks>
+        /// The specification's step 5 takes both values from that data and
+        /// not from Evidence, so a pipeline with no Sequence Element renders
+        /// the defaults even when the request carried a session id or a
+        /// sequence of its own.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/67ead6986f3118c68f0714325800b92d48ddc71f/pipeline-specification/pipeline-elements/javascript-builder.md#process">Specification</see>
+        /// </remarks>
+        /// <param name="data">The Flow Data to read.</param>
+        /// <param name="key">The key of the value within that data.</param>
+        /// <param name="value">The value, when there is one.</param>
+        /// <returns>True when the value was there.</returns>
+        private static bool TryGetSequenceValue(
+            IFlowData data,
+            string key,
+            out object value)
+        {
+            value = null;
+            return data.TryGet(
+                    Engines.FiftyOne.FlowElements.SequenceElement
+                        .DEFAULT_ELEMENT_DATA_KEY,
+                    out IElementData sequenceData) &&
+                sequenceData != null &&
+                sequenceData.AsDictionary().TryGetValue(key, out value);
         }
 
         /// <summary>

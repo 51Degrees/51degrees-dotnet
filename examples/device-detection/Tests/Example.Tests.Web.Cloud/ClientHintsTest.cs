@@ -47,9 +47,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
         [TestInitialize]
         public void Init()
         {
-            ExampleUtils.GetKeyFromEnv(
-                ExampleUtils.CLOUD_END_POINT_ENV_VAR,
-                v => CloudEndPoint = v);
+            var endPoint = ExampleUtils.FromEnvironment(
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
+                ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
+            CloudEndPoint = string.IsNullOrWhiteSpace(endPoint)
+                ? string.Empty
+                : endPoint;
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -93,13 +96,11 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
         {
             if (string.IsNullOrWhiteSpace(resourceKey))
             {
-                Assert.Inconclusive(
-                    "Skipped because no resource key reached this test. " +
-                    "Set one of these environment variables: " +
-                    ExampleUtils
-                        .CLOUD_RESOURCE_KEY_ENV_VAR_DESCRIPTION + ". The " +
-                    "Accept-CH cases also need the per header keys named " +
-                    "in Parameters.GetEnvVars.");
+                Assert.Fail(LiveCloudKey.NoKey(
+                    "device",
+                    "the SetHeaderBrowserAccept-CH, " +
+                    "SetHeaderHardwareAccept-CH and " +
+                    "SetHeaderPlatformAccept-CH properties"));
             }
 
             ResourceKey = resourceKey;

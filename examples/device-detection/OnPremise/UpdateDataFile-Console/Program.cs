@@ -63,7 +63,7 @@ using System.Net.Http;
 /// ```
 /// 
 /// ## Lite Data File
-/// Lite data files (free-to-use, limited capabilities, no license key required) are created roughly
+/// Lite data files (free-to-use, a small number of properties, no license key required) are created roughly
 /// once a month and cannot be updated using auto-update, they may be downloaded from
 /// [Github](https://github.com/51Degrees/data) with the scripts there, which are in the
 /// `cxx/data` submodule of source distributions of this software.

@@ -32,6 +32,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Threading;
 
 namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 {
@@ -49,6 +50,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<CloudRequestData> _dataLogger;
+
+        // 1 once the deprecation of the old environment variable has been
+        // logged, so that a process logs it once.
+        private static int _oldEndpointNameLogged;
         private readonly HttpClient _httpClient;
 
         // Note - Defaults for these fields are set in the Build method.
@@ -58,6 +63,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
         private string _resourceKey = Constants.RESOURCE_KEY_DEFAULT;
         private string _licenseKey = Constants.LICENSE_KEY_DEFAULT;
+        private readonly List<string> _requestedProperties =
+            new List<string>();
         private string _cloudRequestOrigin = Constants.CLOUD_REQUEST_ORIGIN_DEFAULT;
         private int _timeout = Constants.CLOUD_REQUEST_TIMEOUT_DEFAULT_SECONDS;
         private int _failuresToEnterRecovery = Constants.CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_DEFAULT;
@@ -155,7 +162,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// The resource key to query the endpoint with.
+        /// The resource key to query the endpoint with. Either a resource key
+        /// or a license key must be supplied.
         /// </summary>
         /// <param name="resourceKey">
         /// The resource key to use when making requests to the cloud service
@@ -163,7 +171,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// <returns>
         /// This builder
         /// </returns>
-        [DefaultValue("No default - a resource key must be supplied")]
+        [DefaultValue("No default - a resource key or a license key must be supplied")]
         public CloudRequestEngineBuilder SetResourceKey(string resourceKey)
         {
             _resourceKey = resourceKey;
@@ -171,16 +179,54 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// The license key to query the endpoint with.
+        /// The license key to authenticate with. A license key alone
+        /// needs the properties wanted, named with
+        /// <see cref="SetRequestedProperties"/>. Beside a resource key it
+        /// adds the requested properties the license grants to what the
+        /// resource key carries. Leading and trailing white space is
+        /// ignored.
         /// </summary>
-        /// <param name="licenseKey"></param>
-        /// <returns></returns>
-        [Obsolete("License key is no longer used directly. " +
-            "Use a resource key instead.")]
+        /// <param name="licenseKey">
+        /// The license key to use when making requests to the cloud service
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        [DefaultValue("No default - a resource key or a license key must be supplied")]
         [CodeConfigOnly]
         public CloudRequestEngineBuilder SetLicenseKey(string licenseKey)
         {
             _licenseKey = licenseKey;
+            return this;
+        }
+
+        /// <summary>
+        /// The properties to ask the cloud service for, as fully qualified
+        /// names such as 'device.ismobile', sent as 'values'. Required with
+        /// a license key alone. Beside a resource key the cloud service adds
+        /// them to the properties the resource key carries. Names are
+        /// trimmed and sent as given, and a name given again in another
+        /// letter case is sent once. The properties set with
+        /// <c>SetProperties</c> are not sent.
+        /// </summary>
+        /// <param name="properties">
+        /// The fully qualified property names to ask for.
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if a required parameter is null.
+        /// </exception>
+        [DefaultValue("None - required with a license key alone")]
+        public CloudRequestEngineBuilder SetRequestedProperties(
+            List<string> properties)
+        {
+            if (properties == null)
+            {
+                throw new ArgumentNullException(nameof(properties));
+            }
+            _requestedProperties.AddRange(properties);
             return this;
         }
 
@@ -346,28 +392,30 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// </exception>
         public CloudRequestEngine Build()
         {
-            if (string.IsNullOrWhiteSpace(_resourceKey))
-            {
-                throw new PipelineConfigurationException(
-                    Messages.ExceptionResourceKeyNeeded);
-            }
+            CheckCredentials();
 
             // If any of the endpoints are not set, then use the environment variable if
-            // specified, or the default base url if not.
-            var endpoint = Environment.GetEnvironmentVariable(Constants.FOD_CLOUD_API_URL) ?? 
-                Constants.CLOUD_URI_DEFAULT;
+            // specified, or the default base url if not. The environment
+            // is not read when every endpoint has been set.
+            if (string.IsNullOrWhiteSpace(_dataEndpoint) ||
+                string.IsNullOrWhiteSpace(_propertiesEndpoint) ||
+                string.IsNullOrWhiteSpace(_evidenceKeysEndpoint))
+            {
+                var endpoint = EndpointFromEnvironment() ??
+                    Constants.CLOUD_URI_DEFAULT;
 
-            if (string.IsNullOrWhiteSpace(_dataEndpoint))
-            {
-                SetDataEndpoint(endpoint + Constants.DATA_FILENAME);
-            }
-            if (string.IsNullOrWhiteSpace(_propertiesEndpoint))
-            {
-                SetPropertiesEndpoint(endpoint + Constants.PROPERTIES_FILENAME);
-            }
-            if (string.IsNullOrWhiteSpace(_evidenceKeysEndpoint))
-            {
-                SetEvidenceKeysEndpoint(endpoint + Constants.EVIDENCE_KEYS_FILENAME);
+                if (string.IsNullOrWhiteSpace(_dataEndpoint))
+                {
+                    SetDataEndpoint(endpoint + Constants.DATA_FILENAME);
+                }
+                if (string.IsNullOrWhiteSpace(_propertiesEndpoint))
+                {
+                    SetPropertiesEndpoint(endpoint + Constants.PROPERTIES_FILENAME);
+                }
+                if (string.IsNullOrWhiteSpace(_evidenceKeysEndpoint))
+                {
+                    SetEvidenceKeysEndpoint(endpoint + Constants.EVIDENCE_KEYS_FILENAME);
+                }
             }
 
             var engine = BuildEngine();
@@ -394,6 +442,100 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 throw;
             }
             return engine;
+        }
+
+        /// <summary>
+        /// The cloud service URL the environment gives, or null when no
+        /// variable holds one. <see cref="Constants.CLOUD_ENDPOINT_ENV_VAR"/>
+        /// is read first. The old variable is read only when that one is
+        /// unset or empty, and reading a value from it is logged as
+        /// deprecated once in the process.
+        /// </summary>
+        private string EndpointFromEnvironment()
+        {
+            var endpoint = Environment.GetEnvironmentVariable(
+                Constants.CLOUD_ENDPOINT_ENV_VAR);
+            if (string.IsNullOrEmpty(endpoint) == false)
+            {
+                return endpoint;
+            }
+
+#pragma warning disable CS0618 // The obsolete name is the one read here.
+            const string oldName = Constants.FOD_CLOUD_API_URL;
+#pragma warning restore CS0618
+            var oldEndpoint = Environment.GetEnvironmentVariable(oldName);
+            if (string.IsNullOrEmpty(oldEndpoint))
+            {
+                return null;
+            }
+
+            if (Interlocked.Exchange(ref _oldEndpointNameLogged, 1) == 0)
+            {
+                _loggerFactory.CreateLogger<CloudRequestEngineBuilder>()
+                    .LogWarning(
+                        $"The environment variable {oldName} is " +
+                        $"deprecated and " +
+                        $"{Constants.CLOUD_ENDPOINT_ENV_VAR} replaces it. " +
+                        $"The cloud endpoint was read from {oldName}. Set " +
+                        $"{Constants.CLOUD_ENDPOINT_ENV_VAR} to the same " +
+                        $"value instead.");
+            }
+            return oldEndpoint;
+        }
+
+        private static string TrimOrEmpty(string value)
+        {
+            return value == null ? string.Empty : value.Trim();
+        }
+
+        /// <summary>
+        /// Trim each name and drop empty names and repeats. A repeat
+        /// differs only in letter case, as the cloud service reads names
+        /// without regard to case, and the first spelling given is kept.
+        /// </summary>
+        private static List<string> NormalizeProperties(
+            IEnumerable<string> names)
+        {
+            var result = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var name in names ?? new List<string>())
+            {
+                var trimmed = TrimOrEmpty(name);
+                if (trimmed.Length > 0 && seen.Add(trimmed))
+                {
+                    result.Add(trimmed);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Refuse a combination of resource key, license key and requested
+        /// properties that the cloud service would refuse on every request,
+        /// so a deployment sees one configuration error when the engine is
+        /// built and not a failure on every request it serves. A blank
+        /// value counts as absent.
+        /// </summary>
+        /// <exception cref="PipelineConfigurationException">
+        /// Thrown for either of the two combinations that cannot work.
+        /// </exception>
+        private void CheckCredentials()
+        {
+            var hasResourceKey = TrimOrEmpty(_resourceKey).Length > 0;
+            var hasLicenseKey = TrimOrEmpty(_licenseKey).Length > 0;
+            var hasProperties =
+                NormalizeProperties(_requestedProperties).Count > 0;
+
+            if (hasResourceKey == false && hasLicenseKey == false)
+            {
+                throw new PipelineConfigurationException(
+                    Messages.ExceptionNoCredential);
+            }
+            if (hasResourceKey == false && hasProperties == false)
+            {
+                throw new PipelineConfigurationException(
+                    Messages.ExceptionLicenseKeyNeedsProperties);
+            }
         }
 
         private CloudRequestData CreateAspectData(IPipeline pipeline, 
@@ -430,11 +572,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// </returns>
         protected override CloudRequestEngine NewEngine(List<string> properties)
         {
-            if (string.IsNullOrWhiteSpace(_resourceKey))
-            {
-                throw new PipelineConfigurationException(
-                    Messages.ExceptionResourceKeyNeeded);
-            }
+            CheckCredentials();
 
             var failThrottlingStrategy = CreateRecoveryStrategy();
 
@@ -447,12 +585,13 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 new CloudRequestEngine.EndpointsAndKeys
                 {
                     DataEndpoint = _dataEndpoint,
-                    ResourceKey = _resourceKey,
-                    LicenseKey = _licenseKey,
+                    ResourceKey = TrimOrEmpty(_resourceKey),
+                    LicenseKey = TrimOrEmpty(_licenseKey),
                     PropertiesEndpoint = _propertiesEndpoint,
                     EvidenceKeysEndpoint = _evidenceKeysEndpoint,
                     CloudRequestOrigin = _cloudRequestOrigin,
-                    RequestedProperties = properties,
+                    RequestedProperties =
+                        NormalizeProperties(_requestedProperties),
                 },
                 _timeout,
                 new WindowedFailHandler(

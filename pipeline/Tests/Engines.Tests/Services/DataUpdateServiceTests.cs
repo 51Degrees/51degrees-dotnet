@@ -22,6 +22,7 @@
 
 using FiftyOne.Common.Wrappers.IO;
 using FiftyOne.Pipeline.Engines.Configuration;
+using FiftyOne.Pipeline.Engines.Exceptions;
 using FiftyOne.Pipeline.Engines.FlowElements;
 using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -1408,10 +1409,10 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             // Assert
             // Make sure that refresh is called on the engine.
             engine.Verify(e => e.RefreshData(config.Identifier), Times.Once());
-            // Verify that timer factory has not been called to 
-            // set up a new timer.
+            // Automatic updates stay on after a manual check, so the data
+            // file is registered again with one timer for the next check.
             _timerFactory.Verify(f => f(It.IsAny<TimerCallback>(),
-                It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Never());
+                It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Once());
             Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_SUCCESS, result);
         }
         
@@ -2087,6 +2088,64 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         }
 
         /// <summary>
+        /// Check that the If-Modified-Since header falls back to the last
+        /// write time of the data file, and not its creation time, when
+        /// the data has no publish date.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_CheckForUpdate_IfModifiedSince_NoPublishDate_UsesLastWriteTime()
+        {
+            // Arrange
+            const string dataFilePath = "data.dat";
+            var created = new DateTime(2023, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+            var lastWritten = new DateTime(2024, 3, 5, 10, 30, 0, DateTimeKind.Utc);
+            // Newer than the data file, so the update service goes on to
+            // check the remote server.
+            var tempLastWritten = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            _fileWrapper.Setup(w => w.Exists(dataFilePath)).Returns(true);
+            _fileWrapper.Setup(w => w.GetCreationTimeUtc(dataFilePath))
+                .Returns(created);
+            _fileWrapper.Setup(w => w.GetLastWriteTimeUtc(dataFilePath))
+                .Returns(lastWritten);
+            _fileWrapper.Setup(w => w.GetLastWriteTimeUtc(
+                It.Is<string>(s => s != dataFilePath)))
+                .Returns(tempLastWritten);
+            DateTimeOffset? headerValue = null;
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Callback((HttpRequestMessage request) =>
+                {
+                    headerValue = request.Headers.IfModifiedSince;
+                })
+                .Returns(new HttpResponseMessage(System.Net.HttpStatusCode.NotModified)
+                {
+                    Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
+                });
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            engine.Setup(e => e.TempDataDirPath).Returns(Path.GetTempPath());
+            var file = new AspectEngineDataFile()
+            {
+                Engine = engine.Object,
+                Configuration = new DataFileConfiguration()
+                {
+                    DataFilePath = dataFilePath,
+                    DataUpdateUrl = @"http://www.test.com",
+                    FileSystemWatcherEnabled = false,
+                    AutomaticUpdatesEnabled = false,
+                    VerifyModifiedSince = true
+                }
+            };
+            engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+
+            // Act
+            _dataUpdate.CheckForUpdate(engine.Object);
+
+            // Assert
+            _httpHandler.Verify(h => h.Send(It.IsAny<HttpRequestMessage>()), Times.Once());
+            Assert.IsNotNull(headerValue);
+            Assert.AreEqual(new DateTimeOffset(lastWritten), headerValue.Value);
+        }
+
+        /// <summary>
         /// Check that a programmatic update still checks the remote server
         /// and refreshes the engine when automatic updates are disabled.
         /// No polling timer is created as automatic updates are off.
@@ -2164,6 +2223,138 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
                     It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Never());
                 Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_SUCCESS, result);
                 Assert.IsTrue(File.Exists(file.DataFilePath), "Data file does not exist after test");
+            }
+            finally
+            {
+                if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            }
+        }
+
+        /// <summary>
+        /// A manual update check must not turn off automatic updates. The
+        /// data file still has automatic updates on and the one polling timer
+        /// that registering it created, and no second timer is created, whether
+        /// the check finds no newer data, fails, or finds an update.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/features/data-updates.md#automatic-update-master-switch">Specification</see>
+        /// </summary>
+        [TestMethod]
+        [DataRow(System.Net.HttpStatusCode.NotModified, false)]
+        [DataRow(System.Net.HttpStatusCode.InternalServerError, true)]
+        public void DataUpdateService_ManualCheck_KeepsAutomaticUpdates(
+            System.Net.HttpStatusCode status, bool throws)
+        {
+            // Arrange
+            _timerFactory.Setup(f => f(
+                It.IsAny<TimerCallback>(),
+                It.IsAny<object>(),
+                It.IsAny<TimeSpan>()))
+                .Returns((TimerCallback callback, object state, TimeSpan interval) =>
+                    new Timer(callback, state, Timeout.Infinite, Timeout.Infinite));
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Returns(() => new HttpResponseMessage(status)
+                {
+                    Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
+                });
+            _ignoreErrors = 1;
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            engine.Setup(e => e.TempDataDirPath).Returns(Path.GetTempPath());
+            var file = new AspectEngineDataFile()
+            {
+                Engine = engine.Object,
+                Configuration = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    DataUpdateUrl = @"http://www.test.com",
+                    FileSystemWatcherEnabled = false,
+                    VerifyModifiedSince = false
+                }
+            };
+            engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+            _dataUpdate.RegisterDataFile(file);
+            var timer = file.Timer;
+            Assert.IsNotNull(timer, "Registering should have created the timer.");
+
+            // Act
+            if (throws)
+            {
+                Assert.ThrowsExactly<DataUpdateException>(
+                    () => _dataUpdate.CheckForUpdate(engine.Object));
+            }
+            else
+            {
+                _dataUpdate.CheckForUpdate(engine.Object);
+            }
+
+            // Assert
+            Assert.IsTrue(file.AutomaticUpdatesEnabled,
+                "A manual check turned off automatic updates.");
+            Assert.AreSame(timer, file.Timer);
+            _timerFactory.Verify(f => f(It.IsAny<TimerCallback>(),
+                It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Once());
+        }
+
+        /// <summary>
+        /// After a manual check that finds an update, automatic updates are
+        /// still on and the data file has one polling timer, for the next
+        /// check, as after an update found by the timer.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_ManualCheck_UpdateFound_KeepsAutomaticUpdates()
+        {
+            // Arrange
+            IFileSystem fileSystem = ConfigureRealFileSystem();
+            _timerFactory.Setup(f => f(
+                It.IsAny<TimerCallback>(),
+                It.IsAny<object>(),
+                It.IsAny<TimeSpan>()))
+                .Returns((TimerCallback callback, object state, TimeSpan interval) =>
+                    new Timer(callback, state, Timeout.Infinite, Timeout.Infinite));
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Returns(() =>
+                {
+                    var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StreamContent(File.OpenRead(@"Resources/file.gz")),
+                    };
+                    response.Content.Headers.Add(
+                        "Content-MD5", "08527dcbdd437e7fa6c084423d06dba6");
+                    return response;
+                });
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            string dataFile = Path.GetTempFileName();
+            if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            try
+            {
+                engine.Setup(e => e.TempDataDirPath).Returns(Path.GetTempPath());
+                var file = new AspectEngineDataFile()
+                {
+                    Engine = engine.Object,
+                    Configuration = new DataFileConfiguration()
+                    {
+                        AutomaticUpdatesEnabled = true,
+                        DataUpdateUrl = @"http://www.test.com",
+                        DataFilePath = dataFile,
+                        VerifyMd5 = true,
+                        DecompressContent = true,
+                        FileSystemWatcherEnabled = false,
+                        VerifyModifiedSince = false
+                    }
+                };
+                engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+                _dataUpdate.RegisterDataFile(file);
+
+                // Act
+                var result = _dataUpdate.CheckForUpdate(engine.Object);
+
+                // Assert
+                Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_SUCCESS, result);
+                Assert.IsTrue(file.AutomaticUpdatesEnabled,
+                    "A manual check turned off automatic updates.");
+                Assert.IsNotNull(file.Timer, "The polling timer is missing.");
+                // The one from registering, and the one that replaced it
+                // for the next check.
+                _timerFactory.Verify(f => f(It.IsAny<TimerCallback>(),
+                    It.IsAny<object>(), It.IsAny<TimeSpan>()), Times.Exactly(2));
             }
             finally
             {

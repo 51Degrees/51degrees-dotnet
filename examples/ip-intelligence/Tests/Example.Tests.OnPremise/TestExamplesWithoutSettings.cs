@@ -45,16 +45,16 @@ public class TestExamplesWithoutSettings
     /// a licence key, none of which a fresh clone has.
     /// </summary>
     private static readonly string[] Settings =
-    {
-        Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
-        Constants.LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
-        Constants.EVIDENCE_FILE_ENV_VAR,
-        Constants.GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR,
-        Constants.LICENSE_KEY_ENV_VAR,
-        "51DEGREES_DD_PATH",
-        "_51DEGREES_DD_PATH",
-        "DEVICEDETECTIONDATAFILE"
-    };
+        new[]
+        {
+            Constants.IPI_PATH_ENV_VAR,
+            Constants.EVIDENCE_FILE_ENV_VAR,
+            Constants.GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR,
+            Constants.LICENSE_KEY_ENV_VAR,
+            "_51DEGREES_DD_PATH"
+        }
+        .Concat(Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS)
+        .ToArray();
 
     /// <summary>
     /// The start of the link each example gives to ask for a copy of the

@@ -114,18 +114,13 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb
 
             // Use the command line argument if provided. Otherwise, an explicit data file
             // path supplied in an environment variable takes precedence over the value in
-            // the configuration file. The aligned '51DEGREES_IPI_PATH' variable is checked
-            // first, followed by the legacy 'IPINTELLIGENCEDATAFILE' variable.
+            // the configuration file. The variable is '_51DEGREES_IPI_PATH'.
             var dataFile = dataFileOverride;
             if (string.IsNullOrWhiteSpace(dataFile))
             {
-                dataFile = Environment.GetEnvironmentVariable(
-                    Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
-            }
-            if (string.IsNullOrWhiteSpace(dataFile))
-            {
-                dataFile = Environment.GetEnvironmentVariable(
-                    Constants.LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
+                dataFile = Examples.ExampleUtils.FromEnvironment(
+                    Constants.IPI_PATH_ENV_VAR,
+                    Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS);
             }
             if (string.IsNullOrWhiteSpace(dataFile))
             {
@@ -136,7 +131,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb
             {
                 throw new Exception($"A data file must be specified as a command line " +
                     $"argument, in the appsettings.json file, or in the " +
-                    $"'{Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR}' environment variable.");
+                    $"'{Constants.IPI_PATH_ENV_VAR}' environment variable.");
             }
             // The data file location provided in the configuration may be using an absolute or
             // relative path. If it is relative then search for a matching file using the

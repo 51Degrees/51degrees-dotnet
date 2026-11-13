@@ -47,6 +47,13 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Data
         }
 
         /// <summary>
+        /// The raw JSON response if processing has set it, or null. Unlike
+        /// <see cref="JsonResponse"/>, this never waits for lazy loading.
+        /// </summary>
+        internal string JsonResponseIfSet =>
+            TryGet(JSON_RESPONSE_KEY, out var value) ? value?.ToString() : null;
+
+        /// <summary>
         /// Flag to confirm that the CloudRequestEngine has started processing.
         /// </summary>
         public bool? ProcessStarted

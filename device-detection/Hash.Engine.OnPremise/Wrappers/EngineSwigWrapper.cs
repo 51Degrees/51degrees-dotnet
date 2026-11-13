@@ -68,6 +68,15 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Wrappers
             return _object.getDataFileTempPath();
         }
 
+        public VectorUInt32Swig getProfileIdsForPropertyValue(
+            string propertyName,
+            string valueName)
+        {
+            return _object.getProfileIdsForPropertyValue(
+                propertyName,
+                valueName);
+        }
+
         public VectorStringSwig getKeys()
         {
             return _object.getKeys();

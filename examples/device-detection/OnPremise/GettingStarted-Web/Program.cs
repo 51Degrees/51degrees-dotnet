@@ -120,8 +120,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedWeb
 
             // An explicit data file path supplied in an environment variable takes
             // precedence over the value in the configuration file. The
-            // '51DEGREES_DD_PATH' variable is checked first, followed by
-            // '_51DEGREES_DD_PATH' and then the legacy 'DEVICEDETECTIONDATAFILE'.
+            // variable is '_51DEGREES_DD_PATH'.
             var dataFile = ExampleUtils.GetDataFilePathFromEnv();
             if (string.IsNullOrWhiteSpace(dataFile))
             {
@@ -132,7 +131,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.GettingStartedWeb
             {
                 throw new Exception($"A data file must be specified in the " +
                     $"appsettings.json file or the " +
-                    $"'{Constants.DD_PATH_ENV_VAR}' environment variable.");
+                    $"'{Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR}' environment variable.");
             }
             // The data file location provided in the configuration may be using an absolute or
             // relative path. If it is relative then search for a matching file using the

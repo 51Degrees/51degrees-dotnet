@@ -48,7 +48,7 @@ using System.Text;
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/Cloud/GettingStarted-Console/Program.cs).
 ///
-/// To run this example, create a Resource Key for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-gettingstarted-console-program.cs&amp;utm_term=header and supply it via the appsettings.json file or the 51DEGREES_RESOURCE_KEY environment variable. By default the pipeline talks to cloud.51degrees.com; set 51D_CLOUD_ENDPOINT to point at a self-hosted Cloud service instead.
+/// To run this example, create a Resource Key for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-gettingstarted-console-program.cs&amp;utm_term=header and supply it via the appsettings.json file or the _51DEGREES_RESOURCE_KEY environment variable. By default the pipeline talks to cloud.51degrees.com; set _51DEGREES_CLOUD_ENDPOINT to point at a self-hosted Cloud service instead.
 ///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
@@ -193,7 +193,7 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.GettingStartedConsole
                         serviceProvider.GetRequiredService<ILogger<Program>>().LogError(
                             $"No resource key specified in the configuration file " +
                             $"'appsettings.json' or the environment variable " +
-                            $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud " +
+                            $"'{ExampleUtils.RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud " +
                             $"service is accessed using a 'ResourceKey'. For more information " +
                             $"see " +
                             $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=resource-key-required. " +

@@ -59,7 +59,48 @@ namespace FiftyOne.GeoLocation.Tests
         internal const string TEST_LAT = "51.4578261";
         internal const string TEST_LON = "-0.975922996290084";
 
-        internal const string RESOURCE_KEY_ENV_VAR = "SUPER_RESOURCE_KEY";
+        internal const string RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
+
+        /// <summary>
+        /// The old name of <see cref="RESOURCE_KEY_ENV_VAR"/>, read only
+        /// when that variable is not set.
+        /// </summary>
+        internal const string OLD_RESOURCE_KEY_ENV_VAR = "SUPER_RESOURCE_KEY";
+
+        // True once the old resource key name has been reported.
+        private static bool _oldNameReported;
+
+        /// <summary>
+        /// The resource key from the environment. When
+        /// <see cref="RESOURCE_KEY_ENV_VAR"/> is not set the old name is
+        /// read, and a value read from it is reported once on the error
+        /// stream as deprecated.
+        /// </summary>
+        internal static string ResourceKeyFromEnvironment()
+        {
+            var key = System.Environment.GetEnvironmentVariable(
+                RESOURCE_KEY_ENV_VAR);
+            if (string.IsNullOrWhiteSpace(key) == false)
+            {
+                return key;
+            }
+            var oldKey = System.Environment.GetEnvironmentVariable(
+                OLD_RESOURCE_KEY_ENV_VAR);
+            if (string.IsNullOrWhiteSpace(oldKey))
+            {
+                return key;
+            }
+            if (_oldNameReported == false)
+            {
+                _oldNameReported = true;
+                System.Console.Error.WriteLine(
+                    $"The environment variable {OLD_RESOURCE_KEY_ENV_VAR} " +
+                    $"is deprecated and {RESOURCE_KEY_ENV_VAR} replaces " +
+                    $"it. Set {RESOURCE_KEY_ENV_VAR} to the same value " +
+                    "instead.");
+            }
+            return oldKey;
+        }
 
         /// <summary>
         /// Seconds a request to the cloud service may take. The default of

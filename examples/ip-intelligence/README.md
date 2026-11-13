@@ -29,10 +29,8 @@ The console example downloads the free files itself when it needs them and they 
 The on-premise examples need an IP Intelligence data file. The examples locate
 the file in the following order:
 
-1. The "51DEGREES_IPI_PATH" environment variable, which can be set to an
-   explicit path to the data file. The legacy "IPINTELLIGENCEDATAFILE"
-   environment variable is also still supported, and is checked after
-   "51DEGREES_IPI_PATH".
+1. The "_51DEGREES_IPI_PATH" environment variable, which can be set to an
+   explicit path to the data file.
 2. The data submodule of this repository, `cxx/data`. When an example asks
    for a free 'Lite' file that is missing, it downloads the file there with
    the data repository's script, and prints the command it runs.
@@ -129,9 +127,7 @@ cost with it.
 A resource key configured with the properties needed to run the cloud examples
 can be created for free [here](https://configure.51degrees.com/1QWJwHxl?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud). To
 use the resource key in the examples it can be supplied as an environment
-variable called "51DEGREES_RESOURCE_KEY". The legacy environment variable
-names "RESOURCE_KEY" and "SUPER_RESOURCE_KEY" are still supported, with the
-aligned "51DEGREES_RESOURCE_KEY" name checked first.
+variable called "_51DEGREES_RESOURCE_KEY".
 
 * In order to test cloud examples against a custom endpoint - you need to launch `OnPremise/Mixed/GettingStarted-API` example 
 and keep it running while launching other examples.  Depending on the IDE you use this can be either done conveniently from the IDE, or 
@@ -191,11 +187,11 @@ Most runnable examples have an associated test. The exceptions, and why:
 
 The example tests are integration tests and need the same inputs the examples do:
 
-- **Cloud example tests** require a resource key in the `51DEGREES_RESOURCE_KEY`
+- **Cloud example tests** require a resource key in the `_51DEGREES_RESOURCE_KEY`
   environment variable (see the [Cloud](#cloud) section). Without it these tests
   fail with a message explaining how to obtain one.
 - **On-premise example tests** require the enterprise IP Intelligence data file
-  (located automatically, or via `51DEGREES_IPI_PATH`) and the **Mixed** examples
+  (located automatically, or via `_51DEGREES_IPI_PATH`) and the **Mixed** examples
   additionally require a device detection data file. When a required data file is
   absent, those tests report **inconclusive** rather than failing, so the gap is
   visible without being masked as a regression.

@@ -71,7 +71,7 @@ is named `51did` because the value is a 51Did and OWID is only the
 envelope format, and a C# parameter cannot start with a digit, so the
 route binds it with `[FromQuery(Name = "51did")] string did`), and
 `resource` and `licence` are the account's resource key and licence
-key. The client reads the cloud base from `FOD_CLOUD_API_URL` itself.
+key. The client reads the cloud base from `_51DEGREES_CLOUD_ENDPOINT` itself.
 `VerifySignatureAsync` checks the signature offline against the
 published signing keys, which the client fetches and caches, and
 `RedeemAsync` returns a typed `RedeemResult` with `Signature`,
@@ -91,9 +91,9 @@ other.
 
 | Variable | Meaning |
 | --- | --- |
-| `_51DEGREES_RESOURCE_KEY` | The resource key, public by nature. Required. The legacy `RESOURCE_KEY` is read when it is not set. |
-| `_51DEGREES_LICENSE_KEY` | A licence key of the same account. Server side only. Optional, because only an account that holds licence keys needs one to redeem, and an account holding none redeems without it. The legacy `LICENSE_KEY` is read when it is not set. |
-| `FOD_CLOUD_API_URL` | Optional. The API base including the `/api/v4/` segment, defaulting to `https://cloud.51degrees.com/api/v4/`. This is the same variable the cloud request engine honours, so a developer who has set it once points every 51Degrees example at the same place. A host other than `cloud.51degrees.com` would be used to (a) use an on premise web server, or (b) use a privately hosted version of the 51Degrees cloud for performance reasons. This is the private hosting option of the cloud service. Both run the same service, so the demo works unchanged against either. |
+| `_51DEGREES_RESOURCE_KEY` | The resource key, public by nature. Required. |
+| `_51DEGREES_LICENSE_KEY` | A licence key of the same account. Server side only. Optional, because only an account that holds licence keys needs one to redeem, and an account holding none redeems without it. |
+| `_51DEGREES_CLOUD_ENDPOINT` | Optional. The API base including the `/api/v4/` segment, defaulting to `https://cloud.51degrees.com/api/v4/`. This is the same variable the cloud request engine honours, so a developer who has set it once points every 51Degrees example at the same place. A host other than `cloud.51degrees.com` would be used to (a) use an on premise web server, or (b) use a privately hosted version of the 51Degrees cloud for performance reasons. This is the private hosting option of the cloud service. Both run the same service, so the demo works unchanged against either. |
 | `PORT` | The port to listen on, defaults to `5100`. |
 
 ## How to run
