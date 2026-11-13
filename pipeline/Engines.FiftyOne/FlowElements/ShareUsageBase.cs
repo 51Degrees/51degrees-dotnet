@@ -316,6 +316,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         private List<KeyValuePair<string, string>> _ignoreDataEvidenceFilter;
 
         private string _hostAddress;
+        private bool _hostAddressWaited;
         private IList<IElementPropertyMetaData> _properties;
 
         /// <summary>
@@ -326,13 +327,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             new HostAddressLookup(LookUpHostAddress);
 
         /// <summary>
-        /// Get the IP address of the machine that this code is running on.
-        /// The element reads it once and keeps it, as the specification asks
-        /// for a value that does not change for the life of the pipeline.
-        /// A send waits for the lookup for at most
+        /// Get the IP address of the machine that this code is running on,
+        /// or an empty string while the lookup has not finished or if it
+        /// failed. The first read waits for the lookup for at most
         /// <see cref="HostAddressWaitMilliseconds"/>, so a slow name lookup
-        /// cannot use up the time that disposal has for sending, and the
-        /// address is empty if the lookup has not finished by then or failed.
+        /// cannot use up the time that disposal has for sending, and later
+        /// reads do not wait. Only a finished lookup's answer is kept.
         /// </summary>
         protected string HostAddress
         {
@@ -340,11 +340,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             {
                 if (_hostAddress == null)
                 {
-                    HostAddressSource.TryGet(
-                        HostAddressWaitMilliseconds, out var address);
-                    _hostAddress = address;
+                    var wait = _hostAddressWaited ?
+                        0 :
+                        HostAddressWaitMilliseconds;
+                    _hostAddressWaited = true;
+                    if (HostAddressSource.TryGet(wait, out var address))
+                    {
+                        _hostAddress = address;
+                    }
                 }
-                return _hostAddress;
+                return _hostAddress ?? string.Empty;
             }
         }
 
@@ -1421,7 +1426,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// Get the part of the xml message that will be the same for every usage 
         /// sharing event on this machine.
         /// This is written once to a string in memory and then re-used for
-        /// future messages.
+        /// future messages. Until the lookup of the machine's address has
+        /// finished it is written again for each message, so that ServerIP
+        /// carries the address once the lookup has it.
         /// </summary>
         /// <returns></returns>
         private string GetStaticXml()
@@ -1455,6 +1462,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                             writer.WriteElementString("Platform", _osVersion);
                         }
 
+                        if (_hostAddress == null)
+                        {
+                            return result.ToString();
+                        }
                         _staticXml = result.ToString();
                     }
 
