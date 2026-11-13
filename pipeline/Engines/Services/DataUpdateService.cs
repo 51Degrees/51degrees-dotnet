@@ -1307,8 +1307,9 @@ namespace FiftyOne.Pipeline.Engines.Services
 				{
 					// Send the message. Only the headers are read before the
 					// call returns, so the body is copied to the temporary file
-					// as it arrives, and neither the client's buffer limit nor
-					// its timeout applies to the whole download.
+					// as it arrives and the client's buffer limit does not
+					// apply to it. The client's timeout covers the headers here,
+					// and each read of the body below.
 					response = _httpClient.SendAsync(
 						message,
 						HttpCompletionOption.ResponseHeadersRead).Result;
@@ -1347,7 +1348,7 @@ namespace FiftyOne.Pipeline.Engines.Services
 	                                var buffer = new byte[DownloadBufferBytes];
 	                                int read;
 	                                while ((read = ReadDownload(
-	                                    () => dataStream.Read(buffer, 0, buffer.Length),
+	                                    () => ReadDownloadBlock(dataStream, buffer),
 	                                    dataFile, shownUrl, licenseKeys)) > 0)
 	                                {
 	                                    tempStream.Write(buffer, 0, read);
@@ -1416,6 +1417,29 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// The size in bytes of each read of a data file download.
 		/// </summary>
 		private const int DownloadBufferBytes = 81920;
+
+		/// <summary>
+		/// Reads the next block of a data file download. The read ends with
+		/// a <see cref="TimeoutException"/> when no bytes arrive within the
+		/// client's timeout, so a server that stops sending cannot hold the
+		/// check for ever.
+		/// </summary>
+		private int ReadDownloadBlock(Stream stream, byte[] buffer)
+		{
+			var timeout = _httpClient.Timeout;
+			using (var cancel = new CancellationTokenSource())
+			{
+				var read = stream.ReadAsync(
+					buffer, 0, buffer.Length, cancel.Token);
+				if (((IAsyncResult)read).AsyncWaitHandle.WaitOne(timeout) == false)
+				{
+					cancel.Cancel();
+					throw new TimeoutException(
+						$"No data arrived within the client's timeout of {timeout}.");
+				}
+				return read.GetAwaiter().GetResult();
+			}
+		}
 
 		/// <summary>
 		/// Runs one read of a data file download. A read that fails, such as
