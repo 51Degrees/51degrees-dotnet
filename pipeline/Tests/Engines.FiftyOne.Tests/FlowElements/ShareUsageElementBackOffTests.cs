@@ -398,6 +398,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// Opens the queue, so a test can fill it with more than one
         /// message without a send starting. A message holds at most 4
         /// entries, and one failed send pauses sending for 60 seconds.
+        /// Disposal has no time bound, so what it sends does not depend on
+        /// how fast the machine is.
         /// </summary>
         private class QueueOpenElement : ShareUsageElement
         {
@@ -416,6 +418,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                       recoveryMultiplier: 2)
             {
             }
+
+            internal override int DisposeTimeoutMilliseconds =>
+                Timeout.Infinite;
 
             public void Enqueue(string clientIp) =>
                 EvidenceCollection.Add(
