@@ -32,6 +32,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Threading;
 
 namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 {
@@ -49,6 +50,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<CloudRequestData> _dataLogger;
+
+        // 1 once the deprecation of the old environment variable has been
+        // logged, so that a process logs it once.
+        private static int _oldEndpointNameLogged;
         private readonly HttpClient _httpClient;
 
         // Note - Defaults for these fields are set in the Build method.
@@ -390,21 +395,27 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             CheckCredentials();
 
             // If any of the endpoints are not set, then use the environment variable if
-            // specified, or the default base url if not.
-            var endpoint = Environment.GetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR) ?? 
-                Constants.CLOUD_URI_DEFAULT;
+            // specified, or the default base url if not. The environment
+            // is not read when every endpoint has been set.
+            if (string.IsNullOrWhiteSpace(_dataEndpoint) ||
+                string.IsNullOrWhiteSpace(_propertiesEndpoint) ||
+                string.IsNullOrWhiteSpace(_evidenceKeysEndpoint))
+            {
+                var endpoint = EndpointFromEnvironment() ??
+                    Constants.CLOUD_URI_DEFAULT;
 
-            if (string.IsNullOrWhiteSpace(_dataEndpoint))
-            {
-                SetDataEndpoint(endpoint + Constants.DATA_FILENAME);
-            }
-            if (string.IsNullOrWhiteSpace(_propertiesEndpoint))
-            {
-                SetPropertiesEndpoint(endpoint + Constants.PROPERTIES_FILENAME);
-            }
-            if (string.IsNullOrWhiteSpace(_evidenceKeysEndpoint))
-            {
-                SetEvidenceKeysEndpoint(endpoint + Constants.EVIDENCE_KEYS_FILENAME);
+                if (string.IsNullOrWhiteSpace(_dataEndpoint))
+                {
+                    SetDataEndpoint(endpoint + Constants.DATA_FILENAME);
+                }
+                if (string.IsNullOrWhiteSpace(_propertiesEndpoint))
+                {
+                    SetPropertiesEndpoint(endpoint + Constants.PROPERTIES_FILENAME);
+                }
+                if (string.IsNullOrWhiteSpace(_evidenceKeysEndpoint))
+                {
+                    SetEvidenceKeysEndpoint(endpoint + Constants.EVIDENCE_KEYS_FILENAME);
+                }
             }
 
             var engine = BuildEngine();
@@ -431,6 +442,45 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 throw;
             }
             return engine;
+        }
+
+        /// <summary>
+        /// The cloud service URL the environment gives, or null when no
+        /// variable holds one. <see cref="Constants.CLOUD_ENDPOINT_ENV_VAR"/>
+        /// is read first. The old variable is read only when that one is
+        /// unset or empty, and reading a value from it is logged as
+        /// deprecated once in the process.
+        /// </summary>
+        private string EndpointFromEnvironment()
+        {
+            var endpoint = Environment.GetEnvironmentVariable(
+                Constants.CLOUD_ENDPOINT_ENV_VAR);
+            if (string.IsNullOrEmpty(endpoint) == false)
+            {
+                return endpoint;
+            }
+
+#pragma warning disable CS0618 // The obsolete name is the one read here.
+            const string oldName = Constants.FOD_CLOUD_API_URL;
+#pragma warning restore CS0618
+            var oldEndpoint = Environment.GetEnvironmentVariable(oldName);
+            if (string.IsNullOrEmpty(oldEndpoint))
+            {
+                return null;
+            }
+
+            if (Interlocked.Exchange(ref _oldEndpointNameLogged, 1) == 0)
+            {
+                _loggerFactory.CreateLogger<CloudRequestEngineBuilder>()
+                    .LogWarning(
+                        $"The environment variable {oldName} is " +
+                        $"deprecated and " +
+                        $"{Constants.CLOUD_ENDPOINT_ENV_VAR} replaces it. " +
+                        $"The cloud endpoint was read from {oldName}. Set " +
+                        $"{Constants.CLOUD_ENDPOINT_ENV_VAR} to the same " +
+                        $"value instead.");
+            }
+            return oldEndpoint;
         }
 
         private static string TrimOrEmpty(string value)

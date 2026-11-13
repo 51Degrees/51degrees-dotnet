@@ -21,8 +21,9 @@ $PSNativeCommandUseErrorActionPreference = $true
 $Filter = "^FiftyOne\.(?!DeviceDetection\.Example\.Tests\.Web\.dll$).*Examples?\.Tests.*\.dll$"
 # A run can be narrowed to some assemblies by setting _51DEGREES_TEST_FILTER,
 # which the probe workflow does.
-if ($env:_51DEGREES_TEST_FILTER) {
-    $Filter = $env:_51DEGREES_TEST_FILTER
+$TestFilter = & "$PSScriptRoot/test-filter.ps1"
+if ($TestFilter) {
+    $Filter = $TestFilter
 }
 # A test is treated as hung after 20 minutes, the limit the separate examples
 # repository allowed, because the IP Intelligence examples load the 6 GB

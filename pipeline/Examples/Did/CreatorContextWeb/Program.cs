@@ -79,7 +79,8 @@ using Examples.Did.CreatorContextWeb;
 using FiftyOne.Did.Client;
 using Microsoft.AspNetCore.Mvc;
 
-var resource = Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
+var resource = EnvironmentSetting.Read(
+    "_51DEGREES_RESOURCE_KEY", "RESOURCE_KEY");
 if (string.IsNullOrEmpty(resource))
 {
     Console.Error.WriteLine(
@@ -87,7 +88,8 @@ if (string.IsNullOrEmpty(resource))
         + "resource key of the page.");
     return 1;
 }
-var licence = Environment.GetEnvironmentVariable("_51DEGREES_LICENSE_KEY");
+var licence = EnvironmentSetting.Read(
+    "_51DEGREES_LICENSE_KEY", "LICENSE_KEY");
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5100";
 if (string.IsNullOrEmpty(licence))
 {

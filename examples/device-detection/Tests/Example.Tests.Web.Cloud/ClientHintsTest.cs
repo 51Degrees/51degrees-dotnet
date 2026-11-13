@@ -47,9 +47,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
         [TestInitialize]
         public void Init()
         {
-            ExampleUtils.GetKeyFromEnv(
-                ExampleUtils.CLOUD_END_POINT_ENV_VAR,
-                v => CloudEndPoint = v);
+            var endPoint = ExampleUtils.FromEnvironment(
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
+                ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
+            CloudEndPoint = string.IsNullOrWhiteSpace(endPoint)
+                ? string.Empty
+                : endPoint;
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

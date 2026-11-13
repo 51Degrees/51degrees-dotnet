@@ -91,8 +91,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                })
                .Verifiable();
 
-            // Un-set cloud URL environment variable.
+            // Un-set cloud URL environment variable, under both of its names.
             Environment.SetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR, null);
+#pragma warning disable CS0618 // The old name is still read.
+            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, null);
+#pragma warning restore CS0618
         }
 
         /// <summary>
@@ -440,8 +443,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         [TestCleanup]
         public void Cleanup()
         {
-            // Un-set cloud URL environment variable.
+            // Un-set cloud URL environment variable, under both of its names.
             Environment.SetEnvironmentVariable(Constants.CLOUD_ENDPOINT_ENV_VAR, null);
+#pragma warning disable CS0618 // The old name is still read.
+            Environment.SetEnvironmentVariable(Constants.FOD_CLOUD_API_URL, null);
+#pragma warning restore CS0618
         }
     }
 }
