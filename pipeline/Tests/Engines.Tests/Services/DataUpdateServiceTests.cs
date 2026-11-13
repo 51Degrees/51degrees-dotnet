@@ -827,6 +827,135 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         }
 
         /// <summary>
+        /// A stream that gives the first bytes of a body and then fails, as
+        /// a download does when the connection drops before the body ends.
+        /// </summary>
+        private sealed class CutShortStream : MemoryStream
+        {
+            internal const string FailureText = "The body ended early.";
+
+            public CutShortStream(byte[] body, int length)
+                : base(body, 0, length)
+            {
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                var read = base.Read(buffer, offset, count);
+                if (read == 0)
+                {
+                    throw new IOException(FailureText);
+                }
+                return read;
+            }
+
+            public override int Read(Span<byte> buffer)
+            {
+                var read = base.Read(buffer);
+                if (read == 0)
+                {
+                    throw new IOException(FailureText);
+                }
+                return read;
+            }
+
+            public override Task<int> ReadAsync(
+                byte[] buffer, int offset, int count,
+                CancellationToken cancellationToken) =>
+                Task.FromResult(Read(buffer, offset, count));
+
+            public override ValueTask<int> ReadAsync(
+                Memory<byte> buffer,
+                CancellationToken cancellationToken = default) =>
+                new ValueTask<int>(Read(buffer.Span));
+        }
+
+        /// <summary>
+        /// A download whose body ends early is reported as the failure to
+        /// access the data update service, the first row of the Errors
+        /// table in the data updates specification. The status is
+        /// AUTO_UPDATE_HTTPS_ERR, and the service logs one entry at Error,
+        /// "Error during check for data update", with an error attached
+        /// that carries that row's message and the cause.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_UpdateFromUrl_BodyEndsEarly()
+        {
+            // Arrange
+            ConfigureRealFileSystem();
+            ConfigureTimerImmediateCallbackOnce();
+            var body = File.ReadAllBytes(@"Resources/file.gz");
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Returns(() => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StreamContent(
+                        new CutShortStream(body, body.Length / 2)),
+                });
+            ManualResetEventSlim completeFlag = new ManualResetEventSlim(false);
+            DataUpdateCompleteArgs completeEventArgs = null;
+            _dataUpdate.CheckForUpdateComplete += (object sender, DataUpdateCompleteArgs e) =>
+            {
+                completeEventArgs = e;
+                completeFlag.Set();
+            };
+
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            string tempPath = Path.GetTempPath();
+            string dataFile = Path.GetTempFileName();
+            if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            try
+            {
+                engine.Setup(e => e.TempDataDirPath).Returns(tempPath);
+                var config = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    DataUpdateUrl = @"http://www.test.com",
+                    DataFilePath = dataFile,
+                    VerifyMd5 = false,
+                    DecompressContent = true,
+                    FileSystemWatcherEnabled = false,
+                    VerifyModifiedSince = false,
+                    UpdateOnStartup = false
+                };
+                var file = new AspectEngineDataFile()
+                {
+                    Engine = engine.Object,
+                    Configuration = config
+                };
+                engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+
+                // Act
+                _dataUpdate.RegisterDataFile(file);
+                completeFlag.Wait(TEST_TIMEOUT_MS);
+
+                DumpLoggerLogs();
+
+                // Assert
+                Assert.IsTrue(completeFlag.IsSet, "The 'CheckForUpdateComplete' " +
+                    "event was never fired");
+                engine.Verify(e => e.RefreshData(config.Identifier), Times.Never());
+                Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR, completeEventArgs.Status);
+                _ignoreErrors = 1;
+                var errors = _logger.ExtendedEntries
+                    .Where(e => e.LogLevel == LogLevel.Error)
+                    .ToList();
+                Assert.AreEqual(1, errors.Count);
+                Assert.AreEqual("Error during check for data update", errors[0].Message);
+                var error = errors[0].Exception as DataUpdateException;
+                Assert.IsNotNull(error, "The error logged is not a DataUpdateException.");
+                Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR, error.Status);
+                StringAssert.Matches(error.Message, new System.Text.RegularExpressions.Regex(
+                    "^Error accessing data update service at '[^']+' for engine '[^']*'$"));
+                Assert.IsNotNull(error.InnerException, "The cause is not attached.");
+                StringAssert.Contains(error.InnerException.ToString(), CutShortStream.FailureText);
+            }
+            finally
+            {
+                if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            }
+        }
+
+        /// <summary>
         /// The size of the client's buffer for a response body, in bytes,
         /// in the test that a download is not read into memory first. It is
         /// smaller than Resources/file.gz, which is 35 bytes.
