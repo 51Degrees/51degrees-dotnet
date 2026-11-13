@@ -101,12 +101,36 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
         public void TestParallelSerialization(string fileName, string expectedJsonExample)
         {
             var dataFileInfo = TestHelpers.Utils.GetFilePath(fileName);
-            var wrapper = new WrapperHash(dataFileInfo,
+            using (var wrapper = new WrapperHash(dataFileInfo,
                 PerformanceProfiles.MaxPerformance,
-                TestHelpers.Constants.RequiredProperties
-                );
+                TestHelpers.Constants.RequiredProperties))
+            {
+                // The device data is read after every flow data has been
+                // processed, so the flow data is disposed when the test ends.
+                var flowDatas = new List<IFlowData>();
+                try
+                {
+                    SerializeInParallel(
+                        wrapper,
+                        flowDatas,
+                        expectedJsonExample);
+                }
+                finally
+                {
+                    foreach (var flowData in flowDatas)
+                    {
+                        flowData.Dispose();
+                    }
+                }
+            }
+        }
+
+        private static void SerializeInParallel(
+            WrapperHash wrapper,
+            List<IFlowData> flowDatas,
+            string expectedJsonExample)
+        {
             const int N = 20;
-            var flowDatas = new List<IFlowData>();
             string[] results = new string[N];
             var deviceDatas = new List<IDeviceDataHash>();
             var deviceDatasNone = new List<IDeviceDataHash>();
@@ -114,6 +138,7 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
             {
                 {
                     var flowData = wrapper.Pipeline.CreateFlowData();
+                    flowDatas.Add(flowData);
                     flowData.AddEvidence(
                             "header.user-agent",
                             TestHelpers.Constants.MobileUserAgentiOS17);
@@ -121,10 +146,10 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
                     var deviceData = flowData.Get<DeviceDataHash>();
                     Assert.IsNotNull(deviceData);
                     deviceDatas.Add(deviceData);
-                    flowDatas.Add(flowData); //prevent disposing
                 }
                 {
                     var flowData = wrapper.Pipeline.CreateFlowData();
+                    flowDatas.Add(flowData);
                     flowData.AddEvidence("nonevidence", "none");
                     flowData.Process();
                     var deviceData = flowData.Get<DeviceDataHash>();

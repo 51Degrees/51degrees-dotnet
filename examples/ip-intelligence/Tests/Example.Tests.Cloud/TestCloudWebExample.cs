@@ -42,8 +42,8 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
     /// the expected IP Intelligence results for a known IP address.
     /// </summary>
     /// <remarks>
-    /// Requires the <c>51DEGREES_RESOURCE_KEY</c> (or legacy
-    /// <c>SUPER_RESOURCE_KEY</c>) environment variable to be set. It also
+    /// Requires the <c>_51DEGREES_RESOURCE_KEY</c> environment variable to
+    /// be set. It also
     /// requires a trusted HTTPS development certificate, because the example
     /// binds its configured HTTPS endpoints on start-up (run
     /// <c>dotnet dev-certs https --trust</c> once if start-up fails with a
@@ -86,7 +86,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
 
             Assert.IsFalse(
                 string.IsNullOrWhiteSpace(resourceKey),
-                $"Environment variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}' " +
+                $"Environment variable '{ExampleUtils.RESOURCE_KEY_ENV_VAR}' " +
                 $"is not set. Obtain a resource key at " +
                 $"https://configure.51degrees.com and export it to run this test.");
         }

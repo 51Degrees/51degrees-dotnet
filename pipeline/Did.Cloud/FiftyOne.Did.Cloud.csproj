@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <AssemblyName>FiftyOne.Did.Cloud</AssemblyName>
     <Platforms>AnyCPU</Platforms>
     <DocumentationFile>FiftyOne.Did.Cloud.xml</DocumentationFile>
@@ -19,7 +19,7 @@
     <PackageTags>51degrees,51did,fodid,identifier,pipeline,cloud,owid</PackageTags>
     <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
     <PackageIcon>51d-logo.png</PackageIcon>
-    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.did.cloud-fiftyone.did.cloud.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageProjectUrl>https://51degrees.com/developers/51did?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.did.cloud&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <Description>Returns the 51Degrees Identifier (51Did) from the 51Degrees Cloud service through the 51Degrees Pipeline API.</Description>
     <RepositoryType>git</RepositoryType>
     <NeutralLanguage>en</NeutralLanguage>

@@ -30,7 +30,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 {
@@ -38,6 +40,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
     public class ShareUsageTrackerTests
     {
 		private TimeSpan _interval;
+
+		/// <summary>
+		/// An interval longer than any test takes, for the tests that expect a
+		/// repeat to fall inside it however slowly the runner goes.
+		/// </summary>
+		private const int RepeatIntervalMinutes = 10;
 
 		private IEvidenceKeyFilter _evidenceKeyFilter;
 
@@ -56,14 +64,14 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 			_aspSessionCookieName = Engines.Constants.DEFAULT_ASP_COOKIE_NAME;
 
 			_interval = new TimeSpan(0, 0, 0, 0, 50);
-			_evidenceKeyFilter = new EvidenceKeyFilterShareUsage(
+			_evidenceKeyFilter = new EvidenceKeyFilterShareUsageTracker(
 				_blockedHttpHeaders, _includedQueryStringParameters, true, _aspSessionCookieName);
 			_shareUsageTracker = new ShareUsageTracker(new CacheConfiguration()
 				{
 					Builder = new LruPutCacheBuilder(),
 					Size = 1000
 				},
-				_interval,
+				TimeSpan.FromMinutes(RepeatIntervalMinutes),
 				_evidenceKeyFilter);
 
 			_evidenceData = new Dictionary<string, object>()
@@ -104,16 +112,126 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 		[TestMethod]
 		public void ShareUsageTracker_RepeatEvidence_AfterSessionTimeout()
 		{
+			var shareUsageTracker = new ShareUsageTracker(new CacheConfiguration()
+				{
+					Builder = new LruPutCacheBuilder(),
+					Size = 1000
+				},
+				_interval,
+				_evidenceKeyFilter);
+
 			int trackedEvents = 0;
 			for (var i = 0; i < 2; i++)
 			{
-				if (_shareUsageTracker.Track(_data.Object))
+				if (shareUsageTracker.Track(_data.Object))
 					trackedEvents++;
 
                 // Wait some time equal to the interval to elapse.
 				Thread.Sleep(_interval);
 			}
 			Assert.AreEqual(2, trackedEvents);
+		}
+
+		/// <summary>
+		/// A repeat is shared at most once in each interval. Sharing a
+		/// repeat after the interval starts a new interval, so a repeat
+		/// straight after it is not shared.
+		/// </summary>
+		[TestMethod]
+		public void ShareUsageTracker_RepeatEvidence_SharedOncePerInterval()
+		{
+			var interval = TimeSpan.FromMilliseconds(500);
+			var shareUsageTracker = new ShareUsageTracker(new CacheConfiguration()
+				{
+					Builder = new LruPutCacheBuilder(),
+					Size = 1000
+				},
+				interval,
+				_evidenceKeyFilter);
+
+			Assert.IsTrue(shareUsageTracker.Track(_data.Object),
+				"New evidence was not shared.");
+			Thread.Sleep(interval + TimeSpan.FromMilliseconds(250));
+			Assert.IsTrue(shareUsageTracker.Track(_data.Object),
+				"A repeat after the interval was not shared.");
+			Assert.IsFalse(shareUsageTracker.Track(_data.Object),
+				"A repeat straight after a repeat was shared was also " +
+				"shared, so the time it was shared was not stored.");
+		}
+
+		/// <summary>
+		/// The time stored is UTC, so a change of the local time zone offset
+		/// cannot make a repeat look early or late.
+		/// </summary>
+		[TestMethod]
+		public void ShareUsageTracker_RepeatEvidence_TimeIsUtc()
+		{
+			_shareUsageTracker.Track(_data.Object);
+
+			Assert.AreEqual(
+				DateTimeKind.Utc,
+				_shareUsageTracker[_data.Object].Value.Kind);
+		}
+
+		/// <summary>
+		/// A repeat inside the interval is not shared and leaves the time
+		/// it was last shared as it was.
+		/// </summary>
+		[TestMethod]
+		public void ShareUsageTracker_RepeatEvidence_InsideIntervalKeepsTime()
+		{
+			_shareUsageTracker.Track(_data.Object);
+			var shared = _shareUsageTracker[_data.Object];
+			Thread.Sleep(20);
+
+			Assert.IsFalse(_shareUsageTracker.Track(_data.Object));
+
+			Assert.AreEqual(shared, _shareUsageTracker[_data.Object]);
+		}
+
+		/// <summary>
+		/// Evidence tracked by several threads at once is shared by one of
+		/// them only. Each thread waits for the others after it starts to
+		/// track, so that all of them look for the evidence together.
+		/// </summary>
+		[TestMethod]
+		public void ShareUsageTracker_RepeatEvidence_SharedOnceAcrossThreads()
+		{
+			const int rounds = 3;
+			const int threads = 8;
+			var waitForOthers = TimeSpan.FromMilliseconds(100);
+			for (var round = 0; round < rounds; round++)
+			{
+				var key = new DataKeyBuilder();
+				key.Add(100, "header.user-agent", "agent" + round);
+				var built = key.Build();
+				var data = MockFlowData.CreateFromEvidence(_evidenceData, false);
+				using (var arrived = new ThreadLocal<bool>())
+				using (var together = new Barrier(threads))
+				{
+					data.Setup(d => d.GenerateKey(It.IsAny<IEvidenceKeyFilter>()))
+						.Returns(() =>
+						{
+							if (arrived.Value == false)
+							{
+								arrived.Value = true;
+								together.SignalAndWait(waitForOthers);
+							}
+							return built;
+						});
+					var tasks = Enumerable.Range(0, threads)
+						.Select(_ => Task.Factory.StartNew(
+							() => _shareUsageTracker.Track(data.Object),
+							TaskCreationOptions.LongRunning))
+						.ToArray();
+					Task.WaitAll(tasks);
+
+					Assert.AreEqual(
+						1,
+						tasks.Count(t => t.Result),
+						$"Round {round} shared the same evidence more than once.");
+				}
+			}
 		}
 
 		/// <summary>
@@ -161,14 +279,14 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Trackers
 		[TestMethod]
 		public void ShareUsageTracker_Session_DoNotTrack()
 		{
-			var evidenceKeyFilter = new EvidenceKeyFilterShareUsage(
+			var evidenceKeyFilter = new EvidenceKeyFilterShareUsageTracker(
 				_blockedHttpHeaders, _includedQueryStringParameters, false, _aspSessionCookieName);
 			var shareUsageTracker = new ShareUsageTracker(new CacheConfiguration()
 			{
 				Builder = new LruPutCacheBuilder(),
 				Size = 1000
 			},
-			_interval,
+			TimeSpan.FromMinutes(RepeatIntervalMinutes),
 			evidenceKeyFilter);
 			
 			int trackedEvents = 0;

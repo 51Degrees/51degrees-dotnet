@@ -21,6 +21,8 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines;
+using FiftyOne.Pipeline.Engines.Data;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Extensions.Logging;
 using System;
@@ -33,17 +35,11 @@ namespace FiftyOne.DeviceDetection.Cloud.Tests
         private IPipeline _pipeline;
 
         /// <summary>
-        /// The aligned environment variable name used to supply the resource
-        /// key. This is checked before the legacy name.
+        /// Seconds a request to the cloud service may take. The default of
+        /// 2 seconds is short for a first request from a machine that has
+        /// not yet connected to the service.
         /// </summary>
-        private const string _resource_key_env_variable = "_51DEGREES_RESOURCE_KEY";
-
-        /// <summary>
-        /// The legacy environment variable name used to supply the resource
-        /// key. Retained for backwards compatibility and checked when
-        /// <see cref="_resource_key_env_variable"/> is not set.
-        /// </summary>
-        private const string _legacy_resource_key_env_variable = "SUPER_RESOURCE_KEY";
+        private const int _cloud_timeout_seconds = 10;
 
         [TestInitialize]
         public void Init()
@@ -57,44 +53,46 @@ namespace FiftyOne.DeviceDetection.Cloud.Tests
         /// property is correct.
         /// This is an integration test that uses the live cloud service
         /// so any problems with that service could affect the result
-        /// of this test.
+        /// of this test. It fails when no resource key is set.
         /// </summary>
         [TestMethod]
         public void CloudIntegrationTest()
         {
-            var resourceKey = System.Environment.GetEnvironmentVariable(
-                _resource_key_env_variable);
-            if (string.IsNullOrWhiteSpace(resourceKey))
-            {
-                resourceKey = System.Environment.GetEnvironmentVariable(
-                    _legacy_resource_key_env_variable);
-            }
+            var resourceKey = LiveCloudKey.Require(
+                "device", "the DeviceType of a User-Agent");
 
-            if (resourceKey != null)
+            _pipeline = new DeviceDetectionPipelineBuilder(
+                new LoggerFactory(), new System.Net.Http.HttpClient())
+                .UseCloud(resourceKey)
+                .SetCloudRequestTimeOutSeconds(_cloud_timeout_seconds)
+                .Build();
+            using (var data = _pipeline.CreateFlowData())
             {
-                _pipeline = new DeviceDetectionPipelineBuilder(
-                    new LoggerFactory(), new System.Net.Http.HttpClient())
-                    .UseCloud(resourceKey)
-                    .Build();
-                using (var data = _pipeline.CreateFlowData())
+                data.AddEvidence("header.user-agent",
+                    "Mozilla/5.0 (Linux; Android 8.0.0; Pixel 2 XL " +
+                    "Build/OPD1.170816.004) AppleWebKit/537.36 " +
+                    "(KHTML, like Gecko) Chrome/80.0.3987.106 " +
+                    "Mobile Safari/537.36");
+                data.Process();
+
+                var deviceData = data.Get<IDeviceData>();
+                Assert.IsNotNull(deviceData);
+                IAspectPropertyValue<string> deviceType = null;
+                try
                 {
-                    data.AddEvidence("header.user-agent",
-                        "Mozilla/5.0 (Linux; Android 8.0.0; Pixel 2 XL " +
-                        "Build/OPD1.170816.004) AppleWebKit/537.36 " +
-                        "(KHTML, like Gecko) Chrome/80.0.3987.106 " +
-                        "Mobile Safari/537.36");
-                    data.Process();
-
-                    var deviceData = data.Get<IDeviceData>();
-                    Assert.IsNotNull(deviceData);
-                    Assert.AreEqual("SmartPhone", deviceData.DeviceType.Value);
+                    deviceType = deviceData.DeviceType;
                 }
-            }
-            else
-            {
-                Assert.Inconclusive($"No resource key supplied in " +
-                    $"environment variable '{_resource_key_env_variable}' " +
-                    $"(or the legacy '{_legacy_resource_key_env_variable}')");
+                catch (PropertyMissingException ex)
+                {
+                    Assert.Fail(LiveCloudKey.Missing(
+                        "DeviceType", ex.Message, "device"));
+                }
+                if (deviceType.HasValue == false)
+                {
+                    Assert.Fail(LiveCloudKey.Missing(
+                        "DeviceType", deviceType.NoValueMessage, "device"));
+                }
+                Assert.AreEqual("SmartPhone", deviceType.Value);
             }
         }
 
@@ -124,6 +122,7 @@ namespace FiftyOne.DeviceDetection.Cloud.Tests
                 _pipeline = new DeviceDetectionPipelineBuilder(
                     new LoggerFactory(), new System.Net.Http.HttpClient())
                     .UseCloud(resourceKey)
+                    .SetCloudRequestTimeOutSeconds(_cloud_timeout_seconds)
                     .SetCloudRequestOrigin(origin)
                     .Build();
                 using (var data = _pipeline.CreateFlowData())

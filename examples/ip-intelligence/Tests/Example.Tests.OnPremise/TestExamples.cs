@@ -51,7 +51,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.OnPremise;
 /// These are integration tests: each example builds a real on-premise IP
 /// Intelligence engine against the enterprise data file. They therefore
 /// require the data file to be present (located automatically, or via the
-/// <c>51DEGREES_IPI_PATH</c> environment variable) and are comparatively
+/// <c>_51DEGREES_IPI_PATH</c> environment variable) and are comparatively
 /// slow. They go beyond pure smoke testing by asserting on the example output
 /// (expected section headers, echoed IPv4 evidence and known property names)
 /// rather than just that the example does not crash.
@@ -127,7 +127,7 @@ public class TestExamples
             string.IsNullOrWhiteSpace(DataFile) || File.Exists(DataFile) == false,
             $"This test requires an on-premise IP Intelligence data file. Place a " +
             $"'{Constants.ENTERPRISE_IPI_DATA_FILE_NAME}' file in the repository or " +
-            $"set the '{Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR}' environment " +
+            $"set the '{Constants.IPI_PATH_ENV_VAR}' environment " +
             $"variable to its path.");
     }
 
@@ -147,7 +147,7 @@ public class TestExamples
             Assert.Inconclusive(
                 "The configured IP Intelligence data file could not be loaded by " +
                 "the native engine (likely a data/engine version mismatch). Update " +
-                "the ip-intelligence-data submodule or the engine package. " +
+                "the data file or the engine package. " +
                 $"Details: {ex.Message}");
         }
     }
@@ -301,34 +301,56 @@ public class TestExamples
     }
 
     /// <summary>
+    /// The number of truth records the Compare example test reads.
+    /// </summary>
+    /// <remarks>
+    /// The full evidence file has 50,000 uniform records and took four
+    /// minutes. Both address families appear within the first dozen, and the
+    /// records the example rejects are covered by
+    /// <see cref="TestCompareBadTruths"/>, so the rest add time and no paths.
+    /// </remarks>
+    private const int CompareTruthRecords = 1000;
+
+    /// <summary>
     /// Test the Comparison Example.
-    /// Asserts the comparison wrote a non-empty report for the GeoIP truth
-    /// evidence rather than just completing.
+    /// Runs the example over the first records of the GeoIP truth evidence
+    /// and asserts the report has the comparison columns and at least one
+    /// compared record.
     /// </summary>
     [TestMethod]
     public void Example_OnPremise_CompareConsole()
     {
         VerifyDataFileAvailable();
 
+        var truthFile = Path.GetTempFileName();
         var tempfile = Path.GetTempFileName();
         try
         {
+            File.WriteAllLines(
+                truthFile,
+                File.ReadLines(GeoIpTruthEvidenceFile)
+                    .Take(CompareTruthRecords + 1));
             using (var writer = new StreamWriter(File.Create(tempfile)))
             {
                 RunResilient(() =>
                     Examples.OnPremise.Compare.Program.Example.Run(
                         DataFile,
-                        GeoIpTruthEvidenceFile,
+                        truthFile,
                         writer,
                         new LoggerFactory(),
                         CancellationToken.None).Wait());
             }
 
-            Assert.IsGreaterThan(0, new FileInfo(tempfile).Length,
-                "Comparison example should write a non-empty comparison report.");
+            var lines = File.ReadAllLines(tempfile);
+            Assert.IsGreaterThan(1, lines.Length,
+                "Comparison example should write a header and at least one " +
+                "compared record.");
+            Assert.Contains("DistanceKms", lines[0],
+                "The report header should contain the DistanceKms column.");
         }
         finally
         {
+            File.Delete(truthFile);
             File.Delete(tempfile);
         }
     }
@@ -397,12 +419,12 @@ public class TestExamples
         // unwinding. The example works out each area when it first meets it,
         // so ranges are processed from the start. Reading the Enterprise file
         // over a network share, the slowest case tried, gave metrics within
-        // 30 seconds, so a minute leaves room for a slow runner.
+        // 15 seconds, so half a minute leaves room for a slow runner.
         //
         // A runner that has processed no ranges when this fires reports
         // Inconclusive below rather than asserting on any metrics.
         using var cancellation = new CancellationTokenSource(
-            TimeSpan.FromMinutes(1));
+            TimeSpan.FromSeconds(30));
         try
         {
             using (var writer = new StreamWriter(File.Create(tempfile)))
@@ -565,7 +587,7 @@ public class TestExamples
             Assert.Inconclusive(
                 "The combined example also requires a device detection data file " +
                 "(one of " +
-                $"'{string.Join("', '", Examples.Mixed.OnPremise.GettingStartedConsole.Constants.HASH_FILE_NAMES)}'). " +
+                $"'{string.Join("', '", HashFileNames)}'). " +
                 "It was not found. Supply it (CI fetches it as an asset) to run " +
                 "this test.");
         }
@@ -587,14 +609,23 @@ public class TestExamples
     }
 
     /// <summary>
-    /// Locate a device detection data file using the same candidate file names
-    /// and search the combined example itself uses. Returns null when none can
-    /// be found.
+    /// Device detection data file names, the fullest first, so that the test
+    /// of the combined example uses the Enterprise data file where CI has it.
+    /// </summary>
+    private static readonly string[] HashFileNames =
+    {
+        "TAC-HashV41.hash",
+        "51Degrees-EnterpriseV4.1.hash",
+        Examples.Mixed.OnPremise.GettingStartedConsole.Constants.LITE_HASH_FILE_NAME
+    };
+
+    /// <summary>
+    /// Locate a device detection data file, the fullest available. Returns
+    /// null when none can be found.
     /// </summary>
     private static string FindDeviceDataFile()
     {
-        foreach (var fileName in
-            Examples.Mixed.OnPremise.GettingStartedConsole.Constants.HASH_FILE_NAMES)
+        foreach (var fileName in HashFileNames)
         {
             var path = ExampleUtils.FindFile(fileName);
             if (string.IsNullOrWhiteSpace(path) == false)

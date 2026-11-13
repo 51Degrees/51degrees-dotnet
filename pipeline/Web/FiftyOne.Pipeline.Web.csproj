@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <Platforms>AnyCPU</Platforms>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <DocumentationFile>FiftyOne.Pipeline.Web.xml</DocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
-    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=web-integration-fiftyone.pipeline.web-fiftyone.pipeline.web.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageProjectUrl>https://51degrees.com/build-your-own?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.web&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <Description>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains components that integrate the 51Degrees Pipeline API into ASP.NET and ASP.NET Core web projects.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
@@ -32,6 +32,13 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.33" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.33" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net10.0' ">
+    <!-- The same references at the ASP.NET Core 10 versions. The nuspec file
+         in the parent directory lists them too. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.14" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md">

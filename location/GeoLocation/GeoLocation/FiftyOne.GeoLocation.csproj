@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <Platforms>AnyCPU;x64;x86</Platforms>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -20,7 +20,7 @@
 	  <PackageTags>51degrees;location;geolocation;longitude;latitude</PackageTags>
 	  <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
 	  <PackageIcon>51d-logo.png</PackageIcon>
-	  <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.geolocation-fiftyone.geolocation.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+	  <PackageProjectUrl>https://51degrees.com/geolocation?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.geolocation&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <NeutralLanguage>en</NeutralLanguage>
     <PackageReadmeFile>README.md</PackageReadmeFile>

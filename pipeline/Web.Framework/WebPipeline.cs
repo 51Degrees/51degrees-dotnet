@@ -40,6 +40,7 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Threading;
 using System.Web;
+using System.Web.Hosting;
 
 namespace FiftyOne.Pipeline.Web.Framework
 {
@@ -61,6 +62,18 @@ namespace FiftyOne.Pipeline.Web.Framework
         /// Whether or not set header properties are enabled.
         /// </summary>
         public bool SetHeaderPropertiesEnabled => _options.UseSetHeaderProperties;
+
+        /// <summary>
+        /// The path of the request that is answered with the client-side
+        /// JavaScript.
+        /// </summary>
+        public string JavaScriptPath => _options.JavaScriptPath;
+
+        /// <summary>
+        /// The path of the request that is answered with the client-side
+        /// JSON.
+        /// </summary>
+        public string JsonPath => _options.JsonPath;
 
         /// <summary>
         /// Extra pipeline options which only apply to an implementation in a
@@ -125,12 +138,21 @@ namespace FiftyOne.Pipeline.Web.Framework
                     StringComparison.OrdinalIgnoreCase) >= 0);
             if (sequenceConfig.Any() == false)
             {
-                // The sequence element is not included so add it.
-                // Make sure it's added as the first element.
-                _options.Elements.Insert(0, new ElementOptions()
+                if (_options.SequenceElementEnabled)
                 {
-                    BuilderName = nameof(SequenceElement)
-                });
+                    // The sequence element is not included so add it.
+                    // Make sure it's added as the first element.
+                    _options.Elements.Insert(0, new ElementOptions()
+                    {
+                        BuilderName = nameof(SequenceElement)
+                    });
+                }
+                else if (ClientSideEvidenceEnabled)
+                {
+                    // The JSON builder fails without a sequence number.
+                    throw new PipelineConfigurationException(
+                        Messages.ExceptionNoSequenceElement);
+                }
             }
 
             if (ClientSideEvidenceEnabled)
@@ -170,10 +192,19 @@ namespace FiftyOne.Pipeline.Web.Framework
                 if (jsIndex == -1)
                 {
                     // The javascript builder is not included so add it.
-                    _options.Elements.Add(new ElementOptions()
+                    var javaScriptOptions = new ElementOptions()
                     {
                         BuilderName = nameof(JavaScriptBuilderElement)
-                    });
+                    };
+                    // The script must call back to the path that is
+                    // intercepted.
+                    if (JsonPath !=
+                        PipelineWebIntegrationOptions.DefaultJsonPath)
+                    {
+                        javaScriptOptions.BuildParameters["Endpoint"] =
+                            JsonPath;
+                    }
+                    _options.Elements.Add(javaScriptOptions);
                 }
             }
 
@@ -181,7 +212,8 @@ namespace FiftyOne.Pipeline.Web.Framework
             var setHeadersConfig = _options.Elements.Where(e =>
                 e.BuilderName.IndexOf(nameof(SetHeadersElement),
                     StringComparison.OrdinalIgnoreCase) >= 0);
-            if (setHeadersConfig.Any() == false)
+            if (setHeadersConfig.Any() == false &&
+                _options.SetHeadersElementEnabled)
             {
                 // The set headers element is not included, so add it.
                 // Make sure it's added as the last element.
@@ -190,6 +222,8 @@ namespace FiftyOne.Pipeline.Web.Framework
                     BuilderName = nameof(SetHeadersElement)
                 });
             }
+
+            ResolveApplicationRootPaths(_options, HostingEnvironment.MapPath);
 
             // Set up common services.
             var loggerFactory = new LoggerFactory();
@@ -210,6 +244,27 @@ namespace FiftyOne.Pipeline.Web.Framework
                 .BuildFromConfiguration(_options);
         }
 
+
+        /// <summary>
+        /// Replace each path parameter that starts with '~/' or '~\' with
+        /// the path returned by <paramref name="mapPath"/>. Any other path
+        /// is left as it is.
+        /// </summary>
+        /// <param name="options">
+        /// Pipeline options to update in place.
+        /// </param>
+        /// <param name="mapPath">
+        /// Maps a virtual path to a physical one, as
+        /// <see cref="HostingEnvironment.MapPath(string)"/> does.
+        /// </param>
+        internal static void ResolveApplicationRootPaths(
+            PipelineOptions options,
+            Func<string, string> mapPath)
+        {
+            ApplicationRootPaths.ResolvePaths(
+                options,
+                p => mapPath(p.Replace('\\', '/')));
+        }
 
         /// <summary>
         /// Populate a FlowData's evidence from the web request, and process
@@ -258,26 +313,14 @@ namespace FiftyOne.Pipeline.Web.Framework
                     throw;
                 }
 
-                filler.CheckAndAddAll("header.", request.Headers, (headers, k) => headers[k]);
-                filler.CheckAndAddAll("cookie.", request.Cookies, (cookies, k) => cookies[k].Value);
-                filler.CheckAndAddAll("query.", request.QueryString, (query, k) => query[k]);
-                if (request.RequestContext.HttpContext.Session is HttpSessionStateBase session)
-                {
-                    filler.CheckAndAdd("session", new AspFrameworkSession(session));
-                    filler.CheckAndAddAll("", session.Keys, (k) => session[k]);
-                }
+                Fill(ref filler, request);
 
-                // Add form parameters to the evidence.
-                if (request.HttpMethod == Shared.Constants.METHOD_POST &&
-                    Shared.Constants.CONTENT_TYPE_FORM.Contains(request.ContentType))
-                {
-                    filler.CheckAndAddAll(Core.Constants.EVIDENCE_QUERY_PREFIX
-                        + Core.Constants.EVIDENCE_SEPERATOR, request.Form, (form, k) => form[k]);
-                }
-
-                filler.CheckAndAdd("server.client-ip", request.UserHostAddress);
-                filler.AddRequestProtocolToEvidence(request);
-                filler.AddRequestLineToEvidence(request);
+                // The usage sharing element accepts no evidence and reads
+                // the whole request from here instead, so this is added
+                // whatever the pipeline accepts.
+                flowData.AddEvidence(
+                    Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
+                    new RequestView(request));
 
                 if (filler.Errors is IList<Exception> errors)
                 {
@@ -333,6 +376,57 @@ namespace FiftyOne.Pipeline.Web.Framework
         }
 
         /// <summary>
+        /// Add the values of the request to the filler, being the evidence
+        /// the pipeline accepts or every value for a
+        /// <see cref="RequestView"/>.
+        /// </summary>
+        /// <param name="filler">Where the values go.</param>
+        /// <param name="request">The request to read.</param>
+        private static void Fill(ref EvidenceFiller filler, HttpRequest request)
+        {
+            filler.CheckAndAddAll("header.", request.Headers, (headers, k) => headers[k]);
+            filler.CheckAndAddAll("cookie.", request.Cookies, (cookies, k) => cookies[k].Value);
+            filler.CheckAndAddAll("query.", request.QueryString, (query, k) => query[k]);
+            if (request.RequestContext.HttpContext.Session is HttpSessionStateBase session)
+            {
+                filler.AddSessionToEvidence(session);
+            }
+
+            // Add form parameters to the evidence.
+            if (request.HttpMethod == Shared.Constants.METHOD_POST &&
+                Shared.Constants.CONTENT_TYPE_FORM.Contains(request.ContentType))
+            {
+                filler.CheckAndAddAll(Core.Constants.EVIDENCE_QUERY_PREFIX
+                    + Core.Constants.EVIDENCE_SEPERATOR, request.Form, (form, k) => form[k]);
+            }
+
+            filler.CheckAndAdd("server.client-ip", request.UserHostAddress);
+            filler.AddRequestProtocolToEvidence(request);
+            filler.AddRequestLineToEvidence(request);
+        }
+
+        /// <summary>
+        /// The request as evidence for the usage sharing element, read from
+        /// the request the first time it is used.
+        /// </summary>
+        private sealed class RequestView : RequestEvidenceView
+        {
+            private readonly HttpRequest _request;
+
+            public RequestView(HttpRequest request)
+            {
+                _request = request;
+            }
+
+            protected override void AddValues(
+                IDictionary<string, object> values)
+            {
+                var filler = new EvidenceFiller(values);
+                Fill(ref filler, _request);
+            }
+        }
+
+        /// <summary>
         /// A convenience wrapper around IFlowData.
         /// Reduces amount of calls to `IFlowData.EvidenceKeyFilter`
         /// </summary>
@@ -340,6 +434,7 @@ namespace FiftyOne.Pipeline.Web.Framework
         {
             private readonly IFlowData _flowData;
             private readonly IEvidenceKeyFilter _evidenceKeyFilter;
+            private readonly IDictionary<string, object> _values;
             private IList<Exception> _errors;
 
             /// <summary>
@@ -362,8 +457,37 @@ namespace FiftyOne.Pipeline.Web.Framework
                 {
                     throw new PipelineException($"Failed to retrieve {nameof(flowData.EvidenceKeyFilter)} from {nameof(flowData)}");
                 }
+                _values = null;
                 _errors = null;
             }
+
+            /// <summary>
+            /// A filler that keeps every value in the dictionary, for a
+            /// <see cref="RequestView"/>.
+            /// </summary>
+            /// <param name="values">The dictionary to add values to.</param>
+            internal EvidenceFiller(IDictionary<string, object> values)
+            {
+                _flowData = null;
+                _evidenceKeyFilter = null;
+                _values = values;
+                _errors = null;
+            }
+
+            /// <summary>
+            /// A filler that keeps every value in the dictionary.
+            /// </summary>
+            /// <param name="values">The dictionary to add values to.</param>
+            /// <returns>The filler.</returns>
+            public static EvidenceFiller ForValues(
+                IDictionary<string, object> values) =>
+                new EvidenceFiller(values);
+
+            /// <summary>
+            /// True if a value for the key would be kept.
+            /// </summary>
+            private bool Wants(string key) =>
+                _values != null || _evidenceKeyFilter.Include(key);
 
             /// <summary>
             /// Check if the given key is needed by the given flowdata.
@@ -379,7 +503,11 @@ namespace FiftyOne.Pipeline.Web.Framework
             {
                 try
                 {
-                    if (_evidenceKeyFilter.Include(key))
+                    if (_values != null)
+                    {
+                        _values[key] = value;
+                    }
+                    else if (_evidenceKeyFilter.Include(key))
                     {
                         _flowData.AddEvidence(key, value);
                     }
@@ -392,6 +520,23 @@ namespace FiftyOne.Pipeline.Web.Framework
                     }
                     _errors.Add(ex);
                 }
+            }
+
+            /// <summary>
+            /// Add the session object and each session value, named with
+            /// the 'session' prefix so the usage sharing rule for session
+            /// values applies to them.
+            /// </summary>
+            /// <param name="session">The session to read.</param>
+            public void AddSessionToEvidence(HttpSessionStateBase session)
+            {
+                const string prefix =
+                    Core.Constants.EVIDENCE_SESSION_PREFIX +
+                    Core.Constants.EVIDENCE_SEPERATOR;
+                CheckAndAdd(
+                    Core.Constants.EVIDENCE_SESSION_KEY,
+                    new AspFrameworkSession(session));
+                CheckAndAddAll(prefix, session.Keys, (k) => session[k]);
             }
 
             /// <summary>
@@ -468,8 +613,7 @@ namespace FiftyOne.Pipeline.Web.Framework
             /// </remarks>
             public void AddRequestLineToEvidence(HttpRequest request)
             {
-                if (_evidenceKeyFilter.Include(
-                    Core.Constants.EVIDENCE_REQUEST_METHOD_KEY))
+                if (Wants(Core.Constants.EVIDENCE_REQUEST_METHOD_KEY))
                 {
                     CheckAndAdd(
                         Core.Constants.EVIDENCE_REQUEST_METHOD_KEY,
@@ -479,22 +623,18 @@ namespace FiftyOne.Pipeline.Web.Framework
                 // The path and the query are split out of the request
                 // target together, so the one reading serves both and is
                 // only done where at least one of them is wanted.
-                if (_evidenceKeyFilter.Include(
-                        Core.Constants.EVIDENCE_REQUEST_PATH_KEY) ||
-                    _evidenceKeyFilter.Include(
-                        Core.Constants.EVIDENCE_REQUEST_QUERY_KEY))
+                if (Wants(Core.Constants.EVIDENCE_REQUEST_PATH_KEY) ||
+                    Wants(Core.Constants.EVIDENCE_REQUEST_QUERY_KEY))
                 {
                     SplitRequestTarget(request, out var path, out var query);
 
-                    if (_evidenceKeyFilter.Include(
-                        Core.Constants.EVIDENCE_REQUEST_PATH_KEY))
+                    if (Wants(Core.Constants.EVIDENCE_REQUEST_PATH_KEY))
                     {
                         CheckAndAdd(
                             Core.Constants.EVIDENCE_REQUEST_PATH_KEY, path);
                     }
 
-                    if (_evidenceKeyFilter.Include(
-                        Core.Constants.EVIDENCE_REQUEST_QUERY_KEY))
+                    if (Wants(Core.Constants.EVIDENCE_REQUEST_QUERY_KEY))
                     {
                         CheckAndAdd(
                             Core.Constants.EVIDENCE_REQUEST_QUERY_KEY, query);

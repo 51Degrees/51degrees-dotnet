@@ -84,7 +84,7 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb
 
             // Add the 51Degrees middleware component.
             // This will pass any incoming requests through the pipeline API, performing both
-            // Device Detection and IP Intelligence in parallel.
+            // Device Detection and IP Intelligence, one after the other.
             // The IFlowData that is used will be stored in the data associated with 
             // the current HTTP session.
             // The IFlowDataAccessor provides an easy way to retrieve this data. See HomeController

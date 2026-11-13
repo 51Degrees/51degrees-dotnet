@@ -207,14 +207,15 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.PerformanceSweep
             if (string.IsNullOrWhiteSpace(dataFile) || File.Exists(dataFile) == false)
             {
                 Console.WriteLine($"Data file not found: '{dataFile}'. Supply one with " +
-                    "'-d <path>', or run 'git submodule update --recursive' to fetch the " +
-                    "bundled Lite file.");
+                    "'-d <path>', or run 'git submodule update --init --recursive' so that " +
+                    "the free Lite file can be downloaded.");
                 return;
             }
             if (string.IsNullOrWhiteSpace(evidenceFile) || File.Exists(evidenceFile) == false)
             {
                 Console.WriteLine($"Evidence file not found: '{evidenceFile}'. Supply one " +
-                    "with '-u <path>', or run 'git submodule update --recursive'.");
+                    "with '-u <path>', or run 'git submodule update --init --recursive' so " +
+                    "that it can be downloaded.");
                 return;
             }
 

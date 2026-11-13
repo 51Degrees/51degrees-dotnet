@@ -94,11 +94,26 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Data
         {
             get
             {
-                var name = String.Join("/",
-                    GetValues().Where(i =>
-                    i.GetProperty().DisplayOrder > 0 && i.Name != "N/A").OrderByDescending(i =>
-                    i.GetProperty().DisplayOrder).Select(i =>
-                    i.Name).Distinct()).Trim();
+                // Each value and its property own native memory, so they are
+                // disposed as soon as their name and display order are read.
+                var values = new List<KeyValuePair<byte, string>>();
+                foreach (var value in GetValues())
+                {
+                    using (value)
+                    using (var property = value.GetProperty())
+                    {
+                        if (property.DisplayOrder > 0 && value.Name != "N/A")
+                        {
+                            values.Add(new KeyValuePair<byte, string>(
+                                property.DisplayOrder,
+                                value.Name));
+                        }
+                    }
+                }
+                var name = String.Join("/", values
+                    .OrderByDescending(i => i.Key)
+                    .Select(i => i.Value)
+                    .Distinct()).Trim();
 
                 if (string.IsNullOrEmpty(name))
                     return ProfileId.ToString(CultureInfo.InvariantCulture);

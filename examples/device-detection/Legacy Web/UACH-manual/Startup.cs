@@ -64,7 +64,7 @@ using Microsoft.Extensions.DependencyInjection;
 ///           "DataFile": "51Degrees-LiteV4.1.hash",
 ///           "CreateTempDataCopy": false,
 ///           "AutoUpdate": false,
-///           "PerformanceProfile": "LowMemory",
+///           "PerformanceProfile": "MaxPerformance",
 ///           "DataFileSystemWatcher": false,
 ///           "DataUpdateOnStartUp": false
 ///         }
@@ -115,13 +115,14 @@ using Microsoft.Extensions.DependencyInjection;
 ///     ...
 ///    public IActionResult Index()
 ///    {
-///        using (var flowData = _pipeline.CreateFlowData())
-///        {
-///            _evidenceService.AddEvidenceFromRequest(flowData, Request);
-///            flowData.Process();
-///            SetHeaderService.SetHeaders(Response.HttpContext, flowData);
-///            return View(flowData);
-///        }
+///        var flowData = _pipeline.CreateFlowData();
+///        // Disposed when the response is sent, after the view has
+///        // read it.
+///        HttpContext.Response.RegisterForDispose(flowData);
+///        _evidenceService.AddEvidenceFromRequest(flowData, Request);
+///        flowData.Process();
+///        SetHeaderService.SetHeaders(Response.HttpContext, flowData);
+///        return View(flowData);
 ///    }
 ///     ...
 /// ```

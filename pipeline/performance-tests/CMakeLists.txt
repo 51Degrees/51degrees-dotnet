@@ -14,21 +14,19 @@ ExternalProject_Add(ApacheBench
 )
 
 
-function(download_file url filename)
-
-if(NOT EXISTS ${filename})
-    file(DOWNLOAD ${url} ${filename}
-        TIMEOUT 60  # seconds
-        TLS_VERIFY ON)
+# The user agents are the data repository's file, which its script downloads
+# when it is missing.
+set(DATA_DIR ${CMAKE_CURRENT_LIST_DIR}/../../cxx/data)
+set(UAS_NAME "20000 User Agents.csv")
+if(NOT EXISTS "${DATA_DIR}/device-detection/${UAS_NAME}")
+    if(WIN32)
+        execute_process(COMMAND powershell -NoProfile -ExecutionPolicy Bypass
+            -File ${DATA_DIR}/get-data-files.ps1 ${UAS_NAME})
+    else()
+        execute_process(COMMAND sh ${DATA_DIR}/get-data-files.sh ${UAS_NAME})
+    endif()
 endif()
-
-endfunction(download_file)
-
-
-download_file(
-    https://media.githubusercontent.com/media/51Degrees/device-detection-data/master/20000%20User%20Agents.csv
-    ./uas.csv
-)
+configure_file("${DATA_DIR}/device-detection/${UAS_NAME}" uas.csv COPYONLY)
 
 add_custom_target(perf ALL
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/runPerf.ps1 ./

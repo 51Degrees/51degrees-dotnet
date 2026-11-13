@@ -106,7 +106,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The value for the ‘sequence’ parameter is not valid. See https://51degrees.com/documentation/_info__error_messages.html#Sequence_value_invalid for more information..
+        ///   Looks up a localized string similar to The value for the ‘sequence’ parameter is not valid. See https://51degrees.com/documentation/_services__cloud__error_messages.html#Sequence_value_invalid for more information..
         /// </summary>
         internal static string MessageFailSequenceNumberParse {
             get {
@@ -156,6 +156,51 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne {
         internal static string MessageShareUsageNoPipelines {
             get {
                 return ResourceManager.GetString("MessageShareUsageNoPipelines", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} usage sharing entries were not sent, because sending did not finish within {1} ms when closing down..
+        /// </summary>
+        internal static string MessageShareUsageNotSentOnClose {
+            get {
+                return ResourceManager.GetString("MessageShareUsageNotSentOnClose", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} usage sharing entries were not sent, as sending was paused after failed sends when usage sharing closed..
+        /// </summary>
+        internal static string MessageShareUsageNotSentWhilePaused {
+            get {
+                return ResourceManager.GetString("MessageShareUsageNotSentWhilePaused", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The usage sharing queue is full at {0} entries, so usage data is being discarded..
+        /// </summary>
+        internal static string MessageShareUsageQueueFull {
+            get {
+                return ResourceManager.GetString("MessageShareUsageQueueFull", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Usage sharing paused for {0} seconds after failed sends. Usage data is still queued, up to the maximum queue size, and sending starts again when the pause ends..
+        /// </summary>
+        internal static string MessageShareUsagePaused {
+            get {
+                return ResourceManager.GetString("MessageShareUsagePaused", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Usage sharing resumed after a send succeeded..
+        /// </summary>
+        internal static string MessageShareUsageResumed {
+            get {
+                return ResourceManager.GetString("MessageShareUsageResumed", resourceCulture);
             }
         }
         

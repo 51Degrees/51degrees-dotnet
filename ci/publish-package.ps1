@@ -35,13 +35,13 @@ if ($DryRun) {
 $versions = Get-FamilyVersions -RepoName $RepoName
 foreach ($family in $Families) {
     $v = $versions[$family.Name]
-    if (-not $v.Changed) { continue }
+    if (-not $v.Release) { continue }
     ./steps/update-tag.ps1 -RepoName $RepoName -OrgName $OrgName -Tag "$($family.Name)/$($v.Next)" -DryRun $DryRun
 }
 
 # The root Directory.Build.props records the published versions, which Package
 # mode and the examples restore against. The change goes up as a pull
-# request, like the other nightly changes.
+# request into rc, like the other nightly changes, as only rc merges into main.
 $props = "$RepoName/Directory.Build.props"
 $content = Get-Content $props -Raw
 foreach ($name in $versions.Keys) {
@@ -51,10 +51,10 @@ foreach ($name in $versions.Keys) {
 Set-Content $props $content -NoNewline
 ./steps/has-changed.ps1 -RepoName $RepoName
 if ($LASTEXITCODE -eq 0) {
-    $branch = "update-versions/main"
+    $branch = "update-versions/rc"
     git -C $RepoName switch -C $branch
     ./steps/commit-changes.ps1 -RepoName $RepoName -Message "Record the published package versions"
     ./steps/push-changes.ps1 -RepoName $RepoName -DryRun $DryRun -Force $true
-    ./steps/pull-request.ps1 -RepoName $RepoName -From $branch -To "main" -Message "Record the published package versions" -DryRun $DryRun
+    ./steps/pull-request.ps1 -RepoName $RepoName -From $branch -To "rc" -Message "Record the published package versions" -DryRun $DryRun
 }
 exit 0

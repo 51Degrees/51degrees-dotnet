@@ -47,10 +47,10 @@ public class GeneratorService(RobotsTxtModel _dataSet)
     /// <see cref="Constants.NotApplicableUsage"/> is among them.
     /// </param>
     /// <param name="tdls">
-    /// Terms Document Locator URIs. When non-empty, each URI is emitted as a
-    /// TDL line (with a "# Terms ..." comment) inside the wildcard Allow
-    /// block. When empty or null, the wildcard Allow block is emitted with
-    /// no TDL lines.
+    /// Terms Document Locator URIs, written exactly as given. When
+    /// non-empty, each URI is emitted as a TDL line (with a "# Terms ..."
+    /// comment) inside the wildcard Allow block. When empty or null, the
+    /// wildcard Allow block is emitted with no TDL lines.
     /// </param>
     /// <param name="annotations">
     /// True if the resulting file should include annotations, otherwise false.
@@ -59,7 +59,7 @@ public class GeneratorService(RobotsTxtModel _dataSet)
     public void Write(
         TextWriter writer,
         HashSet<string> allowed,
-        IReadOnlyList<Uri> tdls,
+        IReadOnlyList<string> tdls,
         bool annotations,
         CancellationToken stopToken)
     {
@@ -68,6 +68,14 @@ public class GeneratorService(RobotsTxtModel _dataSet)
         var notApplicableAllowed = GetIsNotApplicableAllowed(allowed);
         foreach (var crawler in _dataSet.Crawlers.OrderBy(i => i.Name))
         {
+            // A crawler with no product token cannot be named in the file,
+            // so it appears nowhere in it, comments included. NotCrawler,
+            // the profile every browser resolves to, is one.
+            if (crawler.ProductTokens == null
+                || crawler.ProductTokens.Any(GetIsUsableToken) == false)
+            {
+                continue;
+            }
             if (GetIsAllowed(crawler, allowed, notApplicableAllowed) == false)
             {
                 Add(disallowEntries, crawler, annotations ?
@@ -100,6 +108,34 @@ public class GeneratorService(RobotsTxtModel _dataSet)
         WriteWildcardBlock(writer, allowedCrawlers, tdls, annotations);
     }
 
+    /// <summary>
+    /// Builds a robots.txt as the overload taking strings does, with the
+    /// Terms Document Locators as <see cref="Uri"/> values. Each is written
+    /// as it was given (<see cref="Uri.OriginalString"/>), never normalised.
+    /// This overload keeps the earlier public signature working.
+    /// </summary>
+    /// <param name="writer">
+    /// Text writer to send the robots.txt content to.
+    /// </param>
+    /// <param name="allowed">Usages that are allowed.</param>
+    /// <param name="tdls">Terms Document Locators, or null for none.</param>
+    /// <param name="annotations">
+    /// True if the resulting file should include annotations, otherwise false.
+    /// </param>
+    /// <param name="stopToken"></param>
+    public void Write(
+        TextWriter writer,
+        HashSet<string> allowed,
+        IReadOnlyList<Uri> tdls,
+        bool annotations,
+        CancellationToken stopToken) =>
+        Write(
+            writer,
+            allowed,
+            tdls?.Select(u => u.OriginalString).ToList(),
+            annotations,
+            stopToken);
+
     // Writes the wildcard catch-all that closes the file. It is always an Allow
     // block. In annotated output the crawlers that fall through to it (the
     // allowed crawlers) are listed as one comment group before the Allow record,
@@ -108,7 +144,7 @@ public class GeneratorService(RobotsTxtModel _dataSet)
     private void WriteWildcardBlock(
         TextWriter writer,
         IReadOnlyList<CrawlerModel> allowedCrawlers,
-        IReadOnlyList<Uri> tdls,
+        IReadOnlyList<string> tdls,
         bool annotations)
     {
         writer.WriteLine("User-Agent: *");
@@ -127,11 +163,10 @@ public class GeneratorService(RobotsTxtModel _dataSet)
         {
             foreach (var tdl in tdls)
             {
-                var url = tdl.ToString();
                 writer.Write("# Terms ");
-                writer.WriteLine(url);
+                writer.WriteLine(tdl);
                 writer.Write("TDL: ");
-                writer.WriteLine(url);
+                writer.WriteLine(tdl);
             }
         }
 
@@ -151,38 +186,31 @@ public class GeneratorService(RobotsTxtModel _dataSet)
             addAnnotations(sb);
         }
 
-        // Where the tokens start, so that a crawler which contributed none
-        // can be told apart from one that did without counting them first.
-        var lengthBeforeTokens = sb.Length;
-
-        // Add all the product tokens available.
-        if (crawler.ProductTokens != null)
+        // Write calls this only for a crawler with at least one usable token.
+        foreach (var token in crawler.ProductTokens.Where(GetIsUsableToken))
         {
-            foreach (var token in crawler.ProductTokens)
-            {
-                // Only a token with something in it can head a group. A
-                // parser matches a token as a substring of the crawler's
-                // name, so an empty "User-Agent:" line matches every
-                // crawler and the Disallow beneath it then refuses the
-                // whole site to everybody.
-                if (string.IsNullOrWhiteSpace(token))
-                {
-                    continue;
-                }
-                sb.AppendLine("User-Agent: " + token);
-                sb.AppendLine("Disallow: /");
-            }
-        }
-
-        // Nothing usable, so this crawler heads no group at all rather than
-        // an empty one, and any annotations above go with it.
-        if (sb.Length == lengthBeforeTokens)
-        {
-            return;
+            sb.AppendLine("User-Agent: " + token);
+            sb.AppendLine("Disallow: /");
         }
 
         entries.Enqueue(sb.ToString());
     }
+
+    /// <summary>
+    /// True if the token can head a group. An empty token cannot, because a
+    /// parser matches a token as a substring of the crawler's name, so an
+    /// empty "User-Agent:" line matches every crawler and the Disallow
+    /// beneath it refuses the whole site to everybody. Nor can the data's
+    /// no-value marker, N/A, which names no crawler.
+    /// </summary>
+    /// <param name="token">A product token from the data.</param>
+    /// <returns>True if the token can head a group.</returns>
+    private static bool GetIsUsableToken(string token) =>
+        string.IsNullOrWhiteSpace(token) == false
+        && string.Equals(
+            token.Trim(),
+            Constants.NoValue,
+            StringComparison.OrdinalIgnoreCase) == false;
 
     /// <summary>
     /// Adds a simple copyright and license line at the top of the file. Needed

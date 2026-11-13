@@ -67,6 +67,12 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
         public class Example : ExampleBase
         {
             /// <summary>
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-metadata-console-program.cs&utm_term=enterprise-data-file";
+
+            /// <summary>
             /// Extracts the metadata from the data file via the engine.
             /// </summary>
             /// <param name="dataFile">
@@ -98,7 +104,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
                     // example. See the documentation for more detail on this and other
                     // configuration options:
                     // https://51degrees.com/documentation/_device_detection__features__performance_options.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=run
-                    // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=run
+                    // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=run
                     .SetPerformanceProfile(profile)
                     // inhibit auto-update of the data file for this test
                     .SetAutoUpdate(false)
@@ -110,6 +116,10 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
                     OutputProfileDetails(ddEngine, output);
                     OutputEvidenceKeyDetails(ddEngine, output);
 
+                    if (ExampleUtils.IsLiteDataFile(ddEngine))
+                    {
+                        ExampleUtils.WriteEnterpriseOffer(output, ContactUs);
+                    }
                     ExampleUtils.CheckDataFile(ddEngine, loggerFactory.CreateLogger<Program>());
                 }
             }
@@ -227,7 +237,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
         }
 
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             // Use the supplied path for the data file or find the lite file that is included
             // in the repository.
@@ -236,8 +246,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
                 // project space, or you may specify another file as a command line parameter.
                 //
                 // Note that the Lite data file contains a more limited set of properties than the
-                // Enterprise data file. Find out about the Enterprise data file on our pricing page:
-                // https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=main
+                // Enterprise data file. Contact us for a copy of the Enterprise data file:
+                // https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-metadata-console-program.cs&utm_term=main
                 ExampleUtils.FindDataFile(Constants.LITE_HASH_DATA_FILE_NAME);
 
             // Configure a logger to output to the console.
@@ -251,9 +261,9 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Metadata
             else
             {
                 logger.LogError("Failed to find a device detection data file. Make sure the " +
-                    "device-detection-data submodule has been updated by running " +
-                    "`git submodule update --recursive`. By default, the 'lite' file included " +
-                    "with this code will be used. A different file can be specified " +
+                    "submodules have been fetched by running " +
+                    "`git submodule update --init --recursive`. By default, the free 'lite' " +
+                    "file is downloaded and used. A different file can be specified " +
                     "by supplying the full path as a command line argument");
             }
 

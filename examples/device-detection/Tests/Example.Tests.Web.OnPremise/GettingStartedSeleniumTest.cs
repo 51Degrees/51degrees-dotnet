@@ -181,7 +181,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.OnPremise
                 Assert.Inconclusive(
                     $"The '{propertyName}' property is not in the data file in " +
                     $"use, which reported '{value}'. Set the " +
-                    $"'51DEGREES_DD_PATH' environment variable to an Enterprise " +
+                    $"'_51DEGREES_DD_PATH' environment variable to an Enterprise " +
                     $"or TAC data file to run this test.");
             }
         }

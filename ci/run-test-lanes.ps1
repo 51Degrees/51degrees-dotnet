@@ -32,6 +32,10 @@ $ErrorActionPreference = "Stop"
 #              Enterprise file, one at a time.
 #   pool       everything else, one fewer at once than the runner has cores.
 #
+# A test project's builds for each target framework share a file name, and in
+# a lane they run one after another rather than at the same time, because some
+# tests write files of fixed names to the temporary folder.
+#
 # Each assembly's output is printed in one piece when it finishes, so the log
 # reads as it did before.
 
@@ -114,13 +118,17 @@ foreach ($lane in $lanes.Keys) {
     $items = $lanes[$lane]
     if ($items.Count -eq 0) { continue }
     $throttle = $lane -eq 'pool' ? $poolSize : 1
+    $groups = @($items | Group-Object { [IO.Path]::GetFileName($_) } |
+        ForEach-Object { , @($_.Group) })
     $jobs += Start-ThreadJob -Name $lane -ThrottleLimit 3 -ScriptBlock {
-        param($Items, $Throttle, $RunOne, $Configuration, $ResultPath, $LogPath, $BlameHangTimeout)
-        $Items | ForEach-Object -ThrottleLimit $Throttle -Parallel {
+        param($Groups, $Throttle, $RunOne, $Configuration, $ResultPath, $LogPath, $BlameHangTimeout)
+        $Groups | ForEach-Object -ThrottleLimit $Throttle -Parallel {
             $run = [scriptblock]::Create($using:RunOne)
-            & $run $_ $using:Configuration $using:ResultPath $using:LogPath $using:BlameHangTimeout
+            foreach ($assembly in $_) {
+                & $run $assembly $using:Configuration $using:ResultPath $using:LogPath $using:BlameHangTimeout
+            }
         }
-    } -ArgumentList $items, $throttle, $runOne.ToString(), $Configuration, $ResultPath, $LogPath, $BlameHangTimeout
+    } -ArgumentList $groups, $throttle, $runOne.ToString(), $Configuration, $ResultPath, $LogPath, $BlameHangTimeout
 }
 
 # Print each assembly's output as it finishes.

@@ -21,10 +21,11 @@
  * ********************************************************************* */
 
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Interop;
+using System;
 
 namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Wrappers
 {
-    internal interface IConfigSwigWrapper
+    internal interface IConfigSwigWrapper : IDisposable
     {
         ConfigHashSwig Object { get; }
 
@@ -53,6 +54,10 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Wrappers
         void setUseUpperPrefixHeaders(bool upperPrefix);
 
         void setTempDirectories(VectorStringSwig dirs);
+
+        void setIndexedProperties(VectorStringSwig names);
+
+        VectorStringSwig getIndexedProperties();
 
         void setUseTempFile(bool useTemp);
     }

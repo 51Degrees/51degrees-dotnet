@@ -1,8 +1,9 @@
 name: Publish
 
 # Builds, tests and packs every package family that changed since its last
-# '<family>/<version>' tag, then pushes to NuGet and tags each family. A dry
-# run does everything except push, tag and open the versions pull request.
+# '<family>/<version>' tag, and every family depending on one of them, then
+# pushes to NuGet and tags each family. A dry run does everything except push,
+# tag and open the versions pull request.
 
 on:
   workflow_dispatch:
@@ -21,6 +22,7 @@ jobs:
       dryrun: ${{ inputs.dryrun || false }}
       build-platform: windows-latest
       cache-assets: true
+      package-in-caller: true
     secrets:
       token: ${{ secrets.ACCESS_TOKEN }}
       StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
@@ -32,9 +34,56 @@ jobs:
       AcceptCHHardwareKey: ${{ secrets.ACCEPTCH_HARDWARE_KEY }}
       AcceptCHPlatformKey: ${{ secrets.ACCEPTCH_PLATFORM_KEY }}
       AcceptCHNoneKey: ${{ secrets.ACCEPTCH_NONE_KEY }}
-      ApiKey: ${{ secrets.NUGET_API_KEY }}
       CodeSigningKeyVaultUrl: ${{ secrets.CODE_SIGNING_KEY_VAULT_URL }}
       CodeSigningKeyVaultClientId: ${{ secrets.CODE_SIGNING_KEY_VAULT_CLIENT_ID }}
       CodeSigningKeyVaultTenantId: ${{ secrets.CODE_SIGNING_KEY_VAULT_TENANT_ID }}
       CodeSigningKeyVaultClientSecret: ${{ secrets.CODE_SIGNING_KEY_VAULT_CLIENT_SECRET }}
       CodeSigningKeyVaultCertificateName: ${{ secrets.CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME }}
+
+  # nuget.org's trusted publishing issues a key only to a job in this
+  # repository's own workflow file, so the packages are pushed here, with the
+  # steps of common-ci's Package job. The key lasts an hour, so it is asked for
+  # just before the push.
+  Package:
+    needs: Publish
+    if: needs.Publish.outputs.update-required == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout Common
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.event.repository.owner.login }}/common-ci
+
+      - name: Download Package Artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: package
+          path: ${{ github.workspace }}/package
+
+      # The user who created the trusted publishing policy on nuget.org.
+      - name: Get a NuGet key
+        id: nuget
+        uses: NuGet/login@v1
+        with:
+          user: jwrosewell
+
+      - name: Package
+        env:
+          API_KEY: ${{ steps.nuget.outputs.NUGET_API_KEY }}
+        run: |
+          $DryRun = [bool]::Parse( "${{ inputs.dryrun || false }}" )
+          $Options = @{}
+          $Options.Add("Keys", @{ ApiKey = $env:API_KEY })
+          $Options.Add("Version", "${{ needs.Publish.outputs.version }}")
+          ./nightly-publish.package.ps1 `
+          -RepoName ${{ github.event.repository.name }} `
+          -OrgName ${{ github.event.repository.owner.login }} `
+          -Branch ${{ github.ref_name }} `
+          -GitHubToken ${{ secrets.ACCESS_TOKEN }} `
+          -Options $Options `
+          -GitHubUser Automation51D `
+          -GitHubEmail 51DCI@51Degrees.com `
+          -DryRun $DryRun

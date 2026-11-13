@@ -110,7 +110,8 @@ public class BrokenDataFileTests
         builder.SetUpdatePollingInterval(TimeSpan.FromDays(1));
         builder.SetUpdateRandomisationMax(TimeSpan.Zero);
 
-        using (var engine = builder.Build(master, true))
+        var engine = builder.Build(master, true);
+        // Disposing the pipeline also disposes the engine.
         using (var pipeline = new PipelineBuilder(loggerFactory)
             .AddFlowElement(engine)
             .Build())

@@ -50,7 +50,7 @@ using FiftyOne.Pipeline.Engines.Data;
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/Cloud/Metadata-Console/Program.cs).
 ///
-/// To run this example, create a Resource Key for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-metadata-console-program.cs&amp;utm_term=header and supply it as the first command-line argument or via the 51DEGREES_RESOURCE_KEY environment variable. By default the pipeline talks to cloud.51degrees.com; set 51D_CLOUD_ENDPOINT to point at a self-hosted Cloud service instead.
+/// To run this example, create a Resource Key for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-metadata-console-program.cs&amp;utm_term=header and supply it as the first command-line argument or via the _51DEGREES_RESOURCE_KEY environment variable. By default the pipeline talks to cloud.51degrees.com; set _51DEGREES_CLOUD_ENDPOINT to point at a self-hosted Cloud service instead.
 /// 
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
@@ -69,8 +69,9 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Metadata
 
                 // Optional custom cloud endpoint via env var. If unset, the SDK
                 // defaults to cloud.51degrees.com.
-                var cloudEndPoint = Environment.GetEnvironmentVariable(
-                    ExampleUtils.CLOUD_END_POINT_ENV_VAR);
+                var cloudEndPoint = ExampleUtils.FromEnvironment(
+                    ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
+                    ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
                 if (string.IsNullOrWhiteSpace(cloudEndPoint) == false)
                 {
                     builder.SetEndPoint(cloudEndPoint);
@@ -155,9 +156,9 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Metadata
             {
                 logger.LogError($"No resource key specified in the configuration file " +
                     $"'appsettings.json' or the environment variable " +
-                    $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud service is " +
+                    $"'{ExampleUtils.RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud service is " +
                     $"accessed using a 'ResourceKey'. For more information see " +
-                    $"https://51degrees.com/documentation/_info__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required. " +
+                    $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required. " +
                     $"A resource key with the properties required by this example can be " +
                     $"created for free at https://configure.51degrees.com/1QWJwHxl?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required. " +
                     $"Once complete, supply the resource key as a command line argument or via " +

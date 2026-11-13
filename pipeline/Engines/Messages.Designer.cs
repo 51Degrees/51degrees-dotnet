@@ -241,6 +241,15 @@ namespace FiftyOne.Pipeline.Engines {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to This is because your license or data file does not include this property. To see which licenses include it, see https://51degrees.com/pricing?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-messages.resx&amp;utm_term=missingpropertymessagedataupgraderequirednotiers..
+        /// </summary>
+        internal static string MissingPropertyMessageDataUpgradeRequiredNoTiers {
+            get {
+                return ResourceManager.GetString("MissingPropertyMessageDataUpgradeRequiredNoTiers", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Property &apos;{0}&apos; not found in data for element &apos;{1}&apos;. .
         /// </summary>
         internal static string MissingPropertyMessagePrefix {
@@ -250,7 +259,7 @@ namespace FiftyOne.Pipeline.Engines {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This is because your resource key does not include access to any properties under &apos;{0}&apos;. For more details on resource keys, see our explainer: https://51degrees.com/documentation/_info__resource_keys.html.
+        ///   Looks up a localized string similar to This is because your resource key does not include access to any properties under &apos;{0}&apos;. For more details on resource keys, see our explainer: https://51degrees.com/documentation/_services__cloud__resource_keys.html.
         /// </summary>
         internal static string MissingPropertyMessageProductNotInCloudResource {
             get {
@@ -268,7 +277,7 @@ namespace FiftyOne.Pipeline.Engines {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This is because your resource key does not include access to this property. Properties that are included for this key under &apos;{0}&apos; are {1}. For more details on resource keys, see our explainer: https://51degrees.com/documentation/_info__resource_keys.html.
+        ///   Looks up a localized string similar to This is because your resource key does not include access to this property. Properties that are included for this key under &apos;{0}&apos; are {1}. For more details on resource keys, see our explainer: https://51degrees.com/documentation/_services__cloud__resource_keys.html.
         /// </summary>
         internal static string MissingPropertyMessagePropertyNotInCloudResource {
             get {

@@ -21,10 +21,11 @@
  * ********************************************************************* */
 
 using FiftyOne.IpIntelligence.Engine.OnPremise.Interop;
+using System;
 
 namespace FiftyOne.IpIntelligence.Engine.OnPremise.Wrappers
 {
-    internal interface IRequiredPropertiesConfigSwigWrapper
+    internal interface IRequiredPropertiesConfigSwigWrapper : IDisposable
     {
         RequiredPropertiesConfigSwig Object { get; }
     }

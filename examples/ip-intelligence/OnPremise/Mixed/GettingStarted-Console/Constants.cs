@@ -24,17 +24,18 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
 {
     public static class Constants
     {
-        // Device Detection data file names in priority order (matching 51degrees-cxx)
-        public static readonly string[] HASH_FILE_NAMES = { 
-            "TAC-HashV41.hash", 
-            "51Degrees-EnterpriseV4.1.hash", 
-            "51Degrees-LiteV4.1.hash" 
-        };
-        
-        // IP Intelligence data file names in priority order
-        public static readonly string[] IPI_FILE_NAMES = {
-            "51Degrees-EnterpriseIpiV41.ipi",
-            "51Degrees-LiteV41.ipi"
-        };
+        /// <summary>
+        /// The free Device Detection data file, which the example uses unless
+        /// its first argument names another. The data repository links it, and
+        /// the example downloads it when it is missing.
+        /// </summary>
+        public const string LITE_HASH_FILE_NAME = "51Degrees-LiteV4.1.hash";
+
+        /// <summary>
+        /// The free IP Intelligence data file, which the example uses unless
+        /// its second argument or an environment variable names another.
+        /// </summary>
+        public const string LITE_IPI_FILE_NAME =
+            Examples.Constants.LITE_IPI_DATA_FILE_NAME;
     }
 }

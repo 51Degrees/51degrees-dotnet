@@ -1,5 +1,7 @@
 # FiftyOne.Caching
 
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious")
+
 This package contains interfaces and classes relating to caching. There are two major types of cache represented, 'put' caches and 'loading' caches.
 Both types have an indexer to access the data stored in the cache.
 
@@ -19,3 +21,10 @@ An implementation that performs no caching at all, if using the loading cache th
 LRU stands for Least Recently Used and is a commonly used cache eviction policy. LRU means that when the cache is full and a new item is added, the item that was accessed the furthest in the past will be removed from the cache to make room for the new item.
 
 LRU based caches often suffer from poor multi-threaded performance so this implementation uses multiple LRU lists internally in order to mitigate this.
+
+## Find out more
+
+- [Build your own](https://51degrees.com/build-your-own?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.caching&utm_term=find-out-more-build-your-own)
+- [Pipeline API documentation](https://51degrees.com/documentation/_pipeline_api__concepts__pipeline_basics.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.caching&utm_term=find-out-more-documentation)
+- [Pipeline API examples](https://51degrees.com/documentation/_pipeline_api__examples__index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.caching&utm_term=find-out-more-examples)
+- https://github.com/51Degrees/51degrees-dotnet

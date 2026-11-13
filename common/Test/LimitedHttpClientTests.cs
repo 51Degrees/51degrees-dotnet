@@ -34,6 +34,9 @@ namespace FiftyOne.Common.Tests
     [TestClass]
     public class LimitedHttpClientTests
     {
+        // How long to wait for the limiter's count to return to zero.
+        private const int RemainingRequestsTimeoutSeconds = 5;
+
         private TestLoggerFactory _loggerFactory;
 
         /// <summary>
@@ -356,7 +359,10 @@ namespace FiftyOne.Common.Tests
                     // progress, then complete the first.
                     result2 = limiter.GetAsync("http://51degrees.com", CancellationToken.None);
                     token.Cancel();
-                    Thread.Sleep(10);
+                    // The first request finishes, and the limiter frees its
+                    // place, before the third is made.
+                    result1.Wait();
+                    AssertNoRemainingRequests(limiter);
                     result3 = limiter.GetAsync("http://51degrees.com", CancellationToken.None);
                     break;
                 case "POST":
@@ -365,7 +371,10 @@ namespace FiftyOne.Common.Tests
                     // progress, then complete the first.
                     result2 = limiter.PostAsync("http://51degrees.com", null, CancellationToken.None);
                     token.Cancel();
-                    Thread.Sleep(10);
+                    // The first request finishes, and the limiter frees its
+                    // place, before the third is made.
+                    result1.Wait();
+                    AssertNoRemainingRequests(limiter);
                     result3 = limiter.PostAsync("http://51degrees.com", null, CancellationToken.None);
                     break;
             }
@@ -386,19 +395,17 @@ namespace FiftyOne.Common.Tests
 
 
         /// <summary>
-        /// Asserts that there are no current requests in the serivce.
-        /// Retries 10 times over 10ms to ensure the "Continue" tasks
-        /// have also completed.
+        /// Asserts that there are no current requests in the service. The
+        /// limiter decrements its count in a continuation that the thread
+        /// pool runs after the request's task completes, so the count can
+        /// stay above zero for a while after the result is read.
         /// </summary>
         /// <param name="limiter"></param>
         private void AssertNoRemainingRequests(LimitedHttpClientWrapper limiter)
         {
-            int count = 0;
-            while (count < 10 && limiter.CurrentRequests > 0)
-            {
-                count++;
-                Thread.Sleep(1);
-            }
+            SpinWait.SpinUntil(
+                () => limiter.CurrentRequests == 0,
+                TimeSpan.FromSeconds(RemainingRequestsTimeoutSeconds));
             Assert.AreEqual(0, limiter.CurrentRequests);
         }
     }

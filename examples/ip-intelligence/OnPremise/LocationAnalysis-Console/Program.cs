@@ -72,10 +72,13 @@ using System.Threading;
 ///
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/LocationAnalysis-Console/Program.cs).
 ///
-/// This example can be run against the free 'Lite' IP Intelligence data file
-/// obtained via the [ip-intelligence-data repository](https://github.com/51Degrees/ip-intelligence-data),
-/// although the Lite file contains fewer properties and less precise data
-/// than the enterprise data file. To obtain an enterprise data file for
+/// By default the example uses the free 'Lite' IP Intelligence data file
+/// from the [data repository](https://github.com/51Degrees/data), which it
+/// downloads when it is missing. The default group fields are only in the
+/// enterprise data file, so with the Lite file the example says which
+/// properties it needs and where to ask for a copy, and stops. Group fields
+/// the Lite file has, such as RegisteredCountry, can be passed on the
+/// command line. To obtain an enterprise data file for
 /// testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-locationanalysis-console-program.cs&amp;utm_term=header).
 ///
 /// Required NuGet Dependencies:
@@ -91,6 +94,12 @@ public class Program
     /// Time interval to wait between logging progress.
     /// </summary>
     private static readonly TimeSpan _logInterval = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Where to ask for a copy of the Enterprise data file, tagged with this
+    /// example.
+    /// </summary>
+    private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-ip-intelligence-onpremise-locationanalysis-console-program.cs&utm_term=enterprise-data-file";
 
     /// <summary>
     /// The percentage of the IP address space to include in the analysis,
@@ -237,8 +246,8 @@ public class Program
             // LowMemory profile so the large data file is paged from disk,
             // not loaded into RAM. See the documentation for more detail on
             // this and other configuration options.
-            // https://51degrees.com/documentation/_features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-locationanalysis-console-program.cs&utm_term=run
-            using var ipiEngine = new IpiOnPremiseEngineBuilder(loggerFactory)
+            // https://51degrees.com/documentation/_pipeline_api__features__automatic_datafile_updates.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-locationanalysis-console-program.cs&utm_term=run
+            var ipiEngine = new IpiOnPremiseEngineBuilder(loggerFactory)
                 .SetPerformanceProfile(PerformanceProfiles.LowMemory)
                 // Inhibit auto-update of the data file for this example.
                 .SetAutoUpdate(false)
@@ -248,10 +257,10 @@ public class Program
 
             // Build a pipeline to consume the IP Intelligence engine. Needed
             // so that flow data can be used to pass evidence in and get
-            // results.
+            // results. Disposing the pipeline also disposes the engine, which
+            // frees the native memory it holds.
             using var pipeline = new PipelineBuilder(loggerFactory)
                 .AddFlowElement(ipiEngine)
-                .SetAutoDisposeElements(false)
                 .Build();
 
             // The properties present in the data file being analyzed. Lower
@@ -805,10 +814,10 @@ public class Program
         }
     }
 
-    static void Main(string[] args)
+    public static void Main(string[] args)
     {
-        // Use the supplied path for the data file or find one in the
-        // project space.
+        // Use the supplied path for the data file or find the free Lite file
+        // that the data repository links, downloading it when it is missing.
         var dataFile = args.Length > 0 ? args[0] :
             // In this example, by default, the 51Degrees IP Intelligence
             // data file needs to be somewhere in the project space, or you
@@ -817,7 +826,7 @@ public class Program
             // For testing, contact us to obtain an enterprise data file:
             // https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-locationanalysis-console-program.cs&utm_term=main
             Examples.ExampleUtils.FindDataFile(
-                Constants.ENTERPRISE_IPI_DATA_FILE_NAME);
+                Constants.LITE_IPI_DATA_FILE_NAME);
 
         // Get the location for the output CSV file.
         var outputFile = args.Length > 1 ?
@@ -842,7 +851,22 @@ public class Program
             }));
         var logger = loggerFactory.CreateLogger<Program>();
 
-        if (dataFile != null)
+        if (dataFile == null)
+        {
+            logger.LogError("Failed to find a IP Intelligence data file. " +
+                "Make sure the submodules have been fetched by running " +
+                "`git submodule update --init --recursive`, so that the free " +
+                "Lite file can be downloaded. A different file can be specified " +
+                "by supplying the full path as a command line argument");
+        }
+        // The free data files have none of the default group fields, so with
+        // one of them and the default groups the example says so and stops.
+        else if (ExampleUtils.LacksEnterpriseProperties(
+            dataFile,
+            "Analysing the locations",
+            groupPropertyNames ?? Example.DefaultGroupProperties,
+            Console.Out,
+            ContactUs) == false)
         {
             // Allow Ctrl+C to stop the walk early. The results collected so
             // far are still written to the output file.
@@ -866,14 +890,6 @@ public class Program
             logger.LogInformation(
                 "Analysis complete. See results in: '{0}'",
                 outputFile);
-        }
-        else
-        {
-            logger.LogError("Failed to find a IP Intelligence data file. " +
-                "Make sure the ip-intelligence-data submodule has been " +
-                "updated by running `git submodule update --recursive`. A " +
-                "different file can be specified by supplying the full " +
-                "path as a command line argument");
         }
 
         // Dispose the logger to ensure any messages get flushed

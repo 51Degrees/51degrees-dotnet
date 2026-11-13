@@ -260,6 +260,7 @@ namespace FiftyOne.Caching.Tests
             var firstSource = _token;
             Task<string> secondReaderTask = null;
             var firstTokenCancelled = new ManualResetEventSlim(false);
+            var firstReaderDone = new ManualResetEventSlim(false);
             loader.OnTaskStarted += _ => {
                 Console.WriteLine("Loader task started.");
                 var secondReaderAwoke = new ManualResetEventSlim(false);
@@ -279,9 +280,29 @@ namespace FiftyOne.Caching.Tests
                 firstSource.Cancel();
                 firstTokenCancelled.Set();
                 Console.WriteLine("First reader task cancelled.");
+
+                // Hold the load until the first reader has finished, because
+                // Task.Wait returns a completed task's value without checking
+                // the token, so a load that finished first would give the
+                // first reader its value.
+                firstReaderDone.Wait(GATE_TIMEOUT_MS);
+                Assert.IsTrue(
+                    firstReaderDone.IsSet,
+                    $"{nameof(firstReaderDone)} still not set.");
             };
 
-            var firstCallTask = Task.Run(BuildGetValueFunc("A"));
+            var getFirstValue = BuildGetValueFunc("A");
+            var firstCallTask = Task.Run(() =>
+            {
+                try
+                {
+                    return getFirstValue();
+                }
+                finally
+                {
+                    firstReaderDone.Set();
+                }
+            });
             firstTokenCancelled.Wait(2 * GATE_TIMEOUT_MS);
             Assert.IsTrue(
                 firstTokenCancelled.IsSet,
@@ -780,7 +801,10 @@ namespace FiftyOne.Caching.Tests
             // Arrange
 
             var value = "testvalue";
-            var millis = 5000;
+            // The second get waits for the load to finish, so this is time
+            // the test spends. A second still outlasts the cancel, which
+            // happens as the load starts.
+            var millis = 1000;
             var loader = new ReturnKeyLoader<string>(millis);
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
             Exception exception = null;
@@ -852,7 +876,9 @@ namespace FiftyOne.Caching.Tests
             // Arrange
 
             var value = "testvalue";
-            var millis = 5000;
+            // As in LoadingDictionary_GetCanceledIsReused, the second call
+            // waits for the load, and a second outlasts the cancel.
+            var millis = 1000;
             var loader = new ReturnKeyLoader<string>(millis);
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
 

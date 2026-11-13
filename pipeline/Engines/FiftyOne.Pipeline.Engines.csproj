@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>
     <Platforms>AnyCPU</Platforms>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -21,7 +21,7 @@
 	  <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
 	  <Description>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains base classes that implement the shared features available to engines - a specialized type of flow element.</Description>
 	  <PackageIcon>51d-logo.png</PackageIcon>
-	  <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines-fiftyone.pipeline.engines.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+	  <PackageProjectUrl>https://51degrees.com/build-your-own?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.engines&amp;utm_term=packageprojecturl</PackageProjectUrl>
 	  <RepositoryType>git</RepositoryType>
 	  <NeutralLanguage>en</NeutralLanguage>
 	  <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -42,10 +42,12 @@
     <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\common\Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
   </ItemGroup>
 
-  <!-- JsonLoader uses System.Text.Json on net8.0 but Newtonsoft.Json on
-       netstandard2.0. System.Text.Json does not load reliably on .NET Framework
-       consumers of the netstandard2.0 build without binding redirects, so the
-       JSON library is selected per target framework (see JsonLoader.cs). -->
+  <!-- JsonLoader uses System.Text.Json on net8.0 and net10.0 but Newtonsoft.Json
+       on netstandard2.0. System.Text.Json does not load reliably on .NET
+       Framework consumers of the netstandard2.0 build without binding
+       redirects, so the JSON library is selected per target framework (see
+       JsonLoader.cs). System.Text.Json is part of .NET 10, so only net8.0
+       names the package. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <PackageReference Include="System.Text.Json" Version="8.0.6" />
   </ItemGroup>

@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
+using FiftyOne.Pipeline.Engines;
 using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -41,9 +42,10 @@ using System.Net.Http;
 /// - Daily auto-update
 /// 
 /// # License Key
-/// In order to test this example you will need a 51Degrees Enterprise license which can be
-/// purchased from our
-/// <a href="https://51degrees.com/pricing?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-updatedatafile-console-program.cs&amp;utm_term=header">pricing page</a>.
+/// Updating the data file needs a 51Degrees licence key for the Enterprise data file. Without
+/// one, the example shows the free Lite data file and says where to ask for a key.
+/// <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-updatedatafile-console-program.cs&amp;utm_term=header">Contact us</a>
+/// for a licence key.
 /// 
 /// # Data Files
 /// You can find out more about data files, licenses etc. at our [FAQ page](https://51degrees.com/resources/faqs?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-updatedatafile-console-program.cs&amp;utm_term=header)
@@ -61,10 +63,10 @@ using System.Net.Http;
 /// ```
 /// 
 /// ## Lite Data File
-/// Lite data files (free-to-use, limited capabilities, no license key required) are created roughly
+/// Lite data files (free-to-use, a small number of properties, no license key required) are created roughly
 /// once a month and cannot be updated using auto-update, they may be downloaded from
-/// [Github](https://github.com/51Degrees/device-detection-data) and are included with
-/// source distributions of this software.
+/// [Github](https://github.com/51Degrees/data) with the scripts there, which are in the
+/// `cxx/data` submodule of source distributions of this software.
 /// 
 /// # Update on Start-Up
 /// You can configure the pipeline builder to download an Enterprise data file on start-up.
@@ -261,7 +263,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                         // file to a temporary file (createTempDataCopy parameter == true).
                         //
                         // For automatic updates to work you will also need to provide a license key.
-                        // A license key can be obtained with a subscription from https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=run
+                        // Contact us for a license key at https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=run
                         .UseOnPremise(dataFile, licenseKey, true)
                         // Enable update on startup, the auto update system
                         // will be used to check for an update before the
@@ -349,8 +351,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                 if (licenseKey == null)
                 {
                     logger.LogError("In order to test this example you will need a 51Degrees " +
-                        "Enterprise license which can be obtained on a trial basis or purchased " +
-                        "from our pricing page https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=license-key-required. You must supply the " +
+                        "Enterprise license, which you can ask for at " +
+                        "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=license-key-required. You must supply the " +
                         "license key " + keySubmissionPaths);
                     throw new ArgumentException("No license key available", nameof(licenseKey));
                 }
@@ -411,14 +413,60 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             }
         }
 
+        /// <summary>
+        /// Where to ask for a licence key and a copy of the Enterprise data
+        /// file, tagged with this example.
+        /// </summary>
+        private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-updatedatafile-console-program.cs&utm_term=licence-key";
+
         public static void Main(string[] args)
         {
             // Use the supplied path for the data file or find the lite file that is included
             // in the repository.
             var dataFile = args.Length > 0 ? args[0] : null;
-            var licenseKey = args.Length > 1 ? args[1] : null;
+            var licenseKey = args.Length > 1 ? args[1] :
+                Environment.GetEnvironmentVariable(Constants.LICENSE_KEY_ENV_VAR);
 
+            if (string.IsNullOrWhiteSpace(licenseKey))
+            {
+                ExplainLicenseKey(dataFile, Console.Out);
+                return;
+            }
             Initialize(dataFile, licenseKey, true);
+        }
+
+        /// <summary>
+        /// Without a licence key there is no update to download, so the
+        /// example shows the data file it would start from, the free Lite
+        /// file unless another is given, and says what an update needs.
+        /// </summary>
+        private static void ExplainLicenseKey(string dataFile, TextWriter output)
+        {
+            dataFile = dataFile ??
+                ExampleUtils.FindDataFile(Constants.LITE_HASH_DATA_FILE_NAME);
+            if (dataFile != null && File.Exists(dataFile))
+            {
+                using (var loggerFactory = new LoggerFactory())
+                {
+                    // Without a data update service the builder must not
+                    // watch or update the file.
+                    var builder = new DeviceDetectionHashEngineBuilder(loggerFactory);
+                    builder
+                        .SetPerformanceProfile(PerformanceProfiles.LowMemory)
+                        .SetAutoUpdate(false)
+                        .SetDataFileSystemWatcher(false)
+                        .SetDataUpdateOnStartup(false);
+                    var info = ExampleUtils.GetDataFileInfo(dataFile, builder);
+                    output.WriteLine($"The data file in use is the '{info.Tier}' " +
+                        $"file published on {info.PublishDate:d}, at '{info.Filepath}'.");
+                }
+            }
+            output.WriteLine();
+            output.WriteLine("Updating the data file downloads the Enterprise data " +
+                "file, which needs a licence key. Give the key as the second command " +
+                "line argument, or in the environment variable " +
+                $"'{Constants.LICENSE_KEY_ENV_VAR}'. Contact us for a key and a copy " +
+                $"at {ContactUs}");
         }
 
         public static void Initialize(

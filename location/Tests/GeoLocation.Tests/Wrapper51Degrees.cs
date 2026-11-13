@@ -51,11 +51,12 @@ namespace FiftyOne.GeoLocation.Tests
         /// </summary>
         public Wrapper51Degrees()
         {
-            var resourceKey = System.Environment.GetEnvironmentVariable(
-                Constants.RESOURCE_KEY_ENV_VAR) ?? "AQQNX4o8_wxDhi_U2Eg";
+            var resourceKey = Constants.ResourceKeyFromEnvironment()
+                ?? "AQQNX4o8_wxDhi_U2Eg";
 
             RequestEngine = new CloudRequestEngineBuilder(_logger, new HttpClient())
                 .SetResourceKey(resourceKey)
+                .SetTimeOutSeconds(Constants.CLOUD_TIMEOUT_SECONDS)
                 .Build();
             Engine = new GeoLocationCloudEngineBuilder(_logger)
                 .SetGeoLocationProvider("FiftyOneDegrees")

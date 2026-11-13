@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <AssemblyName>FiftyOne.Did</AssemblyName>
     <RootNamespace>FiftyOne.Did</RootNamespace>
     <Platforms>AnyCPU</Platforms>
@@ -22,7 +22,7 @@
     <PackageTags>51degrees,51did,fodid,did,pipeline,owid</PackageTags>
     <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
     <PackageIcon>51d-logo.png</PackageIcon>
-    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.did-fiftyone.did.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageProjectUrl>https://51degrees.com/developers/51did?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.did&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <Description>Parses the 51Degrees Identifier (51Did) returned by the 51Degrees Cloud service.</Description>
     <RepositoryType>git</RepositoryType>
     <NeutralLanguage>en</NeutralLanguage>

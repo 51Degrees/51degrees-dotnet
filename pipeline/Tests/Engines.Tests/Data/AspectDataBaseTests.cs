@@ -141,28 +141,30 @@ namespace FiftyOne.Pipeline.Engines.Tests.Data
         }
 
         /// <summary>
-        /// <see cref="AspectDataBase.CloudRequestFailed"/> is <c>false</c>
-        /// by default — no marker on a fresh aspect data instance.
+        /// <see cref="IAspectDataInternal.CloudRequestFailed"/> is
+        /// <c>false</c> by default, no marker on a fresh aspect data
+        /// instance.
         /// </summary>
         [TestMethod]
         public void AspectData_CloudRequestFailed_DefaultsToFalse()
         {
-            Assert.IsFalse(_data.CloudRequestFailed);
+            Assert.IsFalse(((IAspectDataInternal)_data).CloudRequestFailed);
         }
 
         /// <summary>
-        /// <see cref="AspectDataBase.MarkCloudRequestFailed"/> flips
-        /// <see cref="AspectDataBase.CloudRequestFailed"/> to <c>true</c>.
-        /// The marker is stored in the underlying dictionary, not as a
-        /// dedicated field — so it survives any operation that respects
-        /// the existing data slot semantics.
+        /// <see cref="IAspectDataInternal.MarkCloudRequestFailed"/> flips
+        /// <see cref="IAspectDataInternal.CloudRequestFailed"/> to
+        /// <c>true</c>.
+        /// The marker is a field rather than an entry in the underlying
+        /// dictionary, so it never appears in the data's values.
         /// </summary>
         [TestMethod]
         public void AspectData_MarkCloudRequestFailed_SetsFlag()
         {
-            Assert.IsFalse(_data.CloudRequestFailed);
-            _data.MarkCloudRequestFailed();
-            Assert.IsTrue(_data.CloudRequestFailed);
+            var data = (IAspectDataInternal)_data;
+            Assert.IsFalse(data.CloudRequestFailed);
+            data.MarkCloudRequestFailed();
+            Assert.IsTrue(data.CloudRequestFailed);
         }
     }
 }

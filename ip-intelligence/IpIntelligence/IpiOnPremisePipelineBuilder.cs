@@ -327,11 +327,28 @@ namespace FiftyOne.IpIntelligence
         }
 
         /// <summary>
-        /// Set the expected number of concurrent operations using the engine.
-        /// This sets the concurrency of the internal caches to avoid excessive
-        /// locking.
+        /// Set the expected number of operations that use the engine at the same
+        /// time. The native code uses it for every collection read from the data
+        /// file.
+        /// First, it sets the number of file handles in the pool, which is the
+        /// concurrency up to a fixed maximum of 64, because a process can only have
+        /// so many files open. An operation that has to read from the file when
+        /// every handle is in use waits until another operation releases one.
+        /// Second, it decides how each cache is split into parts, each with its own
+        /// lock, which avoids excessive locking. An item in use cannot be removed
+        /// from a cache, and any operation can need any part, so every part holds
+        /// at least the concurrency in items. The number of parts is the
+        /// concurrency, or fewer where needed so that every part holds that many
+        /// items, and a cache that holds fewer items than the concurrency in total
+        /// is made large enough to hold that many. No value stops the engine
+        /// building.
+        /// The concurrency has no effect when every collection is held in memory,
+        /// for example with the MaxPerformance profile.
         /// </summary>
-        /// <param name="concurrency">Expected concurrent accesses</param>
+        /// <param name="concurrency">
+        /// The expected number of operations that use the engine at
+        /// the same time.
+        /// </param>
         /// <returns>This builder</returns>
         public IpiOnPremisePipelineBuilder SetConcurrency(
             ushort concurrency)
@@ -442,28 +459,54 @@ namespace FiftyOne.IpIntelligence
         public override IPipeline Build()
         {
             IAspectEngine ipiEngine = null;
-
-            // Create the IP intelligence engine based on the configuration.
-            var ipiBuilder = new IpiOnPremiseEngineBuilder(LoggerFactory, _dataUpdateService);
-            ipiEngine = ConfigureAndBuild(ipiBuilder);
-
-            if (ipiEngine != null)
+            IFlowElement shareUsageElement = null;
+            try
             {
-                // Add the share usage element to the list if enabled
-                if (_shareUsageEnabled)
+                // Create the IP intelligence engine based on the configuration.
+                var ipiBuilder = new IpiOnPremiseEngineBuilder(LoggerFactory, _dataUpdateService);
+                ipiEngine = ConfigureAndBuild(ipiBuilder);
+
+                if (ipiEngine != null)
                 {
-                    FlowElements.Add(new ShareUsageBuilder(LoggerFactory, _httpClient).Build());
+                    // Add the share usage element to the list if enabled
+                    if (_shareUsageEnabled)
+                    {
+                        shareUsageElement = new ShareUsageBuilder(LoggerFactory, _httpClient).Build();
+                        FlowElements.Add(shareUsageElement);
+                    }
+                    // Add the IP intelligence engine to the list
+                    FlowElements.Add(ipiEngine);
                 }
-                // Add the IP intelligence engine to the list
-                FlowElements.Add(ipiEngine);
-            }
-            else
-            {
-                throw new PipelineException(Messages.ExceptionErrorOnStartup);
-            }
+                else
+                {
+                    throw new PipelineException(Messages.ExceptionErrorOnStartup);
+                }
 
-            // Create and return the pipeline
-            return base.Build();
+                // Create and return the pipeline
+                return base.Build();
+            }
+            catch
+            {
+                // No pipeline holds the elements built here, so they are
+                // disposed before the exception leaves.
+                DisposeOnFailure(ipiEngine);
+                DisposeOnFailure(shareUsageElement);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Removes an element made for a pipeline that failed to build and
+        /// disposes it, as nothing else holds it.
+        /// </summary>
+        /// <param name="element">The element, or null if none was made.</param>
+        private void DisposeOnFailure(IFlowElement element)
+        {
+            if (element != null)
+            {
+                FlowElements.Remove(element);
+                element.Dispose();
+            }
         }
 
         /// <summary>

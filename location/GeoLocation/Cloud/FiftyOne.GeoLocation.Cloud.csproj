@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <AssemblyName>FiftyOne.GeoLocation.Cloud</AssemblyName>
     <RootNamespace>FiftyOne.GeoLocation.Cloud</RootNamespace>
     <Platforms>AnyCPU;x64;x86</Platforms>
@@ -21,7 +21,7 @@
 	  <Copyright>51Degrees Mobile Experts Limited</Copyright>
 	  <PackageTags>51degrees;location;geolocation;longitude;latitude,cloud</PackageTags>
 	  <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
-	  <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.geolocation.cloud-fiftyone.geolocation.cloud.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+	  <PackageProjectUrl>https://51degrees.com/geolocation?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.geolocation.cloud&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <NeutralLanguage>en</NeutralLanguage>
     <PackageIcon>51d-logo.png</PackageIcon>

@@ -38,8 +38,8 @@ using Microsoft.Extensions.Hosting;
 /// @example OnPremise/Mixed/GettingStarted-Web/Program.cs
 /// 
 /// This example demonstrates using both Device Detection and IP Intelligence 
-/// engines in a single web application pipeline. The engines process evidence 
-/// in parallel for optimal performance.
+/// engines in a single web application pipeline. The pipeline runs both
+/// engines on the same evidence, one after the other.
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Mixed/GettingStarted-Web/Program.cs). 
 /// 
@@ -147,18 +147,13 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb
 
             // Use the command line argument if provided. Otherwise, an explicit data file
             // path supplied in an environment variable takes precedence over the value in
-            // the configuration file. The aligned '51DEGREES_IPI_PATH' variable is checked
-            // first, followed by the legacy 'IPINTELLIGENCEDATAFILE' variable.
+            // the configuration file. The variable is '_51DEGREES_IPI_PATH'.
             var dataFile = dataFileOverride;
             if (string.IsNullOrWhiteSpace(dataFile))
             {
-                dataFile = Environment.GetEnvironmentVariable(
-                    Examples.Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
-            }
-            if (string.IsNullOrWhiteSpace(dataFile))
-            {
-                dataFile = Environment.GetEnvironmentVariable(
-                    Examples.Constants.LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
+                dataFile = Examples.ExampleUtils.FromEnvironment(
+                    Examples.Constants.IPI_PATH_ENV_VAR,
+                    Examples.Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS);
             }
             if (string.IsNullOrWhiteSpace(dataFile))
             {
@@ -169,7 +164,7 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb
             {
                 throw new Exception($"A data file must be specified as a command line " +
                     $"argument, in the appsettings.json file, or in the " +
-                    $"'{Examples.Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR}' environment " +
+                    $"'{Examples.Constants.IPI_PATH_ENV_VAR}' environment " +
                     $"variable.");
             }
             // The data file location provided in the configuration may be using an absolute or
@@ -198,8 +193,9 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb
             {
                 throw new Exception($"Failed to find a IP Intelligence data file matching " +
                                     $"'{dataFile}'. If using the lite file, then make sure the " +
-                                    $"ip-intelligence-data submodule has been updated by running " +
-                                    "`git submodule update --recursive`. Otherwise, ensure that the filename " +
+                                    $"submodules have been fetched by running " +
+                                    "`git submodule update --init --recursive`, so that it can be " +
+                                    "downloaded. Otherwise, ensure that the filename " +
                                     "is correct in appsettings.json.");
             }
         }
@@ -248,8 +244,9 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb
             {
                 throw new Exception($"Failed to find a device detection data file matching " +
                                     $"'{dataFile}'. If using the lite file, then make sure the " +
-                                    $"device-detection-data submodule has been updated by running " +
-                                    "`git submodule update --recursive`. Otherwise, ensure that the filename " +
+                                    $"submodules have been fetched by running " +
+                                    "`git submodule update --init --recursive`, so that it can be " +
+                                    "downloaded. Otherwise, ensure that the filename " +
                                     "is correct in appsettings.json.");
             }
         }

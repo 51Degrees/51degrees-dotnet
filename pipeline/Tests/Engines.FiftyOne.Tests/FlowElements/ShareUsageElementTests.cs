@@ -30,6 +30,7 @@ using Moq;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
@@ -170,19 +171,26 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// </summary>
         private class QueueOpenShareUsageElement : ShareUsageElement
         {
+            private readonly int _disposeTimeoutMilliseconds;
+
             public QueueOpenShareUsageElement(
                 ILogger<ShareUsageBase> logger,
                 HttpClient httpClient,
                 int minimumEntriesPerMessage,
                 int maximumQueueSize,
-                ITracker tracker)
+                ITracker tracker,
+                int disposeTimeoutMilliseconds = 5000)
                 : base(logger, httpClient, 1, minimumEntriesPerMessage,
                       maximumQueueSize, 100, 100, 1, true,
                       "http://51Degrees.com/test", new List<string>(),
                       new List<string>(), new List<KeyValuePair<string, string>>(),
                       Engines.Constants.DEFAULT_ASP_COOKIE_NAME, tracker, false)
             {
+                _disposeTimeoutMilliseconds = disposeTimeoutMilliseconds;
             }
+
+            internal override int DisposeTimeoutMilliseconds =>
+                _disposeTimeoutMilliseconds;
 
             public void Enqueue(string clientIp) =>
                 EvidenceCollection.Add(new ShareUsageData() { ClientIP = clientIp });
@@ -190,6 +198,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             public int Queued => EvidenceCollection.Count;
 
             public Task SendAsync() => BuildAndSendXmlAsync();
+
+            public void StartSending() => TrySendData();
         }
 
         /// <summary>
@@ -228,6 +238,148 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 $"in {_xmlContent.Count} message(s). " +
                 $"Never sent: {string.Join(", ", neverSent)}");
             CollectionAssert.AreEquivalent(clientIps, sent);
+        }
+
+        /// <summary>
+        /// On disposal every entry still queued is sent, in as many messages
+        /// as it takes, each holding at most twice the minimum entries.
+        /// Disposal is given no time bound, because the subject here is that
+        /// everything queued is sent and not how soon the runner gets round
+        /// to the work. The two tests below cover the bound itself.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/rc/pipeline-specification/pipeline-elements/usage-sharing-element.md#cleanup">Specification</see>
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_SendsEveryRemainingEntry()
+        {
+            const int minimumEntries = 2;
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, minimumEntries, 100, _tracker.Object,
+                Timeout.Infinite);
+            element.AddPipeline(_pipeline.Object);
+            var clientIps = Enumerable.Range(1, 11)
+                .Select(i => $"10.2.0.{i}")
+                .ToList();
+            foreach (var ip in clientIps)
+            {
+                element.Enqueue(ip);
+            }
+
+            element.Dispose();
+
+            var sent = _xmlContent
+                .SelectMany(xml => Regex.Matches(xml, "<ClientIP>([^<]+)</ClientIP>")
+                    .Cast<System.Text.RegularExpressions.Match>()
+                    .Select(m => m.Groups[1].Value))
+                .ToList();
+            CollectionAssert.AreEquivalent(clientIps, sent,
+                $"Queued {clientIps.Count} entries and sent {sent.Count} " +
+                $"in {_xmlContent.Count} message(s).");
+            foreach (var xml in _xmlContent)
+            {
+                Assert.IsLessThanOrEqualTo(minimumEntries * 2, CountDeviceNodes(xml),
+                    "A message held more than twice the minimum entries.");
+            }
+            Assert.AreEqual(0, element.Queued);
+        }
+
+        /// <summary>
+        /// One timeout bounds the whole of disposal, so an endpoint that
+        /// never answers cannot hold it up. Disposal returns when the time is
+        /// up, and logs a warning that says how many entries were not sent.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_EndpointNeverAnswers_Bounded()
+        {
+            const int boundMilliseconds = 500;
+            const int minimumEntries = 2;
+            const int queued = 11;
+            using (var release = new ManualResetEventSlim(false))
+            {
+                _httpHandler.SetupResponse(request =>
+                {
+                    release.Wait(TimeSpan.FromSeconds(60));
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
+                });
+                var element = new QueueOpenShareUsageElement(
+                    _logger, _httpClient, minimumEntries, 100, _tracker.Object,
+                    boundMilliseconds);
+                element.AddPipeline(_pipeline.Object);
+                for (int i = 1; i <= queued; i++)
+                {
+                    element.Enqueue($"10.3.0.{i}");
+                }
+
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                element.Dispose();
+                watch.Stop();
+                release.Set();
+
+                Assert.IsLessThan(boundMilliseconds * 6, watch.ElapsedMilliseconds,
+                    "Disposal was held up by an endpoint that never answers.");
+                Assert.AreEqual(1, _logger.WarningEntries.Count(
+                    w => w.Contains("not sent")),
+                    "Expected one warning that entries were not sent.");
+                var warning = _logger.WarningEntries.First(w => w.Contains("not sent"));
+                // The warning opens with the entries still queued. Disposal
+                // starts one message, which the endpoint never answers, so
+                // the count is the queue less however many of that message's
+                // entries it had taken when the time ran out. A message holds
+                // at most twice the minimum entries.
+                var notSent = int.Parse(
+                    warning.Split(' ')[0], CultureInfo.InvariantCulture);
+                Assert.IsGreaterThanOrEqualTo(
+                    queued - minimumEntries * 2, notSent,
+                    $"The warning said {notSent} entries were not sent, " +
+                    $"which is fewer than one message can account for.");
+                Assert.IsLessThanOrEqualTo(queued, notSent,
+                    $"The warning said {notSent} entries were not sent, " +
+                    $"which is more than were queued.");
+            }
+        }
+
+        /// <summary>
+        /// The same timeout covers a send already running when disposal
+        /// starts, so an endpoint that never answers it cannot hold disposal
+        /// up, and no further message is sent once that send returns.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_RunningSendNeverAnswers_Bounded()
+        {
+            const int boundMilliseconds = 500;
+            using (var release = new ManualResetEventSlim(false))
+            using (var started = new ManualResetEventSlim(false))
+            {
+                _httpHandler.SetupResponse(request =>
+                {
+                    started.Set();
+                    release.Wait(TimeSpan.FromSeconds(20));
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
+                });
+                var element = new QueueOpenShareUsageElement(
+                    _logger, _httpClient, 2, 100, _tracker.Object,
+                    boundMilliseconds);
+                element.AddPipeline(_pipeline.Object);
+                for (int i = 1; i <= 7; i++)
+                {
+                    element.Enqueue($"10.5.0.{i}");
+                }
+                element.StartSending();
+                Assert.IsTrue(started.Wait(TimeSpan.FromSeconds(10)),
+                    "The first send did not start.");
+
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                element.Dispose();
+                watch.Stop();
+                release.Set();
+                Thread.Sleep(1000);
+
+                Assert.IsLessThan(boundMilliseconds * 6, watch.ElapsedMilliseconds,
+                    "Disposal was held up by a running send that never answers.");
+                Assert.AreEqual(1, _httpHandler.SendCallCount,
+                    "A message was sent after disposal had given up.");
+                var warning = _logger.WarningEntries.First(w => w.Contains("not sent"));
+                StringAssert.Contains(warning, "3 ");
+            }
         }
 
         /// <summary>
@@ -533,13 +685,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// When data WAS processed, disposing must still send exactly one message.
         /// (Equivalent intent to ShareUsageElement_SendOnCleanup; kept explicit so
         /// the #224 fix is verified end-to-end.)
+        /// Disposal is given no time bound, because the subject is that the
+        /// queued entry is sent and not how soon the runner gets round to it.
         /// </summary>
         [TestMethod]
         public void ShareUsageElement_StillSendsOnCleanup_WhenDataProcessed()
         {
             // Arrange.
-            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(),
-                new List<KeyValuePair<string, string>>());
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, 2, 100, _tracker.Object, Timeout.Infinite);
+            element.AddPipeline(_pipeline.Object);
 
             var evidenceData = new Dictionary<string, object>()
             {
@@ -548,11 +703,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             var data = MockFlowData.CreateFromEvidence(evidenceData, false);
 
             // Act - one item processed (below MinEntriesPerMessage so nothing sent yet).
-            _shareUsageElement.Process(data.Object);
+            element.Process(data.Object);
             _httpHandler.VerifySendCalled(0);
 
-            _shareUsageElement.Dispose();
-            Thread.Sleep(200);
+            // Disposal waits for the send, so nothing here waits on a clock.
+            element.Dispose();
 
             // Assert - the queued item is flushed exactly once on dispose.
             _httpHandler.VerifySendCalled(1);
@@ -774,6 +929,111 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             Assert.Contains(@"iPhone\x0018", _xmlContent[0]);
             Assert.Contains("<BadSchema>true</BadSchema>", _xmlContent[0]);
 
+        }
+
+        /// <summary>
+        /// Sends one message built from the evidence, sharing all of it,
+        /// and returns the XML after checking it is well formed and still
+        /// holds the user agent that sits beside the evidence under test.
+        /// </summary>
+        private string ShareAllAndGetMessage(
+            params KeyValuePair<string, object>[] evidence)
+        {
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(),
+                new List<KeyValuePair<string, string>>(), shareAll: true);
+
+            var evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, "iPhone" },
+            };
+            foreach (var pair in evidence)
+            {
+                evidenceData.Add(pair.Key, pair.Value);
+            }
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            _shareUsageElement.Process(data.Object);
+            WaitForSendDataTask();
+
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+            using (XmlReader xr = XmlReader.Create(
+                new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+            Assert.Contains("<ClientIP>1.2.3.4</ClientIP>", _xmlContent[0]);
+            Assert.Contains("iPhone", _xmlContent[0]);
+            return _xmlContent[0];
+        }
+
+        /// <summary>
+        /// A key that starts with a dot has an empty prefix, so the field
+        /// after the dot names the element and the message is still written.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_KeyStartingWithDot_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(".dot", "w"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains("<dot>w</dot>", xml);
+            Assert.Contains("kept", xml);
+            Assert.DoesNotContain("BadSchema", xml);
+        }
+
+        /// <summary>
+        /// A character outside the Basic Multilingual Plane (two UTF-16 code
+        /// units) is valid and is kept beside a control character that is
+        /// replaced.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_SurrogatePairThenControlChar_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(
+                    "query.51D_Emoji", "a\U0001F600\u0001b"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains("a\U0001F600\\x0001b", xml);
+            Assert.Contains("kept", xml);
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
+        }
+
+        /// <summary>
+        /// U+FFFE and U+FFFF are not allowed in XML 1.0 (section 2.2) so each
+        /// is replaced by its four digit code and the message is written.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_NonCharacters_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(
+                    "query.51D_Fffe", "a\uFFFEb\uFFFFc"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains(@"a\xfffeb\xffffc", xml);
+            Assert.Contains("kept", xml);
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
+        }
+
+        /// <summary>
+        /// A surrogate with no partner is not allowed in XML 1.0 and is
+        /// replaced by its four digit code, so the message is written.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_LoneSurrogate_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(
+                    "query.51D_Lone", "a\uD83Db"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains(@"a\xd83db", xml);
+            Assert.Contains("kept", xml);
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
         }
 
         /// <summary>
@@ -1155,98 +1415,122 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
-        /// Test that when the queue fills up, data is dropped but the queue
-        /// eventually drains and recovers to accept new data.
-        /// Uses a small queue (20) with batch size 10 and a slow HTTP
-        /// endpoint to force the queue to fill up.
+        /// When the queue is full, new entries are discarded and one warning
+        /// is logged for each time the queue fills, never one for each entry
+        /// discarded. Once there is room again a new entry is accepted, and
+        /// the next time the queue fills is warned about again. A failed
+        /// send first pauses sending, so no send takes entries while the
+        /// test fills the queue, and the result does not depend on thread
+        /// timing.
         /// </summary>
         [TestMethod]
         public void ShareUsageElement_QueueFullRecovery()
         {
-            // Arrange
-            // Small queue of 20, batch size 10, so each send drains up to 20 items.
-            // Add a delay to the HTTP handler to simulate a slow endpoint,
-            // causing the queue to fill up while a send is in progress.
-            int sendCount = 0;
-            _httpHandler.SetupResponse(request =>
+            _httpHandler.SetupResponse(request => new HttpResponseMessage(
+                System.Net.HttpStatusCode.InternalServerError));
+            var element = new PausedQueueElement(
+                _logger, _httpClient, _tracker.Object);
+            element.AddPipeline(_pipeline.Object);
+            element.Enqueue("10.6.9.1");
+            element.StartSending();
+            var paused = System.Diagnostics.Stopwatch.StartNew();
+            while (_logger.WarningEntries.Any(w => w.Contains("paused")) == false &&
+                paused.Elapsed < TimeSpan.FromSeconds(10))
             {
-                Interlocked.Increment(ref sendCount);
-                // Simulate slow endpoint on first call to let queue fill up
-                if (sendCount == 1)
-                {
-                    Thread.Sleep(500);
-                }
-                StoreRequestXml(request);
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                {
-                    Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
-                };
-            });
-
-            CreateShareUsage(
-                sharePercentage: 1,
-                minimumEntriesPerMessage: 10,
-                maximumQueueSize: 20,
-                interval: 1,
-                blockedHeaders: new List<string>(),
-                includedQueryStringParams: new List<string>(),
-                ignoreDataEvidenceFiler: new List<KeyValuePair<string, string>>());
-
-            // Act - flood with 50 unique requests (more than queue capacity)
-            int totalProcessed = 0;
-            for (int i = 0; i < 50; i++)
-            {
-                var evidenceData = new Dictionary<string, object>()
-                {
-                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, $"1.2.3.{i % 256}" },
-                    { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, $"TestAgent/{i}" },
-                };
-                var data = MockFlowData.CreateFromEvidence(evidenceData, false);
-                _shareUsageElement.Process(data.Object);
-                totalProcessed++;
+                Thread.Sleep(10);
             }
+            Assert.IsTrue(_logger.WarningEntries.Any(w => w.Contains("paused")),
+                "The failed send did not pause sending.");
 
-            // Wait for any in-progress send to complete
-            if (_shareUsageElement.SendDataTask != null)
+            // The queue fills for the first time.
+            for (int i = 0; i < 20; i++)
             {
-                _shareUsageElement.SendDataTask.Wait(10000);
+                element.Enqueue($"10.6.0.{i}");
             }
-
-            // Now send more data - queue should have drained and accept new entries
-            _xmlContent.Clear();
-            for (int i = 50; i < 70; i++)
+            for (int i = 0; i < 5; i++)
             {
-                var evidenceData = new Dictionary<string, object>()
-                {
-                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, $"1.2.3.{i % 256}" },
-                    { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, $"TestAgent/{i}" },
-                };
-                var data = MockFlowData.CreateFromEvidence(evidenceData, false);
-                _shareUsageElement.Process(data.Object);
+                ProcessRequest(element, $"10.6.1.{i}");
             }
+            Assert.AreEqual(20, element.Queued);
+            Assert.AreEqual(1, QueueFullWarnings(),
+                "Five entries discarded while the queue was full should " +
+                "give one warning.");
 
-            // Wait for the final send to complete
-            if (_shareUsageElement.SendDataTask != null)
+            // There is room again, so a new entry is accepted.
+            element.Drain();
+            ProcessRequest(element, "10.6.2.0");
+            Assert.AreEqual(1, element.Queued,
+                "An entry was not accepted once there was room.");
+
+            // The queue fills for the second time.
+            for (int i = 1; i < 20; i++)
             {
-                _shareUsageElement.SendDataTask.Wait(10000);
+                element.Enqueue($"10.6.3.{i}");
             }
+            for (int i = 0; i < 5; i++)
+            {
+                ProcessRequest(element, $"10.6.4.{i}");
+            }
+            Assert.AreEqual(2, QueueFullWarnings(),
+                "Each time the queue fills should give one warning.");
 
-            // Assert
-            // The key assertion: HTTP sends happened (queue was drained)
-            Assert.IsGreaterThanOrEqualTo(2,
-sendCount, $"Expected at least 2 HTTP sends (initial + recovery), but got {sendCount}");
-
-            // After recovery, new data was accepted and sent
-            Assert.IsNotEmpty(_xmlContent,
-                "Expected data to be sent after queue recovery, but no XML content was captured");
-
-            // Verify no errors or warnings were logged (the original complaint
-            // was log flooding with overflow messages).
+            element.Dispose();
             _logger.AssertMaxErrors(0);
-            _logger.AssertMaxWarnings(0);
+            Assert.AreEqual(1, _httpHandler.SendCallCount,
+                "A send was made while sending was paused.");
+        }
 
-            Console.WriteLine($"Total HTTP sends: {sendCount}");
-            Console.WriteLine($"XML batches after recovery: {_xmlContent.Count}");
+        /// <summary>
+        /// Opens the queue, so a test can fill it directly. The queue holds
+        /// 20 entries, and one failed send pauses sending for 60 seconds.
+        /// </summary>
+        private class PausedQueueElement : ShareUsageElement
+        {
+            public PausedQueueElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                ITracker tracker)
+                : base(logger, httpClient, 1, 10, 20, 100, 100, 1, true,
+                      "http://51Degrees.com/test", new List<string>(),
+                      new List<string>(),
+                      new List<KeyValuePair<string, string>>(),
+                      Engines.Constants.DEFAULT_ASP_COOKIE_NAME, tracker, false,
+                      failuresToEnterRecovery: 1,
+                      failuresWindowSeconds: 100,
+                      initialRecoveryDelaySeconds: 60,
+                      maxRecoveryDelaySeconds: 60,
+                      recoveryMultiplier: 2)
+            {
+            }
+
+            public void Enqueue(string clientIp) =>
+                EvidenceCollection.Add(new ShareUsageData() { ClientIP = clientIp });
+
+            public int Queued => EvidenceCollection.Count;
+
+            public void StartSending() => TrySendData();
+
+            public void Drain()
+            {
+                while (EvidenceCollection.TryTake(out _))
+                {
+                }
+            }
+        }
+
+        private int QueueFullWarnings() =>
+            _logger.WarningEntries.Count(w => w.Contains("is full"));
+
+        private static void ProcessRequest(ShareUsageElement element, string ip)
+        {
+            var data = MockFlowData.CreateFromEvidence(
+                new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, ip },
+                    { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, $"TestAgent/{ip}" },
+                },
+                false);
+            element.Process(data.Object);
         }
 
         /// <summary>
@@ -1408,7 +1692,7 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
                 _shareUsageElement.Process(data.Object);
             }
             // Wait for the first send to finish, then dispose to flush
-            // one more message from the remaining entries.
+            // the remaining entries.
             WaitForSendDataTask();
             _shareUsageElement.Dispose();
             Thread.Sleep(200);
@@ -1421,10 +1705,11 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
                 Assert.IsLessThanOrEqualTo(maximumEntries, CountDeviceNodes(xml),
                     $"A message held more than {maximumEntries} entries");
             }
-            // The final flush had more than the maximum queued, so it must
-            // have been capped at exactly the maximum.
-            Assert.AreEqual(maximumEntries, CountDeviceNodes(_xmlContent[_xmlContent.Count - 1]),
-                "The final message was not capped at the maximum entries");
+            // Disposal sends everything still queued, so every entry that
+            // was queued has been sent.
+            Assert.AreEqual(maximumEntries * 3,
+                _xmlContent.Sum(xml => CountDeviceNodes(xml)),
+                "Entries were left unsent on disposal");
         }
 
         /// <summary>

@@ -22,10 +22,11 @@ $OldStyle = "^FiftyOne\.(Pipeline\.Web\.Framework\.Tests|DeviceDetection\.Tests\
 # the test helper packages are not tests. A native library is loaded by a
 # host of the assembly's own platform, which the engine test projects set.
 $Filter = "^FiftyOne\.(?!Pipeline\.Web\.Framework\.Tests\.dll$)(?!DeviceDetection\.Tests\.Framework\.dll$)(?!.*Examples?\.Tests)(?!.*TestHelpers).*Tests?(\.Core|\.Framework)?\.dll$"
-# A run can be narrowed to some assemblies by setting FIFTYONE_TEST_FILTER,
+# A run can be narrowed to some assemblies by setting _51DEGREES_TEST_FILTER,
 # which the probe workflow does.
-if ($env:FIFTYONE_TEST_FILTER) {
-    $Filter = $env:FIFTYONE_TEST_FILTER
+$TestFilter = & "$PSScriptRoot/test-filter.ps1"
+if ($TestFilter) {
+    $Filter = $TestFilter
 }
 
 $Exclude = $Depth -eq 'standard' ?
@@ -45,7 +46,7 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-if ($BuildMethod -eq "msbuild" -and -not $env:FIFTYONE_TEST_FILTER) {
+if ($BuildMethod -eq "msbuild" -and -not $TestFilter) {
     ./dotnet/run-unit-tests.ps1 `
         -RepoName $RepoName `
         -Name $Name `

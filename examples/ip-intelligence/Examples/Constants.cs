@@ -34,6 +34,21 @@ namespace FiftyOne.IpIntelligence.Examples
         public const string ENTERPRISE_IPI_DATA_FILE_NAME = "51Degrees-EnterpriseIpiV41.ipi";
 
         /// <summary>
+        /// The free IP Intelligence data file with the registration
+        /// properties, which the examples that show location or
+        /// registration properties use by default. The data repository
+        /// links it, and the examples download it when it is missing.
+        /// </summary>
+        public const string LITE_IPI_DATA_FILE_NAME = "51Degrees-LiteV41.ipi";
+
+        /// <summary>
+        /// The free IP Intelligence data file with Asn and AsnName, which the
+        /// performance and update examples use by default because it is far
+        /// smaller to download than the Lite file.
+        /// </summary>
+        public const string ASN_IPI_DATA_FILE_NAME = "51Degrees-IPIV4AsnIpiV41.ipi";
+
+        /// <summary>
         /// Name of the file to use for the test evidence.
         /// </summary>
         public const string YAML_EVIDENCE_FILE_NAME = "evidence.yml";
@@ -51,18 +66,40 @@ namespace FiftyOne.IpIntelligence.Examples
 
         /// <summary>
         /// Environment variable key used to supply an explicit path to the
-        /// IP Intelligence data file. This aligned name is checked first,
-        /// before any legacy variable names.
+        /// IP Intelligence data file.
         /// </summary>
+        public const string IPI_PATH_ENV_VAR = "_51DEGREES_IPI_PATH";
+
+        /// <summary>
+        /// An old environment variable for the path to the IP Intelligence
+        /// data file, read only when <see cref="IPI_PATH_ENV_VAR"/> is not
+        /// set.
+        /// </summary>
+        [System.Obsolete("Use IPI_PATH_ENV_VAR, which names the environment " +
+            "variable that replaces this one.")]
         public const string IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "51DEGREES_IPI_PATH";
 
         /// <summary>
-        /// Legacy environment variable key used to supply an explicit path to
-        /// the IP Intelligence data file. Retained for backwards
-        /// compatibility and checked when
-        /// <see cref="IP_INTELLIGENCE_DATA_FILE_ENV_VAR"/> is not set.
+        /// An old environment variable for the path to the IP Intelligence
+        /// data file, read only when <see cref="IPI_PATH_ENV_VAR"/> is not
+        /// set.
         /// </summary>
+        [System.Obsolete("Use IPI_PATH_ENV_VAR, which names the environment " +
+            "variable that replaces this one.")]
         public const string LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "IPINTELLIGENCEDATAFILE";
+
+#pragma warning disable CS0618 // The old names are listed to be read.
+        /// <summary>
+        /// The old names of
+        /// <see cref="IPI_PATH_ENV_VAR"/>,
+        /// read in this order only when that variable is not set.
+        /// </summary>
+        public static readonly string[] OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS = new string[]
+        {
+            IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
+            LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
+        };
+#pragma warning restore CS0618
 
         /// <summary>
         /// Environment variable key for the evidence file to use for the tests.

@@ -57,7 +57,7 @@ public class TestCompareOddIps
                 "This test requires an on-premise IP Intelligence data " +
                 $"file. Place a '{ExampleConstants.ENTERPRISE_IPI_DATA_FILE_NAME}' " +
                 "file in the repository or set the " +
-                $"'{ExampleConstants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR}' " +
+                $"'{ExampleConstants.IPI_PATH_ENV_VAR}' " +
                 "environment variable to its path.";
         }
     }
@@ -78,14 +78,14 @@ public class TestCompareOddIps
             Assert.Inconclusive(_skipReason);
         }
         using var loggerFactory = new LoggerFactory();
-        using var engine = new IpiOnPremiseEngineBuilder(loggerFactory)
+        var engine = new IpiOnPremiseEngineBuilder(loggerFactory)
             .SetPerformanceProfile(PerformanceProfiles.LowMemory)
             .SetAutoUpdate(false)
             .SetDataFileSystemWatcher(false)
             .Build(_dataFile, false);
+        // Disposing the pipeline also disposes the engine.
         using var pipeline = new PipelineBuilder(loggerFactory)
             .AddFlowElement(engine)
-            .SetAutoDisposeElements(false)
             .Build();
 
         using var flowData = pipeline.CreateFlowData();

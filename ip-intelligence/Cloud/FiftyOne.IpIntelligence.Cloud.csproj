@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <Platforms>AnyCPU;x64</Platforms>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -10,7 +10,8 @@
     <Authors>51Degrees Engineering</Authors>
     <Copyright>51Degrees Mobile Experts Limited</Copyright>
     <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
-    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.ipintelligence.cloud-fiftyone.ipintelligence.cloud.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageProjectUrl>https://51degrees.com/ip-intelligence?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.ipintelligence.cloud&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>51d-logo.png</PackageIcon>
     <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -26,7 +27,10 @@
 
   <ItemGroup>
     <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineVersion)" />
-    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.0.0">
+    <!-- The FxCop analyzers check the netstandard2.0 build. On net10.0 they
+         also ask for overloads, such as string.IndexOf(char,
+         StringComparison), that netstandard2.0 does not have. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.0.0" Condition="'$(TargetFramework)' == 'netstandard2.0'">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -38,6 +42,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
     <None Include="..\Images\51d-logo.png">
       <Pack>True</Pack>
       <PackagePath></PackagePath>

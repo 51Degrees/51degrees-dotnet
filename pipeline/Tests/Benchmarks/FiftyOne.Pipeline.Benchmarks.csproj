@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" />
     <ProjectReference Include="..\..\Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" />
   </ItemGroup>
 

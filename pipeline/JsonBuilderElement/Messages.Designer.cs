@@ -61,7 +61,7 @@ namespace FiftyOne.Pipeline.JsonBuilder {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The value for the ‘sequence’ parameter could not found. See http://51degrees.com/documentation/_info__error_messages.html#Sequence_value_not_found for more information..
+        ///   Looks up a localized string similar to The JSON Builder needs a sequence number. Place a Sequence Element before the JSON Builder in the Pipeline..
         /// </summary>
         internal static string ExceptionSequenceNumberNotPresent {
             get {

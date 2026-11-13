@@ -25,6 +25,7 @@ using FiftyOne.Pipeline.Core.FailHandling.Facade;
 using FiftyOne.Pipeline.Core.FailHandling.Recovery;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Core.Services;
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FlowElements;
 using Microsoft.Extensions.Logging;
@@ -55,6 +56,17 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         ICloudRequestEngine
     {
         /// <summary>
+        /// The prefixes after query, header and cookie, highest
+        /// precedence first, as evidence.md lists them.
+        /// </summary>
+        private static readonly string[] OTHER_PREFIX_PRECEDENCE =
+        {
+            Core.Constants.EVIDENCE_SERVER_PREFIX,
+            "fiftyone",
+            "location",
+        };
+
+        /// <summary>
         /// Separator as a character array.
         /// </summary>
         private static readonly char[] EVIDENCE_SEPARATOR_CHAR_ARRAY = 
@@ -75,7 +87,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             public string DataEndpoint;
 
             /// <summary>
-            /// The resource key to use when making requests.
+            /// The resource key to use when making requests. Leave it
+            /// empty to authenticate with <see cref="LicenseKey"/> alone,
+            /// which also needs <see cref="RequestedProperties"/>.
             /// A resource key encapsulates details such as any license keys,
             /// the properties that should be returned and the domains that
             /// requests are permitted from. A new resource key can be
@@ -84,8 +98,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             public string ResourceKey;
 
             /// <summary>
-            /// The license key to use when making requests.
-            /// This parameter is obsolete, use resourceKey instead.
+            /// The license key to use when making requests, either alone
+            /// with <see cref="RequestedProperties"/> or beside a resource
+            /// key to add the requested properties the license grants.
             /// </summary>
             public string LicenseKey;
 
@@ -110,11 +125,23 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             public string CloudRequestOrigin;
 
             /// <summary>
-            /// Not currently used.
+            /// The fully qualified names of the properties to ask for,
+            /// sent as 'values' when the list is not empty.
             /// </summary>
             public IList<string> RequestedProperties;
         }
         private readonly EndpointsAndKeys _endpointsAndKeys;
+
+        private bool HasRequestedProperties =>
+            _endpointsAndKeys.RequestedProperties != null &&
+            _endpointsAndKeys.RequestedProperties.Count > 0;
+
+        /// <summary>
+        /// Set once the requested properties have been compared with an
+        /// answer, as the answer cannot change while the credential and
+        /// the list stay the same.
+        /// </summary>
+        private int _requestedPropertiesChecked;
 
         private readonly IFailHandler _failHandler;
 
@@ -137,7 +164,6 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// </param>
         /// <param name="licenseKey">
         /// The license key to use when making requests.
-        /// This parameter is obsolete, use resourceKey instead.
         /// </param>
         /// <param name="resourceKey">
         /// The resource key to use when making requests.
@@ -164,7 +190,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// The timeout for HTTP requests in seconds.
         /// </param>
         /// <param name="requestedProperties">
-        /// Not currently used.
+        /// The properties to ask for, sent as 'values'.
         /// </param>
         /// <param name="cloudRequestOrigin">
         /// The value to use for the Origin header when making requests 
@@ -552,7 +578,73 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     checkForErrorMessages: true);
             }
 
+            if (HasRequestedProperties)
+            {
+                ReportPropertiesNotCovered(jsonResult);
+            }
+
             aspectData.JsonResponse = jsonResult;
+        }
+
+        /// <summary>
+        /// Warn once about requested properties missing from an answer.
+        /// The cloud service leaves out a requested property it does not
+        /// answer without naming it, so the engine compares names itself,
+        /// ignoring letter case. A property that is present but null counts as
+        /// answered, as it carries a reason beside it. The request is never
+        /// failed because the covered properties came back. With no license
+        /// key, a property the resource key does not carry is answered as
+        /// null, so a name left out is not a property, and the message says
+        /// so.
+        /// </summary>
+        private void ReportPropertiesNotCovered(string json)
+        {
+            if (Volatile.Read(ref _requestedPropertiesChecked) != 0)
+            {
+                return;
+            }
+
+            JObject answer;
+            try
+            {
+                answer = JObject.Parse(json);
+            }
+            catch (JsonException)
+            {
+                return;
+            }
+
+            if (Interlocked.Exchange(ref _requestedPropertiesChecked, 1) != 0)
+            {
+                return;
+            }
+
+            var missing = new List<string>();
+            foreach (var name in _endpointsAndKeys.RequestedProperties
+                .OrderBy(n => n, StringComparer.Ordinal))
+            {
+                var split = name.Split(
+                    EVIDENCE_SEPARATOR_CHAR_ARRAY, 2);
+                var section = split.Length == 2
+                    ? answer.GetValue(split[0],
+                        StringComparison.OrdinalIgnoreCase) as JObject
+                    : null;
+                if (section == null ||
+                    section.GetValue(split[1],
+                        StringComparison.OrdinalIgnoreCase) == null)
+                {
+                    missing.Add(name);
+                }
+            }
+
+            if (missing.Count > 0)
+            {
+                Logger?.LogWarning(
+                    string.IsNullOrWhiteSpace(_endpointsAndKeys.LicenseKey)
+                        ? Messages.WarningRequestedNamesNotProperties
+                        : Messages.WarningPropertiesNotCovered,
+                    string.Join(", ", missing));
+            }
         }
 
         private void ThrowIfStillRecovering()
@@ -589,7 +681,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     catch (Exception ex)
                     when (!(ex is CloudRequestEngineTemporarilyUnavailableException))
                     {
-                        requestScope.RecordFailure(ex);
+                        if (CountsTowardsRecovery(ex))
+                        {
+                            requestScope.RecordFailure(ex);
+                        }
                         throw;
                     }
                 }
@@ -599,6 +694,22 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             {
                 throw ResurfaceCloudException(originalCloudException, ex);
             }
+        }
+
+        /// <summary>
+        /// Whether a failure says the cloud service is in trouble, so that
+        /// it counts towards the recovery period every request shares. A
+        /// request that did not complete, a status of 500 or more, a 429
+        /// and a success status with a body that could not be used all do.
+        /// Any other status from 400 to 499 answers the content of that
+        /// one request, so it does not.
+        /// </summary>
+        private static bool CountsTowardsRecovery(Exception exception)
+        {
+            return !(exception is CloudRequestException cloudException &&
+                cloudException.HttpStatusCode >= 400 &&
+                cloudException.HttpStatusCode <= 499 &&
+                cloudException.HttpStatusCode != 429);
         }
 
         private CloudRequestException ResurfaceCloudException(
@@ -680,8 +791,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 if (hasErrors)
                 {
                     var errors = jObj.Value<JArray>("errors");
-                    messages.AddRange(errors.Children<JValue>().Select(t => 
-                        t.Value.ToString()));
+                    messages.AddRange(errors.Children<JValue>().Select(t =>
+                        MaskLicenseKey(t.Value.ToString())));
                 }
 
                 // Log any warnings that were returned.
@@ -689,7 +800,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 {
                     var warnings = jObj.Value<JArray>("warnings");
                     foreach (var warning in warnings.Children<JValue>()
-                        .Select(t => t.Value.ToString()))
+                        .Select(t => MaskLicenseKey(t.Value.ToString())))
                     {
                         Logger?.LogWarning(warning);
                     }
@@ -716,7 +827,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     Messages.MessageErrorCodeReturned,
                     _endpointsAndKeys.DataEndpoint,
                     response.StatusCode,
-                    jsonResult);
+                    MaskLicenseKey(jsonResult));
                 messages.Add(msg);
             }
 
@@ -746,38 +857,100 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// Generate the Content to send in the POST request. The evidence keys
-        /// e.g. 'query.' and 'header.' have an order of precedence. These are
-        /// added to the evidence in reverse order, if there is conflict then 
-        /// the queryData value is overwritten. 
-        /// 
-        /// 'query.' evidence should take precedence over all other evidence.
-        /// If there are evidence keys other than 'query.' that conflict then
-        /// this is unexpected so an error will be logged.
+        /// A response with a top-level fodid member, in any letter case,
+        /// holds a 51Did that the cloud service created for the one request,
+        /// so it is never stored in the results cache or served from it.
+        /// Every other response is cached. The response is read without
+        /// waiting, because under lazy loading this runs inside the
+        /// processing task.
+        /// </summary>
+        protected override bool CanCache(CloudRequestData aspectData)
+        {
+            var json = aspectData?.JsonResponseIfSet;
+            if (string.IsNullOrEmpty(json) ||
+                json.IndexOf(
+                    "fodid", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                return true;
+            }
+            try
+            {
+                return JObject.Parse(json).Properties().Any(p =>
+                    string.Equals(
+                        p.Name,
+                        "fodid",
+                        StringComparison.OrdinalIgnoreCase)) == false;
+            }
+            catch (JsonReaderException)
+            {
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// The cloud service can repeat a license key in the text of an
+        /// answer. A license key must not appear in full in a log entry or
+        /// an error message, so this masks it in text from the answer.
+        /// The key is sent in the body of the request and not in a URL, so
+        /// the messages of the HTTP library hold no key.
+        /// </summary>
+        private string MaskLicenseKey(string text) =>
+            LicenseKeyMask.MaskText(text, new[] { _endpointsAndKeys.LicenseKey });
+
+        /// <summary>
+        /// Generate the Content to send in the POST request. Each Evidence
+        /// value is sent under its key with the prefix removed. Keys ignore
+        /// letter case, so one name under two prefixes is one field, sent
+        /// with the name and value of the key that wins by the precedence
+        /// in evidence.md, being query, header, cookie, server, fiftyone
+        /// and location, then any other prefix alphabetically. The groups
+        /// are added lowest precedence first, so a later key replaces an
+        /// earlier one, and a replacement by a key other than a query key
+        /// is logged as a warning.
         /// </summary>
         /// <param name="data"></param>
         /// <returns>Evidence in a FormUrlEncodedContent object</returns>
         private FormUrlEncodedContent GetContent(IFlowData data)
         {
-            var queryData = new Dictionary<string, string>();
+            var queryData = new Dictionary<string, string>(
+                StringComparer.OrdinalIgnoreCase);
 
-            queryData.Add("resource", _endpointsAndKeys.ResourceKey);
+            if (string.IsNullOrWhiteSpace(_endpointsAndKeys.ResourceKey) == false)
+            {
+                queryData.Add("resource", _endpointsAndKeys.ResourceKey);
+            }
 
             if (string.IsNullOrWhiteSpace(_endpointsAndKeys.LicenseKey) == false)
             {
                 queryData.Add("license", _endpointsAndKeys.LicenseKey);
             }
 
+            if (HasRequestedProperties)
+            {
+                queryData.Add("values", string.Join(",",
+                    _endpointsAndKeys.RequestedProperties));
+            }
+
             var evidence = data.GetEvidence().AsDictionary();
 
-            // Add evidence in reverse alphabetical order, excluding special
-            // keys. 
+            // Add the other evidence lowest precedence first, being other
+            // prefixes in reverse alphabetical order of the prefix in lower
+            // case, then of the whole key, then location,
+            // fiftyone and server, leaving out the web request a web
+            // integration adds for usage sharing, which is an object rather
+            // than a value to send.
             AddQueryData(queryData, evidence, evidence
                 .Where(e =>
                     KeyHasPrefix(e, Core.Constants.EVIDENCE_QUERY_PREFIX) == false &&
                     KeyHasPrefix(e, Core.Constants.EVIDENCE_HTTPHEADER_PREFIX) == false &&
-                    KeyHasPrefix(e, Core.Constants.EVIDENCE_COOKIE_PREFIX) == false)
-                .OrderByDescending(e => e.Key));
+                    KeyHasPrefix(e, Core.Constants.EVIDENCE_COOKIE_PREFIX) == false &&
+                    string.Equals(e.Key, Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
+                        StringComparison.OrdinalIgnoreCase) == false)
+                .OrderByDescending(e => OtherPrefixRank(e.Key))
+                .ThenByDescending(e => PrefixOf(e.Key).ToLowerInvariant(),
+                    StringComparer.Ordinal)
+                .ThenByDescending(e => e.Key.ToLowerInvariant(),
+                    StringComparer.Ordinal));
             // Add cookie evidence.
             AddQueryData(queryData, evidence, evidence
                 .Where(e => KeyHasPrefix(e, Core.Constants.EVIDENCE_COOKIE_PREFIX)));
@@ -792,6 +965,41 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             return content;
         }
         
+        /// <summary>
+        /// The prefix of an Evidence key, being the part before its first
+        /// separator, or the whole key where it has none.
+        /// </summary>
+        /// <param name="key">The Evidence key.</param>
+        /// <returns>The prefix.</returns>
+        private static string PrefixOf(string key)
+        {
+            int separatorIndex = key.IndexOfAny(EVIDENCE_SEPARATOR_CHAR_ARRAY);
+            return separatorIndex >= 0
+                ? key.Substring(0, separatorIndex)
+                : key;
+        }
+
+        /// <summary>
+        /// The precedence of a key that is not a query, header or cookie
+        /// key, lower first, being server, fiftyone and location as
+        /// evidence.md lists them, then any other prefix.
+        /// </summary>
+        /// <param name="key">The Evidence key.</param>
+        /// <returns>The rank, where a lower rank wins.</returns>
+        private static int OtherPrefixRank(string key)
+        {
+            var prefix = PrefixOf(key);
+            for (int i = 0; i < OTHER_PREFIX_PRECEDENCE.Length; i++)
+            {
+                if (prefix.Equals(OTHER_PREFIX_PRECEDENCE[i],
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+            return OTHER_PREFIX_PRECEDENCE.Length;
+        }
+
         /// <summary>
         /// Check that the key of a KeyValuePair has the given prefix.
         /// </summary>
@@ -811,6 +1019,26 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             return prefixLength == prefix.Length &&
                 string.Compare(key, 0, prefix, 0, prefixLength,
                     StringComparison.InvariantCultureIgnoreCase) == 0;
+        }
+
+        /// <summary>
+        /// Check whether a field name is one the engine sends from its own
+        /// configuration, being the Resource Key and License Key, or one the
+        /// cloud also reads as a key or a property list. Letter case is
+        /// ignored.
+        /// </summary>
+        /// <param name="name">The field name, without any prefix.</param>
+        /// <returns>True if Evidence must not supply the field.</returns>
+        private static bool IsReservedField(string name)
+        {
+            return name.Equals("resource",
+                    StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("license",
+                    StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("licence",
+                    StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("values",
+                    StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -844,6 +1072,12 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     ? item.Key.Substring(separatorIndex + 1)
                     : item.Key;
 
+                // Evidence never supplies the request's own fields.
+                if (IsReservedField(suffix))
+                {
+                    continue;
+                }
+
                 // Check and add the evidence to the query parameters.
                 if (queryData.ContainsKey(suffix) == false)
                 {
@@ -870,8 +1104,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                             $"'{item.Key}={item.Value}' evidence conflicts " +
                             $"with '{string.Join("', '", conflicts)}'");
                     }
-                    // Overwrite the existing queryParameter value.
-                    queryData[suffix] = item.Value.ToString();
+                    // Replace the existing field, name and value, so the
+                    // name sent is the winning key's.
+                    queryData.Remove(suffix);
+                    queryData.Add(suffix, item.Value.ToString());
                 }
             }
         }
@@ -901,10 +1137,31 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 "Failed to retrieve available properties " +
                 $"from cloud service at {_endpointsAndKeys.PropertiesEndpoint}.";
 
-            var url = $"{_endpointsAndKeys.PropertiesEndpoint}?resource={_endpointsAndKeys.ResourceKey}";
-            using (var requestMessage =
-                new HttpRequestMessage(HttpMethod.Get, url))
+            // A resource key alone goes in the query string as it always
+            // has. A license key is posted in the body, with the resource
+            // key if there is one, so it never appears in a URL. The cloud
+            // service answers with everything the keys entitle.
+            var hasLicenseKey =
+                string.IsNullOrWhiteSpace(_endpointsAndKeys.LicenseKey) == false;
+            var url = hasLicenseKey
+                ? _endpointsAndKeys.PropertiesEndpoint
+                : $"{_endpointsAndKeys.PropertiesEndpoint}?resource={_endpointsAndKeys.ResourceKey}";
+            using (var requestMessage = new HttpRequestMessage(
+                hasLicenseKey ? HttpMethod.Post : HttpMethod.Get, url))
             {
+                if (hasLicenseKey)
+                {
+                    var credentials = new Dictionary<string, string>();
+                    if (string.IsNullOrWhiteSpace(
+                        _endpointsAndKeys.ResourceKey) == false)
+                    {
+                        credentials.Add(
+                            "resource", _endpointsAndKeys.ResourceKey);
+                    }
+                    credentials.Add("license", _endpointsAndKeys.LicenseKey);
+                    requestMessage.Content =
+                        new FormUrlEncodedContent(credentials);
+                }
                 try
                 {
                     jsonResult = AmendSendAndProcess(

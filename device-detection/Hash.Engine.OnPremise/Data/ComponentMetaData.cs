@@ -50,6 +50,10 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Data
         {
             _engine = engine;
             _source = source;
+            // Read now, so they can still be read once the native source has
+            // been disposed.
+            Name = _source.getName();
+            ComponentId = (byte)_source.getComponentIdAsInt();
         }
 
         /// <summary>
@@ -127,12 +131,12 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Data
         /// <summary>
         /// The name of this component.
         /// </summary>
-        public string Name => _source.getName();
+        public string Name { get; }
 
         /// <summary>
         /// The id number for this component.
         /// </summary>
-        public byte ComponentId => (byte)_source.getComponentIdAsInt();
+        public byte ComponentId { get; }
 
         #region IDisposable Support
         /// <summary>

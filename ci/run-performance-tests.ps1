@@ -18,15 +18,21 @@ $summary = New-Item -ItemType Directory -Force "$RepoPath/test-results/performan
 # nuget.org instead.
 $references = $Version ? (Get-VersionProperties -Versions (Get-FamilyVersions -RepoName $RepoName)) : @("-p:FiftyOneReferences=Project")
 $runConfiguration = $Configuration.Contains("Release") ? "Release" : "Debug"
+# The console examples are built one project at a time. They reach some
+# projects through references with different settings, so those projects
+# are built more than once, and with OutDir set every build of a project
+# writes to the same output folder. Built in parallel, two builds can try to
+# write the same file at once and the build fails.
+$console = @("-p:OutDir=output", "-p:BuiltOnCI=true", "-m:1")
 
 # The device detection console example, with the TAC file and the evidence
 # records. Its result is the one the shared performance comparison reads.
-$tacFile = "$RepoPath/cxx/device-detection-data/TAC-HashV41.hash"
-$evidence = "$RepoPath/cxx/device-detection-data/20000 Evidence Records.yml"
+$tacFile = "$RepoPath/cxx/data/device-detection/TAC-HashV41.hash"
+$evidence = "$RepoPath/cxx/data/device-detection/20000 Evidence Records.yml"
 if (Test-Path $tacFile) {
     Write-Host "::group::Device detection console performance"
     $project = "$RepoPath/examples/device-detection/OnPremise/Performance-Console"
-    dotnet build $project -c $runConfiguration "-p:Platform=$Arch" "-p:OutDir=output" "-p:BuiltOnCI=true" @references
+    dotnet build $project -c $runConfiguration "-p:Platform=$Arch" @console @references
     Push-Location "$project/output"
     try {
         dotnet FiftyOne.DeviceDetection.Examples.OnPremise.Performance.dll -d $tacFile -u $evidence -j summary.json
@@ -44,12 +50,12 @@ if (Test-Path $tacFile) {
 }
 
 # The IP Intelligence console example, with the Enterprise file.
-$ipiFile = "$RepoPath/cxx/ip-intelligence-data/51Degrees-EnterpriseIpiV41.ipi"
-$ipiEvidence = "$RepoPath/cxx/ip-intelligence-data/evidence.yml"
+$ipiFile = "$RepoPath/cxx/data/ip-intelligence/51Degrees-EnterpriseIpiV41.ipi"
+$ipiEvidence = "$RepoPath/cxx/data/ip-intelligence/evidence.yml"
 if (Test-Path $ipiFile) {
     Write-Host "::group::IP Intelligence console performance"
     $project = "$RepoPath/examples/ip-intelligence/OnPremise/Performance-Console"
-    dotnet build $project -c $runConfiguration "-p:Platform=$Arch" "-p:OutDir=output" "-p:BuiltOnCI=true" @references
+    dotnet build $project -c $runConfiguration "-p:Platform=$Arch" @console @references
     Push-Location "$project/output"
     try {
         dotnet FiftyOne.IpIntelligence.Examples.OnPremise.Performance.dll -d $ipiFile -a $ipiEvidence -j summary.json

@@ -106,7 +106,10 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// A new <see cref="IPipeline"/> instance containing the configured
         /// <see cref="IFlowElement"/> instances.
         /// </returns>
-        /// <exception cref="PipelineConfigurationException"></exception>
+        /// <exception cref="PipelineConfigurationException">
+        /// Thrown if the configuration cannot be built into a pipeline.
+        /// Every element built before the failure is disposed first.
+        /// </exception>
         public virtual IPipeline BuildFromConfiguration(PipelineOptions options)
         {
             if (options == null)
@@ -117,10 +120,52 @@ namespace FiftyOne.Pipeline.Core.FlowElements
             // Clear the list of flow elements ready to be populated
             // from the configuration options.
             FlowElements.Clear();
+            var tempElementDict =
+                new ConcurrentDictionary<int, IFlowElement>();
             try
             {
-                var tempElementDict = 
-                    new ConcurrentDictionary<int, IFlowElement>();
+                CreateElements(options, tempElementDict);
+
+                // As the elements are all created within the builder, the user
+                // will not be handling disposal so make sure the pipeline is
+                // configured to do so.
+                SetAutoDisposeElements(true);
+
+                // Build and return the pipeline using the list of flow elements
+                // that have been created from the configuration options.
+                return Build();
+            }
+            catch
+            {
+                // No pipeline holds the elements made so far, including any
+                // that Build added, so nothing else would dispose them.
+                var created = FlowElements
+                    .Concat(tempElementDict.Values)
+                    .Distinct()
+                    .ToList();
+                FlowElements.Clear();
+                DisposeElements(created);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Creates the elements that the configuration options describe, in
+        /// parallel, and adds them to FlowElements in order.
+        /// </summary>
+        /// <param name="options">
+        /// The configuration options to create the elements from.
+        /// </param>
+        /// <param name="tempElementDict">
+        /// Receives each element when it is created, keyed by its position,
+        /// so that the elements can be disposed if the build fails.
+        /// </param>
+        private void CreateElements(
+            PipelineOptions options,
+            ConcurrentDictionary<int, IFlowElement> tempElementDict)
+        {
+            try
+            {
                 // Create elements in parallel. The index is declared in
                 // the foreach so that the order of elements is preserved. 
                 // the index is passed down to the point of inserting the
@@ -187,23 +232,40 @@ namespace FiftyOne.Pipeline.Core.FlowElements
             {
                 if(ex.InnerExceptions.Count > 1)
                 {
-                    throw ex;
-                } 
+                    throw;
+                }
                 else
                 {
                     Logger.LogCritical(ex, Messages.MessagePipelineCreationFailed);
                     throw ex.InnerException;
                 }
             }
-         
-            // As the elements are all created within the builder, the user
-            // will not be handling disposal so make sure the pipeline is
-            // configured to do so.
-            SetAutoDisposeElements(true);
+        }
 
-            // Build and return the pipeline using the list of flow elements
-            // that have been created from the configuration options.
-            return Build();
+        /// <summary>
+        /// Disposes elements made for a pipeline that failed to build. A
+        /// failure to dispose one is logged rather than thrown, so that the
+        /// rest are still disposed and the caller sees the exception that
+        /// stopped the build.
+        /// </summary>
+        /// <param name="elements">The elements to dispose.</param>
+        private void DisposeElements(IEnumerable<IFlowElement> elements)
+        {
+            foreach (var element in elements)
+            {
+                try
+                {
+                    element.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(
+                        ex,
+                        "Could not dispose '{ElementType}' after the " +
+                        "pipeline failed to build.",
+                        element.GetType().Name);
+                }
+            }
         }
 
         /// <summary>
@@ -473,6 +535,7 @@ namespace FiftyOne.Pipeline.Core.FlowElements
             IFlowElement element = result as IFlowElement;
             if (element == null)
             {
+                (result as IDisposable)?.Dispose();
                 throw new PipelineConfigurationException(
                     $"Failed to cast '{result.GetType().FullName}' to " +
                     $"'IFlowElement' for {elementLocation}");
@@ -511,37 +574,46 @@ namespace FiftyOne.Pipeline.Core.FlowElements
 
             var parallelElements = 
                 new ConcurrentDictionary<int, IFlowElement>();
-
-            // Iterate through the sub elements, creating them and
-            // adding them to the list.
-            int subCounter = 0;
-            foreach (var subElement in elementOptions.SubElements)
+            try
             {
-                if (subElement.SubElements != null &&
-                    subElement.SubElements.Count > 0)
+                // Iterate through the sub elements, creating them and
+                // adding them to the list.
+                int subCounter = 0;
+                foreach (var subElement in elementOptions.SubElements)
                 {
-                    throw new PipelineConfigurationException(
-                        $"ElementOptions {elementIndex} contains nested " +
-                        $"sub elements. This is not supported.");
+                    if (subElement.SubElements != null &&
+                        subElement.SubElements.Count > 0)
+                    {
+                        throw new PipelineConfigurationException(
+                            $"ElementOptions {elementIndex} contains nested " +
+                            $"sub elements. This is not supported.");
+                    }
+                    else
+                    {
+                        EnqueueElement(
+                            parallelElements,
+                            subElement,
+                            $"element {subCounter} in element {elementIndex}",
+                            subCounter);
+                    }
+                    subCounter++;
                 }
-                else
-                {
-                    EnqueueElement(
-                        parallelElements,
-                        subElement,
-                        $"element {subCounter} in element {elementIndex}",
-                        subCounter);
-                }
-                subCounter++;
-            }
-            // Now we've created all the elements, create the 
-            // ParallelElements instance and add it to the pipeline's 
-            // elements.
-            var parallelInstance = new ParallelElements(
-                LoggerFactory.CreateLogger<ParallelElements>(),
-                parallelElements.Values.ToArray());
+                // Now we've created all the elements, create the 
+                // ParallelElements instance and add it to the pipeline's 
+                // elements.
+                var parallelInstance = new ParallelElements(
+                    LoggerFactory.CreateLogger<ParallelElements>(),
+                    parallelElements.Values.ToArray());
 
-            elements.TryAdd(elementIndex, parallelInstance);
+                elements.TryAdd(elementIndex, parallelInstance);
+            }
+            catch
+            {
+                // The sub elements made so far are not yet held by a
+                // parallel element, so they are disposed here.
+                DisposeElements(parallelElements.Values);
+                throw;
+            }
         }
 
         /// <summary>

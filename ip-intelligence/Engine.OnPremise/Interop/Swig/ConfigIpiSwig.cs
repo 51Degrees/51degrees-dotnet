@@ -88,7 +88,7 @@ internal class ConfigIpiSwig : ConfigBaseSwig {
   }
 
   public CollectionConfigSwig getComponents() {
-    CollectionConfigSwig ret = new CollectionConfigSwig(IpIntelligenceEngineModulePINVOKE.ConfigIpiSwig_getComponents(swigCPtr), true);
+    CollectionConfigSwig ret = new CollectionConfigSwig(IpIntelligenceEngineModulePINVOKE.ConfigIpiSwig_getComponents(swigCPtr), false);
     if (IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Pending) throw IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Retrieve();
     return ret;
   }
@@ -100,19 +100,19 @@ internal class ConfigIpiSwig : ConfigBaseSwig {
   }
 
   public CollectionConfigSwig getProperties() {
-    CollectionConfigSwig ret = new CollectionConfigSwig(IpIntelligenceEngineModulePINVOKE.ConfigIpiSwig_getProperties(swigCPtr), true);
+    CollectionConfigSwig ret = new CollectionConfigSwig(IpIntelligenceEngineModulePINVOKE.ConfigIpiSwig_getProperties(swigCPtr), false);
     if (IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Pending) throw IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Retrieve();
     return ret;
   }
 
   public CollectionConfigSwig getValues() {
-    CollectionConfigSwig ret = new CollectionConfigSwig(IpIntelligenceEngineModulePINVOKE.ConfigIpiSwig_getValues(swigCPtr), true);
+    CollectionConfigSwig ret = new CollectionConfigSwig(IpIntelligenceEngineModulePINVOKE.ConfigIpiSwig_getValues(swigCPtr), false);
     if (IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Pending) throw IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Retrieve();
     return ret;
   }
 
   public CollectionConfigSwig getProfiles() {
-    CollectionConfigSwig ret = new CollectionConfigSwig(IpIntelligenceEngineModulePINVOKE.ConfigIpiSwig_getProfiles(swigCPtr), true);
+    CollectionConfigSwig ret = new CollectionConfigSwig(IpIntelligenceEngineModulePINVOKE.ConfigIpiSwig_getProfiles(swigCPtr), false);
     if (IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Pending) throw IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Retrieve();
     return ret;
   }

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <AssemblyName>FiftyOne.Did.Core</AssemblyName>
     <Platforms>AnyCPU</Platforms>
     <DocumentationFile>FiftyOne.Did.Core.xml</DocumentationFile>
@@ -19,7 +19,7 @@
     <PackageTags>51degrees,51did,fodid,identifier,pipeline,owid,core</PackageTags>
     <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
     <PackageIcon>51d-logo.png</PackageIcon>
-    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.did.core-fiftyone.did.core.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageProjectUrl>https://51degrees.com/developers/51did?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.did.core&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <Description>Shared types for the 51Degrees Identifier (51Did), used by every engine that returns one.</Description>
     <RepositoryType>git</RepositoryType>
     <NeutralLanguage>en</NeutralLanguage>

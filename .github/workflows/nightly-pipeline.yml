@@ -1,7 +1,8 @@
 name: Nightly Pipeline
 
 # Package and submodule updates, then every open pull request, then a
-# publish of every package family that changed since its last tag.
+# publish of every package family that changed since its last tag, and of
+# every family depending on one of them.
 
 on:
   workflow_dispatch:
@@ -9,11 +10,10 @@ on:
       dryrun:
         type: boolean
         default: false
-  # Off until this repository takes over from the separate repositories it
-  # replaces. Their schedules are turned off then, so the same jobs never run
-  # in both.
-  # schedule:
-  #   - cron: '0 1 * * *'
+  # 01:30 UTC, so it starts apart from the other language repositories'
+  # nightlies.
+  schedule:
+    - cron: '30 1 * * *'
 
 jobs:
   # The publish builds main, which the pull requests into rc do not change, so

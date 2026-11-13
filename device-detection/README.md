@@ -1,10 +1,10 @@
 # 51Degrees Device Detection Engines
 
-![51Degrees](https://raw.githubusercontent.com/51Degrees/common-ci/main/images/logo/360x67.png "Data rewards the curious")
+![51Degrees](https://raw.githubusercontent.com/51Degrees/51degrees-dotnet/main/.github/images/logo-160.png "Data rewards the curious")
 **Pipeline API**
 
 [Developer
-Documentation](https://51degrees.com/device-detection-dotnet/index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=51degrees-device-detection-engines)
+Documentation](https://51degrees.com/documentation/_device_detection__quickstart.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines)
 
 ## Introduction
 
@@ -26,8 +26,8 @@ engines are written in C\# and target .NET Standard 2.0.3. Example and test
 projects mostly target .NET 6.0 though in some cases, projects are available
 targeting other frameworks.
 
-For runtime dependencies, see our
-[dependencies](https://51degrees.com/documentation/_info__dependencies.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=dependencies)
+For the .NET versions we test against, see the
+[tested versions](https://51degrees.com/documentation/_product_summaries__tested_versions.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=dependencies)
 page. The `ci/options.json` file lists the tested and packaged .NET versions
 and operating systems automatic tests are performed with. The solution will
 likely operate with other versions.
@@ -40,40 +40,39 @@ The API can either use our cloud service to get its data or it can use a local
 #### Cloud
 
 You will require a [resource
-key](https://51degrees.com/documentation/_info__resource_keys.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud) to use the
+key](https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud) to use the
 Cloud API. You can create resource keys using our
-[configurator](https://configure.51degrees.com/?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud), see our
-[documentation](https://51degrees.com/documentation/_concepts__configurator.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud)
+[configurator](https://configure.51degrees.com/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud), see our
+[documentation](https://51degrees.com/documentation/_services__configurator.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud)
 on how to use this.
 
 The cloud property tiers changed in May 2026, so the examples and
 documentation now reflect what is free and what needs a paid subscription. A
-free resource key created [here](https://configure.51degrees.com/Wkqxf3Bs?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=51degrees-device-detection-engines) selects
+free resource key created [here](https://configure.51degrees.com/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) selects
 the free tier properties, whilst a key created
-[here](https://configure.51degrees.com/hYzn3TV3?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=51degrees-device-detection-engines) also includes the paid properties
-used by the examples. See [pricing](https://51degrees.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=51degrees-device-detection-engines) to get a paid
+[here](https://configure.51degrees.com/hYzn3TV3?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) also includes the paid properties
+used by the examples. See [pricing](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) to get a paid
 subscription with more properties.
 
 #### On-Premise
 
 In order to perform device detection on-premise, you will need to use a
-51Degrees data file. This repository includes a free, 'lite' file in the
-'device-detection-data' sub-module that has a significantly reduced set of
+51Degrees data file. The free 'lite' file has a significantly reduced set of
 properties. To obtain a file with a more complete set of device properties see
-the [51Degrees website](https://51degrees.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=on-premise). If you want to use the
-lite file, you will need to install [GitLFS](https://git-lfs.github.com/).
+the [51Degrees website](https://51degrees.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=on-premise).
 
-On Linux:
-
-```
-sudo apt-get install git-lfs
-git lfs install
-```
-
-Then, navigate to 'device-detection-cxx/device-detection-data' and execute:
+The lite file is downloaded by the scripts in the
+[data](https://github.com/51Degrees/data) repository, which is the `cxx/data`
+submodule. From the repository root, run:
 
 ```
-git lfs pull
+pwsh cxx/data/get-data-files.ps1 51Degrees-LiteV4.1.hash
+```
+
+or, with curl and gzip installed:
+
+```
+sh cxx/data/get-data-files.sh 51Degrees-LiteV4.1.hash
 ```
 
 The examples in the
@@ -82,8 +81,9 @@ repository resolve the data file in the following order:
 
 1.  The `_51DEGREES_DD_PATH` environment variable, set to an explicit path to
     the data file.
-2.  A search of the folder hierarchy for the expected data file name.
-3.  The free 'Lite' data file in the device-detection-data submodule.
+2.  The `cxx/data` submodule, where the example downloads the free 'Lite'
+    file when it is missing.
+3.  A search of the folder hierarchy for the expected data file name.
 
 ## Solutions and projects
 
@@ -213,19 +213,28 @@ Some tests require additional resources to run. These will either fail or return
 an 'inconclusive' result if these resources are not provided.
 
 -   Some tests require an 'Enterprise' data file. This can be obtained by
-    [purchasing a license](https://51degrees.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=tests).
+    [purchasing a license](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=tests).
     -   Once available, place the data file within the repository folder
         structure. The tests locate it by searching the folder hierarchy for
         the expected file name.
 -   Tests using the cloud service require resource keys with specific properties
     to be provided using environment variables:
     -   The `_51DEGREES_RESOURCE_KEY` environment variable should be populated
-        with a key that includes all properties. The legacy `SUPER_RESOURCE_KEY`
-        environment variable is still supported and is checked second. A
-        [license](https://51degrees.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=tests-2) is required in order to access
+        with a key that includes all properties. A
+        [license](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=tests-2) is required in order to access
         some properties.
 
 ## Project documentation
 
 For complete documentation on the Pipeline API and associated engines, see the
-[51Degrees documentation site](https://51degrees.com/documentation/index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=project-documentation).
+[51Degrees documentation site](https://51degrees.com/documentation/index.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=project-documentation).
+
+## Find out more
+
+- [Device Detection](https://51degrees.com/device-detection?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=find-out-more-device-detection)
+- [Device Detection documentation](https://51degrees.com/documentation/_device_detection__quickstart.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=find-out-more-documentation)
+- [Getting started](https://51degrees.com/documentation/_device_detection__quickstart.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=find-out-more-getting-started)
+- [Pricing](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=find-out-more-pricing)
+- [robots.txt](https://51degrees.com/robots-txt?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=find-out-more-robots-txt)
+- https://github.com/51Degrees/51degrees-dotnet
+- https://github.com/51Degrees/51degrees-cxx

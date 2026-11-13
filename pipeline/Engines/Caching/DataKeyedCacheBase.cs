@@ -93,7 +93,7 @@ namespace FiftyOne.Pipeline.Engines.Caching
                 {
                     throw new ArgumentNullException(nameof(data));
                 }
-                return _internalCache[data.GenerateKey(GetFilter())];
+                return _internalCache[GenerateKey(data)];
             }
         }
 
@@ -113,7 +113,26 @@ namespace FiftyOne.Pipeline.Engines.Caching
                 throw new ArgumentNullException(nameof(data));
             }
 
-            _internalCache.Put(data.GenerateKey(GetFilter()), value);
+            _internalCache.Put(GenerateKey(data), value);
+        }
+
+        /// <summary>
+        /// The key the cache uses for the supplied <see cref="IFlowData"/>,
+        /// made from the evidence that <see cref="GetFilter"/> includes.
+        /// </summary>
+        /// <param name="data">
+        /// The <see cref="IFlowData"/> to make the key from.
+        /// </param>
+        /// <returns>
+        /// The key.
+        /// </returns>
+        protected virtual DataKey GenerateKey(IFlowData data)
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+            return data.GenerateKey(GetFilter());
         }
 
         /// <summary>

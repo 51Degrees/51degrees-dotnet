@@ -58,6 +58,12 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.MatchMetrics
         public class Example : ExampleBase
         {
             /// <summary>
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-matchmetrics-console-program.cs&utm_term=enterprise-data-file";
+
+            /// <summary>
             /// Builder used to create a Pipeline instance
             /// </summary>
             public DeviceDetectionPipelineBuilder PipelineBuilder { get; private set; }
@@ -123,7 +129,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.MatchMetrics
                     // in the device ID value.
                     //.SetProperty("BrowserName")
                     // If using the full on-premise data file this property will be
-                    // present in the data file. See https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-matchmetrics-console-program.cs&utm_term=run
+                    // present in the data file. Contact us for a copy at https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-matchmetrics-console-program.cs&utm_term=run
                     .SetProperty("HardwareName")
                     // Only use the predictive graph to better handle variances
                     // between the training data and the target User-Agent string.
@@ -252,6 +258,12 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.MatchMetrics
                         }
                     }
 
+                    if (ExampleUtils.IsLiteDataFile(
+                        pipeline.GetElement<DeviceDetectionHashEngine>()))
+                    {
+                        ExampleUtils.WriteEnterpriseOffer(output, ContactUs);
+                    }
+
                     Logger.LogInformation("Finished Example");
                 }
 
@@ -264,7 +276,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.MatchMetrics
                 if (dataFile == null)
                 {
                     Logger.LogWarning($"No filename specified. Checking the " +
-                        $"'{Constants.DD_PATH_ENV_VAR}' environment " +
+                        $"'{Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR}' environment " +
                         $"variable, then searching for the default " +
                         $"'{Constants.LITE_HASH_DATA_FILE_NAME}'");
                     dataFile = ExampleUtils.FindDataFile(Constants.LITE_HASH_DATA_FILE_NAME);
@@ -278,9 +290,9 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.MatchMetrics
                 if(dataFile == null || File.Exists(dataFile) == false)
                 {
                     Logger.LogError("Failed to find a device detection data file. " +
-                        "If using the default 'lite' data file, make sure that git lfs is " +
-                        "installed and that the device-detection-data submodule has been " +
-                        "updated by running `git submodule update --recursive`.");
+                        "If using the default 'lite' data file, make sure that the " +
+                        "submodules have been fetched by running `git submodule update " +
+                        "--init --recursive`, so that it can be downloaded.");
                     throw new PipelineConfigurationException($"Data file '{dataFile}' not found");
                 }
 

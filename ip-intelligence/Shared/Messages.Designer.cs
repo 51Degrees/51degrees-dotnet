@@ -68,5 +68,14 @@ namespace FiftyOne.IpIntelligence.Shared {
                 return ResourceManager.GetString("ExceptionCannotUpdateResults", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The results were freed when the flow data that holds them was disposed. Read the values before disposing the flow data..
+        /// </summary>
+        internal static string ExceptionResultsDisposed {
+            get {
+                return ResourceManager.GetString("ExceptionResultsDisposed", resourceCulture);
+            }
+        }
     }
 }

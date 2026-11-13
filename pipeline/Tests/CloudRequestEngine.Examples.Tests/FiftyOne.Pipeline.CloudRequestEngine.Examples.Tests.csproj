@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
 
     <IsPackable>false</IsPackable>
   </PropertyGroup>
@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Examples\CloudRequestEngine\GettingStarted\GettingStarted.csproj" />
     <ProjectReference Include="..\..\Examples\CustomFlowElement\4. Cloud Engine\Examples.CloudEngine.csproj" />
   </ItemGroup>
 

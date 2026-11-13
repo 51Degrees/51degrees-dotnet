@@ -39,8 +39,8 @@ using System.Threading.Tasks;
 ///
 /// The example illustrates a "clock-time" benchmark for assessing detection speed.
 ///
-/// Using a YAML formatted evidence file - "20000 Evidence Records.yml" - supplied with the
-/// distribution or can be obtained from the [data repository on Github](https://github.com/51Degrees/device-detection-data/blob/master/20000%20Evidence%20Records.yml).
+/// Using a YAML formatted evidence file - "20000 Evidence Records.yml" - downloaded by the
+/// scripts in the [data repository on Github](https://github.com/51Degrees/data).
 ///
 /// It's important to understand the trade-offs between performance, memory usage and accuracy, that
 /// the 51Degrees pipeline configuration makes available, and this example shows a range of
@@ -96,6 +96,17 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Performance
 
         public class Example : ExampleBase
         {
+            /// <summary>
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            internal const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-performance-console-program.cs&utm_term=enterprise-data-file";
+
+            /// <summary>
+            /// True when the last benchmark ran on the free Lite data file.
+            /// </summary>
+            public static bool UsedLiteDataFile { get; private set; }
+
             private IPipeline _pipeline;
 
             public Example(IPipeline pipeline)
@@ -220,7 +231,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Performance
             /// service provider setup logic.
             /// </summary>
             /// <param name="options"></param>
-            public static List<BenchmarkResult> Run(string dataFile, string evidenceFile, 
+            public static List<BenchmarkResult> Run(string dataFile, string evidenceFile,
                 PerformanceConfiguration config, TextWriter output, ushort threadCount)
             {
                 // Initialize a service collection which will be used to create the services
@@ -296,15 +307,18 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Performance
                     {
                         serviceProvider.GetRequiredService<ILogger<Program>>().LogError(
                             "Failed to find a device detection data file. Make sure the " +
-                            "device-detection-data submodule has been updated by running " +
-                            "`git submodule update --recursive`.");
+                            "submodules have been fetched by running " +
+                            "`git submodule update --init --recursive`, so that the free Lite " +
+                            "file can be downloaded.");
                         return null;
                     }
                     else
                     {
                         ExampleUtils.CheckDataFile(
-                            serviceProvider.GetRequiredService<IPipeline>(), 
+                            serviceProvider.GetRequiredService<IPipeline>(),
                             serviceProvider.GetRequiredService<ILogger<Program>>());
+                        UsedLiteDataFile = ExampleUtils.IsLiteDataFile(
+                            serviceProvider.GetRequiredService<DeviceDetectionHashEngine>());
                         output.WriteLine($"Processing evidence from '{evidenceFile}'");
                         output.WriteLine($"Data loaded from '{(config.LoadFromDisk ? "disk" : "memory")}'");
                         output.WriteLine($"Benchmarking with profile '{config.Profile}', " +
@@ -329,8 +343,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Performance
                     // project space, or you may specify another file as a command line parameter.
                     //
                     // Note that the Lite data file contains a more limited set of properties than the
-                    // Enterprise data file. Find out about the Enterprise data file on our pricing page:
-                    // https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-performance-console-program.cs&utm_term=main
+                    // Enterprise data file. Contact us for a copy of the Enterprise data file:
+                    // https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-performance-console-program.cs&utm_term=main
                     ExampleUtils.FindDataFile(Constants.LITE_HASH_DATA_FILE_NAME);
                 // Do the same for the yaml evidence file.
                 var evidenceFile = options.EvidenceFile != null ? options.EvidenceFile :
@@ -343,6 +357,10 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Performance
                 {
                     var result = Example.Run(dataFile, evidenceFile, config, Console.Out, DEFAULT_THREAD_COUNT);
                     results[config] = result;
+                }
+                if (Example.UsedLiteDataFile)
+                {
+                    ExampleUtils.WriteEnterpriseOffer(Console.Out, Example.ContactUs);
                 }
 
                 if (string.IsNullOrEmpty(options.JsonOutput) == false)

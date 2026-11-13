@@ -15,7 +15,7 @@
         // IP Intelligence element  
         "BuilderName": "IpiOnPremiseEngineBuilder",
         "BuildParameters": {
-          //Make sure this data file is in the ip-intelligence-data directory
+          //Make sure this data file is in the cxx/data/ip-intelligence directory
           "DataFile": "51Degrees-EnterpriseIpiV41.ipi",
           "CreateTempDataCopy": true,
           "AutoUpdate": true,

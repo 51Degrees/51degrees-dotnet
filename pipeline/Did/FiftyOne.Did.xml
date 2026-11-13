@@ -141,15 +141,22 @@
         <member name="F:FiftyOne.Did.Client.DidClient.DefaultEndpoint">
             <summary>
             The public cloud API base, used when no endpoint is given and
-            <see cref="F:FiftyOne.Did.Client.DidClient.EndpointEnvironmentVariable"/> is not set.
+            no environment variable holds one.
             </summary>
         </member>
-        <member name="F:FiftyOne.Did.Client.DidClient.EndpointEnvironmentVariable">
+        <member name="F:FiftyOne.Did.Client.DidClient.CloudEndpointEnvironmentVariable">
             <summary>
             The environment variable read for the API base when the
             constructor is given none, the same variable the cloud request
             engine honours. A host other than the public cloud is used for
             a privately hosted copy of the same service.
+            </summary>
+        </member>
+        <member name="F:FiftyOne.Did.Client.DidClient.EndpointEnvironmentVariable">
+            <summary>
+            The old environment variable for the API base, read only when
+            <see cref="F:FiftyOne.Did.Client.DidClient.CloudEndpointEnvironmentVariable"/> is unset or
+            empty. Use <see cref="F:FiftyOne.Did.Client.DidClient.CloudEndpointEnvironmentVariable"/>.
             </summary>
         </member>
         <member name="F:FiftyOne.Did.Client.DidClient.KeyCacheLifetime">
@@ -181,10 +188,14 @@
             </param>
             <param name="endpoint">
             The API base including <c>/api/v4/</c>. When null the
-            <see cref="F:FiftyOne.Did.Client.DidClient.EndpointEnvironmentVariable"/> is read, and when that
-            is unset too <see cref="F:FiftyOne.Did.Client.DidClient.DefaultEndpoint"/> is used. A value with
-            or without a trailing slash is accepted, and is normalised to
-            end in exactly one.
+            <see cref="F:FiftyOne.Did.Client.DidClient.CloudEndpointEnvironmentVariable"/> is read. When
+            that is unset or empty the old variable
+            <c>FOD_CLOUD_API_URL</c> is read, and a value read from it is
+            reported as deprecated once in the process, as a warning
+            written to <see cref="T:System.Diagnostics.Trace"/>. When neither is set
+            <see cref="F:FiftyOne.Did.Client.DidClient.DefaultEndpoint"/> is used. A value with or without
+            a trailing slash is accepted, and is normalised to end in
+            exactly one.
             </param>
             <param name="httpClient">
             The transport to use, so a test can inject one. When null the

@@ -42,7 +42,7 @@ namespace Examples.CloudEngine
             // example service built for this tutorial, not the 51Degrees
             // cloud, so it is fixed here. A cloud engine for a 51Degrees
             // product leaves the endpoint unset, and the builder then reads
-            // it from FOD_CLOUD_API_URL, defaulting to
+            // it from _51DEGREES_CLOUD_ENDPOINT, defaulting to
             // https://cloud.51degrees.com/api/v4/. A host other than
             // cloud.51degrees.com would be used to (a) use an on premise
             // web server, or (b) use a privately hosted version of the

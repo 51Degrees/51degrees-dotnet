@@ -41,8 +41,8 @@ using System.Text;
 /// @example OnPremise/Mixed/GettingStarted-Console/Program.cs
 /// 
 /// This example demonstrates using both Device Detection and IP Intelligence 
-/// engines in a single pipeline. The engines process evidence in parallel
-/// for optimal performance.
+/// engines in a single pipeline. The pipeline runs both engines on the same
+/// evidence, one after the other.
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Mixed/GettingStarted-Console/Program.cs). 
 /// 
@@ -50,8 +50,10 @@ using System.Text;
 /// - Device Detection data file (.hash format)
 /// - IP Intelligence data file (.ipi format)
 ///
-/// The paths to the data files should be provided as 2 consecutive command line parameters
-/// 
+/// The paths to the data files can be provided as 2 consecutive command line parameters. By
+/// default the example uses the free Lite files, which it downloads when they are missing, and
+/// shows each property only the enterprise data files have as needing them.
+///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.DeviceDetection](https://www.nuget.org/packages/FiftyOne.DeviceDetection/)
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
@@ -62,8 +64,27 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
     {
         public class Example
         {
+            /// <summary>
+            /// Where to ask for a copy of the Enterprise data files, tagged
+            /// with this example.
+            /// </summary>
+            private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-ip-intelligence-onpremise-mixed-gettingstarted-console-program.cs&utm_term=enterprise-data-file";
+
+            /// <summary>
+            /// The engines, which say which properties their data files have.
+            /// </summary>
+            private DeviceDetectionHashEngine _deviceEngine;
+            private IpiOnPremiseEngine _ipEngine;
+
+            /// <summary>
+            /// True once the example has shown a property that a data file in
+            /// use does not have.
+            /// </summary>
+            private bool _needsEnterprise;
+
             public void Run(string deviceDataFile, string ipDataFile, ILoggerFactory loggerFactory, TextWriter output)
             {
+                _needsEnterprise = false;
                 using (var httpClient = new HttpClient())
                 {
                     var dataUpdateService = new DataUpdateService(loggerFactory.CreateLogger<DataUpdateService>(), httpClient);
@@ -74,6 +95,7 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
                         .SetAutoUpdate(false)
                         .SetDataFileSystemWatcher(false)
                         .Build(deviceDataFile, false);
+                    _deviceEngine = deviceEngine;
 
                     // Create IP Intelligence engine directly from scratch
                     var ipEngine = new IpiOnPremiseEngineBuilder(loggerFactory, dataUpdateService)
@@ -83,12 +105,14 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
                         .SetAutoUpdate(false)
                         .SetDataFileSystemWatcher(false)
                         .Build(ipDataFile, false);
+                    _ipEngine = ipEngine;
 
                     // Create ShareUsage element for telemetry and usage analytics
                     var shareUsageElement = new ShareUsageBuilder(loggerFactory, httpClient).Build();
 
                     // Create a raw pipeline and add all elements to it
-                    // All elements will process evidence in parallel
+                    // The pipeline runs the elements one after the other, in the
+                    // order they are added
                     using (var pipeline = new PipelineBuilder(loggerFactory)
                         .AddFlowElement(shareUsageElement)  // Add first for early processing
                         .AddFlowElement(deviceEngine)
@@ -101,6 +125,12 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
                         foreach (var evidence in combinedEvidence)
                         {
                             AnalyseEvidence(evidence, pipeline, output);
+                        }
+
+                        if (_needsEnterprise)
+                        {
+                            Examples.OnPremise.ExampleUtils.WriteEnterpriseNote(
+                                output, ContactUs);
                         }
 
                         // Check data files
@@ -164,7 +194,8 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
                     // Add the evidence values to the flow data
                     data.AddEvidence(evidence);
 
-                    // Process the flow data - both engines will run in parallel
+                    // Process the flow data. The pipeline runs both engines, one
+                    // after the other.
                     data.Process();
 
                     message = new StringBuilder();
@@ -192,29 +223,82 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
                 OutputValue("Platform Version", device.PlatformVersion, message);
                 OutputValue("Browser Name", device.BrowserName, message);
                 OutputValue("Browser Version", device.BrowserVersion, message);
-                OutputListValue("Hardware Name", device.HardwareName, message);
-                OutputValue("Hardware Vendor", device.HardwareVendor, message);
-                OutputValue("Device Type", device.DeviceType, message);
+                // Only the Enterprise data file has the hardware and device type
+                // properties. The free Lite file has the others.
+                var properties = _deviceEngine.Properties;
+                OutputEnterpriseValue("Hardware Name", nameof(device.HardwareName),
+                    properties, () => device.HardwareName, message);
+                OutputEnterpriseValue("Hardware Vendor", nameof(device.HardwareVendor),
+                    properties, () => device.HardwareVendor, message);
+                OutputEnterpriseValue("Device Type", nameof(device.DeviceType),
+                    properties, () => device.DeviceType, message);
                 OutputValue("Screen Width", device.ScreenPixelsWidth, message);
                 OutputValue("Screen Height", device.ScreenPixelsHeight, message);
             }
 
             private void OutputIpData(IIpIntelligenceData ipData, StringBuilder message)
             {
-                OutputValue("Country", ipData.Country, message);
-                OutputValue("Country Code", ipData.CountryCode, message);
-                OutputValue("Region", ipData.Region, message);
-                OutputValue("State", ipData.State, message);
-                OutputValue("Town", ipData.Town, message);
-                OutputValue("Latitude", ipData.Latitude, message);
-                OutputValue("Longitude", ipData.Longitude, message);
-                OutputValue("Registered Name", ipData.RegisteredName, message);
-                OutputValue("Registered Owner", ipData.RegisteredOwner, message);
-                OutputValue("Registered Country", ipData.RegisteredCountry, message);
-                OutputValue("IP Range Start", ipData.IpRangeStart, message);
-                OutputValue("IP Range End", ipData.IpRangeEnd, message);
-                OutputValue("Accuracy Radius", ipData.AccuracyRadiusMin, message);
-                OutputValue("Time Zone Offset", ipData.TimeZoneOffset, message);
+                // Only the Enterprise data file has the location and range
+                // properties. The free Lite file has the registration ones.
+                var properties = _ipEngine.Properties;
+                OutputEnterpriseValue("Country", nameof(ipData.Country),
+                    properties, () => ipData.Country, message);
+                OutputEnterpriseValue("Country Code", nameof(ipData.CountryCode),
+                    properties, () => ipData.CountryCode, message);
+                OutputEnterpriseValue("Region", nameof(ipData.Region),
+                    properties, () => ipData.Region, message);
+                OutputEnterpriseValue("State", nameof(ipData.State),
+                    properties, () => ipData.State, message);
+                OutputEnterpriseValue("Town", nameof(ipData.Town),
+                    properties, () => ipData.Town, message);
+                OutputEnterpriseValue("Latitude", nameof(ipData.Latitude),
+                    properties, () => ipData.Latitude, message);
+                OutputEnterpriseValue("Longitude", nameof(ipData.Longitude),
+                    properties, () => ipData.Longitude, message);
+                OutputEnterpriseValue("Registered Name", nameof(ipData.RegisteredName),
+                    properties, () => ipData.RegisteredName, message);
+                OutputEnterpriseValue("Registered Owner", nameof(ipData.RegisteredOwner),
+                    properties, () => ipData.RegisteredOwner, message);
+                OutputEnterpriseValue("Registered Country", nameof(ipData.RegisteredCountry),
+                    properties, () => ipData.RegisteredCountry, message);
+                OutputEnterpriseValue("IP Range Start", nameof(ipData.IpRangeStart),
+                    properties, () => ipData.IpRangeStart, message);
+                OutputEnterpriseValue("IP Range End", nameof(ipData.IpRangeEnd),
+                    properties, () => ipData.IpRangeEnd, message);
+                OutputEnterpriseValue("Accuracy Radius", nameof(ipData.AccuracyRadiusMin),
+                    properties, () => ipData.AccuracyRadiusMin, message);
+                OutputEnterpriseValue("Time Zone Offset", nameof(ipData.TimeZoneOffset),
+                    properties, () => ipData.TimeZoneOffset, message);
+            }
+
+            /// <summary>
+            /// Output a property, or say that it needs the Enterprise data file
+            /// when the engine's data file does not have it. The value is only
+            /// read when the data file has the property.
+            /// </summary>
+            private void OutputEnterpriseValue(string name,
+                string property,
+                IEnumerable<IElementPropertyMetaData> properties,
+                Func<IAspectPropertyValue> value,
+                StringBuilder message)
+            {
+                if (properties.Any(p => string.Equals(
+                    p.Name, property, StringComparison.OrdinalIgnoreCase)) == false)
+                {
+                    message.AppendLine(
+                        $"\t{name}: {Examples.OnPremise.ExampleUtils.NEEDS_ENTERPRISE}");
+                    _needsEnterprise = true;
+                    return;
+                }
+                var propertyValue = value();
+                if (propertyValue is IAspectPropertyValue<IReadOnlyList<string>> list)
+                {
+                    OutputListValue(name, list, message);
+                }
+                else
+                {
+                    OutputValue(name, propertyValue, message);
+                }
             }
 
             private void OutputValue(string name, 
@@ -332,43 +416,16 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
             }
         }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
-            // Parse command line arguments
-            string deviceDataFile = null;
-            string ipDataFile = null;
-
-            // Set file names from arguments if provided
-            if (args.Length >= 1)
-            {
-                deviceDataFile = args[0];
-            }
-            
-            if (args.Length >= 2)
-            {
-                ipDataFile = args[1];
-            }
-
-            // If device detection file not set, try to find it in priority order
-            if (deviceDataFile == null)
-            {
-                foreach (var fileName in Constants.HASH_FILE_NAMES)
-                {
-                    deviceDataFile = IpIntelligence.Examples.ExampleUtils.FindFile(fileName);
-                    if (deviceDataFile != null) break;
-                }
-            }
-            
-            // If IP intelligence file not set, check the environment variables for an
-            // explicit path, then try to find it in priority order
-            if (ipDataFile == null)
-            {
-                foreach (var fileName in Constants.IPI_FILE_NAMES)
-                {
-                    ipDataFile = IpIntelligence.Examples.ExampleUtils.FindDataFile(fileName);
-                    if (ipDataFile != null) break;
-                }
-            }
+            // Use the data files the arguments name, or the free Lite files that the
+            // data repository links, downloading them when they are missing. An
+            // explicit IP Intelligence data file can also come from the environment
+            // variables.
+            var deviceDataFile = args.Length >= 1 ? args[0] :
+                IpIntelligence.Examples.ExampleUtils.FindFile(Constants.LITE_HASH_FILE_NAME);
+            var ipDataFile = args.Length >= 2 ? args[1] :
+                IpIntelligence.Examples.ExampleUtils.FindDataFile(Constants.LITE_IPI_FILE_NAME);
 
             // Configure a logger to output to the console
             var loggerFactory = LoggerFactory.Create(b => b.AddConsole());
@@ -386,14 +443,16 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
                 if (deviceDataFile == null)
                 {
                     logger.LogError("Failed to find a Device Detection data file. Make sure the " +
-                        "device-detection-data submodule has been updated by running " +
-                        "`git submodule update --recursive`.");
+                        "submodules have been fetched by running " +
+                        "`git submodule update --init --recursive`, so that the free Lite " +
+                        "file can be downloaded.");
                 }
                 if (ipDataFile == null)
                 {
                     logger.LogError("Failed to find an IP Intelligence data file. Make sure the " +
-                        "ip-intelligence-data submodule has been updated by running " +
-                        "`git submodule update --recursive`.");
+                        "submodules have been fetched by running " +
+                        "`git submodule update --init --recursive`, so that the free Lite " +
+                        "file can be downloaded.");
                 }
             }
 

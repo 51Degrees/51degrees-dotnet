@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <Platforms>x64;x86;ARM64</Platforms>
     <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
     <DocumentationFile>FiftyOne.DeviceDetection.Hash.Engine.OnPremise.xml</DocumentationFile>
@@ -19,7 +19,7 @@
 	  <Copyright>51Degrees Mobile Experts Limited</Copyright>
 	  <PackageTags>51degrees;device-detection;user-agent;user-agent-parser;client-hints;browser-detection;mobile-detection;crawler-detection;pipeline;data;device;detection;parse;detection-library;bots;crawler;desktop;tablet;mobile;tv;hash;wurfl;deviceatlas;uaparser</PackageTags>
 	  <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
-    <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection.hash.engine.onpremise-fiftyone.devicedetection.hash.engine.onpremise.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <PackageProjectUrl>https://51degrees.com/device-detection?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection.hash.engine.onpremise&amp;utm_term=packageprojecturl</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <PackageIcon>51d-logo.png</PackageIcon>
     <NeutralLanguage>en</NeutralLanguage>
@@ -191,8 +191,22 @@
       <LastGenOutput>Messages.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+  <!--
+    The native library is the same for every target framework. Each target
+    framework's build asks one instance of this project, without a target
+    framework, to build it, and MSBuild runs a target once per instance, so
+    CMake runs once rather than once per target framework at the same time
+    in the same folder. FiftyOneNativeOnly keeps that instance apart from
+    the build that dispatches the target frameworks.
+  -->
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="pwsh $(ProjectDir)PreBuild.ps1 -BuildType $(BuildType) -Arch $(FiftyOneNativeArch)" />
+    <MSBuild Projects="$(MSBuildProjectFullPath)"
+             Targets="FiftyOneBuildNative"
+             Properties="FiftyOneNativeOnly=true"
+             RemoveProperties="TargetFramework;RuntimeIdentifier" />
   </Target>
-  
+  <Target Name="FiftyOneBuildNative">
+    <Exec Command="pwsh $(MSBuildThisFileDirectory)PreBuild.ps1 -BuildType $(BuildType) -Arch $(FiftyOneNativeArch)" />
+  </Target>
+
 </Project>

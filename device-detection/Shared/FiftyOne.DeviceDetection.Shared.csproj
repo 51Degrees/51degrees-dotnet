@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <Platforms>AnyCPU;x64;x86;ARM64</Platforms>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -12,14 +12,14 @@
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.DeviceDetection.Shared</PackageId>
 	  <Title>51Degrees Device Detection – Shared Pipeline API Components (User-Agent and HTTP Header Parsing)</Title>
-	  <Description>51Degrees Device Detection parses HTTP headers to return detailed hardware, operating system, browser, and crawler information for the devices used to access your website or service. This package contains shared classes used by the device detection engines.</Description>
+	  <Description>Device Detection and User-Agent parser for .NET and C#. Detects the device, browser, operating system, and crawlers from the User-Agent and User-Agent Client Hints. This package contains shared classes used by the cloud and on-premise engines for the 51Degrees Pipeline API. An alternative to UAParser.js, DeviceAtlas, and WURFL.</Description>
 	  <Authors>51Degrees Engineering</Authors>
 	  <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
     <PackageIconUrl>https://51degrees.com/Nuget-FiftyOne.DeviceDetection.Shared/Square%20Logo.png</PackageIconUrl>
 	  <Copyright>51Degrees Mobile Experts Limited</Copyright>
-	  <PackageTags>51degrees;pipeline;data;device;detection;user-agent;parse;detection-library;bots;crawler;desktop;tablet;mobile;tv</PackageTags>
+	  <PackageTags>51degrees;device-detection;user-agent;user-agent-parser;client-hints;browser-detection;mobile-detection;crawler-detection;pipeline;data;device;detection;parse;detection-library;bots;crawler;desktop;tablet;mobile;tv;wurfl;deviceatlas;uaparser</PackageTags>
 	  <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
-	  <PackageProjectUrl>https://51degrees.com?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection.data-fiftyone.devicedetection.shared.csproj&amp;utm_term=packageprojecturl</PackageProjectUrl>
+	  <PackageProjectUrl>https://51degrees.com/device-detection?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection.shared&amp;utm_term=packageprojecturl</PackageProjectUrl>
 	  <RepositoryType>git</RepositoryType>
 	  <PackageIcon>51d-logo.png</PackageIcon>
 	  <NeutralLanguage>en</NeutralLanguage>

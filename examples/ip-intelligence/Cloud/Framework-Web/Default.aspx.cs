@@ -79,7 +79,7 @@ using System.Web.UI;
 /// [configurator](https://configure.51degrees.com/1QWJwHxl?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx.cs&amp;utm_term=header) site in order to get this example to 
 /// work. The previous link will pre-populate the key with the properties that are used in this
 /// example.
-/// See our [documentation](https://51degrees.com/documentation/_concepts__configurator.html?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx.cs&amp;utm_term=header) 
+/// See our [documentation](https://51degrees.com/documentation/_services__configurator.html?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx.cs&amp;utm_term=header) 
 /// for more detail on resource keys and the configurator site. Once created, the key will 
 /// need to be copied into the configuration file:
 /// 

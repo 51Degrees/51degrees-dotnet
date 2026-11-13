@@ -62,34 +62,25 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<DeviceDataHash> _dataLogger;
 
-        private IConfigSwigWrapper _config = null;
+        /// <summary>
+        /// The settings for the native configuration. Each engine gets a new
+        /// configuration with these applied, which it owns and frees when it
+        /// is disposed, so a builder can build more than one engine.
+        /// </summary>
+        private readonly List<Action<IConfigSwigWrapper>> _configSettings =
+            new List<Action<IConfigSwigWrapper>>();
 
         #endregion
 
         #region Public Properties
         /// <summary>
-        /// Factory used to create a new <see cref="SwigConfig"/>. 
+        /// Factory used to create the native configuration and engine.
         /// </summary>
         /// <remarks>
         /// Must be set after construction and before usage.
         /// </remarks>
         internal ISwigFactory SwigFactory { get; set; } = new SwigFactory();
 
-        /// <summary>
-        /// Wrapper used to build a Configuration file for the engine.
-        /// </summary>
-        private IConfigSwigWrapper SwigConfig
-        {
-            get
-            {
-                if (_config == null)
-                {
-                    _config = SwigFactory.CreateConfig();
-                }
-                return _config;
-            }
-        }
-        
         #endregion
 
         #region Constructor
@@ -140,7 +131,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public override DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetDifference(int difference)
         {
-            SwigConfig.setDifference(difference);
+            _configSettings.Add(c => c.setDifference(difference));
             return this;
         }
 
@@ -154,7 +145,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetDrift(int drift)
         {
-            SwigConfig.setDrift(drift);
+            _configSettings.Add(c => c.setDrift(drift));
             return this;
         }
 
@@ -175,7 +166,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public override DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetAllowUnmatched(bool allow)
         {
-            SwigConfig.setAllowUnmatched(allow);
+            _configSettings.Add(c => c.setAllowUnmatched(allow));
             return this;
         }
 
@@ -189,7 +180,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetReuseTempFile(bool reuse)
         {
-            SwigConfig.setReuseTempFile(reuse);
+            _configSettings.Add(c => c.setReuseTempFile(reuse));
             return this;
         }
 
@@ -205,7 +196,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetUpdateMatchedUserAgent(bool update)
         {
-            SwigConfig.setUpdateMatchedUserAgent(update);
+            _configSettings.Add(c => c.setUpdateMatchedUserAgent(update));
             return this;
         }
 
@@ -231,7 +222,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public override DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetUsePerformanceGraph(bool use)
         {
-            SwigConfig.setUsePerformanceGraph(use);
+            _configSettings.Add(c => c.setUsePerformanceGraph(use));
             return this;
         }
 
@@ -257,7 +248,39 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         public override DeviceDetectionHashEngineBuilderBase<TEngine> 
             SetUsePredictiveGraph(bool use)
         {
-            SwigConfig.setUsePredictiveGraph(use);
+            _configSettings.Add(c => c.setUsePredictiveGraph(use));
+            return this;
+        }
+
+        /// <summary>
+        /// Set the properties whose values the data set indexes to the
+        /// profiles holding them when it loads the data file, so that
+        /// <see cref="DeviceDetectionHashEngine.GetProfileIdsForPropertyValue"/>
+        /// finds the profiles for a value without reading every profile. A
+        /// refresh indexes the same properties. The TAC and NativeModel
+        /// engines use the index for the property they are keyed on when it
+        /// is named here, for example
+        /// <c>SetIndexedProperties("NativeModel", "TAC")</c>. Names are matched
+        /// exactly, as the data file spells them. By default none are.
+        /// </summary>
+        /// <param name="properties">Names of the properties to index</param>
+        /// <returns>This builder</returns>
+        [CodeConfigOnly]
+        public DeviceDetectionHashEngineBuilderBase<TEngine>
+            SetIndexedProperties(params string[] properties)
+        {
+            if (properties == null)
+            {
+                throw new ArgumentNullException(nameof(properties));
+            }
+            var names = properties.ToList();
+            _configSettings.Add(c =>
+            {
+                using (var vector = new VectorStringSwig(names))
+                {
+                    c.setIndexedProperties(vector);
+                }
+            });
             return this;
         }
 
@@ -300,19 +323,19 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
             switch (profile)
             {
                 case PerformanceProfiles.LowMemory:
-                    SwigConfig.setLowMemory();
+                    _configSettings.Add(c => c.setLowMemory());
                     break;
                 case PerformanceProfiles.Balanced:
-                    SwigConfig.setBalanced();
+                    _configSettings.Add(c => c.setBalanced());
                     break;
                 case PerformanceProfiles.BalancedTemp:
-                    SwigConfig.setBalancedTemp();
+                    _configSettings.Add(c => c.setBalancedTemp());
                     break;
                 case PerformanceProfiles.HighPerformance:
-                    SwigConfig.setHighPerformance();
+                    _configSettings.Add(c => c.setHighPerformance());
                     break;
                 case PerformanceProfiles.MaxPerformance:
-                    SwigConfig.setMaxPerformance();
+                    _configSettings.Add(c => c.setMaxPerformance());
                     break;
                 default:
                     throw new ArgumentException(
@@ -324,17 +347,34 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         }
 
         /// <summary>
-        /// Set the expected number of concurrent operations using the engine.
-        /// This sets the concurrency of the internal caches to avoid excessive
-        /// locking.
+        /// Set the expected number of operations that use the engine at the same
+        /// time. The native code uses it for every collection read from the data
+        /// file.
+        /// First, it sets the number of file handles in the pool, which is the
+        /// concurrency up to a fixed maximum of 64, because a process can only have
+        /// so many files open. An operation that has to read from the file when
+        /// every handle is in use waits until another operation releases one.
+        /// Second, it decides how each cache is split into parts, each with its own
+        /// lock, which avoids excessive locking. An item in use cannot be removed
+        /// from a cache, and any operation can need any part, so every part holds
+        /// at least the concurrency in items. The number of parts is the
+        /// concurrency, or fewer where needed so that every part holds that many
+        /// items, and a cache that holds fewer items than the concurrency in total
+        /// is made large enough to hold that many. No value stops the engine
+        /// building.
+        /// The concurrency has no effect when every collection is held in memory,
+        /// for example with the MaxPerformance profile.
         /// </summary>
-        /// <param name="concurrency">Expected concurrent accesses</param>
+        /// <param name="concurrency">
+        /// The expected number of operations that use the engine at
+        /// the same time.
+        /// </param>
         /// <returns>This builder</returns>
         [DefaultValue("Environment.ProcessorCount")]
         public override DeviceDetectionHashEngineBuilderBase<TEngine> SetConcurrency(
             ushort concurrency)
         {            
-            SwigConfig.setConcurrency(concurrency);
+            _configSettings.Add(c => c.setConcurrency(concurrency));
             return this;
         }
 
@@ -391,41 +431,64 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
             // again by the base class.
             DataFiles.Remove(dataFile);
 
-            // Update the swig configuration object.
-            SwigConfig.setUseUpperPrefixHeaders(false);
-            if (dataFile.Configuration.CreateTempCopy && String.IsNullOrEmpty(TempDir) == false)
-            {
-                using (var tempDirs = new VectorStringSwig())
-                {
-                    tempDirs.Add(TempDir);
-                    SwigConfig.setTempDirectories(tempDirs);
-                }
-                SwigConfig.setUseTempFile(true);
-            }
-
-            // Create swig property configuration object.
+            // Create the swig configuration object, which the engine owns.
+            var config = SwigFactory.CreateConfig();
             IRequiredPropertiesConfigSwigWrapper propertyConfig = null;
-            using (var vProperties = new VectorStringSwig(properties)) {
-                propertyConfig = SwigFactory.CreateRequiredProperties(vProperties);
+            TEngine engine = null;
+            try
+            {
+                foreach (var setting in _configSettings)
+                {
+                    setting(config);
+                }
+                config.setUseUpperPrefixHeaders(false);
+                if (dataFile.Configuration.CreateTempCopy && String.IsNullOrEmpty(TempDir) == false)
+                {
+                    using (var tempDirs = new VectorStringSwig())
+                    {
+                        tempDirs.Add(TempDir);
+                        config.setTempDirectories(tempDirs);
+                    }
+                    config.setUseTempFile(true);
+                }
+
+                // Create swig property configuration object.
+                using (var vProperties = new VectorStringSwig(properties)) {
+                    propertyConfig = SwigFactory.CreateRequiredProperties(vProperties);
+                }
+
+                // Create a new instance of the required engine type.
+                engine = CreateEngine(
+                    _loggerFactory,
+                    CreateAspectData,
+                    TempDir);
+
+                // Then set the instances of properties that remain internal to
+                // the package.
+                engine.SwigFactory = SwigFactory;
+                engine.PropertiesConfigSwig = propertyConfig;
+                engine.Config = config;
+
+                // This must be last as the call results in RefreshData being
+                // triggered which requires the prior three properties to be set.
+                engine.AddDataFile(dataFile);
+                return engine;
             }
-
-            // Create a new instance of the required engine type.
-            var engine = CreateEngine(
-                _loggerFactory,        
-                CreateAspectData,
-                TempDir);
-
-            // Then set the instances of properties that remain internal to
-            // the package.
-            engine.SwigFactory = SwigFactory;
-            engine.PropertiesConfigSwig = propertyConfig;
-            engine.Config = SwigConfig;
-
-            // This must be last as the call results in RefreshData being
-            // triggered which requires the prior three properties to be set.
-            engine.AddDataFile(dataFile);
-
-            return engine;
+            catch
+            {
+                // No caller receives an engine that failed to load, so free
+                // it, or the native configuration if there is no engine yet.
+                if (engine != null)
+                {
+                    engine.Dispose();
+                }
+                else
+                {
+                    propertyConfig?.Dispose();
+                    config.Dispose();
+                }
+                throw;
+            }
         }
         
         /// <summary>

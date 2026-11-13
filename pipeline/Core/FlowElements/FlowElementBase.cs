@@ -28,6 +28,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FiftyOne.Pipeline.Core.FlowElements
@@ -68,6 +69,22 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// The pipelines that this element has been added to
         /// </summary>
         private List<IPipeline> _pipelines = new List<IPipeline>();
+
+        /// <summary>
+        /// A read only view of <see cref="_pipelines"/>, which shows every
+        /// pipeline added later too.
+        /// </summary>
+        private readonly ReadOnlyCollection<IPipeline> _pipelinesView;
+
+        /// <summary>
+        /// The list <see cref="Properties"/> last returned, and the read only
+        /// projection of it that <see cref="IFlowElement.Properties"/>
+        /// returns. Held as one object so a reader on another thread never
+        /// sees a projection paired with the wrong list.
+        /// </summary>
+        private Tuple<IList<TMeta>, IList<IElementPropertyMetaData>>
+            _propertiesProjection;
+
         /// <summary>
         /// A factory function used to create the element data instances
         /// that are populated by this flow element.
@@ -87,7 +104,7 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         {
             get
             {
-                return new ReadOnlyCollection<IPipeline>(_pipelines);
+                return _pipelinesView;
             }
         }
 
@@ -112,11 +129,29 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// Provide an implementation for the non-generic version
         /// of the meta-data property.
         /// </summary>
+        /// <remarks>
+        /// Every caller gets the same read only list until
+        /// <see cref="Properties"/> returns a different list, so the
+        /// projection is not made again for every request.
+        /// </remarks>
         IList<IElementPropertyMetaData> IFlowElement.Properties
         {
             get
             {
-                return Properties.Cast<IElementPropertyMetaData>().ToList();
+                var source = Properties;
+                var cached = Volatile.Read(ref _propertiesProjection);
+                if (cached == null ||
+                    ReferenceEquals(cached.Item1, source) == false)
+                {
+                    cached = Tuple.Create<IList<TMeta>,
+                        IList<IElementPropertyMetaData>>(
+                        source,
+                        source.Cast<IElementPropertyMetaData>()
+                            .ToList()
+                            .AsReadOnly());
+                    Volatile.Write(ref _propertiesProjection, cached);
+                }
+                return cached.Item2;
             }
         }
 
@@ -188,6 +223,7 @@ namespace FiftyOne.Pipeline.Core.FlowElements
             Logger = logger ?? NullLogger<FlowElementBase<T, TMeta>>.Instance;
             Logger.LogInformation($"FlowElement '{GetType().Name}' created.");
             _elementDataFactory = elementDataFactory;
+            _pipelinesView = new ReadOnlyCollection<IPipeline>(_pipelines);
         }
 
         /// <summary>

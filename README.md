@@ -25,10 +25,10 @@ Created from `pipeline-dotnet`, `device-detection-dotnet`, `ip-intelligence-dotn
 
 | Product | Read first | Documentation |
 | --- | --- | --- |
-| Pipeline API | [pipeline/README.md](pipeline/README.md) | [.NET](https://51degrees.com/documentation/apis/pipeline-dotnet/index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=pipeline-dotnet) |
-| Device Detection | [device-detection/README.md](device-detection/README.md) | [.NET](https://51degrees.com/documentation/apis/device-detection-dotnet/index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=device-detection-dotnet) |
-| IP Intelligence | [ip-intelligence/README.md](ip-intelligence/README.md) | [.NET](https://51degrees.com/documentation/apis/ip-intelligence-dotnet/index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=ip-intelligence-dotnet) |
-| Location | [location/README.md](location/README.md) | [.NET](https://51degrees.com/documentation/apis/location-dotnet/index.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=location-dotnet) |
+| Pipeline API | [pipeline/README.md](pipeline/README.md) | [Guide](https://51degrees.com/documentation/_pipeline_api__concepts__pipeline_basics.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=pipeline-guide) and [.NET API](https://51degrees.com/documentation/apis/pipeline-dotnet/annotated.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=pipeline-dotnet) |
+| Device Detection | [device-detection/README.md](device-detection/README.md) | [Guide](https://51degrees.com/documentation/_device_detection__quickstart.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=device-detection-guide) and [.NET API](https://51degrees.com/documentation/apis/device-detection-dotnet/annotated.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=device-detection-dotnet) |
+| IP Intelligence | [ip-intelligence/README.md](ip-intelligence/README.md) | [Guide](https://51degrees.com/documentation/_ip_intelligence__quickstart.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=ip-intelligence-guide) and [.NET API](https://51degrees.com/documentation/apis/ip-intelligence-dotnet/annotated.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=ip-intelligence-dotnet) |
+| Location | [location/README.md](location/README.md) | [Guide](https://51degrees.com/documentation/_reverse_geocoding__quickstart.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=location-guide) and [.NET API](https://51degrees.com/documentation/apis/location-dotnet/annotated.html?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=location-dotnet) |
 
 ## What is where
 
@@ -63,10 +63,17 @@ If you have already cloned the repository, fetch the submodules with:
 git submodule update --init --recursive
 ```
 
-The free Device Detection Lite data file in `cxx/device-detection-data` is
-stored with [Git LFS](https://git-lfs.github.com/). Install Git LFS and run
-`git lfs pull` in that folder to fetch it. The free IP Intelligence file is in
-`cxx/ip-intelligence-data`.
+The free data files are not stored in the repository. The
+[data](https://github.com/51Degrees/data) repository, the `cxx/data`
+submodule, keeps a link for each one in its `device-detection` and
+`ip-intelligence` folders, and its scripts download them beside their links.
+From the repository root, run `pwsh cxx/data/get-data-files.ps1`, or
+`sh cxx/data/get-data-files.sh`, which needs curl and gzip. The examples run
+the script themselves when the free file they need is missing.
+
+Nothing here reads the older `cxx/device-detection-data` and
+`cxx/ip-intelligence-data` folders. When cxx removes those submodules, git
+leaves their folders on disk in an existing clone, and they can be deleted.
 
 ## Building
 
@@ -145,6 +152,10 @@ files, with `_51DEGREES_DD_PATH` and `_51DEGREES_IPI_PATH`. The tests that use
 the cloud read a Resource Key from `_51DEGREES_RESOURCE_KEY`, and the 51Did
 tests a License Key from `_51DEGREES_LICENSE_KEY`. See each folder's README
 for the keys and data files its tests use.
+
+Every environment variable name that the packages, tests, examples and CI
+scripts read is in [common-ci's list of environment variable names](https://github.com/51Degrees/common-ci/blob/d8a9c596eabf69dd5581a08e9360cdd1c9b3d9e8/environment-variables.md),
+which decides.
 
 ## Regenerating the SWIG wrappers
 
