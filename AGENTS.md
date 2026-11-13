@@ -320,3 +320,11 @@ Keep a pull request a draft until it has been reviewed, because the nightly
 merges any pull request into `rc` that is not a draft and has no review
 requested. The "Only rc into main" check fails a pull request into `main` from
 any other branch.
+
+## Tests that fail on timing
+
+A test that fails on a time limit, a performance threshold or a timeout is
+fixed, not run again until it passes. Either the limit is set to fit the
+slowest runner the test runs on, with each runner's measurement behind it, or
+the reason it takes too long is found and fixed. A failure that comes and goes
+costs everyone who meets it the time to look into it.
