@@ -196,8 +196,11 @@ namespace FiftyOne.Pipeline.Engines.Services
 				throw new ArgumentNullException(nameof(dataFile));
 			}
 
-			// A disposed data file is never registered again. Without this a
-			// check that was running when the file was disposed would.
+			// A disposed data file is not registered again, so a check that
+			// was running when the file was disposed does not bring it back.
+			// A file disposed while this runs is caught by the checks under
+			// its timer lock and the list's lock below, though a check on
+			// start-up that has already begun still runs.
 			if (dataFile.TimerClosed)
 			{
 				LogDebugMessage(
@@ -291,25 +294,38 @@ namespace FiftyOne.Pipeline.Engines.Services
 						dataFile.FileWatcher == null &&
 						string.IsNullOrEmpty(dataFile.DataFilePath) == false)
                     {
-                        LogInfoMessage(Messages.MessageAutoUpdateCreateWatcher, dataFile);
+						// Under the timer lock, as Dispose marks the file closed
+						// under it before it disposes the watcher.
+						lock (dataFile.TimerLock)
+						{
+							if (dataFile.TimerClosed == false)
+							{
+								LogInfoMessage(Messages.MessageAutoUpdateCreateWatcher, dataFile);
 
-                        FileSystemWatcher watcher = new FileSystemWatcher(
-							Path.GetDirectoryName(dataFile.DataFilePath),
-							Path.GetFileName(dataFile.DataFilePath));
+								FileSystemWatcher watcher = new FileSystemWatcher(
+									Path.GetDirectoryName(dataFile.DataFilePath),
+									Path.GetFileName(dataFile.DataFilePath));
 
-						//on macos NotifyFilters.FileName filter and Created subscription are needed
-						//because it seems to recreate the file when copying over
-						watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName;
-						watcher.Changed += DataFileUpdated;
-						watcher.Created += DataFileUpdated;
-						watcher.EnableRaisingEvents = true;
-						dataFile.FileWatcher = watcher;
+								//on macos NotifyFilters.FileName filter and Created subscription are needed
+								//because it seems to recreate the file when copying over
+								watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName;
+								watcher.Changed += DataFileUpdated;
+								watcher.Created += DataFileUpdated;
+								watcher.EnableRaisingEvents = true;
+								dataFile.FileWatcher = watcher;
+							}
+						}
 					}
 
 					lock (_configurations)
 					{
-						// Add the configuration to the list of configurations.
-						if (_configurations.Contains(dataFile) == false)
+						// Add the configuration to the list of configurations,
+						// unless the file was disposed while it was registered.
+						// Dispose marks it closed before it takes this lock to
+						// remove it, so this check and that removal cannot both
+						// miss it.
+						if (_configurations.Contains(dataFile) == false &&
+							dataFile.TimerClosed == false)
 						{
 							_configurations.Add(dataFile);
 						}
