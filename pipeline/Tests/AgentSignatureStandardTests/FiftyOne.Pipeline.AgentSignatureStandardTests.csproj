@@ -62,12 +62,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The signing helper reads the RFC 9421 Ed25519 test key from the
-         main test project's fixture folder, so the file travels to the
-         output by link rather than by copy. -->
+    <!-- The signing helper reads the RFC 9421 Ed25519 and RSA-PSS test
+         keys from the main test project's fixture folder, so the files
+         travel to the output by link rather than by copy. -->
     <None
         Include="..\AgentSignatureTests\Fixtures\ed25519.json"
         Link="Fixtures\ed25519.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None
+        Include="..\AgentSignatureTests\Fixtures\rsapss.json"
+        Link="Fixtures\rsapss.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
