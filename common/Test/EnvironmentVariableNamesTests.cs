@@ -22,7 +22,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -46,64 +45,6 @@ public class EnvironmentVariableNamesTests
     /// this file does not match itself.
     /// </summary>
     private const string DigitInitial = "5" + "1DEGREES_";
-
-    /// <summary>
-    /// How long git is given to list the tracked files.
-    /// </summary>
-    private const int GitTimeoutSeconds = 120;
-
-    /// <summary>
-    /// The repository root, being the first folder at or above the test
-    /// assembly that holds a .git entry.
-    /// </summary>
-    private static string RepositoryRoot()
-    {
-        var folder = new DirectoryInfo(AppContext.BaseDirectory);
-        while (folder != null)
-        {
-            if (Directory.Exists(Path.Combine(folder.FullName, ".git")) ||
-                File.Exists(Path.Combine(folder.FullName, ".git")))
-            {
-                return folder.FullName;
-            }
-            folder = folder.Parent;
-        }
-        throw new InvalidOperationException(
-            $"No folder at or above '{AppContext.BaseDirectory}' holds .git.");
-    }
-
-    /// <summary>
-    /// The files git tracks, as paths relative to the repository root.
-    /// </summary>
-    private static List<string> TrackedFiles(string root)
-    {
-        var start = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = root,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        start.ArgumentList.Add("ls-files");
-        start.ArgumentList.Add("-z");
-        using var process = Process.Start(start)
-            ?? throw new InvalidOperationException("git did not start.");
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        Assert.IsTrue(
-            process.WaitForExit(GitTimeoutSeconds * 1000),
-            "git ls-files did not finish in time.");
-        Assert.AreEqual(0, process.ExitCode, $"git ls-files failed: {error}");
-        var paths = new List<string>();
-        foreach (var path in output.Split('\0'))
-        {
-            if (path.Length > 0)
-            {
-                paths.Add(path);
-            }
-        }
-        return paths;
-    }
 
     /// <summary>
     /// True when the character can be part of an environment variable name.
@@ -278,9 +219,9 @@ public class EnvironmentVariableNamesTests
         string skip,
         Func<string, string, bool> allow = null)
     {
-        var root = RepositoryRoot();
+        var root = RepositoryFiles.Root();
         var found = new List<string>();
-        foreach (var relative in TrackedFiles(root))
+        foreach (var relative in RepositoryFiles.Tracked(root))
         {
             if (relative == skip)
             {
