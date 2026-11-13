@@ -48,7 +48,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         internal static IReadOnlyDictionary<string, object> Find(
             IReadOnlyDictionary<string, object> evidence)
         {
-            var hasRequest = evidence.TryGetValue(
+            var hasRequest = TryGetIgnoringCase(
+                evidence,
                 Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
                 out var requestValue);
             if (hasRequest == false)
@@ -97,20 +98,66 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                 value = null;
                 return false;
             }
-            if (evidence.TryGetValue(key, out value))
+            if (TryGetIgnoringCase(evidence, key, out value))
             {
                 return true;
             }
-            if (evidence.TryGetValue(
+            if (TryGetIgnoringCase(
+                    evidence,
                     Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
                     out var requestValue) &&
                 requestValue is IReadOnlyDictionary<string, object> request)
             {
-                return request.TryGetValue(key, out value);
+                return TryGetIgnoringCase(request, key, out value);
             }
             value = null;
             return false;
         }
+
+        /// <summary>
+        /// The value of a key compared without regard to case, as the
+        /// specification compares keys, whatever comparer the dictionary
+        /// has. The dictionary's own lookup is tried first, so a
+        /// dictionary that ignores case is never searched.
+        /// </summary>
+        /// <param name="values">The values.</param>
+        /// <param name="key">The key.</param>
+        /// <param name="value">The value, if found.</param>
+        /// <returns>True if the key was found.</returns>
+        private static bool TryGetIgnoringCase(
+            IReadOnlyDictionary<string, object> values,
+            string key,
+            out object value)
+        {
+            if (values.TryGetValue(key, out value))
+            {
+                return true;
+            }
+            foreach (var entry in values)
+            {
+                if (string.Equals(
+                    entry.Key, key, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = entry.Value;
+                    return true;
+                }
+            }
+            value = null;
+            return false;
+        }
+
+        /// <summary>
+        /// True if the evidence holds the web request, its key compared
+        /// without regard to case.
+        /// </summary>
+        /// <param name="evidence">The flow data's evidence.</param>
+        /// <returns>True if the web request is there.</returns>
+        internal static bool HasRequest(
+            IReadOnlyDictionary<string, object> evidence) =>
+            TryGetIgnoringCase(
+                evidence,
+                Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
+                out _);
 
         /// <summary>
         /// True for the key of the web request value itself.
