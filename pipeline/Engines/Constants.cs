@@ -71,6 +71,18 @@ namespace FiftyOne.Pipeline.Engines
         public const int RESULTS_CACHE_DEFAULT_SIZE = 1000;
 
         /// <summary>
+        /// Whether the pre-packaged pipeline builders turn on lazy loading
+        /// when no method asks for it.
+        /// </summary>
+        public const bool LAZY_LOADING_DEFAULT_ENABLED = false;
+
+        /// <summary>
+        /// Whether the pre-packaged pipeline builders add a results cache
+        /// when no method asks for one.
+        /// </summary>
+        public const bool RESULTS_CACHE_DEFAULT_ENABLED = false;
+
+        /// <summary>
         /// Default value for the flag that controls whether data files automatically look
         /// for updates or not.
         /// </summary>
