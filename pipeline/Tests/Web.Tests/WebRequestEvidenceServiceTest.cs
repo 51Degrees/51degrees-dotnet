@@ -729,7 +729,8 @@ namespace FiftyOne.Pipeline.Web.Tests
         }
 
         /// <summary>
-        /// With no session, nothing is added under the session prefix.
+        /// With no session, nothing is added under the session prefix,
+        /// neither the session itself nor any value.
         /// </summary>
         [TestMethod]
         public void WebRequestEvidenceService_NoSession()
@@ -743,7 +744,11 @@ namespace FiftyOne.Pipeline.Web.Tests
             _service.AddEvidenceFromRequest(_flowData.Object, _request.Object);
 
             _flowData.Verify(f => f.AddEvidence(
-                Core.Constants.EVIDENCE_SESSION_KEY, It.IsAny<object>()),
+                It.Is<string>(k => k.StartsWith(
+                    Core.Constants.EVIDENCE_SESSION_PREFIX +
+                        Core.Constants.EVIDENCE_SEPERATOR,
+                    System.StringComparison.OrdinalIgnoreCase)),
+                It.IsAny<object>()),
                 Times.Never);
         }
     }
