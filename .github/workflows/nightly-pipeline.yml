@@ -10,11 +10,10 @@ on:
       dryrun:
         type: boolean
         default: false
-  # Off until this repository takes over from the separate repositories it
-  # replaces. Their schedules are turned off then, so the same jobs never run
-  # in both.
-  # schedule:
-  #   - cron: '0 1 * * *'
+  # 01:30 UTC, so it starts apart from the other language repositories'
+  # nightlies.
+  schedule:
+    - cron: '30 1 * * *'
 
 jobs:
   PackageUpdate:
