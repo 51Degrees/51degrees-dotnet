@@ -36,8 +36,9 @@ namespace FiftyOne.Common.Tests;
 /// documentation without a warning, and a missing example drops the
 /// example page that other documentation pages embed. These tests check
 /// that every INPUT entry exists, that every file declaring an example
-/// page is read, and that every packed project is read or is named in
-/// <see cref="NotDocumented"/>.
+/// page is read, that every packed project is read or is named in
+/// <see cref="NotDocumented"/>, and that no doc comment Doxygen reads holds
+/// a numeric character reference.
 /// </summary>
 [TestClass]
 public class DoxyfileInputTests
@@ -106,6 +107,20 @@ public class DoxyfileInputTests
     private static readonly Regex ExampleCommand = new Regex(
         @"^\s*(?:///|//!|/\*[*!]|\*)\s*[@\\]example\s+\S",
         RegexOptions.CultureInvariant | RegexOptions.Multiline);
+
+    /// <summary>
+    /// A C# doc comment line.
+    /// </summary>
+    private static readonly Regex DocCommentLine = new Regex(
+        @"^\s*///",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// An HTML numeric character reference, such as the one for '@'.
+    /// </summary>
+    private static readonly Regex NumericReference = new Regex(
+        @"&#(?:[0-9]+|[xX][0-9A-Fa-f]+);",
+        RegexOptions.CultureInvariant);
 
     /// <summary>
     /// A project's own IsPackable setting.
@@ -362,6 +377,46 @@ public class DoxyfileInputTests
             problems,
             "These folders hold packed projects, and their Doxyfile does " +
             "not read them, so their packages have no API documentation.");
+    }
+
+    /// <summary>
+    /// Doxygen writes a numeric character reference in a doc comment out
+    /// as the text of the reference, so the published page shows it as
+    /// typed rather than as the character it stands for.
+    /// </summary>
+    [TestMethod]
+    public void Doxyfile_ReadsNoNumericCharacterReference()
+    {
+        var root = RepositoryFiles.Root();
+        var tracked = RepositoryFiles.Tracked(root);
+        var families = Families(root);
+        var problems = new List<string>();
+        foreach (var file in tracked.Where(
+            p => p.EndsWith(".cs", StringComparison.Ordinal)))
+        {
+            var path = FullPath(root, file);
+            if (File.Exists(path) == false ||
+                families.Any(f => IsRead(f, path)) == false)
+            {
+                continue;
+            }
+            var number = 0;
+            foreach (var line in File.ReadLines(path))
+            {
+                number++;
+                if (DocCommentLine.IsMatch(line) &&
+                    NumericReference.IsMatch(line))
+                {
+                    problems.Add($"{file}:{number}: {line.Trim()}");
+                }
+            }
+        }
+        AssertNone(
+            problems,
+            "These doc comments hold a numeric character reference, which " +
+            "the published page shows as typed. Write the character, and " +
+            "where Doxygen would read it as a command, give it an alias in " +
+            "the Doxyfile.");
     }
 
     [TestMethod]
