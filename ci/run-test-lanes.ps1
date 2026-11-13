@@ -4,7 +4,9 @@ param (
     [Parameter(Mandatory)][string]$Configuration,
     [Parameter(Mandatory)][string]$Filter,
     [Parameter(Mandatory)][string]$OutputFolder,
-    [string]$BlameHangTimeout = "20m"
+    [string]$BlameHangTimeout = "20m",
+    # Assemblies matching this are left out, even when they match $Filter.
+    [string]$Exclude
 )
 $ErrorActionPreference = "Stop"
 
@@ -52,7 +54,8 @@ $assemblies = @(Get-ChildItem -Path $RepoPath -Recurse -File -Filter "*.dll" |
     Where-Object {
         $_.DirectoryName -like "*bin*" -and
         $_.Name -notlike "*performance*" -and
-        $_.Name -match $Filter
+        $_.Name -match $Filter -and
+        -not ($Exclude -and $_.Name -match $Exclude)
     } |
     Sort-Object FullName)
 if ($assemblies.Count -eq 0) {

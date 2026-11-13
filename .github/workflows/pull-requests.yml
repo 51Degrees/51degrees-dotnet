@@ -9,6 +9,10 @@ on:
       dryrun:
         type: boolean
         default: false
+      full-matrix:
+        description: 'Build every configuration, not only those the changes need'
+        type: boolean
+        default: false
 
 jobs:
   PullRequests:
@@ -19,6 +23,12 @@ jobs:
       org-name: ${{ github.event.repository.owner.login }}
       dryrun: ${{ inputs.dryrun || false }}
       cache-assets: true
+      # Each pull request is built on the configurations its changes need,
+      # as ci/select-options.ps1 chooses, and one that fails does not cancel
+      # the others. With nothing eligible, the nightly builds rc instead.
+      full-matrix: ${{ inputs.full-matrix || false }}
+      fail-fast: false
+      build-without-pull-requests: false
     secrets:
       token: ${{ secrets.ACCESS_TOKEN }}
       StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
