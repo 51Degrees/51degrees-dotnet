@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud;
@@ -43,6 +44,57 @@ internal static class LiveCloudKey
         "RESOURCE_KEY_CLOUD_V5_BESPOKE",
     };
 
+    /// <summary>
+    /// The old names of the key's variable, read in this order only when
+    /// none of <see cref="Names"/> is set.
+    /// </summary>
+    internal static readonly string[] OldNames =
+    {
+        "SUPER_RESOURCE_KEY",
+    };
+
+    private static readonly HashSet<string> _oldNamesReported =
+        new HashSet<string>();
+
+    /// <summary>
+    /// The key from the first of <see cref="Names"/> that is set. When
+    /// none is, the key from the first of <see cref="OldNames"/> that is
+    /// set, with each old name reported once on the error stream as
+    /// deprecated.
+    /// </summary>
+    private static string FromEnvironment()
+    {
+        var key = Names
+            .Select(n => Environment.GetEnvironmentVariable(n))
+            .FirstOrDefault(v => string.IsNullOrWhiteSpace(v) == false);
+        if (key != null)
+        {
+            return key;
+        }
+        foreach (var oldName in OldNames)
+        {
+            var value = Environment.GetEnvironmentVariable(oldName);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+            bool first;
+            lock (_oldNamesReported)
+            {
+                first = _oldNamesReported.Add(oldName);
+            }
+            if (first)
+            {
+                Console.Error.WriteLine(
+                    $"The environment variable {oldName} is deprecated " +
+                    $"and {Names[0]} replaces it. Set {Names[0]} to the " +
+                    "same value instead.");
+            }
+            return value;
+        }
+        return null;
+    }
+
     private const string AccessiblePropertiesUrl =
         "https://cloud.51degrees.com/api/v4/accessibleproperties?resource=<key>";
 
@@ -52,9 +104,7 @@ internal static class LiveCloudKey
     /// <summary>
     /// The first key set, or null when none of <see cref="Names"/> is.
     /// </summary>
-    internal static string Find() => Names
-        .Select(n => Environment.GetEnvironmentVariable(n))
-        .FirstOrDefault(v => string.IsNullOrWhiteSpace(v) == false);
+    internal static string Find() => FromEnvironment();
 
     /// <summary>
     /// What the tests fail with when <see cref="Find"/> finds no key.

@@ -19,8 +19,9 @@ $OldStyle = "^FiftyOne\.(Pipeline\.Web\.Framework\.Tests|DeviceDetection\.Tests\
 $Filter = "^FiftyOne\.(?!Pipeline\.Web\.Framework\.Tests\.dll$)(?!DeviceDetection\.Tests\.Framework\.dll$)(?!.*Examples?\.Tests)(?!.*TestHelpers).*Tests?(\.Core|\.Framework)?\.dll$"
 # A run can be narrowed to some assemblies by setting _51DEGREES_TEST_FILTER,
 # which the probe workflow does.
-if ($env:_51DEGREES_TEST_FILTER) {
-    $Filter = $env:_51DEGREES_TEST_FILTER
+$TestFilter = & "$PSScriptRoot/test-filter.ps1"
+if ($TestFilter) {
+    $Filter = $TestFilter
 }
 
 # The SDK-style assemblies run in parallel lanes, which ci/run-test-lanes.ps1
@@ -36,7 +37,7 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-if ($BuildMethod -eq "msbuild" -and -not $env:_51DEGREES_TEST_FILTER) {
+if ($BuildMethod -eq "msbuild" -and -not $TestFilter) {
     ./dotnet/run-unit-tests.ps1 `
         -RepoName $RepoName `
         -Name $Name `

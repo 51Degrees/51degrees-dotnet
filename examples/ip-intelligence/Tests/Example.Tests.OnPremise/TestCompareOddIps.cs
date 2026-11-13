@@ -57,7 +57,7 @@ public class TestCompareOddIps
                 "This test requires an on-premise IP Intelligence data " +
                 $"file. Place a '{ExampleConstants.ENTERPRISE_IPI_DATA_FILE_NAME}' " +
                 "file in the repository or set the " +
-                $"'{ExampleConstants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR}' " +
+                $"'{ExampleConstants.IPI_PATH_ENV_VAR}' " +
                 "environment variable to its path.";
         }
     }

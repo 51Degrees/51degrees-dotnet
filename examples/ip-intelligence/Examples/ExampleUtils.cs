@@ -37,14 +37,128 @@ public static class ExampleUtils
     /// The default environment variable key used to get the resource key
     /// to use when running cloud examples.
     /// </summary>
-    public const string CLOUD_RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
+    public const string RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
+
+    /// <summary>
+    /// An old environment variable for the resource key, read only when
+    /// <see cref="RESOURCE_KEY_ENV_VAR"/> is not set.
+    /// </summary>
+    [System.Obsolete("Use RESOURCE_KEY_ENV_VAR, which names the environment " +
+        "variable that replaces this one.")]
+    public const string CLOUD_RESOURCE_KEY_ENV_VAR = "51DEGREES_RESOURCE_KEY";
+
+    /// <summary>
+    /// An old environment variable for the resource key, read only when
+    /// <see cref="RESOURCE_KEY_ENV_VAR"/> is not set.
+    /// </summary>
+    [System.Obsolete("Use RESOURCE_KEY_ENV_VAR, which names the environment " +
+        "variable that replaces this one.")]
+    public const string LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR = "RESOURCE_KEY";
+
+    /// <summary>
+    /// An old environment variable for the resource key, read only when
+    /// <see cref="RESOURCE_KEY_ENV_VAR"/> is not set.
+    /// </summary>
+    [System.Obsolete("Use RESOURCE_KEY_ENV_VAR, which names the environment " +
+        "variable that replaces this one.")]
+    public const string LEGACY_SUPER_RESOURCE_KEY_ENV_VAR = "SUPER_RESOURCE_KEY";
 
     /// <summary>
     /// The default environment variable key used to get the end point URL
     /// to use when running cloud examples. Can be used to override the
     /// appsettings.json configuration for testing custom end points.
     /// </summary>
-    public const string CLOUD_END_POINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
+    public const string CLOUD_ENDPOINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
+
+    /// <summary>
+    /// An old environment variable for the end point URL, read only when
+    /// <see cref="CLOUD_ENDPOINT_ENV_VAR"/> is not set.
+    /// </summary>
+    [System.Obsolete("Use CLOUD_ENDPOINT_ENV_VAR, which names the environment " +
+        "variable that replaces this one.")]
+    public const string CLOUD_END_POINT_ENV_VAR = "51D_CLOUD_ENDPOINT";
+
+#pragma warning disable CS0618 // The old names are listed to be read.
+    /// <summary>
+    /// The old names of
+    /// <see cref="CLOUD_ENDPOINT_ENV_VAR"/>,
+    /// read in this order only when that variable is not set.
+    /// </summary>
+    public static readonly string[] OLD_CLOUD_END_POINT_ENV_VARS = new string[]
+    {
+        CLOUD_END_POINT_ENV_VAR,
+    };
+
+    /// <summary>
+    /// The old names of
+    /// <see cref="RESOURCE_KEY_ENV_VAR"/>,
+    /// read in this order only when that variable is not set.
+    /// </summary>
+    public static readonly string[] OLD_CLOUD_RESOURCE_KEY_ENV_VARS = new string[]
+    {
+        CLOUD_RESOURCE_KEY_ENV_VAR,
+        LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR,
+        LEGACY_SUPER_RESOURCE_KEY_ENV_VAR,
+    };
+#pragma warning restore CS0618
+
+    private static readonly HashSet<string> _oldNamesReported =
+        new HashSet<string>();
+
+    /// <summary>
+    /// The value of an environment variable. When it is not set, the value
+    /// of the first of its old names that is set, with each old name
+    /// reported once on the error stream as deprecated.
+    /// </summary>
+    /// <param name="name">The variable's name.</param>
+    /// <param name="oldNames">
+    /// The names the variable had before, in the order they are tried.
+    /// </param>
+    /// <returns>
+    /// The value, or what <paramref name="name"/> holds when no old name
+    /// is set either.
+    /// </returns>
+    public static string FromEnvironment(
+        string name,
+        params string[] oldNames)
+    {
+        var value = Environment.GetEnvironmentVariable(name);
+        if (string.IsNullOrWhiteSpace(value) == false)
+        {
+            return value;
+        }
+        foreach (var oldName in oldNames)
+        {
+            var oldValue = Environment.GetEnvironmentVariable(oldName);
+            if (string.IsNullOrWhiteSpace(oldValue) == false)
+            {
+                ReportOldName(oldName, name);
+                return oldValue;
+            }
+        }
+        return value;
+    }
+
+    /// <summary>
+    /// Say once on the error stream that an old environment variable name
+    /// supplied a value, and which name replaces it.
+    /// </summary>
+    /// <param name="oldName">The old name that was read.</param>
+    /// <param name="newName">The name that replaces it.</param>
+    public static void ReportOldName(string oldName, string newName)
+    {
+        lock (_oldNamesReported)
+        {
+            if (_oldNamesReported.Add(oldName) == false)
+            {
+                return;
+            }
+        }
+        Console.Error.WriteLine(
+            $"The environment variable {oldName} is deprecated and " +
+            $"{newName} replaces it. Set {newName} to the same value " +
+            "instead.");
+    }
 
     /// <summary>
     /// Timeout used when searching for files.
@@ -382,7 +496,7 @@ public static class ExampleUtils
 
     /// <summary>
     /// Get the path to an IP Intelligence data file. The variable named
-    /// by <see cref="Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR"/> is
+    /// by <see cref="Constants.IPI_PATH_ENV_VAR"/> is
     /// checked first for an explicit path. If it is not set, the folder
     /// hierarchy is searched for the
     /// supplied file name using <see cref="FindFile(string, DirectoryInfo)"/>.
@@ -402,8 +516,9 @@ public static class ExampleUtils
         string filename,
         DirectoryInfo dir = null)
     {
-        var path = Environment.GetEnvironmentVariable(
-            Constants.IP_INTELLIGENCE_DATA_FILE_ENV_VAR);
+        var path = FromEnvironment(
+            Constants.IPI_PATH_ENV_VAR,
+            Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS);
         if (string.IsNullOrWhiteSpace(path))
         {
             path = FindFile(filename, dir);
@@ -536,8 +651,9 @@ public static class ExampleUtils
     /// </returns>
     public static string GetResourceKeyFromEnv()
     {
-        return Environment.GetEnvironmentVariable(
-            CLOUD_RESOURCE_KEY_ENV_VAR);
+        return FromEnvironment(
+            RESOURCE_KEY_ENV_VAR,
+            OLD_CLOUD_RESOURCE_KEY_ENV_VARS);
     }
 
     /// <summary>

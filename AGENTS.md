@@ -215,6 +215,19 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   `TextWriter.Null`, and the IP Intelligence one checks only a few words of
   it.
 
+## Environment variable names
+
+[common-ci's list of environment variable names](https://github.com/51Degrees/common-ci/blob/d8a9c596eabf69dd5581a08e9360cdd1c9b3d9e8/environment-variables.md)
+holds every environment variable name that the packages, tests, examples and
+CI scripts of every language read, with what each name holds and the
+deprecated names each replaced. The list decides. Use the names it gives, and
+when a change needs a new name, or reads an old name again, change
+[`environment-variables.json`](https://github.com/51Degrees/common-ci/blob/d8a9c596eabf69dd5581a08e9360cdd1c9b3d9e8/environment-variables.json)
+in common-ci in the same piece of work. This repository's own name
+check, [`common/Test/EnvironmentVariableNamesTests.cs`](common/Test/EnvironmentVariableNamesTests.cs), still keeps a
+list of its own. Where the two differ, common-ci's list is the one to
+follow.
+
 ## References between the folders
 
 A project that uses a package built in another folder declares a
@@ -256,7 +269,10 @@ when a linked file is missing. The IP Intelligence translation resources are
 embedded from `cxx/data/ip-intelligence/Translations` with a wildcard, which
 embeds nothing if the folder is missing, and the translation tests then fail.
 CI puts the Enterprise files in the same folders, and `ci/fetch-assets.ps1`
-runs the script for the free files.
+copies or links the free files there from common-ci's assets, which each run
+caches once, so no test job downloads a data file. A file added to the data
+repository needs an entry in common-ci's `steps/fetch-assets.ps1` before CI
+can use it.
 
 ## Layout
 

@@ -88,7 +88,8 @@ namespace GettingStarted
         /// </summary>
         private static string GetCloudEndpoint()
         {
-            var endpoint = Environment.GetEnvironmentVariable("_51DEGREES_CLOUD_ENDPOINT");
+            var endpoint = FromEnvironment(
+                "_51DEGREES_CLOUD_ENDPOINT", "FOD_CLOUD_API_URL");
             if (string.IsNullOrWhiteSpace(endpoint))
             {
                 endpoint = "https://cloud.51degrees.com/api/v4/";
@@ -104,12 +105,36 @@ namespace GettingStarted
         private static string GetResourceKey()
         {
             var resourceKey =
-                Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
+                FromEnvironment("_51DEGREES_RESOURCE_KEY", "RESOURCE_KEY");
             if (string.IsNullOrEmpty(resourceKey))
             {
                 resourceKey = "AQS5HKcyHJbECm6E10g";
             }
             return resourceKey;
+        }
+
+        /// <summary>
+        /// Get an environment variable. When it is not set its old name is
+        /// read, and a value read from the old name is reported on the
+        /// error stream as deprecated.
+        /// </summary>
+        private static string FromEnvironment(string name, string oldName)
+        {
+            var value = Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(value) == false)
+            {
+                return value;
+            }
+            var oldValue = Environment.GetEnvironmentVariable(oldName);
+            if (string.IsNullOrWhiteSpace(oldValue))
+            {
+                return value;
+            }
+            Console.Error.WriteLine(
+                $"The environment variable {oldName} is deprecated and " +
+                $"{name} replaces it. Set {name} to the same value " +
+                "instead.");
+            return oldValue;
         }
     }
 }

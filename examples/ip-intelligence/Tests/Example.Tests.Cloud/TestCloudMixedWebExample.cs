@@ -82,7 +82,7 @@ public class TestCloudMixedWebExample
 
         Assert.IsFalse(
             string.IsNullOrWhiteSpace(resourceKey),
-            $"Environment variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}' " +
+            $"Environment variable '{ExampleUtils.RESOURCE_KEY_ENV_VAR}' " +
             $"is not set. Obtain a resource key at " +
             $"https://51degrees.com/configure and export it to run this test.");
     }
