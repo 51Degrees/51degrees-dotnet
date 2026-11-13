@@ -7,11 +7,11 @@ on:
         default: false
         type: boolean
         description: Dry Run
-  # Off until this repository takes over from the separate repositories
-  # it replaces. Their schedules are turned off then, so the same jobs never
-  # run in both.
-  # schedule:
-  #   - cron: '0 0 1 * *'
+  # The copyright year only changes once a year, so this runs on 1 January,
+  # at 00:30 UTC so it starts apart from the other repositories' copyright
+  # updates.
+  schedule:
+    - cron: '30 0 1 1 *'
 
 jobs:
   Monthly_Copyright_Update:
