@@ -871,6 +871,160 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         }
 
         /// <summary>
+        /// A stream that gives the first bytes of a body and then gives
+        /// nothing more until it is released, as a download does when the
+        /// server stops sending without closing the connection. A read that
+        /// is cancelled ends at once.
+        /// </summary>
+        private sealed class StallingStream : MemoryStream
+        {
+            private readonly ManualResetEventSlim _release;
+
+            public StallingStream(
+                byte[] body, int length, ManualResetEventSlim release)
+                : base(body, 0, length)
+            {
+                _release = release;
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                var read = base.Read(buffer, offset, count);
+                if (read == 0)
+                {
+                    _release.Wait();
+                }
+                return read;
+            }
+
+            public override async Task<int> ReadAsync(
+                byte[] buffer, int offset, int count,
+                CancellationToken cancellationToken)
+            {
+                var read = base.Read(buffer, offset, count);
+                if (read == 0)
+                {
+                    await Task.Run(
+                        () => _release.Wait(cancellationToken),
+                        cancellationToken);
+                }
+                return read;
+            }
+
+            public override async ValueTask<int> ReadAsync(
+                Memory<byte> buffer,
+                CancellationToken cancellationToken = default)
+            {
+                var read = base.Read(buffer.Span);
+                if (read == 0)
+                {
+                    await Task.Run(
+                        () => _release.Wait(cancellationToken),
+                        cancellationToken);
+                }
+                return read;
+            }
+        }
+
+        /// <summary>
+        /// The client's timeout, in seconds, in the test of a download
+        /// whose body stops arriving.
+        /// </summary>
+        private const int STALL_CLIENT_TIMEOUT_SECONDS = 1;
+
+        /// <summary>
+        /// A download whose body stops arriving ends when no bytes have
+        /// arrived for the client's timeout, and is reported as the failure
+        /// to access the data update service with status
+        /// AUTO_UPDATE_HTTPS_ERR. Waiting for ever would leave the check
+        /// unfinished, and the data updates specification says "A failure
+        /// MUST NOT stop later checks for updates".
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_UpdateFromUrl_BodyStopsArriving()
+        {
+            // Arrange
+            _httpClient = new HttpClient(_httpHandler.Object)
+            {
+                Timeout = TimeSpan.FromSeconds(STALL_CLIENT_TIMEOUT_SECONDS)
+            };
+            ConfigureRealFileSystem();
+            ConfigureTimerImmediateCallbackOnce();
+            var body = File.ReadAllBytes(@"Resources/file.gz");
+            using (var release = new ManualResetEventSlim(false))
+            {
+                _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                    .Returns(() => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StreamContent(
+                            new StallingStream(body, body.Length / 2, release)),
+                    });
+                ManualResetEventSlim completeFlag = new ManualResetEventSlim(false);
+                DataUpdateCompleteArgs completeEventArgs = null;
+                _dataUpdate.CheckForUpdateComplete += (object sender, DataUpdateCompleteArgs e) =>
+                {
+                    completeEventArgs = e;
+                    completeFlag.Set();
+                };
+
+                Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+                string tempPath = Path.GetTempPath();
+                string dataFile = Path.GetTempFileName();
+                if (File.Exists(dataFile)) { File.Delete(dataFile); }
+                try
+                {
+                    engine.Setup(e => e.TempDataDirPath).Returns(tempPath);
+                    var config = new DataFileConfiguration()
+                    {
+                        AutomaticUpdatesEnabled = true,
+                        DataUpdateUrl = @"http://www.test.com",
+                        DataFilePath = dataFile,
+                        VerifyMd5 = false,
+                        DecompressContent = true,
+                        FileSystemWatcherEnabled = false,
+                        VerifyModifiedSince = false,
+                        UpdateOnStartup = false
+                    };
+                    var file = new AspectEngineDataFile()
+                    {
+                        Engine = engine.Object,
+                        Configuration = config
+                    };
+                    engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+
+                    // Act
+                    _dataUpdate.RegisterDataFile(file);
+                    completeFlag.Wait(TEST_TIMEOUT_MS);
+
+                    DumpLoggerLogs();
+
+                    // Assert
+                    Assert.IsTrue(completeFlag.IsSet, "The check did not end " +
+                        "when the body stopped arriving.");
+                    engine.Verify(e => e.RefreshData(config.Identifier), Times.Never());
+                    Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR, completeEventArgs.Status);
+                    _ignoreErrors = 1;
+                    var errors = _logger.ExtendedEntries
+                        .Where(e => e.LogLevel == LogLevel.Error)
+                        .ToList();
+                    Assert.AreEqual(1, errors.Count);
+                    Assert.AreEqual("Error during check for data update", errors[0].Message);
+                    var error = errors[0].Exception as DataUpdateException;
+                    Assert.IsNotNull(error, "The error logged is not a DataUpdateException.");
+                    Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR, error.Status);
+                    StringAssert.Matches(error.Message, new System.Text.RegularExpressions.Regex(
+                        "^Error accessing data update service at '[^']+' for engine '[^']*'$"));
+                    Assert.IsNotNull(error.InnerException, "The cause is not attached.");
+                }
+                finally
+                {
+                    release.Set();
+                    if (File.Exists(dataFile)) { File.Delete(dataFile); }
+                }
+            }
+        }
+
+        /// <summary>
         /// A download whose body ends early is reported as the failure to
         /// access the data update service, the first row of the Errors
         /// table in the data updates specification. The status is
