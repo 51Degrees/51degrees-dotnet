@@ -598,12 +598,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// <summary>
         /// Test that any data collected is sent when the element is disposed
         /// of rather than being discarded.
+        /// Disposal is given no time bound, because the subject is that the
+        /// queued entry is sent and not how soon the runner gets round to it.
         /// </summary>
         [TestMethod]
         public void ShareUsageElement_SendOnCleanup()
         {
             // Arrange
-            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, 2, 4, _tracker.Object, Timeout.Infinite);
+            element.AddPipeline(_pipeline.Object);
 
             Dictionary<string, object> evidenceData = new Dictionary<string, object>()
             {
@@ -612,18 +616,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             var data = MockFlowData.CreateFromEvidence(evidenceData, false);
 
             // Act
-            _shareUsageElement.Process(data.Object);
+            element.Process(data.Object);
 
             // No data should be being sending yet.
-            Assert.IsNull(_shareUsageElement.SendDataTask);
+            Assert.IsNull(element.SendDataTask);
             _httpHandler.VerifySendCalled(0);
 
-            // Dispose of the element - this should trigger sending remaining data.
-            _shareUsageElement.Dispose();
-
-            // The dispose should have completed the send synchronously, but allow
-            // a small buffer for async operations on slower CI environments.
-            Thread.Sleep(200);
+            // Dispose of the element - this should trigger sending remaining
+            // data. Disposal waits for the send, so nothing here waits on a
+            // clock.
+            element.Dispose();
 
             // Assert
             // Check that one HTTP message was sent during cleanup.
