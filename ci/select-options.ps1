@@ -22,7 +22,9 @@ param(
 
 $Standard = @('Ubuntu_x64_Release', 'Windows_x64_Release')
 $Contract = 'Ubuntu_x64_Release'
-$Native = @('Ubuntu_ARM_Release', 'Windows_x86_Release')
+# PowerShell variable names ignore case, so this name must differ from
+# $native below.
+$NativeEntries = @('Ubuntu_ARM_Release', 'Windows_x86_Release')
 $PackageFolders = @('caching/', 'common/', 'device-detection/',
     'ip-intelligence/', 'location/', 'pipeline/', 'examples/')
 $NativePaths = @('device-detection/Hash.Engine.OnPremise/',
@@ -58,7 +60,7 @@ foreach ($entry in $Options) {
     }
     $why = if ($Standard -contains $name) { 'the standard set' }
         elseif ($other) { 'a change outside the package folders' }
-        elseif ($native -and $Native -contains $name) { 'a native change' }
+        elseif ($native -and $NativeEntries -contains $name) { 'a native change' }
     if (!$why) {
         Write-Host "$name is not needed for this change"
         continue
