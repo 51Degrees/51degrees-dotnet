@@ -50,7 +50,7 @@ using FiftyOne.DeviceDetection.Cloud.FlowElements;
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/Cloud/Mixed/GettingStarted-Console/Program.cs).
 ///
-/// To run this example, create a Resource Key for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&amp;utm_term=header and supply it via the appsettings.json file or the _51DEGREES_RESOURCE_KEY environment variable. By default the pipeline talks to cloud.51degrees.com; set _51DEGREES_CLOUD_ENDPOINT to point at a self-hosted Cloud service instead.
+/// To run this example, create a Resource Key for free at https://51degrees.com/configure?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&amp;utm_term=header and supply it via the appsettings.json file or the _51DEGREES_RESOURCE_KEY environment variable. By default the pipeline talks to cloud.51degrees.com; set _51DEGREES_CLOUD_ENDPOINT to point at a self-hosted Cloud service instead.
 ///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
@@ -266,7 +266,7 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Mixed.GettingStartedConsole
                             $"see " +
                             $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&utm_term=resource-key-required. " +
                             $"A resource key with the properties required by this example can be " +
-                            $"created for free at https://configure.51degrees.com/1QWJwHxl?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&utm_term=resource-key-required. " +
+                            $"created for free at https://51degrees.com/configure/1QWJwHxl?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-mixed-gettingstarted-console-program.cs&utm_term=resource-key-required. " +
                             $"Once complete, populate the config file or environment variable " +
                             $"mentioned at the start of this message with the key.");
                     }

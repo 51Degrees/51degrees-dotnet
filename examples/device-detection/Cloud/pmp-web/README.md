@@ -36,8 +36,8 @@ any ASP.NET Core application is started. Without it the demo listens on
 `http://localhost:5000`.
 
 A resource key can be created at
-https://configure.51degrees.com/YldpCKbW?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-readme.md&utm_term=running-it,
-which opens the Configurator with a list of properties already chosen.
+https://51degrees.com/configure/YldpCKbW?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-readme.md&utm_term=running-it,
+which opens the configuration page with a list of properties already chosen.
 The key has to carry the 51Did properties, which is what makes the cloud
 include the part of the client script that asks the visitor how their data
 may be used, and the pages and the browser tests read `fodid.idprobglobal`

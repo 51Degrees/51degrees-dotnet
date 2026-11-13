@@ -159,9 +159,9 @@ describes.
 The cloud examples need a resource key, which a person creates in the
 configurator, so ask for one if none is set. A free key for the Device
 Detection examples can be made
-[here](https://configure.51degrees.com/Wkqxf3Bs?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=cloud-examples),
+[here](https://51degrees.com/configure/Wkqxf3Bs?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=cloud-examples),
 and one for the IP Intelligence examples
-[here](https://configure.51degrees.com/1QWJwHxl?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=cloud-examples).
+[here](https://51degrees.com/configure/1QWJwHxl?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=cloud-examples).
 
 The Device Detection cloud example takes the key as its first argument or from
 `_51DEGREES_RESOURCE_KEY`, unless the `ResourceKey` in its `appsettings.json`

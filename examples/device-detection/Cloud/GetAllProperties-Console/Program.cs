@@ -170,10 +170,10 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GetAllProperties
                 Console.WriteLine(
                     "The 51Degrees cloud service is accessed with a " +
                     "resource key. A free key can be created at " +
-                    "https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-getallproperties-console-program.cs&utm_term=resource-key-required " +
+                    "https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-getallproperties-console-program.cs&utm_term=resource-key-required " +
                     "and gives the free properties. With a paid " +
                     "subscription, a key created at " +
-                    "https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-getallproperties-console-program.cs&utm_term=resource-key-required " +
+                    "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-getallproperties-console-program.cs&utm_term=resource-key-required " +
                     "includes every property this example displays. Make " +
                     "sure the key includes all the properties you want to " +
                     "see.");
