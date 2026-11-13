@@ -84,5 +84,38 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
             Assert.IsFalse(got);
             Assert.AreEqual("agent", found["header.user-agent"]);
         }
+
+        /// <summary>
+        /// Keys are compared without regard to case, as the specification
+        /// says, even when the Evidence and the request are dictionaries
+        /// that compare keys with case, and whatever the case of the key of
+        /// the request itself.
+        /// </summary>
+        [DataRow("server.http-request")]
+        [DataRow("SERVER.HTTP-REQUEST")]
+        [TestMethod]
+        public void PlainDictionaries_KeysComparedWithoutCase(string requestKey)
+        {
+            var evidence = new Dictionary<string, object>()
+            {
+                { "header.User-Agent", "agent" },
+                {
+                    requestKey,
+                    new Dictionary<string, object>() { { "header.X-Test", "value" } }
+                },
+            };
+
+            var found = ShareUsageEvidence.Find(evidence);
+            var gotAgent = ShareUsageEvidence.TryGetValue(
+                evidence, "HEADER.USER-AGENT", out var agent);
+            var gotHeader = ShareUsageEvidence.TryGetValue(
+                evidence, "header.x-test", out var header);
+
+            Assert.AreEqual("value", found["header.x-test"]);
+            Assert.IsTrue(gotAgent, "The Evidence key was not found in another case.");
+            Assert.AreEqual("agent", agent);
+            Assert.IsTrue(gotHeader, "The request key was not found in another case.");
+            Assert.AreEqual("value", header);
+        }
     }
 }
