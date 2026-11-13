@@ -75,7 +75,7 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
         [ClassInitialize]
         public static void ClassInitialize(TestContext context)
         {
-            var dataFile = Utils.GetFilePath(
+            var dataFile = Utils.GetPaidFilePath(
                 Constants.TAC_HASH_DATA_FILE_NAME).FullName;
             _loggerFactory = LoggerFactory.Create(b => b
                 .SetMinimumLevel(LogLevel.Warning));
