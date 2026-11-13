@@ -81,12 +81,12 @@
     update changes them here.
   -->
   <PropertyGroup>
-    <FiftyOneCommonVersion>5.1.9</FiftyOneCommonVersion>
-    <FiftyOneCachingVersion>4.5.3</FiftyOneCachingVersion>
-    <FiftyOnePipelineVersion>4.5.129</FiftyOnePipelineVersion>
-    <FiftyOneDeviceDetectionVersion>4.5.180</FiftyOneDeviceDetectionVersion>
-    <FiftyOneIpIntelligenceVersion>4.5.155</FiftyOneIpIntelligenceVersion>
-    <FiftyOneGeoLocationVersion>4.5.196</FiftyOneGeoLocationVersion>
+    <FiftyOneCommonVersion>5.1.10</FiftyOneCommonVersion>
+    <FiftyOneCachingVersion>4.5.4</FiftyOneCachingVersion>
+    <FiftyOnePipelineVersion>4.5.130</FiftyOnePipelineVersion>
+    <FiftyOneDeviceDetectionVersion>4.5.181</FiftyOneDeviceDetectionVersion>
+    <FiftyOneIpIntelligenceVersion>4.5.156</FiftyOneIpIntelligenceVersion>
+    <FiftyOneGeoLocationVersion>4.5.197</FiftyOneGeoLocationVersion>
   </PropertyGroup>
 
 </Project>
