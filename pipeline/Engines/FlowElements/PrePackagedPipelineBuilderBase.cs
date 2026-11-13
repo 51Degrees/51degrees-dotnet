@@ -86,8 +86,8 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         /// Enable lazy loading of results.
         /// </summary>
         /// <param name="timeoutMilliseconds">
-        /// The timeout to use when attempting to access lazy-loaded values.
-        /// Default is 5 seconds.
+        /// The timeout in milliseconds to use when attempting to access
+        /// lazy-loaded values. Default is 5 seconds.
         /// </param>
         /// <returns>
         /// This builder instance.
