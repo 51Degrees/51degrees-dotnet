@@ -203,6 +203,73 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
+        /// Takes the address of the machine from a lookup that does not
+        /// finish until the test releases it, as on a machine whose own name
+        /// is slow to look up. Disposal keeps the product's bound.
+        /// </summary>
+        private class SlowHostAddressElement : QueueOpenShareUsageElement
+        {
+            /// <summary>
+            /// The longest the lookup blocks if the test never releases it.
+            /// </summary>
+            private static readonly TimeSpan LookupLimit =
+                TimeSpan.FromSeconds(30);
+
+            private readonly HostAddressLookup _lookup;
+
+            public SlowHostAddressElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                ITracker tracker,
+                ManualResetEventSlim release)
+                : base(logger, httpClient, 2, 100, tracker)
+            {
+                _lookup = new HostAddressLookup(() =>
+                {
+                    release.Wait(LookupLimit);
+                    return "192.0.2.1";
+                });
+            }
+
+            internal override HostAddressLookup HostAddressSource => _lookup;
+        }
+
+        /// <summary>
+        /// A lookup of the machine's address that has not finished holds up
+        /// no send. Disposal, with the product's bound, still sends the entry
+        /// queued, with an empty ServerIP.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_SlowHostAddressLookup_StillSends()
+        {
+            using (var release = new ManualResetEventSlim(false))
+            {
+                var element = new SlowHostAddressElement(
+                    _logger, _httpClient, _tracker.Object, release);
+                element.AddPipeline(_pipeline.Object);
+                element.Enqueue("10.3.0.1");
+
+                var timer = System.Diagnostics.Stopwatch.StartNew();
+                element.Dispose();
+                timer.Stop();
+                release.Set();
+
+                var sent = _xmlContent
+                    .SelectMany(xml => Regex.Matches(xml, "<ClientIP>([^<]+)</ClientIP>")
+                        .Cast<System.Text.RegularExpressions.Match>()
+                        .Select(m => m.Groups[1].Value))
+                    .ToList();
+                CollectionAssert.AreEqual(new[] { "10.3.0.1" }, sent,
+                    "The entry queued was not sent while the lookup of the " +
+                    "machine's address had not finished. Disposal took " +
+                    $"{timer.ElapsedMilliseconds} ms.");
+                StringAssert.Matches(_xmlContent[0],
+                    new Regex("<ServerIP\\s*/>|<ServerIP></ServerIP>"),
+                    "ServerIP was not empty while the lookup had not finished.");
+            }
+        }
+
+        /// <summary>
         /// Every entry put on the queue is sent exactly once, including
         /// when the queue holds more than a full message when a send
         /// starts. The queue is filled directly so the result does not

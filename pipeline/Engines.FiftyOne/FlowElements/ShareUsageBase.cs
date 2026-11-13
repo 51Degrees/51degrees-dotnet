@@ -319,7 +319,20 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         private IList<IElementPropertyMetaData> _properties;
 
         /// <summary>
+        /// Looks up the address of this machine once for the process. The
+        /// first element built starts it.
+        /// </summary>
+        private static readonly HostAddressLookup SharedHostAddress =
+            new HostAddressLookup(LookUpHostAddress);
+
+        /// <summary>
         /// Get the IP address of the machine that this code is running on.
+        /// The element reads it once and keeps it, as the specification asks
+        /// for a value that does not change for the life of the pipeline.
+        /// A send waits for the lookup for at most
+        /// <see cref="HostAddressWaitMilliseconds"/>, so a slow name lookup
+        /// cannot use up the time that disposal has for sending, and the
+        /// address is empty if the lookup has not finished by then or failed.
         /// </summary>
         protected string HostAddress
         {
@@ -327,19 +340,42 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             {
                 if (_hostAddress == null)
                 {
-                    IPAddress[] addresses = Dns.GetHostAddresses(Dns.GetHostName());
-
-                    var address = addresses.FirstOrDefault(a => !IsLocalHost(a) &&
-                        a.AddressFamily == AddressFamily.InterNetwork);
-                    if (address == null)
-                    {
-                        address = addresses.FirstOrDefault(a => !IsLocalHost(a));
-                    }
-
-                    _hostAddress = address == null ? "" : address.ToString();
+                    _hostAddress = HostAddressSource.Get(
+                        HostAddressWaitMilliseconds);
                 }
                 return _hostAddress;
             }
+        }
+
+        /// <summary>
+        /// Where the address of this machine comes from.
+        /// </summary>
+        internal virtual HostAddressLookup HostAddressSource =>
+            SharedHostAddress;
+
+        /// <summary>
+        /// The longest in milliseconds that a send waits for the address of
+        /// this machine.
+        /// </summary>
+        internal virtual int HostAddressWaitMilliseconds =>
+            Constants.SHARE_USAGE_HOST_ADDRESS_WAIT_MILLISECONDS;
+
+        /// <summary>
+        /// Looks up the address of this machine by its name, preferring an
+        /// IPv4 address, and leaving out the loopback addresses.
+        /// </summary>
+        private static string LookUpHostAddress()
+        {
+            IPAddress[] addresses = Dns.GetHostAddresses(Dns.GetHostName());
+
+            var address = addresses.FirstOrDefault(a => !IsLocalHost(a) &&
+                a.AddressFamily == AddressFamily.InterNetwork);
+            if (address == null)
+            {
+                address = addresses.FirstOrDefault(a => !IsLocalHost(a));
+            }
+
+            return address == null ? "" : address.ToString();
         }
 
         /// <summary>
@@ -805,8 +841,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             _interval = TimeSpan.FromMinutes(repeatEvidenceIntervalMinutes);
             ShareUsageUri = new Uri(shareUsageUrl);
 
-            // Some data is going to stay the same on all requests so we can 
-            // gather that now.
+            // Some data is going to stay the same on all requests so we can
+            // gather that now. The address of this machine is looked up in
+            // the background, so that building the element does not wait.
+            SharedHostAddress.Start();
             _languageVersion = Environment.Version.ToString();
             _osVersion = Environment.OSVersion.VersionString;
 
