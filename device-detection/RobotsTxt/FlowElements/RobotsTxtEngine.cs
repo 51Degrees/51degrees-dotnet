@@ -57,7 +57,8 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
     /// When Terms Document Locator (TDL) evidence is provided via the
     /// <see cref="Constants.TdlEvidenceKey"/> key, the catch-all footer
     /// is emitted as an Allow-all block with one <c>TDL:</c> line per
-    /// URI that conforms to RFC 3986. Invalid entries are silently dropped
+    /// URI that conforms to RFC 3986, its scheme and host written in lower
+    /// case as RFC 3986 asks. Invalid entries are silently dropped
     /// per the IETF-Robots TDL specification. If no valid TDL URIs remain,
     /// the engine falls back to the default Disallow-all catch-all.
     /// </para>
@@ -320,10 +321,11 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.FlowElements
 
         private string ResolveTdlEntry(string entry)
         {
-            // The text is checked and written as given. Parsing it with
-            // Uri would accept values that are not URIs (a string starting
-            // with '/' is a file path on some systems), refuse some that
-            // are, and rewrite the address.
+            // The text is checked as given, and only its scheme and host
+            // are lowered when it is written. Parsing it with Uri would
+            // accept values that are not URIs (a string starting with '/'
+            // is a file path on some systems), refuse some that are, and
+            // rewrite more of the address.
             var value = entry?.Trim();
             if (Rfc3986.IsUri(value))
             {
