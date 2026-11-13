@@ -27,47 +27,46 @@ using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 
-namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.Data
+namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.Data;
+
+/// <summary>
+/// Checks the reload test in <see cref="MetaDataTests"/> itself, with
+/// hashing that takes no time and an engine that does nothing, so no
+/// data file is needed.
+/// </summary>
+[TestClass]
+public class ReloadTestHelperTests
 {
     /// <summary>
-    /// Checks the reload test in <see cref="MetaDataTests"/> itself, with
-    /// hashing that takes no time and an engine that does nothing, so no
-    /// data file is needed.
+    /// Hashes nothing, so each hashing task finishes at once, as on a
+    /// fast machine with a fast profile.
     /// </summary>
-    [TestClass]
-    public class ReloadTestHelperTests
+    private sealed class InstantHasher : IMetaDataHasher
     {
-        /// <summary>
-        /// Hashes nothing, so each hashing task finishes at once, as on a
-        /// fast machine with a fast profile.
-        /// </summary>
-        private sealed class InstantHasher : IMetaDataHasher
-        {
-            public int HashProperties(int hash, IWrapper wrapper) => hash;
+        public int HashProperties(int hash, IWrapper wrapper) => hash;
 
-            public int HashComponents(int hash, IWrapper wrapper) => hash;
+        public int HashComponents(int hash, IWrapper wrapper) => hash;
 
-            public int HashProfiles(int hash, IWrapper wrapper) => hash;
-        }
+        public int HashProfiles(int hash, IWrapper wrapper) => hash;
+    }
 
-        /// <summary>
-        /// A refresh runs while the hashing tasks are active even when each
-        /// one finishes at once, so the reload test always tests what it is
-        /// for, whatever the machine.
-        /// </summary>
-        [TestMethod]
-        public void Reload_HashingTakesNoTime_StillRefreshes()
-        {
-            var engine = new Mock<IFiftyOneAspectEngine>();
-            var wrapper = new Mock<IWrapper>();
-            wrapper.Setup(w => w.GetEngine()).Returns(engine.Object);
+    /// <summary>
+    /// A refresh runs while the hashing tasks are active even when each
+    /// one finishes at once, so the reload test always tests what it is
+    /// for, whatever the machine.
+    /// </summary>
+    [TestMethod]
+    public void Reload_HashingTakesNoTime_StillRefreshes()
+    {
+        var engine = new Mock<IFiftyOneAspectEngine>();
+        var wrapper = new Mock<IWrapper>();
+        wrapper.Setup(w => w.GetEngine()).Returns(engine.Object);
 
-            new MetaDataTests().Reload(
-                wrapper.Object,
-                new InstantHasher(),
-                PerformanceProfiles.MaxPerformance);
+        new MetaDataTests().Reload(
+            wrapper.Object,
+            new InstantHasher(),
+            PerformanceProfiles.MaxPerformance);
 
-            engine.Verify(e => e.RefreshData(null), Times.AtLeastOnce());
-        }
+        engine.Verify(e => e.RefreshData(null), Times.AtLeastOnce());
     }
 }
