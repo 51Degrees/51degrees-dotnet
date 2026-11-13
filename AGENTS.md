@@ -294,9 +294,8 @@ build of each package. The library test projects target `net8.0` and
 `net10.0`, apart from `AgentSignatureStandardTests`, which tests the
 `netstandard2.0` build of the agent signature element on `net8.0`. Running
 every test therefore needs the .NET 8 runtime as well as the .NET 10 SDK.
-`pipeline` and `device-detection` keep a `global.json` that asks for the .NET
-10 SDK. `dotnet` run from the repository root uses the newest SDK installed,
-which builds every folder. The .NET Framework projects, which are
+No `global.json` pins the SDK, so `dotnet` uses the newest SDK installed, and
+CI builds with whatever SDK the runner has. The .NET Framework projects, which are
 the `Web.Framework` integration and the `Framework-Web` examples, are old-style
 projects that need `msbuild` on Windows.
 
