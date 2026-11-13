@@ -828,6 +828,97 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         }
 
         /// <summary>
+        /// A logger that disposes a data file when the service logs that
+        /// it is registering the file, which is after the service's first
+        /// check that the file is not disposed.
+        /// </summary>
+        private sealed class DisposeOnRegisterLogger : ILogger<DataUpdateService>
+        {
+            private readonly AspectEngineDataFile _file;
+
+            public DisposeOnRegisterLogger(AspectEngineDataFile file)
+            {
+                _file = file;
+            }
+
+            public IDisposable BeginScope<TState>(TState state) => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception exception,
+                Func<TState, Exception, string> formatter)
+            {
+                if (formatter(state, exception).Contains(
+                    "Registering file with auto update service"))
+                {
+                    _file.Dispose();
+                }
+            }
+        }
+
+        /// <summary>
+        /// A data file disposed while it is being registered, after the
+        /// service's first check that it is not disposed, gets no timer
+        /// and no file watcher, and is not kept in the service's list of
+        /// data files.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_Register_DisposedDuringRegistration_NotKept()
+        {
+            var timers = ConfigureInertTimers();
+            var dataFilePath = Path.GetTempFileName();
+            var file = new AspectEngineDataFile()
+            {
+                Engine = new Mock<IOnPremiseAspectEngine>().Object,
+                Configuration = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    FileSystemWatcherEnabled = true,
+                    DataFilePath = dataFilePath,
+                    PollingIntervalSeconds = RACE_POLLING_SECONDS,
+                    MaxRandomisationSeconds = 0
+                }
+            };
+            var service = new DataUpdateService(
+                new DisposeOnRegisterLogger(file),
+                _httpClient,
+                _fileSystem.Object,
+                _timerFactory.Object);
+            try
+            {
+                // Act
+                service.RegisterDataFile(file);
+
+                // Assert
+                var list = (List<AspectEngineDataFile>)typeof(DataUpdateService)
+                    .GetField("_configurations",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance)
+                    .GetValue(service);
+                lock (list)
+                {
+                    Assert.IsFalse(list.Contains(file),
+                        "A data file disposed while it was being registered " +
+                        "is kept in the service's list.");
+                }
+                Assert.IsNull(file.Timer,
+                    "A timer is stored on a disposed data file.");
+                Assert.IsNull(file.FileWatcher,
+                    "A file watcher is stored on a disposed data file.");
+            }
+            finally
+            {
+                file.FileWatcher?.Dispose();
+                timers.ForEach(t => t.Dispose());
+                File.Delete(dataFilePath);
+            }
+        }
+
+        /// <summary>
         /// The random delay added to the polling interval must be safe to
         /// calculate on several timer threads at once. A random number
         /// generator used unsafely returns the same value to different
