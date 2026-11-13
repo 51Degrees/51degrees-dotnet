@@ -1336,19 +1336,27 @@ namespace FiftyOne.Pipeline.Engines.Services
 						{
 							if (response.IsSuccessStatusCode)
 							{
-								_logger.LogInformation(
-									$"Downloaded new data from '{shownUrl}' for engine " +
-									$"'{dataFile.EngineType?.Name}'");
-
 								// If the response is successful then save the content to a 
 								// temporary file
 								LogDebugMessage(() => $"Will call {nameof(response.Content.ReadAsStreamAsync)}", dataFile);
-								using (var dataStream = response.Content.ReadAsStreamAsync().Result)
+								using (var dataStream = ReadDownload(
+									() => response.Content.ReadAsStreamAsync().Result,
+									dataFile, shownUrl, licenseKeys))
 	                            {
 	                                LogDebugMessage(() => $"Will copy {nameof(dataStream)} into {nameof(tempStream)}", dataFile);
-	                                dataStream.CopyTo(tempStream);
+	                                var buffer = new byte[DownloadBufferBytes];
+	                                int read;
+	                                while ((read = ReadDownload(
+	                                    () => dataStream.Read(buffer, 0, buffer.Length),
+	                                    dataFile, shownUrl, licenseKeys)) > 0)
+	                                {
+	                                    tempStream.Write(buffer, 0, read);
+	                                }
 	                                LogDebugMessage(() => $"Did copy {nameof(dataStream)} into {nameof(tempStream)}", dataFile);
 	                            }
+								_logger.LogInformation(
+									$"Downloaded new data from '{shownUrl}' for engine " +
+									$"'{dataFile.EngineType?.Name}'");
 	                            LogDebugMessage(() => $"Will test for {nameof(dataFile.Configuration.VerifyMd5)}", dataFile);
 	                            if (dataFile.Configuration.VerifyMd5)
 	                            {
@@ -1402,6 +1410,38 @@ namespace FiftyOne.Pipeline.Engines.Services
 			}
 
 			return result;
+		}
+
+		/// <summary>
+		/// The size in bytes of each read of a data file download.
+		/// </summary>
+		private const int DownloadBufferBytes = 81920;
+
+		/// <summary>
+		/// Runs one read of a data file download. A read that fails, such as
+		/// one of a body that ends early, is reported as the failure to
+		/// access the data update service, with the cause attached, as the
+		/// Errors section of the data updates specification gives it. Only
+		/// reads go through here, so a failure to write the temporary file
+		/// is not reported as one of the service's.
+		/// </summary>
+		private static T ReadDownload<T>(
+			Func<T> read,
+			AspectEngineDataFile dataFile,
+			string shownUrl,
+			IEnumerable<string> licenseKeys)
+		{
+			try
+			{
+				return read();
+			}
+			catch (Exception ex)
+			{
+				throw new DataUpdateException($"Error accessing data update service at " +
+					$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'",
+					LicenseKeyMask.MaskException(ex, licenseKeys),
+					AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR);
+			}
 		}
 
 		/// <summary>
