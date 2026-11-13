@@ -209,9 +209,11 @@ namespace FiftyOne.IpIntelligence.TestHelpers.Data
             IWrapper wrapper,
             IMetaDataHasher hasher)
         {
-            DateTime start = DateTime.UtcNow;
-
             await Task.Delay(delayMs);
+
+            // Taken after the start delay, so a refresh counts as during a
+            // hashing task only when it overlaps the hashing itself.
+            DateTime start = DateTime.UtcNow;
 
             int taskId = delayMs / HashTaskDelay(inMemory);
             Console.WriteLine($"Hash task '{taskId}' started.");
