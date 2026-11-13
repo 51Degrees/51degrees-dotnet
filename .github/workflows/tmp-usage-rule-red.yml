@@ -1,0 +1,17 @@
+name: Usage rule red test
+on:
+  push:
+    branches:
+      - tmp/usage-rule-cookies-red
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Test the share usage filter
+        run: >
+          dotnet test
+          pipeline/Tests/Engines.FiftyOne.Tests/FiftyOne.Pipeline.Engines.FiftyOne.Tests.csproj
+          --filter "FullyQualifiedName~EvidenceKeyFilterShareUsageTests"
