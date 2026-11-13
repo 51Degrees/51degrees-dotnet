@@ -328,7 +328,13 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests.Helpers
                 }
                 if (keyType == "RSA")
                 {
+#if NETFRAMEWORK
+                    // RSA.Create() gives RSACryptoServiceProvider on .NET
+                    // Framework, which cannot sign with PSS padding.
+                    using (RSA rsa = new RSACng())
+#else
                     using (var rsa = RSA.Create())
+#endif
                     {
                         rsa.ImportParameters(ReadRsaParameters(root));
                         return rsa.SignData(
