@@ -81,8 +81,16 @@ namespace FiftyOne.IpIntelligence.TestHelpers.Data
 
         // The number of simultaneous hashing tasks to start.
         private const int HashTaskCount = 6;
-        // Number of hashing tasks currently running
-        private int _hashTasksActive = 0;
+        // Released once by each hashing task as it starts, so the refresh
+        // task wakes for every one, however short the hashing task is.
+        private readonly SemaphoreSlim _hashTaskStarted = new SemaphoreSlim(0);
+        // Set when the first refresh starts. The first hashing task waits
+        // for it, so at least one refresh always runs while a hashing task
+        // is active, which is what the test is for.
+        private readonly ManualResetEventSlim _refreshStarted =
+            new ManualResetEventSlim(false);
+        // The longest the first hashing task waits for the first refresh.
+        private const int FirstRefreshWaitMilliseconds = 60000;
 
 
 
@@ -158,6 +166,8 @@ namespace FiftyOne.IpIntelligence.TestHelpers.Data
                     hashes[i + 1].HashValue,
                     "Hashes were not equal");
             }
+            Assert.IsTrue(refreshResults.Count > 0,
+                "No refresh ran while the hashing tasks were active.");
             var avgHashTime = hashes
                 .Average(h => (h.FinishTime - h.StartTime).TotalMilliseconds);
             var avgRefreshTime = refreshResults
@@ -206,19 +216,13 @@ namespace FiftyOne.IpIntelligence.TestHelpers.Data
             int taskId = delayMs / HashTaskDelay(inMemory);
             Console.WriteLine($"Hash task '{taskId}' started.");
 
-            Interlocked.Increment(ref _hashTasksActive);
+            _hashTaskStarted.Release();
+            _refreshStarted.Wait(FirstRefreshWaitMilliseconds);
             int hash = 0;
 
-            try
-            {
-                hash ^= hasher.HashProperties(hash, wrapper);
-                hash ^= hasher.HashComponents(hash, wrapper);
-                hash ^= hasher.HashProfiles(hash, wrapper);
-            }
-            finally
-            {
-                Interlocked.Decrement(ref _hashTasksActive);
-            }
+            hash ^= hasher.HashProperties(hash, wrapper);
+            hash ^= hasher.HashComponents(hash, wrapper);
+            hash ^= hasher.HashProfiles(hash, wrapper);
 
             Console.WriteLine($"Hash task '{taskId}' finished with hash value '{hash}'.");
 
@@ -239,28 +243,44 @@ namespace FiftyOne.IpIntelligence.TestHelpers.Data
             while (cancellationToken.IsCancellationRequested == false &&
                 result.Count < RefreshLimit())
             {
-                if (_hashTasksActive == 0)
+                if (await WaitForHashTask(cancellationToken) == false)
                 {
-                    // No hash tasks active so just wait and 
-                    // then try again.
-                    await Task.Delay(10);
+                    break;
                 }
-                else
+                DateTime start = DateTime.UtcNow;
+                Console.WriteLine("Refresh started");
+                _refreshStarted.Set();
+                wrapper.GetEngine().RefreshData(null);
+                Console.WriteLine("Refresh completed");
+                result.Add(new RefreshResult()
                 {
-                    DateTime start = DateTime.UtcNow;
-                    Console.WriteLine("Refresh started");
-                    wrapper.GetEngine().RefreshData(null);
-                    Console.WriteLine("Refresh completed");
-                    result.Add(new RefreshResult()
-                    {
-                        StartTime = start,
-                        FinishTime = DateTime.UtcNow
-                    });
-                    await Task.Delay(ReloadDelay(profile, false));
-                }
+                    StartTime = start,
+                    FinishTime = DateTime.UtcNow
+                });
+                await Task.Delay(ReloadDelay(profile, false));
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Waits for a hashing task to start.
+        /// </summary>
+        /// <returns>
+        /// False if the test cancelled the refreshes first.
+        /// </returns>
+        private async Task<bool> WaitForHashTask(
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _hashTaskStarted.WaitAsync(cancellationToken);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
         }
 
         private async Task<List<RefreshResult>> RefreshInMemory(
@@ -274,33 +294,29 @@ namespace FiftyOne.IpIntelligence.TestHelpers.Data
             while (cancellationToken.IsCancellationRequested == false &&
                 result.Count < RefreshLimit())
             {
-                if (_hashTasksActive == 0)
+                if (await WaitForHashTask(cancellationToken) == false)
                 {
-                    // No hash tasks active so just wait and 
-                    // then try again.
-                    await Task.Delay(10);
+                    break;
                 }
-                else
+                using (var stream = new MemoryStream())
                 {
-                    using (var stream = new MemoryStream())
-                    {
-                        stream.Write(masterData, 0, masterData.Length);
-                        stream.Seek(0, SeekOrigin.Begin);
+                    stream.Write(masterData, 0, masterData.Length);
+                    stream.Seek(0, SeekOrigin.Begin);
 
-                        DateTime start = DateTime.UtcNow;
-                        Console.WriteLine("Refresh started");
-                        wrapper.GetEngine().RefreshData(
-                            wrapper.GetEngine().DataFiles[0].Identifier,
-                            stream);
-                        Console.WriteLine("Refresh completed");
-                        result.Add(new RefreshResult()
-                        {
-                            StartTime = start,
-                            FinishTime = DateTime.UtcNow
-                        });
-                    }
-                    await Task.Delay(ReloadDelay(profile, true));
+                    DateTime start = DateTime.UtcNow;
+                    Console.WriteLine("Refresh started");
+                    _refreshStarted.Set();
+                    wrapper.GetEngine().RefreshData(
+                        wrapper.GetEngine().DataFiles[0].Identifier,
+                        stream);
+                    Console.WriteLine("Refresh completed");
+                    result.Add(new RefreshResult()
+                    {
+                        StartTime = start,
+                        FinishTime = DateTime.UtcNow
+                    });
                 }
+                await Task.Delay(ReloadDelay(profile, true));
             }
 
             return result;
