@@ -57,6 +57,7 @@ runs the Enterprise tests, a web change runs the web example tests on Linux, and
 a change outside the package folders adds every entry but macOS. macOS and
 performance run only when `rc` itself or the release pull request is built,
 which `.github/workflows/release-pull-request.yml` does on every entry.
+`select-options.Tests.ps1` tests the selection, run with Pester 5 or later.
 
 The secrets are the ones the separate repositories used: `ACCESS_TOKEN`,
 `NUGET_API_KEY`, the `CODE_SIGNING_KEY_VAULT_*` set, `STRONG_NAME_KEY_BASE64`,
