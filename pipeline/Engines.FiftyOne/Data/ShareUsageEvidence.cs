@@ -39,7 +39,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// Every value found, being the evidence and then the web
         /// request's values for keys the evidence does not hold, so a key
         /// in both is found once with the evidence value. The web request
-        /// value itself is left out.
+        /// value itself is left out. The request is read only when it is a
+        /// read only dictionary, as the key's documentation asks and as
+        /// <see cref="TryGetValue"/> reads it.
         /// </summary>
         /// <param name="evidence">The flow data's evidence.</param>
         /// <returns>The values, keyed as evidence.</returns>
@@ -63,8 +65,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                     found[entry.Key] = entry.Value;
                 }
             }
-            if (requestValue is IEnumerable<KeyValuePair<string, object>>
-                request)
+            if (requestValue is IReadOnlyDictionary<string, object> request)
             {
                 foreach (var entry in request)
                 {
