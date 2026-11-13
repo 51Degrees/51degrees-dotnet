@@ -56,7 +56,8 @@ namespace FiftyOne.IpIntelligence
         private ushort? _concurrency = null;
         private PerformanceProfiles _performanceProfile =
             PerformanceProfiles.Balanced;
-        private bool _shareUsageEnabled = true;
+        private bool _shareUsageEnabled =
+            Pipeline.Engines.FiftyOne.Constants.SHARE_USAGE_DEFAULT_ENABLED;
         private List<string> _requestedProperties = new List<string>();
 
         private string _dataUpdateUrlString = null;
