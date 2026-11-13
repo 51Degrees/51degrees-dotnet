@@ -827,6 +827,86 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         }
 
         /// <summary>
+        /// The size of the client's buffer for a response body, in bytes,
+        /// in the test that a download is not read into memory first. It is
+        /// smaller than Resources/file.gz, which is 35 bytes.
+        /// </summary>
+        private const int SMALL_RESPONSE_BUFFER_BYTES = 16;
+
+        /// <summary>
+        /// A download larger than the client's buffer for a response body
+        /// still updates the data file, because the body is copied to the
+        /// temporary file as it arrives rather than read into memory first.
+        /// A data file served in one piece larger than that buffer, which is
+        /// 2 GB by default, could otherwise never be updated.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_UpdateFromUrl_BodyLargerThanBuffer()
+        {
+            // Arrange
+            _httpClient = new HttpClient(_httpHandler.Object)
+            {
+                MaxResponseContentBufferSize = SMALL_RESPONSE_BUFFER_BYTES
+            };
+            ConfigureRealFileSystem();
+            ConfigureTimerImmediateCallbackOnce();
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Returns(() => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StreamContent(File.OpenRead(@"Resources/file.gz")),
+                });
+            ManualResetEventSlim completeFlag = new ManualResetEventSlim(false);
+            DataUpdateCompleteArgs completeEventArgs = null;
+            _dataUpdate.CheckForUpdateComplete += (object sender, DataUpdateCompleteArgs e) =>
+            {
+                completeEventArgs = e;
+                completeFlag.Set();
+            };
+
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            string tempPath = Path.GetTempPath();
+            string dataFile = Path.GetTempFileName();
+            if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            try
+            {
+                engine.Setup(e => e.TempDataDirPath).Returns(tempPath);
+                var config = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    DataUpdateUrl = @"http://www.test.com",
+                    DataFilePath = dataFile,
+                    VerifyMd5 = false,
+                    DecompressContent = true,
+                    FileSystemWatcherEnabled = false,
+                    VerifyModifiedSince = false
+                };
+                var file = new AspectEngineDataFile()
+                {
+                    Engine = engine.Object,
+                    Configuration = config
+                };
+                engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+
+                // Act
+                _dataUpdate.RegisterDataFile(file);
+                completeFlag.Wait(TEST_TIMEOUT_MS);
+
+                DumpLoggerLogs();
+
+                // Assert
+                Assert.IsTrue(completeFlag.IsSet, "The 'CheckForUpdateComplete' " +
+                    "event was never fired");
+                Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_SUCCESS, completeEventArgs.Status,
+                    "A body larger than the client's buffer did not update the data file.");
+                engine.Verify(e => e.RefreshData(config.Identifier), Times.Once());
+            }
+            finally
+            {
+                if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            }
+        }
+
+        /// <summary>
         /// Configure the engine to have a temp path but no temp file.
         /// Therefore file system check will not occur but URL check will.
         /// Configure HTTP handler to return an update.
