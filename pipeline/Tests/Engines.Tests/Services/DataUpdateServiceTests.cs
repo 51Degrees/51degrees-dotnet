@@ -769,6 +769,305 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         }
 
         /// <summary>
+        /// Unregistering a data file must stop its update timer, so that
+        /// the file is not checked again.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_Unregister_StopsTimer()
+        {
+            var timers = ConfigureInertTimers();
+            try
+            {
+                var file = CreateAutoUpdateFile();
+                _dataUpdate.RegisterDataFile(file);
+                Assert.AreEqual(1, timers.Count, "Timers created.");
+                Assert.IsNotNull(file.Timer, "No timer after registering.");
+
+                // Act
+                _dataUpdate.UnRegisterDataFile(file);
+
+                // Assert
+                Assert.IsNull(file.Timer,
+                    "The timer is still stored after unregistering.");
+            }
+            finally
+            {
+                timers.ForEach(t => t.Dispose());
+            }
+        }
+
+        /// <summary>
+        /// A check that is running when its data file is disposed
+        /// registers the file again, which must not create a timer.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_Register_DisposedFile_CreatesNoTimer()
+        {
+            var timers = ConfigureInertTimers();
+            try
+            {
+                var file = CreateAutoUpdateFile();
+                _dataUpdate.RegisterDataFile(file);
+                file.Dispose();
+
+                // Act
+                _dataUpdate.RegisterDataFile(file);
+
+                // Assert
+                Assert.AreEqual(1, timers.Count,
+                    "A timer was created for a disposed data file.");
+                Assert.IsNull(file.Timer,
+                    "A timer is stored on a disposed data file.");
+                Assert.IsFalse(file.IsRegistered,
+                    "A disposed data file was registered again.");
+            }
+            finally
+            {
+                timers.ForEach(t => t.Dispose());
+            }
+        }
+
+        /// <summary>
+        /// A logger that disposes a data file when the service logs that
+        /// it is registering the file, which is after the service's first
+        /// check that the file is not disposed.
+        /// </summary>
+        private sealed class DisposeOnRegisterLogger : ILogger<DataUpdateService>
+        {
+            private readonly AspectEngineDataFile _file;
+
+            public DisposeOnRegisterLogger(AspectEngineDataFile file)
+            {
+                _file = file;
+            }
+
+            public IDisposable BeginScope<TState>(TState state) => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception exception,
+                Func<TState, Exception, string> formatter)
+            {
+                if (formatter(state, exception).Contains(
+                    "Registering file with auto update service"))
+                {
+                    _file.Dispose();
+                }
+            }
+        }
+
+        /// <summary>
+        /// A data file disposed while it is being registered, after the
+        /// service's first check that it is not disposed, gets no timer
+        /// and no file watcher, and is not kept in the service's list of
+        /// data files.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_Register_DisposedDuringRegistration_NotKept()
+        {
+            var timers = ConfigureInertTimers();
+            var dataFilePath = Path.GetTempFileName();
+            var file = new AspectEngineDataFile()
+            {
+                Engine = new Mock<IOnPremiseAspectEngine>().Object,
+                Configuration = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    FileSystemWatcherEnabled = true,
+                    DataFilePath = dataFilePath,
+                    PollingIntervalSeconds = RACE_POLLING_SECONDS,
+                    MaxRandomisationSeconds = 0
+                }
+            };
+            var service = new DataUpdateService(
+                new DisposeOnRegisterLogger(file),
+                _httpClient,
+                _fileSystem.Object,
+                _timerFactory.Object);
+            try
+            {
+                // Act
+                service.RegisterDataFile(file);
+
+                // Assert
+                var list = (List<AspectEngineDataFile>)typeof(DataUpdateService)
+                    .GetField("_configurations",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance)
+                    .GetValue(service);
+                lock (list)
+                {
+                    Assert.IsFalse(list.Contains(file),
+                        "A data file disposed while it was being registered " +
+                        "is kept in the service's list.");
+                }
+                Assert.IsNull(file.Timer,
+                    "A timer is stored on a disposed data file.");
+                Assert.IsNull(file.FileWatcher,
+                    "A file watcher is stored on a disposed data file.");
+            }
+            finally
+            {
+                file.FileWatcher?.Dispose();
+                timers.ForEach(t => t.Dispose());
+                File.Delete(dataFilePath);
+            }
+        }
+
+        /// <summary>
+        /// A data file disposed while it is being registered, after the
+        /// service's first check, gets no check on start-up.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_Register_DisposedDuringRegistration_NoStartUpCheck()
+        {
+            var timers = ConfigureInertTimers();
+            // An engine with a temporary folder and a data file path, so a
+            // check on start-up would reach the data update URL.
+            var engine = new Mock<IOnPremiseAspectEngine>();
+            engine.Setup(e => e.TempDataDirPath).Returns(Path.GetTempPath());
+            var file = new AspectEngineDataFile()
+            {
+                Engine = engine.Object,
+                Configuration = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    UpdateOnStartup = true,
+                    DataUpdateUrl = @"http://www.test.com",
+                    DataFilePath = Path.Combine(
+                        Path.GetTempPath(), Guid.NewGuid().ToString("N")),
+                    FileSystemWatcherEnabled = false,
+                    PollingIntervalSeconds = RACE_POLLING_SECONDS,
+                    MaxRandomisationSeconds = 0
+                }
+            };
+            var service = new DataUpdateService(
+                new DisposeOnRegisterLogger(file),
+                _httpClient,
+                _fileSystem.Object,
+                _timerFactory.Object);
+            try
+            {
+                // Act
+                try
+                {
+                    service.RegisterDataFile(file);
+                }
+                catch (DataUpdateException)
+                {
+                    // A check that ran on the disposed file can fail, which
+                    // the assertion below reports more plainly.
+                }
+
+                // Assert
+                _httpHandler.Verify(
+                    h => h.Send(It.IsAny<HttpRequestMessage>()),
+                    Times.Never(),
+                    "A check on start-up ran for a data file disposed while " +
+                    "it was being registered.");
+            }
+            finally
+            {
+                timers.ForEach(t => t.Dispose());
+            }
+        }
+
+        /// <summary>
+        /// The random delay added to the polling interval must be safe to
+        /// calculate on several timer threads at once. A random number
+        /// generator used unsafely returns the same value to different
+        /// threads, which is counted here as a duplicate. The delay range
+        /// is large enough that duplicates by chance are few.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_IntervalRandomisation_ThreadSafe()
+        {
+            const int threads = 4;
+            const int perThread = 50000;
+            const int allowedDuplicates = 100;
+            var randomise = (Func<TimeSpan, IDataFileConfiguration, TimeSpan>)
+                Delegate.CreateDelegate(
+                    typeof(Func<TimeSpan, IDataFileConfiguration, TimeSpan>),
+                    _dataUpdate,
+                    typeof(DataUpdateService).GetMethod(
+                        "ApplyIntervalRandomisation",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance));
+            var config = new DataFileConfiguration()
+            {
+                MaxRandomisationSeconds = int.MaxValue
+            };
+            var results = new TimeSpan[threads][];
+            using (var start = new ManualResetEventSlim(false))
+            {
+                var tasks = Enumerable.Range(0, threads).Select(t =>
+                    Task.Factory.StartNew(() =>
+                    {
+                        var values = new TimeSpan[perThread];
+                        start.Wait();
+                        for (int i = 0; i < perThread; i++)
+                        {
+                            values[i] = randomise(TimeSpan.Zero, config);
+                        }
+                        results[t] = values;
+                    }, TaskCreationOptions.LongRunning)).ToArray();
+
+                // Act
+                start.Set();
+                Assert.IsTrue(Task.WaitAll(tasks, TEST_TIMEOUT_MS),
+                    "The threads did not finish.");
+            }
+
+            // Assert
+            var all = results.SelectMany(r => r).ToArray();
+            int duplicates = all.Length - all.Distinct().Count();
+            Assert.IsTrue(duplicates <= allowedDuplicates,
+                $"{duplicates} of {all.Length} random delays repeated " +
+                $"another, where at most {allowedDuplicates} are expected " +
+                "by chance.");
+        }
+
+        /// <summary>
+        /// Make the timer factory create timers that never fire.
+        /// </summary>
+        /// <returns>The timers it creates, to be disposed by the test.</returns>
+        private List<Timer> ConfigureInertTimers()
+        {
+            var timers = new List<Timer>();
+            _timerFactory.Setup(f => f(
+                It.IsAny<TimerCallback>(),
+                It.IsAny<object>(),
+                It.IsAny<TimeSpan>()))
+                .Returns(() =>
+                {
+                    var timer = new Timer(_ => { }, null,
+                        Timeout.Infinite, Timeout.Infinite);
+                    timers.Add(timer);
+                    return timer;
+                });
+            return timers;
+        }
+
+        private static AspectEngineDataFile CreateAutoUpdateFile()
+        {
+            return new AspectEngineDataFile()
+            {
+                Engine = new Mock<IOnPremiseAspectEngine>().Object,
+                Configuration = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    FileSystemWatcherEnabled = false,
+                    PollingIntervalSeconds = RACE_POLLING_SECONDS,
+                    MaxRandomisationSeconds = 0
+                }
+            };
+        }
+
+        /// <summary>
         /// Configure the engine to have a temp path but no temp file.
         /// Therefore file system check will not occur but URL check will.
         /// Configure HTTP handler to return 'NotModified' 
@@ -824,6 +1123,369 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             // Make sure engine was not refreshed
             engine.Verify(e => e.RefreshData(config.Identifier), Times.Never());
             Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, completeEventArgs.Status);
+        }
+
+        /// <summary>
+        /// A stream that gives the first bytes of a body and then fails, as
+        /// a download does when the connection drops before the body ends.
+        /// </summary>
+        private sealed class CutShortStream : MemoryStream
+        {
+            internal const string FailureText = "The body ended early.";
+
+            public CutShortStream(byte[] body, int length)
+                : base(body, 0, length)
+            {
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                var read = base.Read(buffer, offset, count);
+                if (read == 0)
+                {
+                    throw new IOException(FailureText);
+                }
+                return read;
+            }
+
+            public override int Read(Span<byte> buffer)
+            {
+                var read = base.Read(buffer);
+                if (read == 0)
+                {
+                    throw new IOException(FailureText);
+                }
+                return read;
+            }
+
+            public override Task<int> ReadAsync(
+                byte[] buffer, int offset, int count,
+                CancellationToken cancellationToken) =>
+                Task.FromResult(Read(buffer, offset, count));
+
+            public override ValueTask<int> ReadAsync(
+                Memory<byte> buffer,
+                CancellationToken cancellationToken = default) =>
+                new ValueTask<int>(Read(buffer.Span));
+        }
+
+        /// <summary>
+        /// A stream that gives the first bytes of a body and then gives
+        /// nothing more until it is released, as a download does when the
+        /// server stops sending without closing the connection. A read that
+        /// is cancelled ends at once.
+        /// </summary>
+        private sealed class StallingStream : MemoryStream
+        {
+            private readonly ManualResetEventSlim _release;
+
+            public StallingStream(
+                byte[] body, int length, ManualResetEventSlim release)
+                : base(body, 0, length)
+            {
+                _release = release;
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                var read = base.Read(buffer, offset, count);
+                if (read == 0)
+                {
+                    _release.Wait();
+                }
+                return read;
+            }
+
+            public override async Task<int> ReadAsync(
+                byte[] buffer, int offset, int count,
+                CancellationToken cancellationToken)
+            {
+                var read = base.Read(buffer, offset, count);
+                if (read == 0)
+                {
+                    await Task.Run(
+                        () => _release.Wait(cancellationToken),
+                        cancellationToken);
+                }
+                return read;
+            }
+
+            public override async ValueTask<int> ReadAsync(
+                Memory<byte> buffer,
+                CancellationToken cancellationToken = default)
+            {
+                var read = base.Read(buffer.Span);
+                if (read == 0)
+                {
+                    await Task.Run(
+                        () => _release.Wait(cancellationToken),
+                        cancellationToken);
+                }
+                return read;
+            }
+        }
+
+        /// <summary>
+        /// The client's timeout, in seconds, in the test of a download
+        /// whose body stops arriving.
+        /// </summary>
+        private const int STALL_CLIENT_TIMEOUT_SECONDS = 1;
+
+        /// <summary>
+        /// A download whose body stops arriving ends when no bytes have
+        /// arrived for the client's timeout, and is reported as the failure
+        /// to access the data update service with status
+        /// AUTO_UPDATE_HTTPS_ERR. Waiting for ever would leave the check
+        /// unfinished, and the data updates specification says "A failure
+        /// MUST NOT stop later checks for updates".
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_UpdateFromUrl_BodyStopsArriving()
+        {
+            // Arrange
+            _httpClient = new HttpClient(_httpHandler.Object)
+            {
+                Timeout = TimeSpan.FromSeconds(STALL_CLIENT_TIMEOUT_SECONDS)
+            };
+            ConfigureRealFileSystem();
+            ConfigureTimerImmediateCallbackOnce();
+            var body = File.ReadAllBytes(@"Resources/file.gz");
+            using (var release = new ManualResetEventSlim(false))
+            {
+                _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                    .Returns(() => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StreamContent(
+                            new StallingStream(body, body.Length / 2, release)),
+                    });
+                ManualResetEventSlim completeFlag = new ManualResetEventSlim(false);
+                DataUpdateCompleteArgs completeEventArgs = null;
+                _dataUpdate.CheckForUpdateComplete += (object sender, DataUpdateCompleteArgs e) =>
+                {
+                    completeEventArgs = e;
+                    completeFlag.Set();
+                };
+
+                Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+                string tempPath = Path.GetTempPath();
+                string dataFile = Path.GetTempFileName();
+                if (File.Exists(dataFile)) { File.Delete(dataFile); }
+                try
+                {
+                    engine.Setup(e => e.TempDataDirPath).Returns(tempPath);
+                    var config = new DataFileConfiguration()
+                    {
+                        AutomaticUpdatesEnabled = true,
+                        DataUpdateUrl = @"http://www.test.com",
+                        DataFilePath = dataFile,
+                        VerifyMd5 = false,
+                        DecompressContent = true,
+                        FileSystemWatcherEnabled = false,
+                        VerifyModifiedSince = false,
+                        UpdateOnStartup = false
+                    };
+                    var file = new AspectEngineDataFile()
+                    {
+                        Engine = engine.Object,
+                        Configuration = config
+                    };
+                    engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+
+                    // Act
+                    _dataUpdate.RegisterDataFile(file);
+                    completeFlag.Wait(TEST_TIMEOUT_MS);
+
+                    DumpLoggerLogs();
+
+                    // Assert
+                    Assert.IsTrue(completeFlag.IsSet, "The check did not end " +
+                        "when the body stopped arriving.");
+                    engine.Verify(e => e.RefreshData(config.Identifier), Times.Never());
+                    Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR, completeEventArgs.Status);
+                    _ignoreErrors = 1;
+                    var errors = _logger.ExtendedEntries
+                        .Where(e => e.LogLevel == LogLevel.Error)
+                        .ToList();
+                    Assert.AreEqual(1, errors.Count);
+                    Assert.AreEqual("Error during check for data update", errors[0].Message);
+                    var error = errors[0].Exception as DataUpdateException;
+                    Assert.IsNotNull(error, "The error logged is not a DataUpdateException.");
+                    Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR, error.Status);
+                    StringAssert.Matches(error.Message, new System.Text.RegularExpressions.Regex(
+                        "^Error accessing data update service at '[^']+' for engine '[^']*'$"));
+                    Assert.IsNotNull(error.InnerException, "The cause is not attached.");
+                }
+                finally
+                {
+                    release.Set();
+                    if (File.Exists(dataFile)) { File.Delete(dataFile); }
+                }
+            }
+        }
+
+        /// <summary>
+        /// A download whose body ends early is reported as the failure to
+        /// access the data update service, the first row of the Errors
+        /// table in the data updates specification. The status is
+        /// AUTO_UPDATE_HTTPS_ERR, and the service logs one entry at Error,
+        /// "Error during check for data update", with an error attached
+        /// that carries that row's message and the cause.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_UpdateFromUrl_BodyEndsEarly()
+        {
+            // Arrange
+            ConfigureRealFileSystem();
+            ConfigureTimerImmediateCallbackOnce();
+            var body = File.ReadAllBytes(@"Resources/file.gz");
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Returns(() => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StreamContent(
+                        new CutShortStream(body, body.Length / 2)),
+                });
+            ManualResetEventSlim completeFlag = new ManualResetEventSlim(false);
+            DataUpdateCompleteArgs completeEventArgs = null;
+            _dataUpdate.CheckForUpdateComplete += (object sender, DataUpdateCompleteArgs e) =>
+            {
+                completeEventArgs = e;
+                completeFlag.Set();
+            };
+
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            string tempPath = Path.GetTempPath();
+            string dataFile = Path.GetTempFileName();
+            if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            try
+            {
+                engine.Setup(e => e.TempDataDirPath).Returns(tempPath);
+                var config = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    DataUpdateUrl = @"http://www.test.com",
+                    DataFilePath = dataFile,
+                    VerifyMd5 = false,
+                    DecompressContent = true,
+                    FileSystemWatcherEnabled = false,
+                    VerifyModifiedSince = false,
+                    UpdateOnStartup = false
+                };
+                var file = new AspectEngineDataFile()
+                {
+                    Engine = engine.Object,
+                    Configuration = config
+                };
+                engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+
+                // Act
+                _dataUpdate.RegisterDataFile(file);
+                completeFlag.Wait(TEST_TIMEOUT_MS);
+
+                DumpLoggerLogs();
+
+                // Assert
+                Assert.IsTrue(completeFlag.IsSet, "The 'CheckForUpdateComplete' " +
+                    "event was never fired");
+                engine.Verify(e => e.RefreshData(config.Identifier), Times.Never());
+                Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR, completeEventArgs.Status);
+                _ignoreErrors = 1;
+                var errors = _logger.ExtendedEntries
+                    .Where(e => e.LogLevel == LogLevel.Error)
+                    .ToList();
+                Assert.AreEqual(1, errors.Count);
+                Assert.AreEqual("Error during check for data update", errors[0].Message);
+                var error = errors[0].Exception as DataUpdateException;
+                Assert.IsNotNull(error, "The error logged is not a DataUpdateException.");
+                Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR, error.Status);
+                StringAssert.Matches(error.Message, new System.Text.RegularExpressions.Regex(
+                    "^Error accessing data update service at '[^']+' for engine '[^']*'$"));
+                Assert.IsNotNull(error.InnerException, "The cause is not attached.");
+                StringAssert.Contains(error.InnerException.ToString(), CutShortStream.FailureText);
+            }
+            finally
+            {
+                if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            }
+        }
+
+        /// <summary>
+        /// The size of the client's buffer for a response body, in bytes,
+        /// in the test that a download is not read into memory first. It is
+        /// smaller than Resources/file.gz, which is 35 bytes.
+        /// </summary>
+        private const int SMALL_RESPONSE_BUFFER_BYTES = 16;
+
+        /// <summary>
+        /// A download larger than the client's buffer for a response body
+        /// still updates the data file, because the body is copied to the
+        /// temporary file as it arrives rather than read into memory first.
+        /// A data file served in one piece larger than that buffer, which is
+        /// 2 GB by default, could otherwise never be updated.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_UpdateFromUrl_BodyLargerThanBuffer()
+        {
+            // Arrange
+            _httpClient = new HttpClient(_httpHandler.Object)
+            {
+                MaxResponseContentBufferSize = SMALL_RESPONSE_BUFFER_BYTES
+            };
+            ConfigureRealFileSystem();
+            ConfigureTimerImmediateCallbackOnce();
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Returns(() => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StreamContent(File.OpenRead(@"Resources/file.gz")),
+                });
+            ManualResetEventSlim completeFlag = new ManualResetEventSlim(false);
+            DataUpdateCompleteArgs completeEventArgs = null;
+            _dataUpdate.CheckForUpdateComplete += (object sender, DataUpdateCompleteArgs e) =>
+            {
+                completeEventArgs = e;
+                completeFlag.Set();
+            };
+
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            string tempPath = Path.GetTempPath();
+            string dataFile = Path.GetTempFileName();
+            if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            try
+            {
+                engine.Setup(e => e.TempDataDirPath).Returns(tempPath);
+                var config = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    DataUpdateUrl = @"http://www.test.com",
+                    DataFilePath = dataFile,
+                    VerifyMd5 = false,
+                    DecompressContent = true,
+                    FileSystemWatcherEnabled = false,
+                    VerifyModifiedSince = false
+                };
+                var file = new AspectEngineDataFile()
+                {
+                    Engine = engine.Object,
+                    Configuration = config
+                };
+                engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+
+                // Act
+                _dataUpdate.RegisterDataFile(file);
+                completeFlag.Wait(TEST_TIMEOUT_MS);
+
+                DumpLoggerLogs();
+
+                // Assert
+                Assert.IsTrue(completeFlag.IsSet, "The 'CheckForUpdateComplete' " +
+                    "event was never fired");
+                Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_SUCCESS, completeEventArgs.Status,
+                    "A body larger than the client's buffer did not update the data file.");
+                engine.Verify(e => e.RefreshData(config.Identifier), Times.Once());
+            }
+            finally
+            {
+                if (File.Exists(dataFile)) { File.Delete(dataFile); }
+            }
         }
 
         /// <summary>

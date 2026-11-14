@@ -213,6 +213,24 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
         }
 
         /// <summary>
+        /// By default every header but Cookie is shared, so a header named
+        /// Cookies is shared like any other header.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_OnlyTheCookieHeaderIsBlockedByDefault()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("header.cookie"));
+            Assert.IsTrue(filter.Include("header.cookies"));
+            Assert.IsTrue(filter.Include("header.Cookies"));
+        }
+
+        /// <summary>
         /// A cookie that does not start 51D_ is not shared unless all
         /// evidence is, whatever the session setting, so the ASP.NET
         /// session cookie is not shared by the filter that decides what is

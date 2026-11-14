@@ -55,3 +55,29 @@ try {
 } finally {
     Pop-Location
 }
+
+# The pages of a .NET Framework site are compiled by ASP.NET when they are
+# first asked for, which no build does, so a fault in a page would show only
+# to whoever opened it. Each site msbuild has built is compiled here as
+# ASP.NET would, into a folder that is not kept. The x86 job is left out,
+# because the compiler has only been shown to load the x64 builds.
+if ($BuildMethod -eq "msbuild" -and $Arch -eq "x64") {
+    $compiler = Join-Path $env:windir "Microsoft.NET/Framework64/v4.0.30319/aspnet_compiler.exe"
+    $sites = @(git -C $RepoName ls-files |
+        Where-Object { $_ -match '(^|/)Global\.asax$' } |
+        ForEach-Object { Split-Path $_ -Parent })
+    $number = 0
+    foreach ($site in $sites) {
+        $path = Join-Path $RepoName $site
+        if (-not (Test-Path (Join-Path $path "bin"))) {
+            Write-Host "$site was not built, so its pages are not compiled"
+            continue
+        }
+        $number++
+        $target = Join-Path ([IO.Path]::GetTempPath()) "compiled-site-$number"
+        Write-Host "::group::Compiling the pages of $site"
+        & $compiler -v / -p (Resolve-Path $path).Path -f -errorstack $target
+        Write-Host "::endgroup::"
+    }
+    Write-Host "Compiled the pages of $number .NET Framework sites"
+}
