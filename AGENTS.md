@@ -286,8 +286,9 @@ Every package targets `net10.0` as well as the targets it had before, such as
 `netstandard2.0` or `net8.0`, so an application on .NET 10 gets a .NET 10
 build of each package. The library test projects target `net8.0` and
 `net10.0`, apart from `AgentSignatureStandardTests`, which tests the
-`netstandard2.0` build of the agent signature element on `net8.0`. Running
-every test therefore needs the .NET 8 runtime as well as the .NET 10 SDK.
+`netstandard2.0` build of the agent signature element on `net8.0`, and on
+Windows on .NET Framework 4.6.2 as well. Running every test therefore needs
+the .NET 8 runtime as well as the .NET 10 SDK.
 `pipeline` and `device-detection` keep a `global.json` that asks for the .NET
 10 SDK. `dotnet` run from the repository root uses the newest SDK installed,
 which builds every folder. The .NET Framework projects, which are
