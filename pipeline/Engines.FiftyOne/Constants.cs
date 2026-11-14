@@ -110,10 +110,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne
         internal const bool SHARE_USAGE_DEFAULT_TRACK_SESSION = false;
 
         /// <summary>
-        /// The default value for the flag on FiftyOnePipelineBuilder that controls whether 
-        /// usage sharing is enabled or disabled.
+        /// The default value for the flag on FiftyOnePipelineBuilder and the
+        /// on-premise pipeline builders that controls whether usage sharing
+        /// is enabled or disabled.
         /// </summary>
-        internal const bool SHARE_USAGE_DEFAULT_ENABLED = true;
+        public const bool SHARE_USAGE_DEFAULT_ENABLED = true;
 
         /// <summary>
         /// The default value for the flag on FiftyOnePipelineBuilder that
