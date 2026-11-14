@@ -203,6 +203,163 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
+        /// Takes the address of the machine from the lookup the test gives,
+        /// and waits for it for as long as the test chooses, or for the
+        /// product's wait when the test does not choose.
+        /// </summary>
+        private class LookupHostAddressElement : QueueOpenShareUsageElement
+        {
+            private readonly int? _waitMilliseconds;
+
+            public LookupHostAddressElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                ITracker tracker,
+                Func<string> lookUp,
+                int? waitMilliseconds = null)
+                : base(logger, httpClient, 2, 100, tracker)
+            {
+                Lookup = new HostAddressLookup(lookUp);
+                _waitMilliseconds = waitMilliseconds;
+            }
+
+            public HostAddressLookup Lookup { get; }
+
+            internal override HostAddressLookup HostAddressSource => Lookup;
+
+            internal override int HostAddressWaitMilliseconds =>
+                _waitMilliseconds ?? base.HostAddressWaitMilliseconds;
+        }
+
+        /// <summary>
+        /// Takes the address of the machine from a lookup that does not
+        /// finish until the test releases it, as on a machine whose own name
+        /// is slow to look up. Disposal keeps the product's bound.
+        /// </summary>
+        private class SlowHostAddressElement : LookupHostAddressElement
+        {
+            /// <summary>
+            /// The longest the lookup blocks if the test never releases it.
+            /// </summary>
+            internal static readonly TimeSpan LookupLimit =
+                TimeSpan.FromSeconds(30);
+
+            public SlowHostAddressElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                ITracker tracker,
+                ManualResetEventSlim release,
+                int? waitMilliseconds = null)
+                : base(logger, httpClient, tracker, () =>
+                {
+                    release.Wait(LookupLimit);
+                    return "192.0.2.1";
+                }, waitMilliseconds)
+            {
+            }
+        }
+
+        /// <summary>
+        /// A lookup of the machine's address that fails, by throwing or by
+        /// giving no address, gives an empty ServerIP and the entry is
+        /// still sent.
+        /// </summary>
+        [DataRow(true)]
+        [DataRow(false)]
+        [TestMethod]
+        public void ShareUsageElement_HostAddressLookupFails_ServerIPEmpty(
+            bool throws)
+        {
+            var element = new LookupHostAddressElement(
+                _logger, _httpClient, _tracker.Object,
+                () => throws ?
+                    throw new System.Net.Sockets.SocketException() :
+                    (string)null);
+            element.AddPipeline(_pipeline.Object);
+            element.Enqueue("10.3.0.2");
+
+            element.SendAsync().Wait();
+
+            Assert.HasCount(1, _xmlContent);
+            StringAssert.Contains(_xmlContent[0], "<ClientIP>10.3.0.2</ClientIP>");
+            StringAssert.Matches(_xmlContent[0],
+                new Regex("<ServerIP\\s*/>|<ServerIP></ServerIP>"),
+                "ServerIP was not empty when the lookup failed.");
+        }
+
+        /// <summary>
+        /// A message built before the lookup of the machine's address has
+        /// finished has an empty ServerIP, and a message built after it has
+        /// finished carries the address, so the empty value is not kept for
+        /// the life of the element.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_HostAddressLookupFinishesLater_LaterMessageCarriesIt()
+        {
+            using (var release = new ManualResetEventSlim(false))
+            {
+                var element = new SlowHostAddressElement(
+                    _logger, _httpClient, _tracker.Object, release, 10);
+                element.AddPipeline(_pipeline.Object);
+                element.Enqueue("10.3.0.3");
+                element.SendAsync().Wait();
+
+                release.Set();
+                Assert.IsTrue(
+                    element.Lookup.TryGet(
+                        (int)SlowHostAddressElement.LookupLimit.TotalMilliseconds,
+                        out _),
+                    "The lookup did not finish once it was released.");
+                element.Enqueue("10.3.0.4");
+                element.SendAsync().Wait();
+
+                Assert.HasCount(2, _xmlContent);
+                StringAssert.Matches(_xmlContent[0],
+                    new Regex("<ServerIP\\s*/>|<ServerIP></ServerIP>"),
+                    "ServerIP was not empty before the lookup finished.");
+                StringAssert.Contains(_xmlContent[1],
+                    "<ServerIP>192.0.2.1</ServerIP>",
+                    "The message built after the lookup finished did not " +
+                    "carry the address.");
+            }
+        }
+
+        /// <summary>
+        /// A lookup of the machine's address that has not finished holds up
+        /// no send. Disposal, with the product's bound, still sends the entry
+        /// queued, with an empty ServerIP.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_SlowHostAddressLookup_StillSends()
+        {
+            using (var release = new ManualResetEventSlim(false))
+            {
+                var element = new SlowHostAddressElement(
+                    _logger, _httpClient, _tracker.Object, release);
+                element.AddPipeline(_pipeline.Object);
+                element.Enqueue("10.3.0.1");
+
+                var timer = System.Diagnostics.Stopwatch.StartNew();
+                element.Dispose();
+                timer.Stop();
+                release.Set();
+
+                var sent = _xmlContent
+                    .SelectMany(xml => Regex.Matches(xml, "<ClientIP>([^<]+)</ClientIP>")
+                        .Cast<System.Text.RegularExpressions.Match>()
+                        .Select(m => m.Groups[1].Value))
+                    .ToList();
+                CollectionAssert.AreEqual(new[] { "10.3.0.1" }, sent,
+                    "The entry queued was not sent while the lookup of the " +
+                    "machine's address had not finished. Disposal took " +
+                    $"{timer.ElapsedMilliseconds} ms.");
+                StringAssert.Matches(_xmlContent[0],
+                    new Regex("<ServerIP\\s*/>|<ServerIP></ServerIP>"),
+                    "ServerIP was not empty while the lookup had not finished.");
+            }
+        }
+
+        /// <summary>
         /// Every entry put on the queue is sent exactly once, including
         /// when the queue holds more than a full message when a send
         /// starts. The queue is filled directly so the result does not
