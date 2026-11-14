@@ -383,7 +383,12 @@ namespace FiftyOne.DeviceDetection.Shared.Data
         IAspectPropertyValue<string> IProvidesValuesAsString.GetValueAsString(
             string propertyName)
         {
-            return GetValueAsString(propertyName);
+            // A read of the native results, so under the same lock as every
+            // other read of them.
+            lock (_getLock)
+            {
+                return GetValueAsString(propertyName);
+            }
         }
 
         #endregion
