@@ -102,11 +102,10 @@ public class TestExamplesWithoutSettings
             TestContext.WriteLine(output.ToString());
         }
         var written = output.ToString();
-        var section = written.LastIndexOf(
-            FindOutMore, StringComparison.Ordinal);
-        Assert.IsTrue(section >= 0,
+        Assert.Contains(FindOutMore, written,
             "The example should end by saying where to find out more.");
-        return written.Substring(0, section);
+        return written.Substring(0, written.LastIndexOf(
+            FindOutMore, StringComparison.Ordinal));
     }
 
     /// <summary>
