@@ -75,9 +75,14 @@ namespace Examples.UsageSharing
             WriteFindOutMore();
 
             Console.WriteLine("==========================================");
-            Console.WriteLine("Example complete. Press any key to exit.");
-            // Wait for user to press a key.
-            Console.ReadKey();
+            Console.WriteLine("Example complete.");
+            // Only wait for a key where there is a keyboard to press one
+            // on, so the example also runs to completion from a script.
+            if (Console.IsInputRedirected == false)
+            {
+                Console.WriteLine("Press any key to exit.");
+                Console.ReadKey();
+            }
         }
 
         /// <summary>
