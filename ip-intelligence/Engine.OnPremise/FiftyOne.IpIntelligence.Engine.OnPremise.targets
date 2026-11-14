@@ -1,13 +1,48 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
-  <!-- Ensure that for Framework projects the correct DLL is copied to the build directory -->
-  
-  <ItemGroup Condition=" '$(Platform)' == 'x64' ">
-    <Content Include="$(MSBuildThisFileDirectory)..\runtimes\win-x64\native\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll">
+  <!-- Copies the native library to the build and publish output of a .NET
+       Framework project, which does not read the runtimes folder of a
+       package. The package holds a Windows library for x64 only, so an x86
+       project gets nothing to copy, as before. -->
+
+  <PropertyGroup>
+    <_FiftyOneIpiNativeAssetName>FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll</_FiftyOneIpiNativeAssetName>
+
+    <!-- For .NET Framework the SDK may infer a RuntimeIdentifier that does
+         not match the process architecture, so the explicit one is only
+         used for .NET Core and .NET 5 and later. -->
+    <_FiftyOneIpiNativeRuntime Condition="'$(RuntimeIdentifier)' != '' and '$(TargetFrameworkIdentifier)' != '.NETFramework'">$(RuntimeIdentifier)</_FiftyOneIpiNativeRuntime>
+
+    <!-- Windows platform mapping for .NET Framework or when no RID is set.
+         AnyCPU, the default platform of a .NET Framework project, runs as
+         x64 on a 64-bit Windows. -->
+    <_FiftyOneIpiNativeRuntime Condition="'$(_FiftyOneIpiNativeRuntime)' == '' and '$(Platform)' == 'x86'">win-x86</_FiftyOneIpiNativeRuntime>
+    <_FiftyOneIpiNativeRuntime Condition="'$(_FiftyOneIpiNativeRuntime)' == '' and ('$(Platform)' == 'x64' or '$(Platform)' == 'AnyCPU' or '$(Platform)' == '')">win-x64</_FiftyOneIpiNativeRuntime>
+
+    <_FiftyOneIpiNativeAssetPath Condition="'$(_FiftyOneIpiNativeRuntime)' != ''">$(MSBuildThisFileDirectory)..\runtimes\$(_FiftyOneIpiNativeRuntime)\native\$(_FiftyOneIpiNativeAssetName)</_FiftyOneIpiNativeAssetPath>
+  </PropertyGroup>
+
+  <!-- .NET Core and .NET 5 and later resolve native assets from the
+       runtimes folder themselves, and a copy here would overwrite the right
+       library with the wrong one in a publish for another platform. The
+       condition is on the target framework rather than the project style,
+       so an SDK-style project that targets .NET Framework gets the copy. -->
+  <ItemGroup Condition="'$(_FiftyOneIpiNativeAssetPath)' != '' and Exists('$(_FiftyOneIpiNativeAssetPath)') and ('$(UsingMicrosoftNETSdk)' != 'true' or '$(TargetFrameworkIdentifier)' == '.NETFramework')">
+    <None Include="$(_FiftyOneIpiNativeAssetPath)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll</Link>
-    </Content>
+      <Link>$(_FiftyOneIpiNativeAssetName)</Link>
+    </None>
   </ItemGroup>
 
+  <!-- dotnet publish does not honour CopyToOutputDirectory for a .NET
+       Framework target, so the library is copied to the publish folder
+       after publishing. -->
+  <Target Name="_FiftyOneIpiCopyNativeToPublish"
+          AfterTargets="Publish"
+          Condition="'$(_FiftyOneIpiNativeAssetPath)' != '' and Exists('$(_FiftyOneIpiNativeAssetPath)') and ('$(UsingMicrosoftNETSdk)' != 'true' or '$(TargetFrameworkIdentifier)' == '.NETFramework')">
+    <Copy SourceFiles="$(_FiftyOneIpiNativeAssetPath)"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>
