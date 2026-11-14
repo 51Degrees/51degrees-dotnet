@@ -45,8 +45,9 @@ if ($TestFilter) {
 # They run in parallel lanes, which ci/run-test-lanes.ps1 describes, less
 # those a pull request leaves out. At standard depth the IP Intelligence
 # on-premise example tests run only the WithoutSettings category, which runs
-# each example as a fresh clone does, on the free data files. The others
-# load the Enterprise data file.
+# each example as a fresh clone does, on the free data files, and the Unit
+# category, which needs no data file. The others load the Enterprise data
+# file.
 $Narrow = $Depth -eq 'standard' ?
     '^FiftyOne\.IpIntelligence\.Example\.Tests\.OnPremise\.dll$' : ''
 $Exclude = @(
@@ -60,7 +61,7 @@ $Exclude = @(
     -Filter $Filter `
     -Exclude $Exclude `
     -Narrow $Narrow `
-    -NarrowFilter "TestCategory=WithoutSettings" `
+    -NarrowFilter "TestCategory=WithoutSettings|TestCategory=Unit" `
     -OutputFolder "integration"
 if ($LASTEXITCODE -ne 0) {
     throw "The example tests failed."

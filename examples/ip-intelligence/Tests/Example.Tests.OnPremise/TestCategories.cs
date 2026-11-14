@@ -47,7 +47,8 @@ public static class TestCategories
     /// <summary>
     /// Runs of each example with no settings, which use the free data files
     /// a fresh clone downloads. A pull request built at standard depth runs
-    /// only these from this assembly (ci/run-integration-tests.ps1).
+    /// only these and the Unit tests from this assembly
+    /// (ci/run-integration-tests.ps1).
     /// </summary>
     public const string WithoutSettings = "WithoutSettings";
 }

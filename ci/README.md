@@ -53,8 +53,9 @@ is `Ubuntu_x64_Release`, with the Selenium contract, and `Windows_x64_Release`,
 the only build of the .NET Framework projects. Both leave out the IP
 Intelligence tests that load the Enterprise data file and the web example
 tests, but still run each IP Intelligence example with no settings on the free
-data files, the `WithoutSettings` category, which
-`run-integration-tests.Tests.ps1` checks with Pester 5 or later. A native
+data files (the `WithoutSettings` category) and that assembly's `Unit` tests,
+which need no data file. `run-integration-tests.Tests.ps1` checks this with
+Pester 5 or later. A native
 change adds Linux ARM and Windows x86, an IP Intelligence change
 runs the Enterprise tests, a web change runs the web example tests on Linux, and
 a change outside the package folders adds every entry but macOS. macOS and
