@@ -21,7 +21,8 @@
  * ********************************************************************* */
 
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
-using FiftyOne.DeviceDetection.TestHelpers;
+using Constants = FiftyOne.DeviceDetection.TestHelpers.Constants;
+using Utils = FiftyOne.DeviceDetection.TestHelpers.Utils;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines;
 using Microsoft.Extensions.Logging;
