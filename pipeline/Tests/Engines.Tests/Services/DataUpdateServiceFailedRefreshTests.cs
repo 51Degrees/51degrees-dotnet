@@ -56,6 +56,7 @@ public class DataUpdateServiceFailedRefreshTests
     // Every content has the same length, so it can be written in place.
     private const string GoodData = "good data 0";
     private const string BrokenData = "broken data";
+    private const string NewData = "new data 01";
 
     private const int WaitMilliseconds = 30000;
 
@@ -127,6 +128,43 @@ public class DataUpdateServiceFailedRefreshTests
             Assert.IsTrue(
                 WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
                 "The later good file was not applied.");
+        }
+        finally
+        {
+            file.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The watcher runs on its own setting. With automatic updates off and
+    /// no licence key, a new file put in place is still applied.
+    /// </summary>
+    [TestMethod]
+    public void Watcher_AutomaticUpdatesOffAndNoLicenseKey_AppliesNewFile()
+    {
+        var path = Path.Combine(_directory, "data.dat");
+        File.WriteAllText(path, GoodData);
+        var service = new DataUpdateService(
+            new CapturingLogger(), new HttpClient(), new RealFileSystem(), NoTimer);
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        var file = WatchedFile(engine, path);
+        file.Configuration.AutomaticUpdatesEnabled = false;
+        var reports = Collect(service);
+
+        try
+        {
+            Assert.AreEqual(
+                0,
+                file.Configuration.DataUpdateLicenseKeys.Count,
+                "The file should have no licence key.");
+            service.RegisterDataFile(file);
+
+            Replace(path, NewData);
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
+                "The new file was not applied.");
+            engine.Verify(
+                e => e.RefreshData(It.IsAny<string>()), Times.AtLeastOnce());
         }
         finally
         {
