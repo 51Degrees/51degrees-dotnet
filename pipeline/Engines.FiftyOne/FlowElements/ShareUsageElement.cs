@@ -129,7 +129,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                     memory, CompressionMode.Compress, true))
                 using (XmlWriter writer = XmlWriter.Create(compressedStream, WriterSettings))
                 {
-                    writer.WriteStartElement("Devices");
+                    writer.WriteStartElement("Usage");
                     // Write each element in turn.
                     foreach (var data in allData)
                     {
@@ -179,7 +179,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                             ShareUsageUri,
                             (int)res.StatusCode,
                             res.StatusCode,
-                            response);
+                            string.Empty);
                         Logger.Log(logLevel, message);
                     }
                 }

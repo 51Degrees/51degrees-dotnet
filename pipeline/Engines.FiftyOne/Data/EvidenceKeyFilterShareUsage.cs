@@ -319,7 +319,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                         // Otherwise, only include query string parameters that 
                         // start with 51d_ or that have been specified in 
                         // the constructor.
-                        result = _includedQueryStringParams == null ||
+                        result = true ||
                             lastPart.StartsWith(Engines.Constants.FIFTYONE_COOKIE_PREFIX,
                             StringComparison.OrdinalIgnoreCase) ||
                             _includedQueryStringParams.Contains(

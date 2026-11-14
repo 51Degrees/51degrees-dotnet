@@ -1026,7 +1026,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 if (flush.Wait(DisposeTimeoutMilliseconds) == false)
                 {
                     stop.Cancel();
-                    Logger.LogWarning(string.Format(
+                    Logger.LogDebug(string.Format(
                         CultureInfo.InvariantCulture,
                         Messages.MessageShareUsageNotSentOnClose,
                         EvidenceCollection.Count,
@@ -1323,7 +1323,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 var pause = _backOff.Failed(ShareUsageBackOff.Now);
                 if (pause > TimeSpan.Zero)
                 {
-                    Logger.LogWarning(string.Format(
+                    Logger.LogDebug(string.Format(
                         CultureInfo.InvariantCulture,
                         Messages.MessageShareUsagePaused,
                         pause.TotalSeconds));
@@ -1331,7 +1331,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             }
             else if (_backOff.Succeeded())
             {
-                Logger.LogInformation(Messages.MessageShareUsageResumed);
+                Logger.LogDebug(Messages.MessageShareUsageResumed);
             }
         }
 
