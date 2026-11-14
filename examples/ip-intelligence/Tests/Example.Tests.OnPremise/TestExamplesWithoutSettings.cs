@@ -51,6 +51,7 @@ public class TestExamplesWithoutSettings
             Constants.EVIDENCE_FILE_ENV_VAR,
             Constants.GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR,
             Constants.LICENSE_KEY_ENV_VAR,
+            "_51DEGREES_LICENSE_KEY",
             "_51DEGREES_DD_PATH"
         }
         .Concat(Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS)
@@ -208,6 +209,8 @@ public class TestExamplesWithoutSettings
             "Without a licence key the example should explain and finish.");
         Assert.Contains("Updating the data file downloads the Enterprise data file",
             output, "The example should say what an update needs.");
+        Assert.Contains("'_51DEGREES_LICENSE_KEY'", output,
+            "The example should name the variable that holds the key.");
         Assert.Contains(ContactUs, output,
             "The example should link to the contact page.");
     }
