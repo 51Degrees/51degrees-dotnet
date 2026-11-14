@@ -1,0 +1,26 @@
+name: Temporary agent signature fetch check
+
+# Throwaway workflow for tmp/issues-dotnet-as46-* branches. Deleted with
+# the branch.
+on:
+  push:
+    branches:
+      - 'tmp/issues-dotnet-as46-*'
+
+jobs:
+  DidTests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Agent signature cache and card tests
+        shell: pwsh
+        run: >
+          dotnet test pipeline/Tests/AgentSignatureTests/FiftyOne.Pipeline.AgentSignatureTests.csproj --filter "FullyQualifiedName~CacheTests|FullyQualifiedName~AgentCardTests"
+          -c Release -p:FiftyOneReferences=Project
+          --logger "console;verbosity=normal"
