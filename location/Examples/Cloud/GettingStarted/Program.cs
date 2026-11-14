@@ -139,10 +139,59 @@ namespace GettingStarted
             {
                 new Example().Run(resourceKey);
             }
+            WriteFindOutMore();
 #if (DEBUG)
             Console.WriteLine("Complete. Press key to exit.");
             Console.ReadKey();
 #endif
+        }
+
+        /// <summary>
+        /// Print where to find out more, so that anyone this example is
+        /// shown to can follow up from the output itself.
+        /// </summary>
+        private static void WriteFindOutMore()
+        {
+            Console.WriteLine("==========================================");
+            Console.WriteLine("Find out more");
+            Console.WriteLine("  Reverse geocoding quick start:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation/_reverse_geocoding__quickstart.html" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloud-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  Resource keys, which say what the cloud service returns:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation/_services__cloud__resource_keys.html" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloud-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine("  Plans and prices:");
+            Console.WriteLine(
+                "    https://51degrees.com/pricing" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloud-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  Talk to 51Degrees about using reverse geocoding:");
+            Console.WriteLine(
+                "    https://51degrees.com/contact-us" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloud-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  This repository, where the location engine and this " +
+                "example live:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/location");
+            Console.WriteLine("  The pipeline the location engine runs in:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline");
         }
 
     }

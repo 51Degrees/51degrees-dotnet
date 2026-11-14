@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using FiftyOne.DeviceDetection.Examples;
+using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines;
 using Microsoft.Extensions.Logging;
@@ -63,6 +64,12 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.PerformanceMultiProperty
 
         public class Example : ExampleBase
         {
+            /// <summary>
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-performancemultiproperty-console-program.cs&utm_term=enterprise-data-file";
+
             public void Run(
                 string dataFile,
                 string evidenceFile,
@@ -86,6 +93,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.PerformanceMultiProperty
                     {
                         output.WriteLine("No readable scalar properties were found in the " +
                             "data file, so there is nothing to benchmark.");
+                        WriteEnterpriseOffer(pipeline, output);
                         return;
                     }
 
@@ -112,6 +120,22 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.PerformanceMultiProperty
                     output.WriteLine();
                     output.WriteLine("Running isolated property-read throughput...");
                     ReadThroughput(pipeline, evidence, properties, threadCount, output);
+
+                    WriteEnterpriseOffer(pipeline, output);
+                }
+            }
+
+            /// <summary>
+            /// Says what the Enterprise data file adds when the pipeline uses
+            /// the free Lite data file.
+            /// </summary>
+            private static void WriteEnterpriseOffer(
+                IPipeline pipeline, TextWriter output)
+            {
+                if (ExampleUtils.IsLiteDataFile(
+                    pipeline.GetElement<DeviceDetectionHashEngine>()))
+                {
+                    ExampleUtils.WriteEnterpriseOffer(output, ContactUs);
                 }
             }
 
@@ -232,6 +256,23 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.PerformanceMultiProperty
         }
 
         public static void Main(string[] args)
+        {
+            RunExample(args);
+            ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
+        }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-device-detection-onpremise-performancemultiproperty-console-program.cs";
+
+        /// <summary>
+        /// Runs the benchmark, unless help was asked for or a file it needs
+        /// is missing.
+        /// </summary>
+        private static void RunExample(string[] args)
         {
             var options = ExampleUtils.ParseOptions(args);
             if (options == null) { return; }
