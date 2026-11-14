@@ -59,6 +59,11 @@ performance run only when `rc` itself or the release pull request is built,
 which `.github/workflows/release-pull-request.yml` does on every entry.
 `select-options.Tests.ps1` tests the selection, run with Pester 5 or later.
 
+The secrets are the ones the separate repositories used: `ACCESS_TOKEN`,
+`NUGET_API_KEY`, the `CODE_SIGNING_KEY_VAULT_*` set, `STRONG_NAME_KEY_BASE64`,
+`DEVICE_DETECTION_KEY`, `DEVICE_DETECTION_URL`, `IPI_DATA_FILE_URL`,
+`_51DEGREES_RESOURCE_KEY_BESPOKE` and the `ACCEPTCH_*_KEY` set.
+
 `run-unit-tests.ps1` and `run-integration-tests.ps1` each begin by running
 `start-chrome-once.ps1`, which starts the Chrome driver and then Chrome once,
 headless, and prints how long each took. The first start of Chrome on a runner
@@ -67,8 +72,3 @@ browser tests and counts against no test's limit. A start that takes more
 than 300 seconds is stopped, and one that fails is reported, both as warnings,
 and the tests then run as they would have. `start-chrome-once.Tests.ps1`
 tests it with stand-ins for Chrome, run with Pester 5 or later.
-
-The secrets are the ones the separate repositories used: `ACCESS_TOKEN`,
-`NUGET_API_KEY`, the `CODE_SIGNING_KEY_VAULT_*` set, `STRONG_NAME_KEY_BASE64`,
-`DEVICE_DETECTION_KEY`, `DEVICE_DETECTION_URL`, `IPI_DATA_FILE_URL`,
-`_51DEGREES_RESOURCE_KEY_BESPOKE` and the `ACCEPTCH_*_KEY` set.
