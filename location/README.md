@@ -14,7 +14,7 @@ is supported through the 51Degrees cloud service.
 
 Visual Studio 2019 or later is recommended. Although Visual Studio Code can be used for working with most of the projects.
 
-The Pipeline engines are written in C# and target .NET Standard 2.0.3.
+The Pipeline engines are written in C# and target .NET Standard 2.0 and .NET 10. The examples target .NET 8, and the tests run under .NET 8 and .NET 10.
 
 The [tested versions](https://51degrees.com/documentation/_product_summaries__tested_versions.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.geolocation&utm_term=dependencies) page shows 
 the .NET versions that we currently test against. The software may run fine against other versions, 

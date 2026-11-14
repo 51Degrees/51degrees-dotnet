@@ -25,11 +25,13 @@ the concepts and design of this API.
 
 Visual Studio 2022 or later is recommended. Although Visual Studio Code can be used for working with most of the projects.
 
-The Pipeline projects are written in C# and target .NET Standard 2.0.3
-The Web integration multi-targets the following:
-    - .NET Core 3.1
-    - .NET Core 8.0
-    - .NET Framework 4.6.2
+The Pipeline packages are written in C# and target .NET Standard 2.0 and .NET 10. `FiftyOne.Pipeline.Engines` and `FiftyOne.Pipeline.AgentSignature` also target .NET 8, and `FiftyOne.Did` targets .NET 8 and .NET 10 only.
+
+The Web integration targets the following:
+    - .NET 8 and .NET 10, in `FiftyOne.Pipeline.Web`
+    - .NET Framework 4.6.2, in `FiftyOne.Pipeline.Web.Framework`
+
+The tests run under .NET 8 and .NET 10.
 
 The [tested versions](https://51degrees.com/documentation/_product_summaries__tested_versions.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=dependencies) page shows the .NET versions that we currently test against. The software may run fine against other versions, but additional caution should be applied.
 
