@@ -265,6 +265,78 @@ namespace FiftyOne.Caching.Tests
         }
 
         /// <summary>
+        /// The number of keys the concurrent replacement test uses, which
+        /// is also the cache's size, so no item is removed for space.
+        /// </summary>
+        private const int ReplaceKeyCount = 16;
+
+        /// <summary>
+        /// The number of threads replacing items at once.
+        /// </summary>
+        private const int ReplaceThreadCount = 8;
+
+        /// <summary>
+        /// The number of replacements each thread makes.
+        /// </summary>
+        private const int ReplacementsPerThread = 200000;
+
+        /// <summary>
+        /// How long the replacements are given to finish. The time each run
+        /// took is written to the test output.
+        /// </summary>
+        private const int ReplaceFinishSeconds = 60;
+
+        /// <summary>
+        /// Replacements made on several threads at once all finish. A
+        /// replacement puts the new item in a list chosen at random and
+        /// takes the old item out of its own list, so two replacements
+        /// can work on the same two lists in opposite directions. Each must
+        /// not hold one list's lock while it waits for the other's.
+        /// </summary>
+        [TestMethod]
+        public void LruPutCache_Replace_ConcurrentReplacementsFinish()
+        {
+            var cache = new LruPutCacheBuilder()
+                .SetUpdateExisting(true)
+                // Two lists, so that half of the replacements move an item
+                // from one list to the other.
+                .SetConcurrency(2)
+                .Build<int, int>(ReplaceKeyCount);
+            for (var key = 0; key < ReplaceKeyCount; key++)
+            {
+                cache.Put(key, 0);
+            }
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            var tasks = new Task[ReplaceThreadCount];
+            for (var t = 0; t < tasks.Length; t++)
+            {
+                var seed = t;
+                // A long running task has its own background thread, so a
+                // thread that never finishes does not stop the test run
+                // from ending.
+                tasks[t] = Task.Factory.StartNew(() =>
+                {
+                    var random = new Random(seed);
+                    for (var i = 0; i < ReplacementsPerThread; i++)
+                    {
+                        cache.Put(random.Next(ReplaceKeyCount), i);
+                    }
+                }, TaskCreationOptions.LongRunning);
+            }
+            var finished = Task.WaitAll(
+                tasks, TimeSpan.FromSeconds(ReplaceFinishSeconds));
+            Console.WriteLine(
+                $"{ReplaceThreadCount} threads made {ReplacementsPerThread} " +
+                $"replacements each in {timer.ElapsedMilliseconds} ms, " +
+                $"finished: {finished}.");
+            Assert.IsTrue(
+                finished,
+                $"The replacements did not finish in " +
+                $"{ReplaceFinishSeconds} seconds, so at least two of them " +
+                "are each waiting for a list lock the other holds.");
+        }
+
+        /// <summary>
         /// Test the Time-based LRU cache feature.
         /// Check if the item expiring will result in the default value 
         /// being returned.
