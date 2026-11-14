@@ -27,6 +27,7 @@ using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Firefox;
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -146,6 +147,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             Driver.SwitchTo().Window(previous);
             Driver.Close();
             Driver.SwitchTo().Window(fresh);
+            var deleting = Stopwatch.StartNew();
             if (Network != null)
             {
                 Network.DeleteAllCookiesAsync().Wait();
@@ -154,6 +156,9 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             {
                 Driver.Manage().Cookies.DeleteAllCookies();
             }
+            Console.WriteLine(
+                "Build log: Selenium tests, the cookies were deleted in " +
+                $"{deleting.ElapsedMilliseconds} ms.");
         }
 
         /// <summary>
