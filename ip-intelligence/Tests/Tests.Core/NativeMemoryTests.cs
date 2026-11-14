@@ -43,9 +43,10 @@ public class NativeMemoryTests
     /// <summary>
     /// The memory the process may keep after everything is disposed.
     /// Balanced holds about 2 GB of the Enterprise data file in
-    /// memory, so a data set that is not freed is far larger than this.
+    /// memory, so a data set that is not freed is 20 times this. The
+    /// most a runner has kept with everything freed is 18 MB.
     /// </summary>
-    private const long MemoryMarginMegabytes = 10;
+    private const long MemoryMarginMegabytes = 100;
 
     /// <summary>
     /// The managed memory the measured cycle may allocate before a
@@ -91,6 +92,12 @@ public class NativeMemoryTests
                 GC.EndNoGCRegion();
             }
         }
+
+        // Written whether the test passes or fails, so that every run
+        // records what its runner kept.
+        Console.WriteLine(
+            $"NativeMemory: kept {after - before} MB of the " +
+            $"{loaded - before} MB the pipeline used.");
 
         Assert.IsLessThan(MemoryMarginMegabytes, after - before,
             $"Disposing kept {after - before} MB of the {loaded - before} " +
