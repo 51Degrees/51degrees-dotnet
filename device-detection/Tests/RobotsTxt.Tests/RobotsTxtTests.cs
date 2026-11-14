@@ -55,7 +55,7 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Tests
         [ClassInitialize]
         public static void ClassInitialize(TestContext context)
         {
-            var ddFile = Utils.GetFilePath(TestHelpers.Constants.TAC_HASH_DATA_FILE_NAME).FullName;
+            var ddFile = Utils.GetPaidFilePath(TestHelpers.Constants.TAC_HASH_DATA_FILE_NAME).FullName;
 
             _loggerFactory = LoggerFactory.Create(b => { });
 

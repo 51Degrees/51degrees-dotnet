@@ -324,9 +324,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// By default, all HTTP headers (excluding a few such as 'cookies')
-        /// are shared. Individual headers can be excluded from sharing by 
-        /// adding them to this list.
+        /// By default, every HTTP header but Cookie is shared. Individual
+        /// headers can be excluded from sharing by adding them to this
+        /// list.
         /// </summary>
         /// <param name="blockedHeaders">
         /// The (case insensitive) names of the headers to block.
@@ -339,9 +339,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// By default, all HTTP headers (excluding a few such as 'cookies')
-        /// are shared. Individual headers can be excluded from sharing by 
-        /// adding them to this list.
+        /// By default, every HTTP header but Cookie is shared. Individual
+        /// headers can be excluded from sharing by adding them to this
+        /// list.
         /// </summary>
         /// <param name="blockedHeader">
         /// The (case insensitive) name of the header to block.

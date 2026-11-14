@@ -92,25 +92,20 @@ system.
 dotnet run --project examples/device-detection/OnPremise/GettingStarted-Console
 ```
 
-The IP Intelligence example looks for the paid Enterprise file,
-`51Degrees-EnterpriseIpiV41.ipi`, so it never downloads the Lite file. Download
-the Lite file first, as "Data files" says, then give its path in the
-`_51DEGREES_IPI_PATH` environment variable. On Linux and macOS run these.
+The IP Intelligence example looks for `51Degrees-LiteV41.ipi` in `cxx/data`
+the same way (`FindFile` in
+`examples/ip-intelligence/Examples/ExampleUtils.cs`), and runs the download
+script for it when the file is not there. Run it from the repository root, on
+any system.
 
 ```
-export _51DEGREES_IPI_PATH="$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
 dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
 ```
 
-In PowerShell, on any system, run these.
-
-```
-$env:_51DEGREES_IPI_PATH = "$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
-dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
-```
-
-`_51DEGREES_DD_PATH` does the same for Device Detection, and a path given as
-the first argument after `--` takes the place of either variable.
+To use another data file, give its path in the `_51DEGREES_IPI_PATH`
+environment variable for IP Intelligence or `_51DEGREES_DD_PATH` for Device
+Detection. A path given as the first argument after `--` takes the place of
+either variable.
 
 ### Correct output
 
@@ -139,16 +134,17 @@ is more than 30 days old. Both are expected. The exit code is 0.
 The IP Intelligence example looks up five IPv4 addresses. For each it prints
 `Input values:` with `query.client-ip`, then `Results:` with a line for each
 property, starting with `RegisteredName`, `RegisteredOwner` and
-`RegisteredCountry`. It reads properties such as `Country` without checking
-that the data file has them, and the
+`RegisteredCountry`. The
 [data repository README](https://github.com/51Degrees/data#ip-intelligence)
-says the Lite file has only RegisteredCountry, RegisteredName and
-RegisteredOwner. Reading a property the data file does not have throws
-`PropertyMissingException` (`GetAs` in `pipeline/Engines/Data/AspectDataBase.cs`),
-which is why `LocationAnalysis-Console` catches it. So with the Lite file the
-example can stop with that exception at the first property the file lacks.
-That is a limit of the Lite file, not a fault in your setup. CI runs this
-example only with the Enterprise file.
+says the Lite file has only those three. The example checks that the data
+file has a property before it reads one, because reading a property the data
+file does not have throws `PropertyMissingException` (`GetAs` in
+`pipeline/Engines/Data/AspectDataBase.cs`). So with the Lite file every other
+property, such as `IpRangeStart` and `Country`, reads
+`needs the Enterprise data file`, and the example then says that some of the
+properties need the Enterprise data file and gives a link to ask for a copy.
+That is a limit of the Lite file, not a fault in your setup. The exit code is
+0.
 
 The paid data files have many more properties, as the
 [pricing page](https://51degrees.com/pricing?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=correct-output)
@@ -181,17 +177,13 @@ a paid subscription. The IP Intelligence cloud example reads its key from
 ### Pitfalls
 
 - **A data file that is not there.** `cxx/data` holds a `.link` for each file
-  rather than the file. The Device Detection example runs the download script
-  for a missing file, so it needs the network and the tools under
-  "Prerequisites". The IP Intelligence example does not, so download its file
-  first. Check the file sizes as above.
+  rather than the file. Each example runs the download script for a missing
+  file, so it needs the network and the tools under "Prerequisites". Check the
+  file sizes as above.
 - **Missing submodules.** The Device Detection example then logs `Failed to
   find a device detection data file` and asks for
   `git submodule update --init --recursive`, which fetches them. A zip
   download of the repository has no submodules, so clone with Git.
-- **The IP Intelligence example without `_51DEGREES_IPI_PATH`.** It searches for
-  the Enterprise file name, gives up after 10 seconds and logs `Failed to find
-  a IP Intelligence data file`, even when the Lite file is in place.
 - **Project references.** `-p:FiftyOneReferences=Project`, which CI uses,
   builds the native engines from `cxx`. That needs CMake 3.24 or later, a
   C++17 compiler, PowerShell 7 and a platform such as `-p:Platform=x64`, as
@@ -209,11 +201,13 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   them.
 - **What CI does not test.** CI builds and tests the examples with project
   references (`ci/build-project.ps1`), and against the packages only when it
-  publishes (`ci/README.md`). It runs the example tests with the paid data
-  files that `ci/fetch-assets.ps1` fetches, never the Lite IP Intelligence
-  file. The Device Detection example tests send the output to
-  `TextWriter.Null`, and the IP Intelligence one checks only a few words of
-  it.
+  publishes (`ci/README.md`). It runs most of the example tests with the paid
+  data files that `ci/fetch-assets.ps1` fetches. Of those, the Device
+  Detection ones send the output to `TextWriter.Null`, and the IP Intelligence
+  ones check only a few words of it. The `TestExamplesWithoutSettings` classes
+  run the console examples with no settings on the free files and check what
+  each prints, so an example that is not in one of them is not tested as a
+  fresh clone runs it.
 
 ## Environment variable names
 
