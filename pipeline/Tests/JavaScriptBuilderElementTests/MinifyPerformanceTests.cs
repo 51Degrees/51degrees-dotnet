@@ -58,8 +58,11 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         // response.
         private const int PayloadProperties = 200;
 
-        // The most minification may add to the median script.
-        private const double MaxAddedMilliseconds = 1000;
+        // The most minification may add to the median script. Every
+        // runner and configuration the builds use measured 6 to 12 ms,
+        // apart from macOS on Intel at 43 and 58 ms, so 500 ms is about
+        // nine times the slowest and only a gross slowdown reaches it.
+        private const double MaxAddedMilliseconds = 500;
 
         private delegate void GetValueCallback(
             string key,
