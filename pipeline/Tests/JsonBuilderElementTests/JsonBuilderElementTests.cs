@@ -274,6 +274,36 @@ namespace FiftyOne.Pipeline.JsonBuilderElementTests
         }
 
         /// <summary>
+        /// A WKT value is written as an object with one member, value,
+        /// holding the WKT text.
+        /// </summary>
+        [TestMethod]
+        public void JsonBuilder_WktValue_ObjectWithOneMemberValue()
+        {
+            _elementDataMock.Setup(ed => ed.AsDictionary()).
+                Returns(new Dictionary<string, object>() {
+                    { "area", new AspectPropertyValue<WktString>(
+                        new WktString("POINT(2 4)")) },
+                });
+            var testElementMetaData =
+                new Dictionary<string, IElementPropertyMetaData>();
+            testElementMetaData.Add("area", new ElementPropertyMetaData(
+                _testEngine.Object, "area", typeof(WktString), true));
+            _propertyMetaData.Add("test", testElementMetaData);
+
+            var json = TestIteration(1);
+
+            var area = JObject.Parse(json)["test"]?["area"] as JObject;
+            Assert.IsNotNull(area,
+                $"The WKT value is not an object. Complete JSON: {json}");
+            var members = area.Count;
+            Assert.AreEqual(1, members,
+                $"The WKT object has more than one member. Complete JSON: {json}");
+            Assert.AreEqual("POINT(2 4)", area["value"]?.ToString(),
+                $"The WKT object's value is not the WKT text. Complete JSON: {json}");
+        }
+
+        /// <summary>
         /// A property whose value is null without having been assigned
         /// 'no value' has no entry of its own and no nullreason, whilst a
         /// property with a value beside it is written.
