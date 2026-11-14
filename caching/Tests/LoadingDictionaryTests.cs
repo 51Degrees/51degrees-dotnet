@@ -27,6 +27,7 @@ using Moq;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -280,12 +281,18 @@ namespace FiftyOne.Caching.Tests
                 firstSource.Cancel();
                 firstTokenCancelled.Set();
                 Console.WriteLine("First reader task cancelled.");
+                var sinceCancelled = Stopwatch.StartNew();
 
                 // Hold the load until the first reader has finished, because
                 // Task.Wait returns a completed task's value without checking
                 // the token, so a load that finished first would give the
                 // first reader its value.
                 firstReaderDone.Wait(GATE_TIMEOUT_MS);
+                Console.WriteLine(
+                    "Build log: LoadingDictionary_GetConcurrentHits_MidLoad, " +
+                    "the first reader ended " +
+                    $"{sinceCancelled.ElapsedMilliseconds} ms after its " +
+                    "token was cancelled.");
                 Assert.IsTrue(
                     firstReaderDone.IsSet,
                     $"{nameof(firstReaderDone)} still not set.");
