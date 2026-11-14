@@ -20,6 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using System;
 using System.Collections.Generic;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
@@ -75,9 +76,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
             // from the tracker, regardless of the filter settings.
             // If these were included then all usage would always 
             // be shared as session id + sequence will always be unique.
-            if (key == Constants.EVIDENCE_SESSIONID)
+            // Evidence keys are matched whatever their case, so these
+            // two are as well.
+            if (string.Equals(key, Constants.EVIDENCE_SESSIONID,
+                    StringComparison.OrdinalIgnoreCase))
                 return false;
-            if (key == Constants.EVIDENCE_SEQUENCE)
+            if (string.Equals(key, Constants.EVIDENCE_SEQUENCE,
+                    StringComparison.OrdinalIgnoreCase))
                 return false;
             if (IsIncludedSessionCookie(key))
                 return true;
