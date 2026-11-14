@@ -1,0 +1,26 @@
+name: Temporary refresh message check
+
+# Throwaway workflow for tmp/issues-dotnet-du15-* branches. Deleted with
+# the branch.
+on:
+  push:
+    branches:
+      - 'tmp/issues-dotnet-du15-*'
+
+jobs:
+  DidTests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Data update service tests
+        shell: pwsh
+        run: >
+          dotnet test pipeline/Tests/Engines.Tests/FiftyOne.Pipeline.Engines.Tests.csproj --filter "FullyQualifiedName~DataUpdateService"
+          -c Release -p:FiftyOneReferences=Project
+          --logger "console;verbosity=normal"
