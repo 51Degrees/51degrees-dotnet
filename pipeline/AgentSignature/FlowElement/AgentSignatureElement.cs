@@ -166,8 +166,12 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 configuration.WaitBudget,
                 configuration.FetchTimeout,
                 configuration.Concurrency);
+            // Lazy runs its factory inside its lock, so the factory only
+            // queues the registry read, whose network start can block, and
+            // no other request waits on the lock for it.
             _cardsByKeyUrl =
-                new Lazy<Task<IDictionary<string, AgentCard>>>(LoadCards);
+                new Lazy<Task<IDictionary<string, AgentCard>>>(
+                    () => Task.Run(LoadCards));
             _createData = CreateElementData;
             StartReachabilityCheck();
         }

@@ -263,7 +263,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Keys
             public DirectorySlot(Func<Task<DirectoryEntry>> loader)
             {
                 _loader = loader;
-                _current = new Lazy<Task<DirectoryEntry>>(loader);
+                _current = Deferred(loader);
             }
 
             /// <summary>
@@ -467,9 +467,21 @@ namespace FiftyOne.Pipeline.AgentSignature.Keys
                 return StillUsable(known, clock, lifetime) ? known : entry;
             }
 
+            /// <summary>
+            /// A lazy fetch whose factory only queues the loader. Lazy runs
+            /// its factory inside its lock, and the loader starts a network
+            /// request whose start can block, so running it there would make
+            /// every other request for the agent wait outside its budget.
+            /// </summary>
+            private static Lazy<Task<DirectoryEntry>> Deferred(
+                Func<Task<DirectoryEntry>> loader)
+            {
+                return new Lazy<Task<DirectoryEntry>>(() => Task.Run(loader));
+            }
+
             private void StartRefresh(Lazy<Task<DirectoryEntry>> observed)
             {
-                var replacement = new Lazy<Task<DirectoryEntry>>(_loader);
+                var replacement = Deferred(_loader);
                 Interlocked.CompareExchange(
                     ref _current, replacement, observed);
                 // Reading the value starts the fetch. Whichever thread won
