@@ -244,6 +244,29 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             }
         }
 
+        /// <summary>
+        /// The version of the package the assembly was built as, which
+        /// the message names so that the release in use can be told from
+        /// it. The informational version holds it, followed by a plus sign
+        /// and the source revision when the build knew one. The file
+        /// version is the same for every release, so it is used only when
+        /// the assembly has no informational version.
+        /// </summary>
+        private static string PackageVersion(Assembly assembly)
+        {
+            var version = assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion;
+            if (string.IsNullOrEmpty(version))
+            {
+                return assembly
+                    .GetCustomAttribute<AssemblyFileVersionAttribute>()
+                    ?.Version ?? string.Empty;
+            }
+            var revision = version.IndexOf('+');
+            return revision < 0 ? version : version.Substring(0, revision);
+        }
+
         private string _osVersion = "";
         private string _languageVersion = "";
         private string _coreVersion = "";
@@ -856,8 +879,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 
             _enginesVersion = GetType().Assembly
                 .GetCustomAttribute<AssemblyFileVersionAttribute>().Version;
-            _coreVersion = typeof(IPipeline).Assembly
-                .GetCustomAttribute<AssemblyFileVersionAttribute>().Version;
+            _coreVersion = PackageVersion(typeof(IPipeline).Assembly);
 
             IEvidenceKeyFilter trackerEvidenceFiler = null;
 
