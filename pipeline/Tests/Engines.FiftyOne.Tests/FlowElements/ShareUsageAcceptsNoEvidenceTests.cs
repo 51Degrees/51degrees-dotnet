@@ -58,36 +58,14 @@ public class ShareUsageAcceptsNoEvidenceTests
 
     private static readonly TimeSpan Wait = TimeSpan.FromSeconds(30);
 
-    /// <summary>
-    /// Keeps the XML of every message sent.
-    /// </summary>
-    private sealed class Capture : HttpMessageHandler
-    {
-        public ConcurrentQueue<string> Xml { get; } =
-            new ConcurrentQueue<string>();
-
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
-        {
-            var bytes = await request.Content.ReadAsByteArrayAsync(
-                cancellationToken);
-            using var gzip = new GZipStream(
-                new MemoryStream(bytes), CompressionMode.Decompress);
-            using var reader = new StreamReader(gzip);
-            Xml.Enqueue(await reader.ReadToEndAsync(cancellationToken));
-            return new HttpResponseMessage(HttpStatusCode.OK);
-        }
-    }
-
     private readonly LoggerFactory _loggerFactory = new LoggerFactory();
-    private Capture _capture;
+    private UsageMessageCapture _capture;
     private HttpClient _http;
 
     [TestInitialize]
     public void Init()
     {
-        _capture = new Capture();
+        _capture = new UsageMessageCapture();
         _http = new HttpClient(_capture);
     }
 
@@ -218,5 +196,53 @@ public class ShareUsageAcceptsNoEvidenceTests
             "Two different requests should be shared, once each.");
         Assert.Contains("[first]", xml);
         Assert.Contains("[second]", xml);
+    }
+
+    /// <summary>
+    /// Evidence an application adds under a key no element accepts is
+    /// written to the message beside what the web request holds. The JA4
+    /// and HTTP/2 fingerprints and the resource key or licence key are
+    /// such values.
+    /// </summary>
+    [TestMethod]
+    [DataRow("fiftyone.resource-key", "resource-key")]
+    [DataRow("fiftyone.license-key", "license-key")]
+    public void ShareUsage_WebRequest_SharesJa4H2AndTheBillingKey(
+        string billingKey,
+        string billingName)
+    {
+        const string ja4 = "t13d1516h2_8daaf6152771_02713d6af862";
+        const string h2 = "1:65536;2:0;4:6291456;6:262144|15663105|0|m,a,s,p";
+        const string billingValue = "billing-key-value";
+        var shareUsage = NewShareUsage();
+        using var pipeline = NewPipeline(shareUsage);
+        using var data = pipeline.CreateFlowData();
+        data.AddEvidence("server.ja4", ja4);
+        data.AddEvidence("server.h2", h2);
+        data.AddEvidence(billingKey, billingValue);
+        data.AddEvidence(
+            HttpRequestKey,
+            new ReadOnlyDictionary<string, object>(
+                new Dictionary<string, object>()
+                {
+                    { "header.user-agent", "from-request" },
+                }));
+
+        data.Process();
+        Assert.IsTrue(shareUsage.SendDataTask.Wait(Wait),
+            "The usage sharing message was not sent.");
+
+        var xml = string.Concat(_capture.Xml);
+        Assert.Contains(
+            $"<server Name=\"ja4\"><![CDATA[{ja4}]]></server>", xml);
+        Assert.Contains(
+            $"<server Name=\"h2\"><![CDATA[{h2}]]></server>", xml);
+        Assert.Contains(
+            $"<fiftyone Name=\"{billingName}\"><![CDATA[{billingValue}]]>" +
+            "</fiftyone>",
+            xml);
+        Assert.Contains(
+            "<header Name=\"user-agent\"><![CDATA[from-request]]></header>",
+            xml);
     }
 }

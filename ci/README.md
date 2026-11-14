@@ -52,14 +52,37 @@ numbers follow it.
 is `Ubuntu_x64_Release`, with the Selenium contract, and `Windows_x64_Release`,
 the only build of the .NET Framework projects. Both leave out the IP
 Intelligence tests that load the Enterprise data file and the web example
-tests. A native change adds Linux ARM and Windows x86, an IP Intelligence change
+tests, but still run each IP Intelligence example with no settings on the free
+data files (the `WithoutSettings` category) and that assembly's `Unit` tests,
+which need no data file. `run-integration-tests.Tests.ps1` checks this with
+Pester 5 or later. A native
+change adds Linux ARM and Windows x86, an IP Intelligence change
 runs the Enterprise tests, a web change runs the web example tests on Linux, and
 a change outside the package folders adds every entry but macOS. macOS and
 performance run only when `rc` itself or the release pull request is built,
 which `.github/workflows/release-pull-request.yml` does on every entry.
 `select-options.Tests.ps1` tests the selection, run with Pester 5 or later.
 
+A test that measures something, such as the memory an engine keeps after it is
+disposed, writes a line starting `Build log: ` to its output. The output of a
+test that passes is kept only in its results file, so `run-test-lanes.ps1`
+ends by printing those lines, which `build-log-lines.ps1` reads from the
+results files, and each job's log then holds what its runner measured.
+`build-log-lines.Tests.ps1` tests the reading, run with Pester 5 or later.
+
 The secrets are the ones the separate repositories used: `ACCESS_TOKEN`,
 `NUGET_API_KEY`, the `CODE_SIGNING_KEY_VAULT_*` set, `STRONG_NAME_KEY_BASE64`,
 `DEVICE_DETECTION_KEY`, `DEVICE_DETECTION_URL`, `IPI_DATA_FILE_URL`,
 `_51DEGREES_RESOURCE_KEY_BESPOKE` and the `ACCEPTCH_*_KEY` set.
+
+`run-unit-tests.ps1` and `run-integration-tests.ps1` each begin by running
+`start-chrome-once.ps1`, which asks the Chrome driver for its version and
+starts Chrome once, headless, and then runs one session through the driver as
+a browser test does (the driver started and ready, a session, a blank page and
+the session ended), printing how long each part took. The first start of
+Chrome and the first driver session on a runner take many times longer than
+the ones after them, so both are made before the browser tests and count
+against no test's limit. A part that takes more than 300 seconds is stopped,
+and one that fails is reported, both as warnings, and the tests then run as
+they would have. `start-chrome-once.Tests.ps1` tests it with stand-ins for
+Chrome and the driver, run with Pester 5 or later.

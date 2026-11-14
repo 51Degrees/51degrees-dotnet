@@ -115,15 +115,6 @@ namespace FiftyOne.Pipeline.CloudRequestEngine {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Failed to load aspect properties for element &apos;{0}&apos;. This is because your resource key does not include access to any properties under &apos;{0}&apos;. For more details on resource keys, see our explainer: https://51degrees.com/documentation/_info__resource_keys.html.
-        /// </summary>
-        internal static string ExceptionFailedToLoadProperties {
-            get {
-                return ResourceManager.GetString("ExceptionFailedToLoadProperties", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to CloudRequestEngine has a license key and no requested properties.
         /// </summary>
         internal static string ExceptionLicenseKeyNeedsProperties {

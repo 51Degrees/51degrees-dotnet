@@ -450,17 +450,37 @@ public class Program
         Configuration configuration) 
         : BackgroundService
     {
+        /// <summary>
+        /// The exit code the process ends with when the run fails.
+        /// </summary>
+        private const int FailedExitCode = 1;
+
         protected override async Task ExecuteAsync(
             CancellationToken stoppingToken)
         {
-            await Example.Run(
-                configuration.DataFile,
-                configuration.CsvTruthFile,
-                configuration.Output,
-                configuration.LoggerFactory,
-                stoppingToken,
-                performanceProfile: configuration.PerformanceProfile);
-            hostApplicationLifetime.StopApplication();
+            try
+            {
+                await Example.Run(
+                    configuration.DataFile,
+                    configuration.CsvTruthFile,
+                    configuration.Output,
+                    configuration.LoggerFactory,
+                    stoppingToken,
+                    performanceProfile: configuration.PerformanceProfile);
+            }
+            catch (Exception ex)
+            {
+                // Report the failure, and end with a failure exit code so
+                // that a script or a test can tell.
+                configuration.LoggerFactory
+                    .CreateLogger<Worker>()
+                    .LogError(ex, "The comparison did not complete");
+                Environment.ExitCode = FailedExitCode;
+            }
+            finally
+            {
+                hostApplicationLifetime.StopApplication();
+            }
         }
     }
 

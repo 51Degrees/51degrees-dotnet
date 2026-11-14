@@ -62,6 +62,9 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
             private const string _tac1 = "35925406";
             private const string _tac2 = "86386802";
 
+            private const string NoHardwareProperties =
+                "The resource key includes no 'hardware' properties.";
+
             public void Run(IServiceProvider serviceProvider, TextWriter output)
             {
                 output.WriteLine("This example shows the details of devices " +
@@ -84,6 +87,14 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                 using (var pipeline = new FiftyOnePipelineBuilder(loggerFactory, serviceProvider)
                     .BuildFromConfiguration(pipelineOptions))
                 {
+                    // A resource key without the 'hardware' properties leaves
+                    // the engine with none, so there is nothing to look up.
+                    if (pipeline.GetElement<HardwareProfileCloudEngine>()
+                            .Properties.Count == 0)
+                    {
+                        throw new PipelineException(NoHardwareProperties);
+                    }
+
                     // Pass a TAC into the pipeline and list the matching devices.
                     AnalyseTac(_tac1, pipeline, output);
                     AnalyseTac(_tac2, pipeline, output);
@@ -199,8 +210,8 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                 options.SetResourceKey(resourceKey);
             }
 
-            // A resource key without the 'hardware' properties makes the
-            // pipeline refuse at start-up. That is a subscription that does
+            // A resource key without the 'hardware' properties stops the
+            // example before it looks anything up. That is a subscription that does
             // not cover this example rather than a fault, so it is reported
             // plainly and the process still exits non-zero, because the
             // example did not do its work.

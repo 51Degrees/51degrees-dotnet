@@ -5,7 +5,7 @@
     <AssemblyName>FiftyOne.Did</AssemblyName>
     <RootNamespace>FiftyOne.Did</RootNamespace>
     <Platforms>AnyCPU</Platforms>
-    <DocumentationFile>FiftyOne.Did.xml</DocumentationFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

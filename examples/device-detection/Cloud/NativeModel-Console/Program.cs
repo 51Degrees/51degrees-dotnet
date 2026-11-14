@@ -59,6 +59,9 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
             private const string _nativeModel1 = "SC-03L";
             private const string _nativeModel2 = "iPhone11,8";
 
+            private const string NoHardwareProperties =
+                "The resource key includes no 'hardware' properties.";
+
             public void Run(string resourceKey, ILoggerFactory loggerFactory, 
                 TextWriter output, string cloudEndPoint = "")
             {
@@ -101,6 +104,13 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                     .AddFlowElement(propertyKeyedEngine)
                     .Build())
                 {
+                    // A resource key without the 'hardware' properties leaves
+                    // the engine with none, so there is nothing to look up.
+                    if (propertyKeyedEngine.Properties.Count == 0)
+                    {
+                        throw new PipelineException(NoHardwareProperties);
+                    }
+
                     // Pass a native model into the pipeline and list the matching devices.
                     AnalyseNativeModel(_nativeModel1, pipeline, output);
                     // Repeat for an alternative native model name.
@@ -165,8 +175,8 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
             }
             else
             {
-                // A resource key without the 'hardware' properties makes
-                // the pipeline refuse at start-up. That is a subscription
+                // A resource key without the 'hardware' properties stops
+                // the example before it looks anything up. That is a subscription
                 // that does not cover this example rather than a fault, so
                 // it is reported plainly and the process still exits
                 // non-zero, because the example did not do its work.

@@ -7,7 +7,7 @@
     <Platforms>AnyCPU;x64;x86</Platforms>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <DocumentationFile>FiftyOne.GeoLocation.Cloud.xml</DocumentationFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
 	

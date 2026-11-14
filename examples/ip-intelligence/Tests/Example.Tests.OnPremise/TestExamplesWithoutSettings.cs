@@ -36,7 +36,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.OnPremise;
 /// them and says what the Enterprise data file adds.
 /// </summary>
 [TestClass]
-[TestCategory(TestCategories.Integration)]
+[TestCategory(TestCategories.WithoutSettings)]
 [DoNotParallelize]
 public class TestExamplesWithoutSettings
 {
