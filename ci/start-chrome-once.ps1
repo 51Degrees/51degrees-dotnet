@@ -5,6 +5,11 @@
 # takes longer than the limit is stopped, and one that exits with an error is
 # reported with its error output, both as warnings, and the tests then run as
 # they would have without it.
+#
+# Starting Chrome directly does not take away all of the first test's extra
+# time, so it then also runs one session through the driver, as each test
+# does: the driver started and ready, a headless session, a blank page and the
+# session ended, each part timed.
 param(
     # The longest each first start is given.
     [int]$LimitSeconds = 300
@@ -127,4 +132,117 @@ try {
         "--user-data-dir=$userDataDir", '--dump-dom', 'about:blank'))
 } finally {
     Remove-Item -Recurse -Force $userDataDir -ErrorAction SilentlyContinue
+}
+
+# The browser to name to the driver, being the file CHROME_BIN names, then the
+# first browser on the path. With neither, none is named and the driver finds
+# Chrome itself.
+function Find-ChromeBinary {
+    if ($env:CHROME_BIN -and (Test-Path $env:CHROME_BIN -PathType Leaf)) {
+        return $env:CHROME_BIN
+    }
+    return Find-OnPath 'google-chrome', 'google-chrome-stable', 'chromium-browser', 'chromium', 'chrome.exe'
+}
+
+# A free port on the loopback address for the driver to listen on.
+function Get-FreePort {
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+    $listener.Start()
+    try {
+        return $listener.LocalEndpoint.Port
+    } finally {
+        $listener.Stop()
+    }
+}
+
+# Sends one WebDriver command and gives the seconds it took and its value.
+function Invoke-DriverCommand {
+    param([string]$Method, [string]$Uri, $Body)
+    $arguments = @{ Method = $Method; Uri = $Uri; TimeoutSec = $LimitSeconds }
+    if ($null -ne $Body) {
+        $arguments.Body = ($Body | ConvertTo-Json -Depth 6 -Compress)
+        $arguments.ContentType = 'application/json'
+    }
+    $watch = [System.Diagnostics.Stopwatch]::StartNew()
+    $response = Invoke-RestMethod @arguments
+    return [pscustomobject]@{
+        Seconds = [math]::Round($watch.Elapsed.TotalSeconds, 1)
+        Value   = $response.value
+    }
+}
+
+# Starts the driver, waits until it says it is ready, opens a session with
+# the arguments the browser tests give Chrome, loads a blank page, ends the
+# session and stops the driver, printing how long each part took. A part that
+# fails is a warning, and the driver and the browser's profile are always
+# cleaned up.
+function Measure-DriverSession {
+    param([string]$Driver, [string]$Binary)
+    $base = "http://127.0.0.1:$(Get-FreePort)"
+    $userDataDir = Join-Path ([System.IO.Path]::GetTempPath()) "chrome-driver-session-$PID"
+    $output = [System.IO.Path]::GetTempFileName()
+    $errors = [System.IO.Path]::GetTempFileName()
+    $process = $null
+    $session = $null
+    try {
+        $watch = [System.Diagnostics.Stopwatch]::StartNew()
+        $process = Start-Process -FilePath $Driver -ArgumentList "--port=$(([uri]$base).Port)" `
+            -PassThru -NoNewWindow -RedirectStandardOutput $output -RedirectStandardError $errors
+        $ready = $false
+        while (-not $ready -and -not $process.HasExited -and
+            $watch.Elapsed.TotalSeconds -lt $LimitSeconds) {
+            try {
+                $ready = [bool](Invoke-RestMethod -Uri "$base/status" -TimeoutSec 5).value.ready
+            } catch {
+                Start-Sleep -Milliseconds 250
+            }
+        }
+        $readySeconds = [math]::Round($watch.Elapsed.TotalSeconds, 1)
+        if (-not $ready) {
+            Write-Host "::warning title=Chrome driver not ready::The Chrome driver $Driver was not ready after $readySeconds s. $((Get-Content $errors -TotalCount 5 -ErrorAction SilentlyContinue) -join ' ')"
+            return
+        }
+        $chromeOptions = @{
+            args = @('--headless', '--no-sandbox', '--disable-dev-shm-usage',
+                '--disable-gpu', "--user-data-dir=$userDataDir")
+        }
+        if ($Binary) {
+            $chromeOptions.binary = $Binary
+        }
+        $created = Invoke-DriverCommand -Method Post -Uri "$base/session" -Body @{
+            capabilities = @{
+                alwaysMatch = @{
+                    browserName           = 'chrome'
+                    acceptInsecureCerts   = $true
+                    'goog:chromeOptions'  = $chromeOptions
+                }
+            }
+        }
+        $session = $created.Value.sessionId
+        $page = Invoke-DriverCommand -Method Post -Uri "$base/session/$session/url" -Body @{ url = 'about:blank' }
+        $ended = Invoke-DriverCommand -Method Delete -Uri "$base/session/$session"
+        $session = $null
+        Write-Host ("Ran one Chrome driver session before the browser tests. " +
+            "The driver was ready in $readySeconds s, the session started in $($created.Seconds) s, " +
+            "a blank page loaded in $($page.Seconds) s and the session ended in $($ended.Seconds) s")
+    } catch {
+        Write-Host "::warning title=Chrome driver session failed::$($_.Exception.Message)"
+    } finally {
+        if ($session) {
+            try {
+                Invoke-RestMethod -Method Delete -Uri "$base/session/$session" -TimeoutSec 30 | Out-Null
+            } catch {
+                Write-Host "The session $session could not be ended: $($_.Exception.Message)"
+            }
+        }
+        if ($process -and -not $process.HasExited) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        }
+        Remove-Item $output, $errors -Force -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force $userDataDir -ErrorAction SilentlyContinue
+    }
+}
+
+if ($driver) {
+    Measure-DriverSession -Driver $driver -Binary (Find-ChromeBinary)
 }

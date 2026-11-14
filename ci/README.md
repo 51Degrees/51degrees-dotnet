@@ -65,10 +65,13 @@ The secrets are the ones the separate repositories used: `ACCESS_TOKEN`,
 `_51DEGREES_RESOURCE_KEY_BESPOKE` and the `ACCEPTCH_*_KEY` set.
 
 `run-unit-tests.ps1` and `run-integration-tests.ps1` each begin by running
-`start-chrome-once.ps1`, which starts the Chrome driver and then Chrome once,
-headless, and prints how long each took. The first start of Chrome on a runner
-takes many times longer than the starts after it, so it is made before the
-browser tests and counts against no test's limit. A start that takes more
-than 300 seconds is stopped, and one that fails is reported, both as warnings,
-and the tests then run as they would have. `start-chrome-once.Tests.ps1`
-tests it with stand-ins for Chrome, run with Pester 5 or later.
+`start-chrome-once.ps1`, which asks the Chrome driver for its version and
+starts Chrome once, headless, and then runs one session through the driver as
+a browser test does (the driver started and ready, a session, a blank page and
+the session ended), printing how long each part took. The first start of
+Chrome and the first driver session on a runner take many times longer than
+the ones after them, so both are made before the browser tests and count
+against no test's limit. A part that takes more than 300 seconds is stopped,
+and one that fails is reported, both as warnings, and the tests then run as
+they would have. `start-chrome-once.Tests.ps1` tests it with stand-ins for
+Chrome and the driver, run with Pester 5 or later.
