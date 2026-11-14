@@ -29,6 +29,14 @@ namespace FiftyOne.Pipeline.Core.Data
     /// specific FlowElement based on the supplied evidence.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/conceptual-overview.md#element-data">Specification</see>
     /// </summary>
+    /// <remarks>
+    /// An instance is written only by the Flow Element that creates it,
+    /// while that Flow Element processes. It is not intended to be written
+    /// from several threads at once, nor read while it is being written.
+    /// Once the Flow Element has finished, the instance is safe to read from
+    /// several threads at once, as the Flow Elements of a parallel group do.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/thread-safety.md#element-data">thread safety specification</see>.
+    /// </remarks>
     public interface IElementData : IData
     {
         /// <summary>
