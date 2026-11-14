@@ -1,18 +1,21 @@
 [
   {
     "Name": "common",
+    "Path": "common",
     "Solutions": [
       "common/FiftyOne.Common.sln"
     ]
   },
   {
     "Name": "caching",
+    "Path": "caching",
     "Solutions": [
       "caching/FiftyOne.Caching.sln"
     ]
   },
   {
     "Name": "pipeline",
+    "Path": "pipeline",
     "Solutions": [
       "pipeline/FiftyOne.Pipeline.sln",
       "pipeline/FiftyOne.Pipeline.Elements.sln",
@@ -24,6 +27,7 @@
   },
   {
     "Name": "device-detection",
+    "Path": "device-detection",
     "Solutions": [
       "device-detection/FiftyOne.DeviceDetection.Core.slnf"
     ],
@@ -34,6 +38,7 @@
   },
   {
     "Name": "ip-intelligence",
+    "Path": "ip-intelligence",
     "Solutions": [
       "ip-intelligence/FiftyOne.IpIntelligence.sln"
     ],
@@ -44,6 +49,7 @@
   },
   {
     "Name": "location",
+    "Path": "location",
     "Solutions": [
       "location/FiftyOne.GeoLocation.sln"
     ]

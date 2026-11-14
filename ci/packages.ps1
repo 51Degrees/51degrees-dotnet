@@ -52,6 +52,7 @@ $Packages = @(Get-Content -Raw "$PSScriptRoot/packages.json" | ConvertFrom-Json)
 # families.json lists the folders that came from separate repositories, in
 # the order they build, with what dotnet builds for each:
 #
+#   Path       the folder
 #   Solutions  what dotnet builds for the folder, in dependency order
 #   Framework  the .NET Framework solutions, which need msbuild on Windows
 #   Platform   whether the solutions take a Platform (the on-premise engines).
