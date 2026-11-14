@@ -214,7 +214,7 @@ the OWID reader named it.
 | `ImplementationCapacityExceeded` | Structurally valid, but larger than this runtime can hold, or dated past the end of the year 9999 where `DateTime` stops. The four byte minute count runs to 15 February 10186, and the read answers with this status rather than throwing on such a count. |
 | `MalformedEnvelope` | Malformed in a way none of the above describes. |
 | `AbsentNode` | The OWID version 0 marker, which stands for an absent node and is never a 51Did. |
-| `PayloadTooShort` | A valid OWID whose payload is shorter than the five byte 51Did header, so the type cannot be read. |
+| `PayloadTooShort` | A valid OWID whose payload is shorter than the five byte 51Did header, so the type cannot be read. A payload whose flags byte names another version is `UnsupportedPayloadVersion` instead, whatever its length. |
 | `InvalidTypePayloadLength` | The header is present but the payload is shorter than the minimum for the type it names. |
 | `UnsupportedPayloadVersion` | Bits 4 and 5 of the flags byte name a payload version other than 0, so the fields are not read. |
 | `NoUsage` | Bits 0 to 2 of the flags byte are all clear, so the payload names no usage. |

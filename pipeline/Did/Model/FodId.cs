@@ -668,20 +668,25 @@ namespace FiftyOne.Did.Model
         {
             unpacked = default;
             var payload = owid.PayloadInternal;
-            if (payload.Length < HeaderLength)
+            if (payload.Length <= FlagsOffset)
             {
                 return FodIdParseStatus.PayloadTooShort;
             }
             var flags = payload[FlagsOffset];
-            // The version is read before any field, because a later
-            // version exists precisely because a field moved. Reading a
-            // payload of a version this package does not know under the
-            // layout it does know would answer with values that are wrong
-            // rather than absent, which is worse than refusing, and a
-            // version that nothing checks protects nothing.
+            // The version is read before any field, and before the header
+            // length is checked, because a later version exists precisely
+            // because a field moved and the header length belongs to the
+            // layout too. Reading a payload of a version this package does
+            // not know under the layout it does know would answer with
+            // values that are wrong rather than absent, and a version that
+            // nothing checks protects nothing.
             if (PayloadVersionOf(flags) != SupportedPayloadVersion)
             {
                 return FodIdParseStatus.UnsupportedPayloadVersion;
+            }
+            if (payload.Length < HeaderLength)
+            {
+                return FodIdParseStatus.PayloadTooShort;
             }
             // A payload that names no usage is refused rather than read.
             // The cloud never writes one, so it is damaged or forged, and
