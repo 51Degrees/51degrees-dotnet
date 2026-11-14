@@ -405,7 +405,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
                     if (EvidenceKeyFilter.Include(evidenceItem.Key))
                     {
                         relevantEvidence.Add(new KeyValuePair<string, string>(
-                            evidenceItem.Key,
+                            NativeKey(evidenceItem.Key),
                             evidenceItem.Value.ToString()));
                     }
                 }
@@ -417,6 +417,27 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
                     _engine.process(relevantEvidence)));
 #pragma warning restore CA2000 // Dispose objects before losing scope
             }
+        }
+
+        /// <summary>
+        /// The key as the native code reads it. Evidence keys are
+        /// case-insensitive, but the native code matches the prefix, the
+        /// part up to the first full stop, in lower case only, so the
+        /// prefix is passed in lower case. The native code compares the
+        /// field after it ignoring case, so the field is passed as it is.
+        /// </summary>
+        private static string NativeKey(string key)
+        {
+            var dot = key.IndexOf('.');
+            for (var i = 0; i < dot; i++)
+            {
+                if (char.IsUpper(key[i]))
+                {
+                    return key.Substring(0, dot).ToLowerInvariant() +
+                        key.Substring(dot);
+                }
+            }
+            return key;
         }
 
         /// <summary>
