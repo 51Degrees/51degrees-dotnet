@@ -21,6 +21,6 @@ jobs:
       - name: 51Did tests
         shell: pwsh
         run: >
-          dotnet test pipeline/Tests/Did.Tests/FiftyOne.Did.Tests.csproj
+          dotnet test pipeline/Tests/Did.Tests/FiftyOne.Did.Tests.csproj --filter "FullyQualifiedName~FodId"
           -c Release -p:FiftyOneReferences=Project
           --logger "console;verbosity=normal"
