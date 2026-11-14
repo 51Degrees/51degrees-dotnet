@@ -1,0 +1,26 @@
+name: Temporary usage sharing check
+
+# Throwaway workflow for tmp/issues-dotnet-us-* branches. Deleted with
+# the branch.
+on:
+  push:
+    branches:
+      - 'tmp/issues-dotnet-us-*'
+
+jobs:
+  DidTests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Usage sharing tests
+        shell: pwsh
+        run: >
+          dotnet test pipeline/Tests/Engines.FiftyOne.Tests/FiftyOne.Pipeline.Engines.FiftyOne.Tests.csproj --filter "FullyQualifiedName~ShareUsage|FullyQualifiedName~EvidenceKeyFilterShareUsage"
+          -c Release -p:FiftyOneReferences=Project
+          --logger "console;verbosity=normal"
