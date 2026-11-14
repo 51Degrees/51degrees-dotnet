@@ -344,10 +344,10 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             {
                 if (licenseKey == null)
                 {
-                    licenseKey = Environment.GetEnvironmentVariable(Constants.LICENSE_KEY_ENV_VAR);
+                    licenseKey = LicenseKeyFromEnvironment();
                 }
                 const string keySubmissionPaths = "as the second command line argument to this program, or as " +
-                        $"an environment variable named '{Constants.LICENSE_KEY_ENV_VAR}'";
+                        $"an environment variable named '{Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR}'";
                 if (licenseKey == null)
                 {
                     logger.LogError("In order to test this example you will need a 51Degrees " +
@@ -419,13 +419,25 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
         /// </summary>
         private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-updatedatafile-console-program.cs&utm_term=licence-key";
 
+        /// <summary>
+        /// The licence key from the environment. It is the value of
+        /// '_51DEGREES_LICENSE_KEY' or, when that is not set, of the name this
+        /// example read before, which is reported as deprecated.
+        /// </summary>
+        public static string LicenseKeyFromEnvironment()
+        {
+            return ExampleUtils.FromEnvironment(
+                Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR,
+                Constants.LICENSE_KEY_ENV_VAR);
+        }
+
         public static void Main(string[] args)
         {
             // Use the supplied path for the data file or find the lite file that is included
             // in the repository.
             var dataFile = args.Length > 0 ? args[0] : null;
             var licenseKey = args.Length > 1 ? args[1] :
-                Environment.GetEnvironmentVariable(Constants.LICENSE_KEY_ENV_VAR);
+                LicenseKeyFromEnvironment();
 
             if (string.IsNullOrWhiteSpace(licenseKey))
             {
@@ -475,7 +487,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             output.WriteLine("Updating the data file downloads the Enterprise data " +
                 "file, which needs a licence key. Give the key as the second command " +
                 "line argument, or in the environment variable " +
-                $"'{Constants.LICENSE_KEY_ENV_VAR}'. Contact us for a key and a copy " +
+                $"'{Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR}'. Contact us for a key and a copy " +
                 $"at {ContactUs}");
         }
 
