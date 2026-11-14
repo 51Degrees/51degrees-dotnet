@@ -919,6 +919,64 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         }
 
         /// <summary>
+        /// A data file disposed while it is being registered, after the
+        /// service's first check, gets no check on start-up.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_Register_DisposedDuringRegistration_NoStartUpCheck()
+        {
+            var timers = ConfigureInertTimers();
+            // An engine with a temporary folder and a data file path, so a
+            // check on start-up would reach the data update URL.
+            var engine = new Mock<IOnPremiseAspectEngine>();
+            engine.Setup(e => e.TempDataDirPath).Returns(Path.GetTempPath());
+            var file = new AspectEngineDataFile()
+            {
+                Engine = engine.Object,
+                Configuration = new DataFileConfiguration()
+                {
+                    AutomaticUpdatesEnabled = true,
+                    UpdateOnStartup = true,
+                    DataUpdateUrl = @"http://www.test.com",
+                    DataFilePath = Path.Combine(
+                        Path.GetTempPath(), Guid.NewGuid().ToString("N")),
+                    FileSystemWatcherEnabled = false,
+                    PollingIntervalSeconds = RACE_POLLING_SECONDS,
+                    MaxRandomisationSeconds = 0
+                }
+            };
+            var service = new DataUpdateService(
+                new DisposeOnRegisterLogger(file),
+                _httpClient,
+                _fileSystem.Object,
+                _timerFactory.Object);
+            try
+            {
+                // Act
+                try
+                {
+                    service.RegisterDataFile(file);
+                }
+                catch (DataUpdateException)
+                {
+                    // A check that ran on the disposed file can fail, which
+                    // the assertion below reports more plainly.
+                }
+
+                // Assert
+                _httpHandler.Verify(
+                    h => h.Send(It.IsAny<HttpRequestMessage>()),
+                    Times.Never(),
+                    "A check on start-up ran for a data file disposed while " +
+                    "it was being registered.");
+            }
+            finally
+            {
+                timers.ForEach(t => t.Dispose());
+            }
+        }
+
+        /// <summary>
         /// The random delay added to the polling interval must be safe to
         /// calculate on several timer threads at once. A random number
         /// generator used unsafely returns the same value to different
