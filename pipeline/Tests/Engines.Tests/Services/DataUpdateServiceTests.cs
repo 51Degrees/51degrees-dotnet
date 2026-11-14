@@ -2796,6 +2796,73 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         }
 
         /// <summary>
+        /// A refresh from downloaded data that fails reports the message
+        /// the specification's table of errors gives for a refresh from
+        /// data held in memory, word for word, so that support sees the same
+        /// text from every language. A programmatic check passes the error
+        /// to its caller.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/706de1f0cb3edd560eb7fd7ef3bb19b93a4883dc/pipeline-specification/features/data-updates.md#errors">Specification</see>
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_ManualCheck_InMemoryRefreshFails_Message()
+        {
+            // Arrange
+            ConfigureNoFileSystem();
+            _timerFactory.Setup(f => f(
+                It.IsAny<TimerCallback>(),
+                It.IsAny<object>(),
+                It.IsAny<TimeSpan>()))
+                .Returns((TimerCallback callback, object state, TimeSpan interval) =>
+                    new Timer(callback, state, Timeout.Infinite, Timeout.Infinite));
+            _httpHandler.Setup(h => h.Send(It.IsAny<HttpRequestMessage>()))
+                .Returns(() =>
+                {
+                    var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StreamContent(File.OpenRead(@"Resources/file.gz")),
+                    };
+                    response.Content.Headers.Add(
+                        "Content-MD5", "08527dcbdd437e7fa6c084423d06dba6");
+                    return response;
+                });
+            _ignoreErrors = 1;
+            Mock<IOnPremiseAspectEngine> engine = new Mock<IOnPremiseAspectEngine>();
+            engine.Setup(e => e.TempDataDirPath).Returns(Path.GetTempPath());
+            var config = new DataFileConfiguration()
+            {
+                AutomaticUpdatesEnabled = true,
+                DataUpdateUrl = @"http://www.test.com",
+                VerifyMd5 = true,
+                DecompressContent = true,
+                FileSystemWatcherEnabled = false,
+                VerifyModifiedSince = false,
+                MemoryOnly = true,
+                DataStream = new MemoryStream()
+            };
+            var file = new AspectEngineDataFile()
+            {
+                Engine = engine.Object,
+                Configuration = config
+            };
+            engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
+            engine.Setup(e => e.RefreshData(config.Identifier, It.IsAny<Stream>()))
+                .Throws(new ApplicationException("The data cannot be used."));
+            _dataUpdate.RegisterDataFile(file);
+
+            // Act
+            var thrown = Assert.ThrowsExactly<DataUpdateException>(
+                () => _dataUpdate.CheckForUpdate(engine.Object));
+
+            // Assert
+            Assert.AreEqual(
+                AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED, thrown.Status);
+            Assert.AreEqual(
+                "An error occurred when applying a data update to engine " +
+                $"'{engine.Object.GetType().Name}'.",
+                thrown.Message);
+        }
+
+        /// <summary>
         /// After a manual check that finds an update, automatic updates are
         /// still on and the data file has one polling timer, for the next
         /// check, as after an update found by the timer.
