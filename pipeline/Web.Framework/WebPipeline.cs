@@ -302,34 +302,7 @@ namespace FiftyOne.Pipeline.Web.Framework
 
             try
             {
-                EvidenceFiller filler;
-                try
-                {
-                    filler = new EvidenceFiller(flowData);
-                }
-                catch (Exception ex)
-                {
-                    flowData.AddError(ex, null);
-                    throw;
-                }
-
-                Fill(ref filler, request);
-
-                // The usage sharing element accepts no evidence and reads
-                // the whole request from here instead, so this is added
-                // whatever the pipeline accepts.
-                flowData.AddEvidence(
-                    Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
-                    new RequestView(request));
-
-                if (filler.Errors is IList<Exception> errors)
-                {
-                    foreach (var error in errors)
-                    {
-                        flowData.AddError(error, null);
-                    }
-                    throw new AggregateException(errors);
-                }
+                AddEvidenceFromRequest(flowData, request);
 
                 // Process the evidence and return the result
                 flowData.Process();
@@ -373,6 +346,53 @@ namespace FiftyOne.Pipeline.Web.Framework
             }
 
             return flowData;
+        }
+
+        /// <summary>
+        /// Add the evidence the pipeline accepts from the request, then the
+        /// request itself for the usage sharing element, which accepts no
+        /// evidence and reads the whole request instead, so the request is
+        /// added whatever the pipeline accepts.
+        /// </summary>
+        /// <param name="flowData">The flow data to add the evidence to.</param>
+        /// <param name="request">The request to read.</param>
+        /// <exception cref="AggregateException">
+        /// Thrown if any value could not be added, after every value has
+        /// been tried and each error added to the flow data.
+        /// </exception>
+        /// <remarks>
+        /// An error reading the flow data's evidence key filter is added to
+        /// the flow data and thrown as it is.
+        /// </remarks>
+        internal static void AddEvidenceFromRequest(
+            IFlowData flowData,
+            HttpRequest request)
+        {
+            EvidenceFiller filler;
+            try
+            {
+                filler = new EvidenceFiller(flowData);
+            }
+            catch (Exception ex)
+            {
+                flowData.AddError(ex, null);
+                throw;
+            }
+
+            Fill(ref filler, request);
+
+            flowData.AddEvidence(
+                Core.Constants.EVIDENCE_HTTPREQUEST_KEY,
+                new RequestView(request));
+
+            if (filler.Errors is IList<Exception> errors)
+            {
+                foreach (var error in errors)
+                {
+                    flowData.AddError(error, null);
+                }
+                throw new AggregateException(errors);
+            }
         }
 
         /// <summary>
