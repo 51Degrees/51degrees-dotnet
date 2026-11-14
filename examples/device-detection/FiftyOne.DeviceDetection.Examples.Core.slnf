@@ -18,6 +18,8 @@
       "OnPremise\\Metadata-Console\\Metadata-Console.csproj",
       "OnPremise\\OfflineProcessing-Console\\OfflineProcessing-Console.csproj",
       "OnPremise\\Performance-Console\\Performance-Console.csproj",
+      "OnPremise\\PerformanceMultiProperty-Console\\PerformanceMultiProperty-Console.csproj",
+      "OnPremise\\PerformanceSweep-Console\\PerformanceSweep-Console.csproj",
       "OnPremise\\UpdateDataFile-Console\\UpdateDataFile-Console.csproj",
       "Tests\\Example.Tests.Cloud\\FiftyOne.DeviceDetection.Example.Tests.Cloud.csproj",
       "Tests\\Example.Tests.OnPremise\\FiftyOne.DeviceDetection.Example.Tests.OnPremise.csproj",

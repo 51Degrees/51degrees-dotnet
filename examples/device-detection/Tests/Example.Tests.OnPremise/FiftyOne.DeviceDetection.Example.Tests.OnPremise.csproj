@@ -31,6 +31,9 @@
     <ProjectReference Include="..\..\OnPremise\MatchMetrics-Console\MatchMetrics-Console.csproj" />
     <ProjectReference Include="..\..\OnPremise\Metadata-Console\Metadata-Console.csproj" />
     <ProjectReference Include="..\..\OnPremise\OfflineProcessing-Console\OfflineProcessing-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\Performance-Console\Performance-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\PerformanceMultiProperty-Console\PerformanceMultiProperty-Console.csproj" />
+    <ProjectReference Include="..\..\OnPremise\PerformanceSweep-Console\PerformanceSweep-Console.csproj" />
     <ProjectReference Include="..\..\OnPremise\UpdateDataFile-Console\UpdateDataFile-Console.csproj" />
   </ItemGroup>
 

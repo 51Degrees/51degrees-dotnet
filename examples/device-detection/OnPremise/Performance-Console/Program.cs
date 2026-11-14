@@ -332,7 +332,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Performance
             }
         }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             // Use the supplied path for the data file or find the lite file that is included
             // in the repository.
