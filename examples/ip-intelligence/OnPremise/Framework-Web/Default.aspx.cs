@@ -35,8 +35,9 @@ using System.Web.UI;
 /// 
 /// The source code for this example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/ip-intelligence/OnPremise/Framework-Web).
 /// 
-/// This example requires an enterprise IP Intelligence data file (.ipi). 
-/// To obtain an enterprise data file for testing, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx.cs&amp;utm_term=header).
+/// This example uses the free Lite IP Intelligence data file (.ipi), and shows the
+/// properties that only the Enterprise data file has as needing it.
+/// To ask for a copy of the Enterprise data file, please [contact us](https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx.cs&amp;utm_term=header).
 /// 
 /// Required NuGet Dependencies: 
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)

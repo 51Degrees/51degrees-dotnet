@@ -20,19 +20,39 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* *@
 
+@using FiftyOne.DeviceDetection.Examples
+@using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
+@using FiftyOne.Pipeline.Engines.Data
 @model FiftyOne.Pipeline.Core.Data.IFlowData
+@functions {
+    /// <summary>
+    /// The value of a property as text. The free Lite data file does not
+    /// have the hardware and device type properties, and reading one it
+    /// lacks throws, so such a property is shown as needing the Enterprise
+    /// data file and is never read.
+    /// </summary>
+    private static string Show(
+        DeviceDetectionHashEngine engine,
+        string property,
+        Func<IAspectPropertyValue> value)
+    {
+        if (ExampleUtils.HasProperty(engine, property) == false)
+        {
+            return ExampleUtils.NEEDS_ENTERPRISE;
+        }
+        var result = value();
+        if (result.HasValue == false)
+        {
+            return $"Unknown ({result.NoValueMessage})";
+        }
+        return result.Value is IEnumerable<string> list ?
+            string.Join(", ", list) :
+            result.Value.ToString();
+    }
+}
 @{
     ViewData["Title"] = "User Agent Client Hints Example";
     var deviceData = Model.Get<FiftyOne.DeviceDetection.IDeviceData>();
-    var hardwareVendor = deviceData.HardwareVendor;
-    var hardwareName = deviceData.HardwareName;
-    var deviceType = deviceData.DeviceType;
-    var platformVendor = deviceData.PlatformVendor;
-    var platformName = deviceData.PlatformName;
-    var platformVersion = deviceData.PlatformVersion;
-    var browserVendor = deviceData.BrowserVendor;
-    var browserName = deviceData.BrowserName;
-    var browserVersion = deviceData.BrowserVersion;
     var engine = Model.Pipeline.GetElement<FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements.DeviceDetectionHashEngine>();
 }
 
@@ -126,15 +146,15 @@
             </tr>
         </thead>
         <tbody>
-            <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Vendor:</td><td class="c-eg-table__cell">@(hardwareVendor.HasValue ? hardwareVendor.Value : $"Unknown ({hardwareVendor.NoValueMessage})")</td></tr>
-            <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Name:</td><td class="c-eg-table__cell">@(hardwareName.HasValue ? string.Join(", ", hardwareName.Value) : $"Unknown ({hardwareName.NoValueMessage})")</td></tr>
-            <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Device Type:</td><td class="c-eg-table__cell">@(deviceType.HasValue ? deviceType.Value : $"Unknown ({deviceType.NoValueMessage})")</td></tr>
-            <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Vendor:</td><td class="c-eg-table__cell">@(platformVendor.HasValue ? platformVendor.Value : $"Unknown ({platformVendor.NoValueMessage})")</td></tr>
-            <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Name:</td><td class="c-eg-table__cell">@(platformName.HasValue ? platformName.Value : $"Unknown ({platformName.NoValueMessage})")</td></tr>
-            <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Version:</td><td class="c-eg-table__cell">@(platformVersion.HasValue ? platformVersion.Value : $"Unknown ({platformVersion.NoValueMessage})")</td></tr>
-            <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Vendor:</td><td class="c-eg-table__cell">@(browserVendor.HasValue ? browserVendor.Value : $"Unknown ({browserVendor.NoValueMessage})")</td></tr>
-            <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Name:</td><td class="c-eg-table__cell">@(browserName.HasValue ? browserName.Value : $"Unknown ({browserName.NoValueMessage})")</td></tr>
-            <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Version:</td><td class="c-eg-table__cell">@(browserVersion.HasValue ? browserVersion.Value : $"Unknown ({browserVersion.NoValueMessage})")</td></tr>
+            <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Vendor:</td><td class="c-eg-table__cell" id="HardwareVendor">@Show(engine, "HardwareVendor", () => deviceData.HardwareVendor)</td></tr>
+            <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Name:</td><td class="c-eg-table__cell" id="HardwareName">@Show(engine, "HardwareName", () => deviceData.HardwareName)</td></tr>
+            <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Device Type:</td><td class="c-eg-table__cell" id="DeviceType">@Show(engine, "DeviceType", () => deviceData.DeviceType)</td></tr>
+            <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Vendor:</td><td class="c-eg-table__cell" id="PlatformVendor">@Show(engine, "PlatformVendor", () => deviceData.PlatformVendor)</td></tr>
+            <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Name:</td><td class="c-eg-table__cell" id="PlatformName">@Show(engine, "PlatformName", () => deviceData.PlatformName)</td></tr>
+            <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Version:</td><td class="c-eg-table__cell" id="PlatformVersion">@Show(engine, "PlatformVersion", () => deviceData.PlatformVersion)</td></tr>
+            <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Vendor:</td><td class="c-eg-table__cell" id="BrowserVendor">@Show(engine, "BrowserVendor", () => deviceData.BrowserVendor)</td></tr>
+            <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Name:</td><td class="c-eg-table__cell" id="BrowserName">@Show(engine, "BrowserName", () => deviceData.BrowserName)</td></tr>
+            <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Version:</td><td class="c-eg-table__cell" id="BrowserVersion">@Show(engine, "BrowserVersion", () => deviceData.BrowserVersion)</td></tr>
         </tbody>
     </table>
 </div>
