@@ -24,7 +24,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Web.Shared;
 using Microsoft.AspNetCore.Http;
@@ -46,17 +45,6 @@ namespace FiftyOne.Pipeline.Web.Services
         private ILogger<WebRequestEvidenceService> _logger;
 
         /// <summary>
-        /// True if session is enabled.
-        /// </summary>
-        private bool _sessionEnabled;
-        
-        /// <summary>
-        /// True if session has been checked for. Once it has been checked it
-        /// will not change.
-        /// </summary>
-        private bool _checkedForSession = false;
-
-        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="logger">A logger</param>
@@ -67,44 +55,20 @@ namespace FiftyOne.Pipeline.Web.Services
         }
 
         /// <summary>
-        /// Check whether or not session is enabled. If it is not, then don't
-        /// try to get evidence from it as an exception may be thrown.
+        /// The request's session, or null where session middleware has not
+        /// given the request one. The session feature is read rather than
+        /// HttpContext.Session, which throws when there is no session, and
+        /// it is read for each request, because session middleware can run
+        /// for some requests and not for others.
         /// </summary>
         /// <param name="httpRequest">
-        /// The request to check for a session.
+        /// The request to read the session of.
         /// </param>
         /// <returns>
-        /// True if session is enabled.
+        /// The session, or null.
         /// </returns>
-        private bool GetSessionEnabled(HttpRequest httpRequest)
-        {
-            if (_checkedForSession == false)
-            {
-                try
-                {
-                    if (httpRequest.HttpContext != null &&
-                        httpRequest.HttpContext.Session != null)
-                    {
-                        _sessionEnabled = true;
-                    }
-                    else
-                    {
-                        _sessionEnabled = false;
-                    }
-                }
-#pragma warning disable CA1031 // Do not catch general exception types
-                // This is a non-critical operation so we just
-                // want to catch any exceptions and handle them
-                // the same way, by disabling the feature.
-                catch (Exception)
-#pragma warning restore CA1031 // Do not catch general exception types
-                {
-                    _sessionEnabled = false;
-                }
-                _checkedForSession = true;
-            }
-            return _sessionEnabled;
-        }
+        private static ISession GetSession(HttpRequest httpRequest) =>
+            httpRequest.HttpContext?.Features?.Get<ISessionFeature>()?.Session;
 
         /// <summary>
         /// Use the specified <see cref="HttpRequest"/> to populated the 
@@ -172,7 +136,7 @@ namespace FiftyOne.Pipeline.Web.Services
                 }
                 // Add form parameters to the evidence.
                 if (httpRequest.Method == Shared.Constants.METHOD_POST &&
-                    Shared.Constants.CONTENT_TYPE_FORM.Contains(httpRequest.ContentType))
+                    FormContentType.IsForm(httpRequest.ContentType))
                 {
                     try
                     {
@@ -204,16 +168,17 @@ namespace FiftyOne.Pipeline.Web.Services
                             Messages.MessageInvalidForm);
                     }
                 }
-                if (GetSessionEnabled(httpRequest))
+                var session = GetSession(httpRequest);
+                if (session != null)
                 {
-                    foreach (var sessionKey in httpRequest.HttpContext.Session.Keys)
+                    foreach (var sessionKey in session.Keys)
                     {
                         string evidenceKey = Core.Constants.EVIDENCE_SESSION_PREFIX +
                             Core.Constants.EVIDENCE_SEPERATOR + sessionKey;
-                        target.CheckAndAdd(evidenceKey, httpRequest.HttpContext.Session.GetString(sessionKey));
+                        target.CheckAndAdd(evidenceKey, session.GetString(sessionKey));
                     }
                     target.CheckAndAdd(Core.Constants.EVIDENCE_SESSION_KEY,
-                        new AspCoreSession(httpRequest.HttpContext.Session));
+                        new AspCoreSession(session));
                 }
 
                 if (httpRequest.HttpContext.Connection?.RemoteIpAddress != null)
