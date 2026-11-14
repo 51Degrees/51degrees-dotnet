@@ -65,6 +65,13 @@ namespace FiftyOne.IpIntelligence.Examples
         public const string LICENSE_KEY_ENV_VAR = "IPINTELLIGENCELICENSEKEY_DOTNET";
 
         /// <summary>
+        /// Environment variable key for the licence key the data file update
+        /// example uses. <see cref="LICENSE_KEY_ENV_VAR"/> is read when it is
+        /// not set.
+        /// </summary>
+        public const string DATA_UPDATE_LICENSE_KEY_ENV_VAR = "_51DEGREES_LICENSE_KEY";
+
+        /// <summary>
         /// Environment variable key used to supply an explicit path to the
         /// IP Intelligence data file.
         /// </summary>
