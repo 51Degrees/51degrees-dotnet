@@ -68,12 +68,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// Any header names added here are hard-coded to be blocked
         /// regardless of the settings passed to the constructor. 'cookie' is
         /// the header that carries every cookie, including the ones this
-        /// filter leaves out.
+        /// filter leaves out, and is the only header the specification
+        /// blocks by default.
         /// </summary>
         private HashSet<string> _blockedHttpHeaders = new HashSet<string>()
         {
-            "cookie",
-            "cookies"
+            "cookie"
         };
 
         /// <summary>
