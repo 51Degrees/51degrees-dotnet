@@ -47,7 +47,11 @@ Remove-Variable releasePlan
 #   Property  the MSBuild property in the root Directory.Build.props holding
 #             the package's last published version, which its own projects
 #             and every project referencing it read
-$Packages = @(Get-Content -Raw "$PSScriptRoot/packages.json" | ConvertFrom-Json)
+#
+# PowerShell variable names ignore case, so the list has a name no script
+# that reads this file gives a variable of its own, such as the $packages
+# that holds the built packages.
+$PackageList = @(Get-Content -Raw "$PSScriptRoot/packages.json" | ConvertFrom-Json)
 
 # families.json lists the folders that came from separate repositories, in
 # the order they build, with what dotnet builds for each:
@@ -123,10 +127,10 @@ function Get-PackageVersions {
         throw "common-ci's steps/release-plan.ps1 was not found, so the " +
             "release cannot be planned. Set COMMON_CI to a checkout of common-ci."
     }
-    Add-FamilyStartTags -RepoPath $RepoName -Packages $Packages
-    $plan = @(Get-ReleasePlan $RepoName $Packages)
+    Add-FamilyStartTags -RepoPath $RepoName -Packages $PackageList
+    $plan = @(Get-ReleasePlan $RepoName $PackageList)
     $versions = [ordered]@{}
-    foreach ($package in $Packages) {
+    foreach ($package in $PackageList) {
         $release = $plan | Where-Object Name -eq $package.Name
         if ($release) {
             $last = $release.Previous

@@ -30,7 +30,7 @@ BeforeAll {
 
     # The package each project file belongs to, by its path.
     $script:PackageOfProject = @{}
-    foreach ($package in $Packages) {
+    foreach ($package in $PackageList) {
         foreach ($project in Get-PackageProjects $package) {
             $PackageOfProject[$project] = $package.Name
         }
@@ -38,14 +38,41 @@ BeforeAll {
 }
 
 Describe 'packages.json' {
+    It 'is not replaced by a variable of a script that reads it' {
+        # PowerShell variable names ignore case, so a script's own
+        # $packages would replace a $Packages that packages.ps1 defines.
+        $own = [Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path $PSScriptRoot 'packages.ps1'), [ref]$null, [ref]$null)
+        $defined = @($own.EndBlock.Statements |
+            Where-Object { $_ -is [Management.Automation.Language.AssignmentStatementAst] } |
+            ForEach-Object { $_.Left.VariablePath.UserPath })
+        $defined | Should -Contain 'Families'
+        $scripts = @(Get-ChildItem $PSScriptRoot -Filter '*.ps1' |
+            Where-Object { $_.Name -notlike '*.Tests.ps1' -and $_.Name -ne 'packages.ps1' } |
+            Where-Object { (Get-Content -Raw $_.FullName) -match 'packages\.ps1' })
+        $scripts.Count | Should -BeGreaterThan 0
+        foreach ($script in $scripts) {
+            $ast = [Management.Automation.Language.Parser]::ParseFile(
+                $script.FullName, [ref]$null, [ref]$null)
+            $assigned = @($ast.FindAll({
+                $args[0] -is [Management.Automation.Language.AssignmentStatementAst]
+            }, $true) | ForEach-Object Left |
+                Where-Object { $_ -is [Management.Automation.Language.VariableExpressionAst] } |
+                ForEach-Object { $_.VariablePath.UserPath })
+            foreach ($name in $assigned) {
+                $defined | Should -Not -Contain $name -Because "$($script.Name) assigns `$$name"
+            }
+        }
+    }
+
     It 'lists every project the families pack once, by its package id' {
         $packed = @(Get-PackableProjects -Solutions ($Families.Solutions))
-        $listed = @($Packages | Where-Object { -not $_.Nuspec } |
+        $listed = @($PackageList | Where-Object { -not $_.Nuspec } |
             ForEach-Object Project)
         ($listed | Sort-Object) | Should -Be ($packed | Sort-Object)
-        $names = @($Packages.Name)
+        $names = @($PackageList.Name)
         $names.Count | Should -Be @($names | Sort-Object -Unique).Count
-        foreach ($package in $Packages | Where-Object { -not $_.Nuspec }) {
+        foreach ($package in $PackageList | Where-Object { -not $_.Nuspec }) {
             $xml = Get-ProjectXml $package.Project
             $id = (Get-Items $xml 'PackageId' | Select-Object -First 1).InnerText
             if (-not $id) {
@@ -57,7 +84,7 @@ Describe 'packages.json' {
     }
 
     It 'gives each package the packages its projects reference' {
-        foreach ($package in $Packages) {
+        foreach ($package in $PackageList) {
             $referenced = foreach ($project in Get-PackageProjects $package) {
                 $xml = Get-ProjectXml $project
                 $folder = Split-Path $project -Parent
@@ -67,7 +94,7 @@ Describe 'packages.json' {
                     $PackageOfProject[$relative] ?? "no package: $relative"
                 }
                 foreach ($item in Get-Items $xml 'FiftyOneReference') {
-                    ($Packages | Where-Object Name -eq $item.Include).Name ?? "no package: $($item.Include)"
+                    ($PackageList | Where-Object Name -eq $item.Include).Name ?? "no package: $($item.Include)"
                 }
             }
             $expected = @($referenced | Where-Object { $_ -ne $package.Name } |
@@ -81,11 +108,11 @@ Describe 'packages.json' {
         $defined = @($props.SelectNodes("//*[local-name()='PropertyGroup']/*") |
             Where-Object { $_.LocalName -match '^FiftyOne.*Version$' } |
             ForEach-Object LocalName)
-        ($defined | Sort-Object) | Should -Be (@($Packages.Property) | Sort-Object)
+        ($defined | Sort-Object) | Should -Be (@($PackageList.Property) | Sort-Object)
     }
 
     It 'gives each project a package is built from that package''s version' {
-        foreach ($package in $Packages) {
+        foreach ($package in $PackageList) {
             foreach ($project in Get-PackageProjects $package) {
                 $versions = @(Get-Items (Get-ProjectXml $project) 'Version' |
                     ForEach-Object InnerText)
@@ -99,7 +126,7 @@ Describe 'packages.json' {
         $projects.Count | Should -BeGreaterThan 0
         foreach ($project in $projects) {
             foreach ($item in Get-Items (Get-ProjectXml $project) 'FiftyOneReference') {
-                $package = $Packages | Where-Object Name -eq $item.Include
+                $package = $PackageList | Where-Object Name -eq $item.Include
                 $package | Should -Not -BeNullOrEmpty -Because "$project names $($item.Include)"
                 $item.Version | Should -Be "`$($($package.Property))" -Because "$project names $($item.Include)"
             }
@@ -107,13 +134,13 @@ Describe 'packages.json' {
     }
 
     It 'has each nuspec name the version of each FiftyOne package it depends on' {
-        foreach ($package in $Packages | Where-Object Nuspec) {
+        foreach ($package in $PackageList | Where-Object Nuspec) {
             $xml = Get-ProjectXml $package.Nuspec
             $dependencies = @(Get-Items $xml 'dependency' |
                 Where-Object { $_.id -like 'FiftyOne.*' })
             $dependencies.Count | Should -BeGreaterThan 0
             foreach ($dependency in $dependencies) {
-                $named = $Packages | Where-Object Name -eq $dependency.id
+                $named = $PackageList | Where-Object Name -eq $dependency.id
                 $named | Should -Not -BeNullOrEmpty -Because $dependency.id
                 $dependency.version | Should -Be "`$$($named.Property)`$"
                 $package.DependsOn | Should -Contain $dependency.id

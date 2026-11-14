@@ -230,11 +230,11 @@ The root `Directory.Build.targets` turns it into one or the other from the
 `FiftyOneReferences` property, which defaults to `Package`. CI builds and
 tests with `Project`, so a change that crosses folders is tested together.
 When a package's dependency changes, change the item, and when a version
-changes, change the `FiftyOne*Version` property in the root
-`Directory.Build.props`. A package that starts to reference a family it did
-not reference before also needs that family in its own family's `DependsOn` in
-`ci/packages.json`, or a release of the family it references leaves it at the
-old requirement. The metadata that holds the path is `ProjectPath`, because
+changes, change the package's `FiftyOne*Version` property in the root
+`Directory.Build.props`. A package that starts to reference another package
+also needs it in its own `DependsOn` in `ci/packages.json`, or a release of the
+package it references leaves it at the old requirement.
+`ci/packages.Tests.ps1` checks both. The metadata that holds the path is `ProjectPath`, because
 `Project` is the name MSBuild gives a `ProjectReference` GUID.
 
 Each folder that came from a separate repository keeps its own
