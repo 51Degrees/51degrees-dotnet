@@ -32,6 +32,18 @@ if ($TestFilter) {
 $Exclude = $Depth -eq 'standard' ?
     '^FiftyOne\.IpIntelligence\.OnPremise\.Tests\.dll$' : ''
 
+# The first start of Chrome on a runner takes many times longer than the
+# starts after it, so it is made here, before the browser tests, where it
+# counts against no test's limit. Linux on Arm64 has no Chrome driver, and
+# the browser tests do not run there.
+if (-not ($IsLinux -and $Arch -eq 'arm64')) {
+    try {
+        & "$PSScriptRoot/start-chrome-once.ps1"
+    } catch {
+        Write-Host "::warning title=Chrome not started::$_"
+    }
+}
+
 # The SDK-style assemblies run in parallel lanes, which ci/run-test-lanes.ps1
 # describes.
 & "$PSScriptRoot/run-test-lanes.ps1" `
