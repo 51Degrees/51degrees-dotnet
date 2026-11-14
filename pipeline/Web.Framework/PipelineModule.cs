@@ -94,7 +94,8 @@ namespace FiftyOne.Pipeline.Web.Framework
         {
             HttpContext context = ((HttpApplication)sender).Context;
 
-            if (context != null)
+            if (context != null &&
+                FiftyOneJsProvider.AnsweredWithoutProcessing(context) == false)
             {
                 PipelineCapabilities caps = context.Request.Browser as PipelineCapabilities;
                 if (caps != null)
