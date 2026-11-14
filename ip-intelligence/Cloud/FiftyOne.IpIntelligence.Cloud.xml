@@ -79,7 +79,7 @@
             and exposes them through <see cref="T:FiftyOne.IpIntelligence.Translation.Data.ICountriesTranslationData"/>.
             Like <see cref="T:FiftyOne.IpIntelligence.Cloud.FlowElements.IpiCloudEngine"/>, its property list is driven by the
             cloud metadata, so a resource key that does not grant the translation
-            properties fails fast when the pipeline is built.
+            properties leaves it with no properties and nothing to read.
             </summary>
         </member>
         <member name="M:FiftyOne.IpIntelligence.Cloud.FlowElements.CloudCountriesTranslationEngine.#ctor(Microsoft.Extensions.Logging.ILogger{FiftyOne.IpIntelligence.Cloud.FlowElements.CloudCountriesTranslationEngine},System.Func{FiftyOne.Pipeline.Core.FlowElements.IPipeline,FiftyOne.Pipeline.Core.FlowElements.FlowElementBase{FiftyOne.IpIntelligence.Cloud.Data.CloudCountriesTranslationData,FiftyOne.Pipeline.Engines.Data.IAspectPropertyMetaData},FiftyOne.IpIntelligence.Cloud.Data.CloudCountriesTranslationData})">
