@@ -1431,7 +1431,7 @@ namespace FiftyOne.Pipeline.Engines.Services
 			{
 				var read = stream.ReadAsync(
 					buffer, 0, buffer.Length, cancel.Token);
-				if (((IAsyncResult)read).AsyncWaitHandle.WaitOne(timeout) == false)
+				if (Task.WaitAny(new Task[] { read }, timeout) == -1)
 				{
 					cancel.Cancel();
 					throw new TimeoutException(
