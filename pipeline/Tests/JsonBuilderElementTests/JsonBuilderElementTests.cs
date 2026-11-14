@@ -273,6 +273,38 @@ namespace FiftyOne.Pipeline.JsonBuilderElementTests
                 $"Complete JSON: " + Environment.NewLine + json);
         }
 
+        /// <summary>
+        /// A property whose value is null without having been assigned
+        /// 'no value' has no entry of its own and no nullreason, whilst a
+        /// property with a value beside it is written.
+        /// </summary>
+        [TestMethod]
+        public void JsonBuilder_PlainNull_NoEntryAndNoNullReason()
+        {
+            _elementDataMock.Setup(ed => ed.AsDictionary()).
+                Returns(new Dictionary<string, object>() {
+                    { "property", null },
+                    { "other", "value" },
+                });
+            var testElementMetaData =
+                new Dictionary<string, IElementPropertyMetaData>();
+            testElementMetaData.Add("property", new ElementPropertyMetaData(
+                _testEngine.Object, "property", typeof(string), true));
+            testElementMetaData.Add("other", new ElementPropertyMetaData(
+                _testEngine.Object, "other", typeof(string), true));
+            _propertyMetaData.Add("test", testElementMetaData);
+
+            var json = TestIteration(1);
+
+            var test = (JObject)JObject.Parse(json)["test"];
+            Assert.IsFalse(test.ContainsKey("property"),
+                $"A plain null has an entry. Complete JSON: {json}");
+            Assert.IsFalse(test.ContainsKey("propertynullreason"),
+                $"A plain null has a nullreason. Complete JSON: {json}");
+            Assert.AreEqual("value", test["other"]?.ToString(),
+                $"The property with a value is missing. Complete JSON: {json}");
+        }
+
         public static IEnumerable<object[]> GetDelayedExecutionTestParameters
         {
             get
