@@ -242,7 +242,7 @@ Rules:
                     "Request 2, one source property absent.",
                     5,
                     120,
-                    null,
+                    true,
                     properties);
 
                 Console.WriteLine(
@@ -318,7 +318,7 @@ Rules:
                     "Request 2, one source property absent.",
                     5,
                     120,
-                    null,
+                    true,
                     properties);
 
                 Console.WriteLine(
