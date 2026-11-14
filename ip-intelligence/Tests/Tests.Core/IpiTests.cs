@@ -104,7 +104,7 @@ namespace FiftyOne.IpIntelligence.Tests.Core
             bool useLazyLoading,
             bool multiThreaded)
         {
-            var datafile = TestHelpers.Utils.GetFilePath(datafileName);
+            var datafile = TestHelpers.Utils.GetPaidFilePath(datafileName);
             var updateService = new Mock<IDataUpdateService>();
 
             // Configure the pipeline builder based on the 

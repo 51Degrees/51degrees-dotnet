@@ -28,9 +28,10 @@ using System.IO;
 namespace FiftyOne.Common.Tests;
 
 /// <summary>
-/// The repository the tests run from, for tests that check its files.
+/// Finds this repository and the files git tracks in it, for the tests that
+/// check a rule across every file.
 /// </summary>
-internal static class RepositoryFiles
+internal static class Repository
 {
     /// <summary>
     /// How long git is given to list the tracked files.
@@ -58,11 +59,9 @@ internal static class RepositoryFiles
     }
 
     /// <summary>
-    /// The files git tracks, as paths relative to the repository root
-    /// with '/' between folders. This leaves out build output and the
-    /// submodules.
+    /// The files git tracks, as paths relative to the repository root.
     /// </summary>
-    public static List<string> Tracked(string root)
+    public static List<string> TrackedFiles(string root)
     {
         var start = new ProcessStartInfo("git")
         {

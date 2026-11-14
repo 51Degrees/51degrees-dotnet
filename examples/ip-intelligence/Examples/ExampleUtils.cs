@@ -666,4 +666,76 @@ public static class ExampleUtils
         var key = GetResourceKeyFromEnv();
         setValue(string.IsNullOrWhiteSpace(key) ? string.Empty : key);
     }
+
+    /// <summary>
+    /// The line that separates the closing section from an example's own
+    /// output.
+    /// </summary>
+    private const string FindOutMoreRule =
+        "==========================================";
+
+    /// <summary>
+    /// A link to a 51degrees.com page, tagged with the example's file so
+    /// that a visit can be traced to the example.
+    /// </summary>
+    /// <param name="page">
+    /// The page's path, without a leading slash.
+    /// </param>
+    /// <param name="content">
+    /// The example's file as a lower case slug.
+    /// </param>
+    public static string FindOutMoreLink(string page, string content)
+    {
+        return "https://51degrees.com/" +
+            page + "?utm_source=code&utm_medium=example" +
+            "&utm_campaign=51degrees-dotnet" +
+            "&utm_content=" + content + "&utm_term=find-out-more";
+    }
+
+    /// <summary>
+    /// Writes the section every example ends with, which says where to
+    /// find out more about what the example showed.
+    /// </summary>
+    /// <param name="output">
+    /// Where to write the section.
+    /// </param>
+    /// <param name="content">
+    /// The example's file as a lower case slug, which tags each link.
+    /// </param>
+    /// <param name="deviceDetection">
+    /// True for an example that also uses Device Detection.
+    /// </param>
+    public static void WriteFindOutMore(
+        TextWriter output,
+        string content,
+        bool deviceDetection = false)
+    {
+        const string repository =
+            "    https://github.com/51Degrees/51degrees-dotnet/tree/main/";
+        output.WriteLine();
+        output.WriteLine(FindOutMoreRule);
+        output.WriteLine("Find out more");
+        output.WriteLine("  IP intelligence:");
+        output.WriteLine("    " + FindOutMoreLink("ip-intelligence", content));
+        if (deviceDetection)
+        {
+            output.WriteLine("  Device detection:");
+            output.WriteLine(
+                "    " + FindOutMoreLink("device-detection", content));
+        }
+        output.WriteLine("  Data files and prices:");
+        output.WriteLine("    " + FindOutMoreLink("pricing", content));
+        output.WriteLine("  Talk to 51Degrees about using it:");
+        output.WriteLine("    " + FindOutMoreLink("contact-us", content));
+        output.WriteLine(
+            "  The source code for this example and what it uses:");
+        output.WriteLine(repository + "examples/ip-intelligence");
+        output.WriteLine(repository + "ip-intelligence");
+        if (deviceDetection)
+        {
+            output.WriteLine(repository + "device-detection");
+        }
+        output.WriteLine("    https://github.com/51Degrees/51degrees-cxx");
+        output.WriteLine(repository + "pipeline");
+    }
 }

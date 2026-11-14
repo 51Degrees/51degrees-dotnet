@@ -330,7 +330,7 @@ public class DoxyfileInputTests
     [TestMethod]
     public void Doxyfile_EveryInputExists()
     {
-        var root = RepositoryFiles.Root();
+        var root = Repository.Root();
         var problems = new List<string>();
         foreach (var family in Families(root))
         {
@@ -345,8 +345,8 @@ public class DoxyfileInputTests
     [TestMethod]
     public void Doxyfile_ReadsEveryExample()
     {
-        var root = RepositoryFiles.Root();
-        var tracked = RepositoryFiles.Tracked(root);
+        var root = Repository.Root();
+        var tracked = Repository.TrackedFiles(root);
         var problems = new List<string>();
         foreach (var family in Families(root))
         {
@@ -363,8 +363,8 @@ public class DoxyfileInputTests
     [TestMethod]
     public void Doxyfile_ReadsEveryPackedProject()
     {
-        var root = RepositoryFiles.Root();
-        var tracked = RepositoryFiles.Tracked(root);
+        var root = Repository.Root();
+        var tracked = Repository.TrackedFiles(root);
         var problems = new List<string>();
         foreach (var family in Families(root))
         {
@@ -387,8 +387,8 @@ public class DoxyfileInputTests
     [TestMethod]
     public void Doxyfile_ReadsNoNumericCharacterReference()
     {
-        var root = RepositoryFiles.Root();
-        var tracked = RepositoryFiles.Tracked(root);
+        var root = Repository.Root();
+        var tracked = Repository.TrackedFiles(root);
         var families = Families(root);
         var problems = new List<string>();
         foreach (var file in tracked.Where(
@@ -422,8 +422,8 @@ public class DoxyfileInputTests
     [TestMethod]
     public void Doxyfile_NotDocumentedIsCurrent()
     {
-        var root = RepositoryFiles.Root();
-        var tracked = RepositoryFiles.Tracked(root);
+        var root = Repository.Root();
+        var tracked = Repository.TrackedFiles(root);
         var packed = new Dictionary<string, Family>(StringComparer.Ordinal);
         foreach (var family in Families(root))
         {

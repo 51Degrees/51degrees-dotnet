@@ -219,9 +219,9 @@ public class EnvironmentVariableNamesTests
         string skip,
         Func<string, string, bool> allow = null)
     {
-        var root = RepositoryFiles.Root();
+        var root = Repository.Root();
         var found = new List<string>();
-        foreach (var relative in RepositoryFiles.Tracked(root))
+        foreach (var relative in Repository.TrackedFiles(root))
         {
             if (relative == skip)
             {

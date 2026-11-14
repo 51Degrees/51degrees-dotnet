@@ -155,7 +155,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                             $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required to get a paid subscription with " +
                             $"more properties. Once subscribed, a resource key with the " +
                             $"properties required by this example " +
-                            $"can be created at https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required. You " +
+                            $"can be created at https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required. You " +
                             $"can now populate the environment variable mentioned at the start " +
                             $"of this message with the resource key or pass it as the first " +
                             $"argument on the command line.");
@@ -215,7 +215,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                     Console.Out,
                     "the 'hardware' properties a TAC lookup returns, which " +
                     "need a paid subscription",
-                    "https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required");
+                    "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required");
                 Environment.Exit(1);
             }
             catch (PropertyMissingException exception)
@@ -225,9 +225,19 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                     Console.Out,
                     "every 'hardware' property this example displays, " +
                     "which needs a paid subscription",
-                    "https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required");
+                    "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required");
                 Environment.Exit(1);
             }
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-tac-console-program.cs";
     }
 }

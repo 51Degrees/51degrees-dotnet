@@ -194,9 +194,9 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedConsole
                             $"see " +
                             $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=resource-key-required. " +
                             $"A free resource key can be created at " +
-                            $"https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=resource-key-required and populates the free " +
+                            $"https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=resource-key-required and populates the free " +
                             $"properties. With a paid subscription, a key created at " +
-                            $"https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=resource-key-required includes all the " +
+                            $"https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-console-program.cs&utm_term=resource-key-required includes all the " +
                             $"properties used by this example. " +
                             $"Once complete, populate the config file or environment variable " +
                             $"mentioned at the start of this message with the key.");
@@ -241,6 +241,16 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedConsole
             }
 
             new Example().Run(options, Console.Out);
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-gettingstarted-console-program.cs";
     }
 }

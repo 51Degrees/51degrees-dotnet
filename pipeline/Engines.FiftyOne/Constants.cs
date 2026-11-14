@@ -66,6 +66,15 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne
         internal const int SHARE_USAGE_DISPOSE_TIMEOUT_MILLISECONDS = 5000;
 
         /// <summary>
+        /// The longest in milliseconds that a usage sharing send waits for
+        /// the address of the machine. The lookup takes 0 to 54 ms on quick
+        /// machines and about 5,000 ms on one whose own name is slow to look
+        /// up, so any wait between the two gives the same result, and
+        /// 1,000 ms leaves 4 of the 5 seconds disposal has to the send.
+        /// </summary>
+        internal const int SHARE_USAGE_HOST_ADDRESS_WAIT_MILLISECONDS = 1000;
+
+        /// <summary>
         /// The default repeat evidence interval in minutes.
         /// This is the maximum time to consider a set of evidence as a 
         /// match for another (and thus, prevent it from being shared)

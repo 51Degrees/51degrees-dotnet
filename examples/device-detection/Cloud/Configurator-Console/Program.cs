@@ -30,7 +30,7 @@ using System.Net.Http;
 using System.Text;
 
 /// <summary>
-/// This example is displayed at the end of the [Configurator](https://configure.51degrees.com/?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-configurator-console-program.cs&amp;utm_term=header)
+/// This example is displayed at the end of the [configuration page](https://51degrees.com/configure/?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-configurator-console-program.cs&amp;utm_term=header)
 /// process, which is used to create resource keys for use with the 51Degrees cloud service.
 /// 
 /// It shows how to call the cloud with the newly created key and how to access the values 
@@ -150,9 +150,9 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Configurator
                             $"information see " +
                             $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required. " +
                             $"A free resource key can be created at " +
-                            $"https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required and populates the free " +
+                            $"https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required and populates the free " +
                             $"properties. With a paid subscription, a key created at " +
-                            $"https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required includes all the " +
+                            $"https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required includes all the " +
                             $"properties used by this example. " +
                             $"Once complete, pass the key as a command line argument or " +
                             $"populate the environment variable mentioned at the start of this " +
@@ -175,6 +175,16 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Configurator
                 ExampleUtils.GetResourceKeyFromEnv();
 
             Example.Run(resourceKey, Console.Out);
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-configurator-console-program.cs";
     }
 }

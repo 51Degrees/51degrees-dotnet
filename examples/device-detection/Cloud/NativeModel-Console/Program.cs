@@ -159,7 +159,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                     $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required to get a paid subscription with more " +
                     $"properties. Once subscribed, a resource " +
                     $"key with the properties required by this example can be created at " +
-                    $"https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required. You can now populate the " +
+                    $"https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required. You can now populate the " +
                     $"environment variable mentioned at the start of this message with the " +
                     $"resource key or pass it as the first argument on the command line.");
             }
@@ -182,7 +182,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                         Console.Out,
                         "the 'hardware' properties a native model lookup " +
                         "returns, which need a paid subscription",
-                        "https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
+                        "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
                     loggerFactory.Dispose();
                     Environment.Exit(1);
                 }
@@ -193,7 +193,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                         Console.Out,
                         "every 'hardware' property this example displays, " +
                         "which needs a paid subscription",
-                        "https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
+                        "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
                     loggerFactory.Dispose();
                     Environment.Exit(1);
                 }
@@ -201,6 +201,16 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
 
             // Dispose the logger to ensure any messages get flushed
             loggerFactory.Dispose();
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-nativemodel-console-program.cs";
     }
 }

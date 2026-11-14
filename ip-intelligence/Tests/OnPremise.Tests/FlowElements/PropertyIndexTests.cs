@@ -348,7 +348,7 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.FlowElements
                 builder.SetProperties(new List<string>(properties));
             }
             var engine = builder.Build(
-                dataFile ?? TestHelpers.Utils.GetFilePath(
+                dataFile ?? TestHelpers.Utils.GetPaidFilePath(
                     TestHelpers.Constants.IPI_DATA_FILE_NAME).FullName,
                 false);
             return new Context(engine);

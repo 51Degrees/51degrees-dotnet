@@ -52,7 +52,7 @@ namespace GettingStarted
                 // works unchanged against either.
                 .SetEndPoint(GetCloudEndpoint())
                 // A resource key with the properties needed by the examples
-                // can be created at https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloudrequestengine-gettingstarted-program.cs&utm_term=main.
+                // can be created at https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloudrequestengine-gettingstarted-program.cs&utm_term=main.
                 // It is read from the _51DEGREES_RESOURCE_KEY environment
                 // variable.
                 .SetResourceKey(GetResourceKey())
@@ -69,12 +69,63 @@ namespace GettingStarted
                 Console.WriteLine(result);
             }
 
+            WriteFindOutMore();
+
             // Only wait for a key where there is a keyboard to press one
             // on, so the example also runs to completion from a script.
             if (Console.IsInputRedirected == false)
             {
                 Console.ReadKey();
             }
+        }
+
+        /// <summary>
+        /// Print where to find out more, so that anyone this example is
+        /// shown to can follow up from the output itself.
+        /// </summary>
+        private static void WriteFindOutMore()
+        {
+            Console.WriteLine("==========================================");
+            Console.WriteLine("Find out more");
+            Console.WriteLine(
+                "  Resource keys, which say what the cloud service returns:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation/_services__cloud__resource_keys.html" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloudrequestengine-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine("  The 51Degrees documentation:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloudrequestengine-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine("  Plans and prices:");
+            Console.WriteLine(
+                "    https://51degrees.com/pricing" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloudrequestengine-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  Talk to 51Degrees about using the cloud service:");
+            Console.WriteLine(
+                "    https://51degrees.com/contact-us" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloudrequestengine-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  This repository, where the cloud request engine lives:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline");
+            Console.WriteLine(
+                "  The device detection engine, which reads the cloud " +
+                "service's answer into properties:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/device-detection");
         }
 
         /// <summary>

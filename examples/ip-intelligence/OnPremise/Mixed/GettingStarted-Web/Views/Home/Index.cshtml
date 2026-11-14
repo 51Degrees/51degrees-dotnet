@@ -20,7 +20,6 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* *@
 
-@using FiftyOne.Pipeline.Core.Data
 @model FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb.Model.IndexModel
 @{
     ViewData["Title"] = "Device Detection + IP Intelligence Example";
@@ -70,18 +69,18 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Vendor:</td><td class="c-eg-table__cell">@(Model.Device?.HardwareVendor?.HasValue == true ? string.Join(", ", Model.Device.HardwareVendor.Value) : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Name:</td><td class="c-eg-table__cell">@(Model.Device?.HardwareName?.HasValue == true ? string.Join(", ", Model.Device.HardwareName.Value) : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Device Type:</td><td class="c-eg-table__cell">@(Model.Device?.DeviceType?.HasValue == true ? Model.Device.DeviceType.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Vendor:</td><td class="c-eg-table__cell">@(Model.Device?.PlatformVendor?.HasValue == true ? string.Join(", ", Model.Device.PlatformVendor.Value) : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Name:</td><td class="c-eg-table__cell">@(Model.Device?.PlatformName?.HasValue == true ? Model.Device.PlatformName.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Version:</td><td class="c-eg-table__cell">@(Model.Device?.PlatformVersion?.HasValue == true ? Model.Device.PlatformVersion.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Vendor:</td><td class="c-eg-table__cell">@(Model.Device?.BrowserVendor?.HasValue == true ? string.Join(", ", Model.Device.BrowserVendor.Value) : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Name:</td><td class="c-eg-table__cell">@(Model.Device?.BrowserName?.HasValue == true ? Model.Device.BrowserName.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Version:</td><td class="c-eg-table__cell">@(Model.Device?.BrowserVersion?.HasValue == true ? Model.Device.BrowserVersion.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Screen width (pixels):</td><td class="c-eg-table__cell">@(Model.Device?.ScreenPixelsWidth?.HasValue == true ? Model.Device.ScreenPixelsWidth.Value.ToString() : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Screen height (pixels):</td><td class="c-eg-table__cell">@(Model.Device?.ScreenPixelsHeight?.HasValue == true ? Model.Device.ScreenPixelsHeight.Value.ToString() : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Device Id:</td><td class="c-eg-table__cell">@(Model.Device?.DeviceId?.HasValue == true ? Model.Device.DeviceId.Value : "Unknown")</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Vendor:</td><td class="c-eg-table__cell" id="HardwareVendor">@Model.HardwareVendor</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Hardware Name:</td><td class="c-eg-table__cell" id="HardwareName">@Model.HardwareName</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Device Type:</td><td class="c-eg-table__cell" id="DeviceType">@Model.DeviceType</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Vendor:</td><td class="c-eg-table__cell">@Model.PlatformVendor</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Name:</td><td class="c-eg-table__cell">@Model.PlatformName</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Platform Version:</td><td class="c-eg-table__cell">@Model.PlatformVersion</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Vendor:</td><td class="c-eg-table__cell">@Model.BrowserVendor</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Name:</td><td class="c-eg-table__cell">@Model.BrowserName</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Browser Version:</td><td class="c-eg-table__cell">@Model.BrowserVersion</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Screen width (pixels):</td><td class="c-eg-table__cell">@Model.ScreenWidth</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Screen height (pixels):</td><td class="c-eg-table__cell">@Model.ScreenHeight</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Device Id:</td><td class="c-eg-table__cell">@Model.DeviceId</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -102,102 +101,70 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Name:</td><td class="c-eg-table__cell">@(Model.IpData?.RegisteredName?.HasValue == true ? Model.IpData.RegisteredName.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Owner:</td><td class="c-eg-table__cell">@(Model.IpData?.RegisteredOwner?.HasValue == true ? Model.IpData.RegisteredOwner.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Country:</td><td class="c-eg-table__cell">@(Model.IpData?.RegisteredCountry?.HasValue == true ? Model.IpData.RegisteredCountry.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">IP Range Start:</td><td class="c-eg-table__cell">@(Model.IpData?.IpRangeStart?.HasValue == true ? Model.IpData.IpRangeStart.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">IP Range End:</td><td class="c-eg-table__cell">@(Model.IpData?.IpRangeEnd?.HasValue == true ? Model.IpData.IpRangeEnd.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Country:</td><td class="c-eg-table__cell">@(Model.IpData?.Country?.HasValue == true ? Model.IpData.Country.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Country Code:</td><td class="c-eg-table__cell">@(Model.IpData?.CountryCode?.HasValue == true ? Model.IpData.CountryCode.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Country Code 3:</td><td class="c-eg-table__cell">@(Model.IpData?.CountryCode3?.HasValue == true ? Model.IpData.CountryCode3.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Region:</td><td class="c-eg-table__cell">@(Model.IpData?.Region?.HasValue == true ? Model.IpData.Region.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">State:</td><td class="c-eg-table__cell">@(Model.IpData?.State?.HasValue == true ? Model.IpData.State.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Town:</td><td class="c-eg-table__cell">@(Model.IpData?.Town?.HasValue == true ? Model.IpData.Town.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Latitude:</td><td class="c-eg-table__cell">@(Model.IpData?.Latitude?.HasValue == true ? Model.IpData.Latitude.Value.ToString("F4") : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Longitude:</td><td class="c-eg-table__cell">@(Model.IpData?.Longitude?.HasValue == true ? Model.IpData.Longitude.Value.ToString("F4") : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Areas:</td><td class="c-eg-table__cell">@(Model.IpData?.Areas?.HasValue == true ? Model.IpData.Areas.Value : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Accuracy Radius:</td><td class="c-eg-table__cell">@(Model.IpData?.AccuracyRadiusMin?.HasValue == true ? Model.IpData.AccuracyRadiusMin.Value.ToString() : "Unknown")</td></tr>
-                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Time Zone Offset:</td><td class="c-eg-table__cell">@(Model.IpData?.TimeZoneOffset?.HasValue == true ? Model.IpData.TimeZoneOffset.Value.ToString() : "Unknown")</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Name:</td><td class="c-eg-table__cell" id="RegisteredName">@Model.RegisteredName</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Owner:</td><td class="c-eg-table__cell">@Model.RegisteredOwner</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Country:</td><td class="c-eg-table__cell">@Model.RegisteredCountry</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">IP Range Start:</td><td class="c-eg-table__cell" id="IpRangeStart">@Model.IpRangeStart</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">IP Range End:</td><td class="c-eg-table__cell">@Model.IpRangeEnd</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Country:</td><td class="c-eg-table__cell" id="Country">@Model.Country</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Country Code:</td><td class="c-eg-table__cell">@Model.CountryCode</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Country Code 3:</td><td class="c-eg-table__cell">@Model.CountryCode3</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Region:</td><td class="c-eg-table__cell">@Model.Region</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">State:</td><td class="c-eg-table__cell">@Model.State</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Town:</td><td class="c-eg-table__cell">@Model.Town</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Latitude:</td><td class="c-eg-table__cell">@Model.Latitude</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Longitude:</td><td class="c-eg-table__cell">@Model.Longitude</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Areas:</td><td class="c-eg-table__cell">@Model.Areas</td></tr>
+                        <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Accuracy Radius:</td><td class="c-eg-table__cell">@Model.AccuracyRadius</td></tr>
+                        <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">Time Zone Offset:</td><td class="c-eg-table__cell">@Model.TimeZoneOffset</td></tr>
                         <tr class="c-eg-table__row c-eg-table__row--alt">
                             <td class="c-eg-table__cell c-eg-table__cell--key">Country Codes Geographical:</td>
                             <td class="c-eg-table__cell">
-                                @if (Model.IpData?.CountryCodesGeographical.HasValue == true)
-                                {
-                                    <ul>
-                                        @foreach (var c in Model.IpData.CountryCodesGeographical.Value)
-                                        {
-                                            <li>@c.Value (@(c.Weighting() * 100)%)</li>
-                                        }
-                                    </ul>
-                                }
-                                else
-                                {
-                                    @(Model.IpData?.CountryCodesGeographical.NoValueMessage ?? "(no value)")
-                                }
+                                <ul>
+                                    @foreach (var c in Model.CountryCodesGeographical)
+                                    {
+                                        <li>@c</li>
+                                    }
+                                </ul>
                             </td>
                         </tr>
                         <tr class="c-eg-table__row">
                             <td class="c-eg-table__cell c-eg-table__cell--key">Country Codes Population:</td>
                             <td class="c-eg-table__cell">
-                                @if (Model.IpData?.CountryCodesPopulation.HasValue == true)
-                                {
-                                    <ul>
-                                        @foreach (var c in Model.IpData.CountryCodesPopulation.Value)
-                                        {
-                                            <li>@c.Value (@(c.Weighting() * 100)%)</li>
-                                        }
-                                    </ul>
-                                }
-                                else
-                                {
-                                    @(Model.IpData?.CountryCodesPopulation.NoValueMessage ?? "(no value)")
-                                }
+                                <ul>
+                                    @foreach (var c in Model.CountryCodesPopulation)
+                                    {
+                                        <li>@c</li>
+                                    }
+                                </ul>
                             </td>
                         </tr>
                         <tr class="c-eg-table__row c-eg-table__row--alt">
                             <td class="c-eg-table__cell c-eg-table__cell--key">Country Names Geographical All Translated:</td>
                             <td class="c-eg-table__cell">
-                                @if (Model.TranslationData?.CountryNamesGeographicalAllTranslated.HasValue == true
-                                    && Model.TranslationData?.CountryCodesGeographicalAll.HasValue == true)
-                                {
-                                    var geoNames = Model.TranslationData.CountryNamesGeographicalAllTranslated.Value;
-                                    var geoCodes = Model.TranslationData.CountryCodesGeographicalAll.Value;
-                                    <select id="CountryNamesGeographicalAllTranslated"
-                                            name="CountryNamesGeographicalAllTranslated"
-                                            class="form-control">
-                                        @for (int i = 0; i < geoNames.Count; i++)
-                                        {
-                                            <option value="@geoCodes[i]">@geoNames[i]</option>
-                                        }
-                                    </select>
-                                }
-                                else
-                                {
-                                    @(Model.TranslationData?.CountryNamesGeographicalAllTranslated.NoValueMessage ?? "(no value)")
-                                }
+                                <select id="CountryNamesGeographicalAllTranslated"
+                                        name="CountryNamesGeographicalAllTranslated"
+                                        class="form-control">
+                                    @for (int i = 0; i < Model.CountryNamesGeographicalAllTranslated.Count
+                                        && i < Model.CountryCodesGeographicalAll.Count; i++)
+                                    {
+                                        <option value="@Model.CountryCodesGeographicalAll[i]">@Model.CountryNamesGeographicalAllTranslated[i]</option>
+                                    }
+                                </select>
                             </td>
                         </tr>
                         <tr class="c-eg-table__row">
                             <td class="c-eg-table__cell c-eg-table__cell--key">Country Names Population All Translated:</td>
                             <td class="c-eg-table__cell">
-                                @if (Model.TranslationData?.CountryNamesPopulationAllTranslated.HasValue == true
-                                    && Model.TranslationData?.CountryCodesPopulationAll.HasValue == true)
-                                {
-                                    var popNames = Model.TranslationData.CountryNamesPopulationAllTranslated.Value;
-                                    var popCodes = Model.TranslationData.CountryCodesPopulationAll.Value;
-                                    <select id="CountryNamesPopulationAllTranslated"
-                                            name="CountryNamesPopulationAllTranslated"
-                                            class="form-control">
-                                        @for (int i = 0; i < popNames.Count; i++)
-                                        {
-                                            <option value="@popCodes[i]">@popNames[i]</option>
-                                        }
-                                    </select>
-                                }
-                                else
-                                {
-                                    @(Model.TranslationData?.CountryNamesPopulationAllTranslated.NoValueMessage ?? "(no value)")
-                                }
+                                <select id="CountryNamesPopulationAllTranslated"
+                                        name="CountryNamesPopulationAllTranslated"
+                                        class="form-control">
+                                    @for (int i = 0; i < Model.CountryNamesPopulationAllTranslated.Count
+                                        && i < Model.CountryCodesPopulationAll.Count; i++)
+                                    {
+                                        <option value="@Model.CountryCodesPopulationAll[i]">@Model.CountryNamesPopulationAllTranslated[i]</option>
+                                    }
+                                </select>
                             </td>
                         </tr>
                     </tbody>
@@ -238,13 +205,34 @@
         </details>
     </div>
 
-    @if (Model.IsLiteDataFile)
+    @if (Model.NeedsEnterprise)
     {
-        <div class="c-eg-message">
-            <p class="c-eg-message__text">Need more on-premise properties and features? <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-mixed-gettingstarted-web-views-home-index.cshtml&amp;utm_term=on-premise-properties">Contact us</a> to explore the options.</p>
-            <a class="b-btn c-eg-message__cta" href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-mixed-gettingstarted-web-views-home-index.cshtml&amp;utm_term=on-premise-properties">Contact us</a>
+        <div class="c-eg-message" id="needs-enterprise">
+            <p class="c-eg-message__text">Some of these properties need the Enterprise data files. <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-mixed-gettingstarted-web-views-home-index.cshtml&amp;utm_term=enterprise-data-file">Contact us</a> for a copy.</p>
+            <a class="b-btn c-eg-message__cta" href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-mixed-gettingstarted-web-views-home-index.cshtml&amp;utm_term=enterprise-data-file">Contact us</a>
         </div>
     }
+
+    @* Kept outside #content, which the client-side results are appended to,
+        so this section stays at the end of the page. *@
+    <div class="c-eg-section" id="find-out-more">
+        <hr />
+        <h3 class="c-eg-page__heading">Find out more</h3>
+        <ul>
+            <li><a href="https://51degrees.com/device-detection?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-mixed-gettingstarted-web-views-home-index.cshtml&amp;utm_term=find-out-more">Device detection</a></li>
+            <li><a href="https://51degrees.com/ip-intelligence?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-mixed-gettingstarted-web-views-home-index.cshtml&amp;utm_term=find-out-more">IP intelligence</a></li>
+            <li><a href="https://51degrees.com/pricing?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-mixed-gettingstarted-web-views-home-index.cshtml&amp;utm_term=find-out-more">Data files and prices</a></li>
+            <li><a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-mixed-gettingstarted-web-views-home-index.cshtml&amp;utm_term=find-out-more">Talk to 51Degrees about using it</a></li>
+        </ul>
+        <p class="c-eg-page__lead">The source code for this demo and what it uses.</p>
+        <ul>
+            <li><a href="https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/ip-intelligence">https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/ip-intelligence</a></li>
+            <li><a href="https://github.com/51Degrees/51degrees-dotnet/tree/main/device-detection">https://github.com/51Degrees/51degrees-dotnet/tree/main/device-detection</a></li>
+            <li><a href="https://github.com/51Degrees/51degrees-dotnet/tree/main/ip-intelligence">https://github.com/51Degrees/51degrees-dotnet/tree/main/ip-intelligence</a></li>
+            <li><a href="https://github.com/51Degrees/51degrees-cxx">https://github.com/51Degrees/51degrees-cxx</a></li>
+            <li><a href="https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline">https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline</a></li>
+        </ul>
+    </div>
 </div>
 
 @* Client-side JavaScript for evidence gathering and device detection callbacks.
@@ -263,10 +251,11 @@
 <script>
     window.onload = function () {
         fodExamples.bindDeviceCallback({ targetId: "content" });
+        // A free data file has no location, so there is nothing to map.
         fodExamples.initLocationMap({
-            areasWkt: '@Html.Raw(Model.IpData?.Areas?.HasValue == true ? Model.IpData.Areas.Value.ToString().Replace("'", "\\'") : "")',
-            latitude: '@(Model.IpData?.Latitude?.HasValue == true ? Model.IpData.Latitude.Value.ToString("F4") : "")',
-            longitude: '@(Model.IpData?.Longitude?.HasValue == true ? Model.IpData.Longitude.Value.ToString("F4") : "")'
+            areasWkt: '@Html.Raw(Model.MapAreas.Replace("'", "\\'"))',
+            latitude: '@Model.MapLatitude',
+            longitude: '@Model.MapLongitude'
         });
     };
 </script>

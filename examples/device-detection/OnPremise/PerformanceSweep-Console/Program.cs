@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using FiftyOne.DeviceDetection.Examples;
+using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines;
 using Microsoft.Extensions.Logging;
@@ -69,6 +70,12 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.PerformanceSweep
 
         public class Example : ExampleBase
         {
+            /// <summary>
+            /// Where to ask for a copy of the Enterprise data file, tagged
+            /// with this example.
+            /// </summary>
+            private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-performancesweep-console-program.cs&utm_term=enterprise-data-file";
+
             public void Run(
                 string dataFile,
                 string evidenceFile,
@@ -92,6 +99,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.PerformanceSweep
                     {
                         output.WriteLine("No readable scalar properties were found in the " +
                             "data file, so there is nothing to sweep.");
+                        WriteEnterpriseOffer(pipeline, output);
                         return;
                     }
                     var sweep = BuildSweep(properties.Count);
@@ -118,6 +126,22 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.PerformanceSweep
                         var dps = samples[samples.Count / 2]; // median
                         output.WriteLine($"{n},{dps:F0},{dps * n:F0},{1000.0 / dps:F6}");
                     }
+
+                    WriteEnterpriseOffer(pipeline, output);
+                }
+            }
+
+            /// <summary>
+            /// Says what the Enterprise data file adds when the pipeline uses
+            /// the free Lite data file.
+            /// </summary>
+            private static void WriteEnterpriseOffer(
+                IPipeline pipeline, TextWriter output)
+            {
+                if (ExampleUtils.IsLiteDataFile(
+                    pipeline.GetElement<DeviceDetectionHashEngine>()))
+                {
+                    ExampleUtils.WriteEnterpriseOffer(output, ContactUs);
                 }
             }
 
@@ -195,6 +219,23 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.PerformanceSweep
         }
 
         public static void Main(string[] args)
+        {
+            RunExample(args);
+            ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
+        }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-device-detection-onpremise-performancesweep-console-program.cs";
+
+        /// <summary>
+        /// Runs the sweep, unless help was asked for or a file it needs is
+        /// missing.
+        /// </summary>
+        private static void RunExample(string[] args)
         {
             var options = ExampleUtils.ParseOptions(args);
             if (options == null) { return; }
