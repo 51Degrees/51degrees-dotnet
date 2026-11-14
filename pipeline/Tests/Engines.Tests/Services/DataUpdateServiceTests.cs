@@ -371,10 +371,9 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
 
         /// <summary>
         /// Check that enabling the FileSystemWatcher will create a watcher
-        /// and assign it to the configuration object as expected, but only
-        /// when automatic updates are enabled. AutomaticUpdatesEnabled is the
-        /// master switch for all automatic update activity, so with it disabled
-        /// no watcher is created even if FileSystemWatcherEnabled is true.
+        /// and assign it to the configuration object as expected, whether
+        /// automatic updates are enabled or not. The watcher runs on its
+        /// own setting, because watching a file downloads nothing.
         /// </summary>
         [TestMethod]
         [DataRow(true)]
@@ -402,18 +401,9 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
                 _dataUpdate.RegisterDataFile(file);
 
                 // Assert
-                if (autoUpdateEnabled)
-                {
-                    Assert.IsNotNull(file.FileWatcher,
-                        "A file system watcher should be created when automatic " +
-                        "updates are enabled.");
-                }
-                else
-                {
-                    Assert.IsNull(file.FileWatcher,
-                        "No file system watcher should be created when automatic " +
-                        "updates are disabled, as AutoUpdate is the master switch.");
-                }
+                Assert.IsNotNull(file.FileWatcher,
+                    "A file system watcher should be created when it is " +
+                    "enabled, whatever automatic updates are set to.");
             }
             finally
             {
