@@ -1,0 +1,26 @@
+name: Temporary console example usage sharing check
+
+# Throwaway workflow for tmp/issues-dotnet-ip35-* branches. Deleted with
+# the branch.
+on:
+  push:
+    branches:
+      - 'tmp/issues-dotnet-ip35-*'
+
+jobs:
+  DidTests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Common tests
+        shell: pwsh
+        run: >
+          dotnet test common/Test/FiftyOne.Common.Tests.csproj --filter "FullyQualifiedName~ConsoleExamplesUsageSharingTests|FullyQualifiedName~ExamplesFindOutMoreTests"
+          -c Release -p:FiftyOneReferences=Project
+          --logger "console;verbosity=normal"
