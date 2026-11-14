@@ -1342,8 +1342,14 @@ namespace FiftyOne.Pipeline.Engines.Services
 				HttpResponseMessage response = null;
 				try
 				{
-					// Send the message
-					response = _httpClient.SendAsync(message).Result;
+					// Send the message. Only the headers are read before the
+					// call returns, so the body is copied to the temporary file
+					// as it arrives and the client's buffer limit does not
+					// apply to it. The client's timeout covers the headers here,
+					// and each read of the body below.
+					response = _httpClient.SendAsync(
+						message,
+						HttpCompletionOption.ResponseHeadersRead).Result;
 				}
 				catch (Exception ex)
 				{
@@ -1353,76 +1359,88 @@ namespace FiftyOne.Pipeline.Engines.Services
 						LicenseKeyMask.MaskException(ex, licenseKeys), result);
 				}
 
-				if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS)
+				// The response holds its connection until it is disposed.
+				using (response)
 				{
-					if (response == null)
+					if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS)
 					{
-						result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
-						throw new DataUpdateException($"No response from data update service at " +
-							$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
-					}
-					else
-					{
-						if (response.IsSuccessStatusCode)
+						if (response == null)
 						{
-							_logger.LogInformation(
-								$"Downloaded new data from '{shownUrl}' for engine " +
-								$"'{dataFile.EngineType?.Name}'");
-
-							// If the response is successful then save the content to a 
-							// temporary file
-							LogDebugMessage(() => $"Will call {nameof(response.Content.ReadAsStreamAsync)}", dataFile);
-							using (var dataStream = response.Content.ReadAsStreamAsync().Result)
-                            {
-                                LogDebugMessage(() => $"Will copy {nameof(dataStream)} into {nameof(tempStream)}", dataFile);
-                                dataStream.CopyTo(tempStream);
-                                LogDebugMessage(() => $"Did copy {nameof(dataStream)} into {nameof(tempStream)}", dataFile);
-                            }
-                            LogDebugMessage(() => $"Will test for {nameof(dataFile.Configuration.VerifyMd5)}", dataFile);
-                            if (dataFile.Configuration.VerifyMd5)
-                            {
-                                LogDebugMessage(() => $"Did test for {nameof(dataFile.Configuration.VerifyMd5)}", dataFile);
-                                IEnumerable<string> values;
-								if (response.Content.Headers.TryGetValues("Content-MD5", out values))
-								{
-									expectedMd5Hash = values.SingleOrDefault();
-									var lastHash = expectedMd5Hash;
-                                    LogDebugMessage(() => $"{nameof(expectedMd5Hash)} = {lastHash}", dataFile);
-                                }
-								else
-								{
-									_logger.LogWarning(
-										$"No MD5 hash included in data update response for " +
-										$"'{shownUrl}'. Unable to verify data integrity");
-								}
-							}
+							result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
+							throw new DataUpdateException($"No response from data update service at " +
+								$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
 						}
 						else
 						{
-							switch (response.StatusCode)
+							if (response.IsSuccessStatusCode)
 							{
-								// Note: needed because TooManyRequests is not available 
-								// in some versions of the HttpStatusCode enum.
-								case ((HttpStatusCode)429):
-									result = AutoUpdateStatus.
-										AUTO_UPDATE_ERR_429_TOO_MANY_ATTEMPTS;
-									throw new DataUpdateException($"Too many requests to " +
-										$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
-								case HttpStatusCode.NotModified:
-									result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
-									_logger.LogInformation($"No data newer than " +
-										$"{publishDate} found at '{shownUrl}' for engine " +
-										$"'{dataFile.EngineType?.Name}'"); ;
-									break;
-								case HttpStatusCode.Forbidden:
-									result = AutoUpdateStatus.AUTO_UPDATE_ERR_403_FORBIDDEN;
-									throw new DataUpdateException($"Access denied to data update service at " +
-										$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
-								default:
-									result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
-									throw new DataUpdateException($"HTTP status code '{response.StatusCode}' " +
-										$"from data update service at " +
-										$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
+								// If the response is successful then save the content to a 
+								// temporary file
+								LogDebugMessage(() => $"Will call {nameof(response.Content.ReadAsStreamAsync)}", dataFile);
+								using (var dataStream = ReadDownload(
+									() => response.Content.ReadAsStreamAsync().Result,
+									dataFile, shownUrl, licenseKeys))
+	                            {
+	                                LogDebugMessage(() => $"Will copy {nameof(dataStream)} into {nameof(tempStream)}", dataFile);
+	                                var buffer = new byte[DownloadBufferBytes];
+	                                int read;
+	                                while ((read = ReadDownload(
+	                                    () => ReadDownloadBlock(dataStream, buffer),
+	                                    dataFile, shownUrl, licenseKeys)) > 0)
+	                                {
+	                                    tempStream.Write(buffer, 0, read);
+	                                }
+	                                LogDebugMessage(() => $"Did copy {nameof(dataStream)} into {nameof(tempStream)}", dataFile);
+	                            }
+								_logger.LogInformation(
+									$"Downloaded new data from '{shownUrl}' for engine " +
+									$"'{dataFile.EngineType?.Name}'");
+	                            LogDebugMessage(() => $"Will test for {nameof(dataFile.Configuration.VerifyMd5)}", dataFile);
+	                            if (dataFile.Configuration.VerifyMd5)
+	                            {
+	                                LogDebugMessage(() => $"Did test for {nameof(dataFile.Configuration.VerifyMd5)}", dataFile);
+	                                IEnumerable<string> values;
+									if (response.Content.Headers.TryGetValues("Content-MD5", out values))
+									{
+										expectedMd5Hash = values.SingleOrDefault();
+										var lastHash = expectedMd5Hash;
+	                                    LogDebugMessage(() => $"{nameof(expectedMd5Hash)} = {lastHash}", dataFile);
+	                                }
+									else
+									{
+										_logger.LogWarning(
+											$"No MD5 hash included in data update response for " +
+											$"'{shownUrl}'. Unable to verify data integrity");
+									}
+								}
+							}
+							else
+							{
+								switch (response.StatusCode)
+								{
+									// Note: needed because TooManyRequests is not available 
+									// in some versions of the HttpStatusCode enum.
+									case ((HttpStatusCode)429):
+										result = AutoUpdateStatus.
+											AUTO_UPDATE_ERR_429_TOO_MANY_ATTEMPTS;
+										throw new DataUpdateException($"Too many requests to " +
+											$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
+									case HttpStatusCode.NotModified:
+										result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+										_logger.LogInformation($"No data newer than " +
+											$"{publishDate} found at '{shownUrl}' for engine " +
+											$"'{dataFile.EngineType?.Name}'"); ;
+										break;
+									case HttpStatusCode.Forbidden:
+										result = AutoUpdateStatus.AUTO_UPDATE_ERR_403_FORBIDDEN;
+										throw new DataUpdateException($"Access denied to data update service at " +
+											$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
+									default:
+										result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
+										throw new DataUpdateException($"HTTP status code '{response.StatusCode}' " +
+											$"from data update service at " +
+											$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
+								}
 							}
 						}
 					}
@@ -1430,6 +1448,61 @@ namespace FiftyOne.Pipeline.Engines.Services
 			}
 
 			return result;
+		}
+
+		/// <summary>
+		/// The size in bytes of each read of a data file download.
+		/// </summary>
+		private const int DownloadBufferBytes = 81920;
+
+		/// <summary>
+		/// Reads the next block of a data file download. The read ends with
+		/// a <see cref="TimeoutException"/> when no bytes arrive within the
+		/// client's timeout, so a server that stops sending cannot hold the
+		/// check for ever.
+		/// </summary>
+		private int ReadDownloadBlock(Stream stream, byte[] buffer)
+		{
+			var timeout = _httpClient.Timeout;
+			using (var cancel = new CancellationTokenSource())
+			{
+				var read = stream.ReadAsync(
+					buffer, 0, buffer.Length, cancel.Token);
+				if (Task.WaitAny(new Task[] { read }, timeout) == -1)
+				{
+					cancel.Cancel();
+					throw new TimeoutException(
+						$"No data arrived within the client's timeout of {timeout}.");
+				}
+				return read.GetAwaiter().GetResult();
+			}
+		}
+
+		/// <summary>
+		/// Runs one read of a data file download. A read that fails, such as
+		/// one of a body that ends early, is reported as the failure to
+		/// access the data update service, with the cause attached, as the
+		/// Errors section of the data updates specification gives it. Only
+		/// reads go through here, so a failure to write the temporary file
+		/// is not reported as one of the service's.
+		/// </summary>
+		private static T ReadDownload<T>(
+			Func<T> read,
+			AspectEngineDataFile dataFile,
+			string shownUrl,
+			IEnumerable<string> licenseKeys)
+		{
+			try
+			{
+				return read();
+			}
+			catch (Exception ex)
+			{
+				throw new DataUpdateException($"Error accessing data update service at " +
+					$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'",
+					LicenseKeyMask.MaskException(ex, licenseKeys),
+					AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR);
+			}
 		}
 
 		/// <summary>
