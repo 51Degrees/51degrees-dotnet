@@ -171,7 +171,17 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Metadata
 
             // Dispose the logger to ensure any messages get flushed
             loggerFactory.Dispose();
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-metadata-console-program.cs";
 
         private static void AppendPrettyTypeName(Type type, StringBuilder typeNameBuilder)
         {

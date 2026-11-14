@@ -458,6 +458,16 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
 
             // Dispose the logger to ensure any messages get flushed
             loggerFactory.Dispose();
+
+            IpIntelligence.Examples.ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, deviceDetection: true);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-ip-intelligence-onpremise-mixed-gettingstarted-console-program.cs";
     }
 }
