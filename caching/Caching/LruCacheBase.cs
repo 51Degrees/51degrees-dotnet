@@ -309,10 +309,17 @@ namespace FiftyOne.Caching
                     {
                         lock (second)
                         {
-                            if (oldItem.IsValid)
+                            // The dictionary changes from the old item to
+                            // the new one only if it still holds the old
+                            // one, in one step, so the key is never missing
+                            // from it part way through, when another thread
+                            // could add an item for the key that would then
+                            // be overwritten and left in its list.
+                            if (oldItem.IsValid &&
+                                _cache._dictionary.TryUpdate(
+                                    newItem.Key, newItem, oldItem))
                             {
-                                var removed = oldItem.List.Remove(oldItem);
-                                Debug.Assert(removed, "item not removed from list as expected.");
+                                oldItem.List.Unlink(oldItem);
 
                                 // Insert the new item at the head of the list.
                                 newItem.Next = newItem.List.First;
@@ -326,9 +333,6 @@ namespace FiftyOne.Caching
                                 // Indicate the item is now ready for another thread
                                 // to manipulate and is fully added to the linked list.
                                 newItem.IsValid = true;
-
-                                // Replace the value in the dictionary.
-                                _cache._dictionary.AddOrUpdate(newItem.Key, newItem, (i, o) => newItem);
                             }
                         }
                     }
@@ -369,28 +373,7 @@ namespace FiftyOne.Caching
                     {
                         if (item.IsValid && item.List == this)
                         {
-                            // Indicate that the last item is being removed from 
-                            // the linked list.
-                            item.IsValid = false;
-
-                            // Link the items to either side of the one we're removing.
-                            if (item.Next != null)
-                            {
-                                item.Next.Previous = item.Previous;
-                            }
-                            if (item.Previous != null)
-                            {
-                                item.Previous.Next = item.Next;
-                            }
-                            // Update First and Last if needed.
-                            if (item.Equals(First))
-                            {
-                                First = item.Next;
-                            }
-                            if (item.Equals(Last))
-                            {
-                                Last = item.Previous;
-                            }
+                            Unlink(item);
 
                             // Remove the item from the dictionary.
                             CachedItem removedItem;
@@ -411,6 +394,38 @@ namespace FiftyOne.Caching
                 }
 
                 return removed;
+            }
+
+            /// <summary>
+            /// Take the item out of this list and mark it as no longer
+            /// valid, leaving the dictionary as it is. The caller holds
+            /// this list's lock.
+            /// </summary>
+            /// <param name="item">An item in this list.</param>
+            private void Unlink(CachedItem item)
+            {
+                // Indicate that the item is being removed from the linked
+                // list.
+                item.IsValid = false;
+
+                // Link the items to either side of the one we're removing.
+                if (item.Next != null)
+                {
+                    item.Next.Previous = item.Previous;
+                }
+                if (item.Previous != null)
+                {
+                    item.Previous.Next = item.Next;
+                }
+                // Update First and Last if needed.
+                if (item.Equals(First))
+                {
+                    First = item.Next;
+                }
+                if (item.Equals(Last))
+                {
+                    Last = item.Previous;
+                }
             }
         }
 
