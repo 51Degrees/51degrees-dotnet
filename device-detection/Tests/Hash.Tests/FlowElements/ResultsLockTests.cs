@@ -22,6 +22,7 @@
 
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Data;
 using FiftyOne.Pipeline.Engines;
+using FiftyOne.Pipeline.Engines.Data;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
@@ -87,6 +88,17 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
         {
             AssertReadWaits(
                 data => ((DeviceDataHash)data).GetValues("BrowserName"));
+        }
+
+        /// <summary>
+        /// A value read as the string the data file stores, as the Derived
+        /// Property element reads it, is read under the lock.
+        /// </summary>
+        [TestMethod]
+        public void GetValueAsString_WaitsForTheResultsLock()
+        {
+            AssertReadWaits(data => ((IProvidesValuesAsString)data)
+                .GetValueAsString("BrowserName"));
         }
 
         /// <summary>
