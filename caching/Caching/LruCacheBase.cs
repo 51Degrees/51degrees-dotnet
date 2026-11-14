@@ -141,6 +141,13 @@ namespace FiftyOne.Caching
             private readonly LruCacheBase<K, V> _cache;
 
             /// <summary>
+            /// The list's position among the cache's lists. Where two lists
+            /// are locked together, the one with the lower index is locked
+            /// first.
+            /// </summary>
+            internal readonly int Index;
+
+            /// <summary>
             /// The first item in the list.
             /// </summary>
             internal CachedItem First { get; private set; }
@@ -154,9 +161,13 @@ namespace FiftyOne.Caching
             /// Constructs a new instance of <see cref="CacheLinkedList"/>.
             /// </summary>
             /// <param name="cache">Cache the list is included within</param>
-            internal CacheLinkedList(LruCacheBase<K, V> cache)
+            /// <param name="index">
+            /// The list's position among the cache's lists.
+            /// </param>
+            internal CacheLinkedList(LruCacheBase<K, V> cache, int index)
             {
                 _cache = cache;
+                Index = index;
             }
 
             /// <summary>
@@ -285,28 +296,44 @@ namespace FiftyOne.Caching
                 }
                 if (oldItem.IsValid)
                 {
-                    lock (this)
+                    // The old item's list is locked as well as this one.
+                    // Every replacement locks the two in the order of their
+                    // index, so two replacements between the same lists in
+                    // opposite directions cannot each hold the lock the
+                    // other waits for. Where both items are in this list,
+                    // the two locks are the same one.
+                    var first = Index <= oldItem.List.Index ?
+                        this : oldItem.List;
+                    var second = first == this ? oldItem.List : this;
+                    lock (first)
                     {
-                        if (oldItem.IsValid)
+                        lock (second)
                         {
-                            var removed = oldItem.List.Remove(oldItem);
-                            Debug.Assert(removed, "item not removed from list as expected.");
-
-                            // Insert the new item at the head of the list.
-                            newItem.Next = newItem.List.First;
-                            if (newItem.List.First != null)
+                            // The dictionary changes from the old item to
+                            // the new one only if it still holds the old
+                            // one, in one step, so the key is never missing
+                            // from it part way through, when another thread
+                            // could add an item for the key that would then
+                            // be overwritten and left in its list.
+                            if (oldItem.IsValid &&
+                                _cache._dictionary.TryUpdate(
+                                    newItem.Key, newItem, oldItem))
                             {
-                                newItem.Next.Previous = newItem;
+                                oldItem.List.Unlink(oldItem);
+
+                                // Insert the new item at the head of the list.
+                                newItem.Next = newItem.List.First;
+                                if (newItem.List.First != null)
+                                {
+                                    newItem.Next.Previous = newItem;
+                                }
+                                newItem.List.First = newItem;
+                                if (newItem.List.Last == null) { newItem.List.Last = newItem; }
+
+                                // Indicate the item is now ready for another thread
+                                // to manipulate and is fully added to the linked list.
+                                newItem.IsValid = true;
                             }
-                            newItem.List.First = newItem;
-                            if (newItem.List.Last == null) { newItem.List.Last = newItem; }
-
-                            // Indicate the item is now ready for another thread
-                            // to manipulate and is fully added to the linked list.
-                            newItem.IsValid = true;
-
-                            // Replace the value in the dictionary.
-                            _cache._dictionary.AddOrUpdate(newItem.Key, newItem, (i, o) => newItem);
                         }
                     }
                 }
@@ -346,28 +373,7 @@ namespace FiftyOne.Caching
                     {
                         if (item.IsValid && item.List == this)
                         {
-                            // Indicate that the last item is being removed from 
-                            // the linked list.
-                            item.IsValid = false;
-
-                            // Link the items to either side of the one we're removing.
-                            if (item.Next != null)
-                            {
-                                item.Next.Previous = item.Previous;
-                            }
-                            if (item.Previous != null)
-                            {
-                                item.Previous.Next = item.Next;
-                            }
-                            // Update First and Last if needed.
-                            if (item.Equals(First))
-                            {
-                                First = item.Next;
-                            }
-                            if (item.Equals(Last))
-                            {
-                                Last = item.Previous;
-                            }
+                            Unlink(item);
 
                             // Remove the item from the dictionary.
                             CachedItem removedItem;
@@ -388,6 +394,38 @@ namespace FiftyOne.Caching
                 }
 
                 return removed;
+            }
+
+            /// <summary>
+            /// Take the item out of this list and mark it as no longer
+            /// valid, leaving the dictionary as it is. The caller holds
+            /// this list's lock.
+            /// </summary>
+            /// <param name="item">An item in this list.</param>
+            private void Unlink(CachedItem item)
+            {
+                // Indicate that the item is being removed from the linked
+                // list.
+                item.IsValid = false;
+
+                // Link the items to either side of the one we're removing.
+                if (item.Next != null)
+                {
+                    item.Next.Previous = item.Previous;
+                }
+                if (item.Previous != null)
+                {
+                    item.Previous.Next = item.Next;
+                }
+                // Update First and Last if needed.
+                if (item.Equals(First))
+                {
+                    First = item.Next;
+                }
+                if (item.Equals(Last))
+                {
+                    Last = item.Previous;
+                }
             }
         }
 
@@ -562,7 +600,7 @@ namespace FiftyOne.Caching
             _linkedLists = new CacheLinkedList[concurrency];
             for (int i = 0; i < _linkedLists.Length; i++)
             {
-                _linkedLists[i] = new CacheLinkedList(this);
+                _linkedLists[i] = new CacheLinkedList(this, i);
             }
             ItemLifetime = itemLifetime;
         }
