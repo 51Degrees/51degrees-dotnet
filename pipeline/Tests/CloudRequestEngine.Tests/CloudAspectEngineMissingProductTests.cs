@@ -34,6 +34,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -131,14 +132,19 @@ public class CloudAspectEngineMissingProductTests
             ICloudRequestEngine
     {
         private readonly string _json;
+        private readonly IReadOnlyDictionary<string, ProductMetaData>
+            _publicProperties;
+        private readonly Func<bool> _propertyRequestFails;
 
         public StubRequestEngine(
             IReadOnlyDictionary<string, ProductMetaData> publicProperties,
-            string json)
+            string json,
+            Func<bool> propertyRequestFails)
             : base(NullLogger<StubRequestEngine>.Instance, CreateData)
         {
-            PublicProperties = publicProperties;
+            _publicProperties = publicProperties;
             _json = json;
+            _propertyRequestFails = propertyRequestFails;
         }
 
         private static CloudRequestData CreateData(
@@ -146,8 +152,22 @@ public class CloudAspectEngineMissingProductTests
             FlowElementBase<CloudRequestData, IAspectPropertyMetaData> engine)
             => new CloudRequestData(null, pipeline, (IAspectEngine)engine);
 
+        /// <summary>
+        /// Fails as a request to the cloud does while the test says so,
+        /// and otherwise gives the accessible properties.
+        /// </summary>
         public IReadOnlyDictionary<string, ProductMetaData> PublicProperties
-        { get; }
+        {
+            get
+            {
+                if (_propertyRequestFails?.Invoke() == true)
+                {
+                    throw new CloudRequestException(
+                        "The cloud could not be reached.");
+                }
+                return _publicProperties;
+            }
+        }
 
         public override string DataSourceTier => string.Empty;
 
@@ -210,11 +230,13 @@ public class CloudAspectEngineMissingProductTests
         ILoggerFactory loggerFactory,
         IReadOnlyDictionary<string, ProductMetaData> publicProperties,
         string json,
-        out RecordingEngine engine)
+        out RecordingEngine engine,
+        Func<bool> propertyRequestFails = null)
     {
         engine = new RecordingEngine(loggerFactory);
         return new PipelineBuilder(loggerFactory)
-            .AddFlowElement(new StubRequestEngine(publicProperties, json))
+            .AddFlowElement(new StubRequestEngine(
+                publicProperties, json, propertyRequestFails))
             .AddFlowElement(engine)
             .Build();
     }
@@ -291,6 +313,46 @@ public class CloudAspectEngineMissingProductTests
             Logged(loggerFactory, LogLevel.Warning, MissingProductLogText)
                 .Count(),
             "the missing product is logged only once");
+    }
+
+    /// <summary>
+    /// The request for the property list fails while the Pipeline is
+    /// built, so the engine has no property list then. The first response
+    /// makes it read the list, which shows the product is missing, so it
+    /// does not read a response that holds nothing for it and records no
+    /// error.
+    /// </summary>
+    [TestMethod]
+    public void PropertyRequestFailedAtBuild_MissingProduct_ResponseNotRead()
+    {
+        var loggerFactory = new TestLoggerFactory();
+        var cloudUnreachable = true;
+        using var pipeline = Build(
+            loggerFactory,
+            Missing("other product only"),
+            OtherProductResponse,
+            out var engine,
+            () => cloudUnreachable);
+        Assert.IsFalse(engine.HasLoadedProperties,
+            "the property list was not read while the Pipeline was built");
+        cloudUnreachable = false;
+
+        for (var i = 0; i < RequestCount; i++)
+        {
+            using var data = pipeline.CreateFlowData();
+            data.Process();
+            Assert.IsFalse(data.Errors?.Any() == true,
+                "a response with nothing for the engine is not an error");
+        }
+
+        Assert.AreEqual(0, engine.ResponsesRead,
+            "there is nothing in the response for the engine to read");
+        Assert.IsTrue(engine.HasLoadedProperties,
+            "the first response made the engine read the property list");
+        Assert.AreEqual(1,
+            Logged(loggerFactory, LogLevel.Warning, MissingProductLogText)
+                .Count(),
+            "the missing product is logged once");
     }
 
     /// <summary>
