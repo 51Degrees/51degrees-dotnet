@@ -29,6 +29,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.AgentSignature.Tests
 {
@@ -380,6 +383,67 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                     "tdm", result.AgentSignaturePurpose, "purpose", result);
                 AssertValue(
                     CardUrl, result.AgentSignatureCardUrl, "card URL", result);
+            }
+        }
+
+        /// <summary>
+        /// A registry read whose start blocks the thread that made it does
+        /// not hold up another request, because the read is not started
+        /// inside a lock. The other request is answered once its wait for
+        /// the registry runs out, while the first read is still blocked.
+        /// </summary>
+        [TestMethod]
+        public void RegistryReadBlockingItsCallerDoesNotHoldUpAnotherRequest()
+        {
+            using (var harness = ElementHarness.Create(
+                builder => builder
+                    .SetRegistry(RegistryUrl)
+                    .SetWaitBudget(TimeSpan.FromSeconds(5))))
+            {
+                harness.Handler.Add(
+                    RegistryUrl, CardUrl + "\n", "text/plain");
+                harness.Handler.Add(
+                    CardUrl,
+                    FixtureCard("jwks-uri-card").CardJson,
+                    Constants.JSON_MEDIA_TYPE);
+                harness.Handler.AddDirectory(
+                    CardKeyUrl,
+                    RequestSigner.PublicPart(Fixtures.Ed25519Key()));
+                harness.Handler.HoldOnCallingThread(RegistryUrl);
+                var signed = RequestSigner.Sign(new SigningOptions
+                {
+                    SignatureAgent = CardOrigin,
+                    SignatureAgentLabel = AgentLabel,
+                });
+                try
+                {
+                    var first = Task.Run(() => harness.ProcessSigned(signed));
+                    var watch = Stopwatch.StartNew();
+                    while (harness.Handler.RequestedUrls.Contains(
+                        RegistryUrl) == false)
+                    {
+                        if (watch.Elapsed > TimeSpan.FromSeconds(10))
+                        {
+                            Assert.Fail(
+                                "The first request did not start the " +
+                                "registry read.");
+                        }
+                        Thread.Sleep(10);
+                    }
+                    var second = Task.Run(() => harness.ProcessSigned(signed));
+
+                    Assert.IsTrue(
+                        second.Wait(TimeSpan.FromSeconds(20)),
+                        "A second request waited for the first request's " +
+                        "registry read, which was blocked on the thread " +
+                        "that started it, so the read was started inside " +
+                        "a lock.");
+                    AssertVerified(second.Result);
+                }
+                finally
+                {
+                    harness.Handler.Release();
+                }
             }
         }
 
