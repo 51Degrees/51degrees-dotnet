@@ -177,7 +177,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Parsing
 
         /// <summary>
         /// The text of the whole member value, including its parameters,
-        /// exactly as it appeared in the header. The '&#64;signature-params'
+        /// exactly as it appeared in the header. The '\@signature-params'
         /// line of the signature base carries the strict serialisation
         /// instead, as RFC 9421 section 2.3 requires, so this text is kept
         /// only as a record of what was read.
