@@ -21,10 +21,11 @@ BeforeAll {
     }
 
     if ($IsWindows) {
-        Set-Content -LiteralPath (Join-Path $Tools 'dotnet.cmd') -Value (@(
-            '@echo off',
-            '>>"%DOTNET_CALLS%" echo %*',
-            'exit /b 0') -join "`r`n")
+        # A PowerShell script rather than a batch file, because cmd would read
+        # the '|' in a test filter as a pipe.
+        Set-Content -LiteralPath (Join-Path $Tools 'dotnet.ps1') -Value (@(
+            'Add-Content -LiteralPath $env:DOTNET_CALLS -Value ($args -join " ")',
+            'exit 0') -join "`r`n")
     } else {
         $dotnet = Join-Path $Tools 'dotnet'
         Set-Content -LiteralPath $dotnet -Value (@(
@@ -64,11 +65,12 @@ AfterAll {
 }
 
 Describe 'run-integration-tests.ps1' {
-    It 'runs only the IP Intelligence examples with no settings at standard depth' {
+    It 'runs only the IP Intelligence examples with no settings and the unit tests at standard depth' {
         $calls = @(Get-Calls 'standard' $IpExamples)
 
         $calls.Count | Should -Be 1
-        $calls[0] | Should -Match '--filter TestCategory=WithoutSettings'
+        $calls[0] | Should -Match ([regex]::Escape(
+            '--filter TestCategory=WithoutSettings|TestCategory=Unit'))
     }
 
     It 'runs every IP Intelligence example test at deep depth' {
