@@ -1,0 +1,40 @@
+name: Temporary Device Detection Hash check
+
+# Throwaway workflow for tmp/issues-dotnet-ddhash-* branches. Deleted with
+# the branch.
+on:
+  push:
+    branches:
+      - 'tmp/issues-dotnet-ddhash-*'
+
+jobs:
+  HashTests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/checkout@v4
+        with:
+          repository: 51Degrees/common-ci
+          path: common-ci
+      - name: Lite data file
+        shell: pwsh
+        run: |
+          Push-Location common-ci
+          ./steps/fetch-assets.ps1 -Assets '51Degrees-LiteV4.1.hash'
+          Pop-Location
+          New-Item -ItemType Directory -Force cxx/data/device-detection | Out-Null
+          Copy-Item common-ci/assets/51Degrees-LiteV4.1.hash cxx/data/device-detection/
+          Get-Item cxx/data/device-detection/51Degrees-LiteV4.1.hash | Select-Object Length
+      - name: Hash tests
+        shell: pwsh
+        run: >
+          dotnet test device-detection/Tests/Hash.Tests/FiftyOne.DeviceDetection.Hash.Tests.csproj
+          -c Release -p:FiftyOneReferences=Project
+          --filter "FullyQualifiedName~BrokenDataFileTests|FullyQualifiedName~BadDataTests|FullyQualifiedName~EvidenceKeyCase"
+          --logger "console;verbosity=normal"
