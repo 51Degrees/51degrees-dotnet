@@ -1,0 +1,26 @@
+name: Temporary derived property example check
+
+# Throwaway workflow for tmp/issues-dotnet-dpex-* branches. Deleted with
+# the branch.
+on:
+  push:
+    branches:
+      - 'tmp/issues-dotnet-dpex-*'
+
+jobs:
+  DidTests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Example tests
+        shell: pwsh
+        run: >
+          dotnet test pipeline/Tests/Examples.Tests/FiftyOne.Pipeline.Examples.Tests.csproj --filter "FullyQualifiedName~DerivedProperty"
+          -c Release -p:FiftyOneReferences=Project
+          --logger "console;verbosity=normal"
