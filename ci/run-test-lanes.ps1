@@ -157,6 +157,9 @@ Write-Host "Test assemblies, slowest first:"
 $results | Sort-Object Seconds -Descending | ForEach-Object {
     Write-Host ("  {0,5}s  {1}  {2}" -f $_.Seconds, ($_.ExitCode -eq 0 ? "passed" : "FAILED"), [IO.Path]::GetFileName($_.Assembly))
 }
+# What the tests wrote for the build log, such as a figure a test measured,
+# which a passing test's own output does not reach.
+& "$PSScriptRoot/build-log-lines.ps1" -ResultPath $ResultPath | Write-Host
 if ($results.Count -ne $assemblies.Count) {
     throw "Expected $($assemblies.Count) results but got $($results.Count)."
 }
