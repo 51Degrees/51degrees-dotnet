@@ -705,10 +705,15 @@ public static class ExampleUtils
     /// <param name="deviceDetection">
     /// True for an example that also uses Device Detection.
     /// </param>
+    /// <param name="onPremise">
+    /// True for an example that reads a data file, which uses the native
+    /// engine as well.
+    /// </param>
     public static void WriteFindOutMore(
         TextWriter output,
         string content,
-        bool deviceDetection = false)
+        bool deviceDetection = false,
+        bool onPremise = true)
     {
         const string repository =
             "    https://github.com/51Degrees/51degrees-dotnet/tree/main/";
@@ -723,7 +728,9 @@ public static class ExampleUtils
             output.WriteLine(
                 "    " + FindOutMoreLink("device-detection", content));
         }
-        output.WriteLine("  Data files and prices:");
+        output.WriteLine(onPremise ?
+            "  Data files and prices:" :
+            "  Plans and prices:");
         output.WriteLine("    " + FindOutMoreLink("pricing", content));
         output.WriteLine("  Talk to 51Degrees about using it:");
         output.WriteLine("    " + FindOutMoreLink("contact-us", content));
@@ -735,7 +742,10 @@ public static class ExampleUtils
         {
             output.WriteLine(repository + "device-detection");
         }
-        output.WriteLine("    https://github.com/51Degrees/51degrees-cxx");
+        if (onPremise)
+        {
+            output.WriteLine("    https://github.com/51Degrees/51degrees-cxx");
+        }
         output.WriteLine(repository + "pipeline");
     }
 }

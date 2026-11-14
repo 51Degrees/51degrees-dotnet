@@ -230,6 +230,24 @@
           <p class="c-eg-message__text">Want to try on-premise? <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx&amp;utm_term=try-on-premise">Contact us</a> to discuss requirements.</p>
           <a class="b-btn c-eg-message__cta" href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx&amp;utm_term=try-on-premise">Contact us</a>
         </div>
+
+        <%-- Kept outside #content, which the client-side results are appended to,
+            so this section stays at the end of the page. --%>
+        <div class="c-eg-section" id="find-out-more">
+            <hr />
+            <h3 class="c-eg-page__heading">Find out more</h3>
+            <ul>
+                <li><a href="https://51degrees.com/ip-intelligence?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx&amp;utm_term=find-out-more">IP intelligence</a></li>
+                <li><a href="https://51degrees.com/pricing?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx&amp;utm_term=find-out-more">Plans and prices</a></li>
+                <li><a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx&amp;utm_term=find-out-more">Talk to 51Degrees about using it</a></li>
+            </ul>
+            <p class="c-eg-page__lead">The source code for this demo and what it uses.</p>
+            <ul>
+                <li><a href="https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/ip-intelligence">https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/ip-intelligence</a></li>
+                <li><a href="https://github.com/51Degrees/51degrees-dotnet/tree/main/ip-intelligence">https://github.com/51Degrees/51degrees-dotnet/tree/main/ip-intelligence</a></li>
+                <li><a href="https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline">https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline</a></li>
+            </ul>
+        </div>
     </div>
 
     <%-- The shared examples.js helper subscribes to the 51Degrees.core.js 'complete'

@@ -149,6 +149,8 @@ public class TestWebExamplesWithoutSettings
             "The Lite data file has RegisteredName.");
         Assert.Contains(ContactUs, html,
             "The page should link to the contact page.");
+        Assert.Contains("Find out more", html,
+            "The page should end by saying where to find out more.");
     }
 
     [TestMethod]
