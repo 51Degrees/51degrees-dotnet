@@ -59,6 +59,13 @@ performance run only when `rc` itself or the release pull request is built,
 which `.github/workflows/release-pull-request.yml` does on every entry.
 `select-options.Tests.ps1` tests the selection, run with Pester 5 or later.
 
+A test that measures something, such as the memory an engine keeps after it is
+disposed, writes a line starting `Build log: ` to its output. The output of a
+test that passes is kept only in its results file, so `run-test-lanes.ps1`
+ends by printing those lines, which `build-log-lines.ps1` reads from the
+results files, and each job's log then holds what its runner measured.
+`build-log-lines.Tests.ps1` tests the reading, run with Pester 5 or later.
+
 The secrets are the ones the separate repositories used: `ACCESS_TOKEN`,
 `NUGET_API_KEY`, the `CODE_SIGNING_KEY_VAULT_*` set, `STRONG_NAME_KEY_BASE64`,
 `DEVICE_DETECTION_KEY`, `DEVICE_DETECTION_URL`, `IPI_DATA_FILE_URL`,

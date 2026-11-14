@@ -93,11 +93,13 @@ public class NativeMemoryTests
             }
         }
 
-        // Written whether the test passes or fails, so that every run
-        // records what its runner kept.
+        // Written whether the test passes or fails. CI prints the lines
+        // that start "Build log: " from the test results, so each job's
+        // log holds what its runner kept.
         Console.WriteLine(
-            $"NativeMemory: kept {after - before} MB of the " +
-            $"{loaded - before} MB the pipeline used.");
+            "Build log: IP Intelligence NativeMemory_FreedByDispose kept " +
+            $"{after - before} MB of the {loaded - before} MB the " +
+            "pipeline used.");
 
         Assert.IsLessThan(MemoryMarginMegabytes, after - before,
             $"Disposing kept {after - before} MB of the {loaded - before} " +
