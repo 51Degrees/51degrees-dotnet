@@ -310,6 +310,19 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Mixed.GettingStartedConsole
             }
 
             new Example().Run(options, Console.Out);
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out,
+                ContentSlug,
+                deviceDetection: true,
+                onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-mixed-gettingstarted-console-program.cs";
     }
 }

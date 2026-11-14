@@ -1496,5 +1496,14 @@ public class Program
 
         // Dispose the logger to ensure any messages get flushed
         configuration.LoggerFactory.Dispose();
+
+        Examples.ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
     }
+
+    /// <summary>
+    /// This file as a lower case slug, which tags the links in the
+    /// closing section.
+    /// </summary>
+    private const string ContentSlug =
+        "examples-ip-intelligence-onpremise-metrics-console-program.cs";
 }
