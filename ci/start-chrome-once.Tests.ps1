@@ -1,13 +1,16 @@
 # Tests for ci/start-chrome-once.ps1, run with Pester 5 or later.
 #
-# Each test names a stand-in for Chrome in CHROME_BIN, which the script reads
-# before it looks anywhere else, and reads what the script prints.
+# Each test names a stand-in for Chrome in CHROME_BIN and a stand-in for the
+# Chrome driver in CHROMEWEBDRIVER, which the script reads before it looks
+# anywhere else, and reads what the script prints. The stand-in driver exits
+# at once, so the driver session the script then runs is never ready.
 
 BeforeAll {
     $script:Script = Join-Path $PSScriptRoot 'start-chrome-once.ps1'
     $script:Root = Join-Path ([IO.Path]::GetTempPath()) "start-chrome-once-$([Guid]::NewGuid())"
     New-Item -ItemType Directory -Path $Root | Out-Null
     $script:SavedChrome = $env:CHROME_BIN
+    $script:SavedDriver = $env:CHROMEWEBDRIVER
 
     # A program that does what its body says, whatever arguments it is given.
     function New-Program {
@@ -23,16 +26,20 @@ BeforeAll {
         return $path
     }
 
+    $script:Driver = New-Program 'driver' 'exit /b 0' 'exit 0'
+
     # Everything the script prints, as one string.
     function Get-Printed {
         param($Chrome, $LimitSeconds = 30)
         $env:CHROME_BIN = $Chrome
+        $env:CHROMEWEBDRIVER = $Driver
         return (& $Script -LimitSeconds $LimitSeconds *>&1 | Out-String)
     }
 }
 
 AfterAll {
     $env:CHROME_BIN = $SavedChrome
+    $env:CHROMEWEBDRIVER = $SavedDriver
     Remove-Item -Recurse -Force -LiteralPath $Root -ErrorAction SilentlyContinue
 }
 
@@ -63,5 +70,14 @@ Describe 'start-chrome-once' {
 
         $printed | Should -Match ([regex]::Escape("::warning title=Chrome slow to start::Chrome $chrome did not finish its first start within 2 s, so it was stopped."))
         $watch.Elapsed.TotalSeconds | Should -BeLessThan 30
+    }
+
+    It 'warns when the driver is not ready for a session' {
+        $chrome = New-Program 'starts-for-driver' 'exit /b 0' 'exit 0'
+
+        $printed = Get-Printed $chrome
+
+        $printed | Should -Match ([regex]::Escape("::warning title=Chrome driver not ready::The Chrome driver $Driver was not ready after "))
+        $printed | Should -Not -Match ([regex]::Escape("Ran one Chrome driver session"))
     }
 }
