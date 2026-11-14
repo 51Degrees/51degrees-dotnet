@@ -102,6 +102,29 @@ namespace FiftyOne.IpIntelligence.Examples
 #pragma warning restore CS0618
 
         /// <summary>
+        /// The free Device Detection data file, which the mixed examples
+        /// use by default. The data repository links it, and the examples
+        /// download it when it is missing.
+        /// </summary>
+        public const string LITE_HASH_DATA_FILE_NAME = "51Degrees-LiteV4.1.hash";
+
+        /// <summary>
+        /// Environment variable key used to supply an explicit path to the
+        /// Device Detection data file that the mixed examples use.
+        /// </summary>
+        public const string DD_PATH_ENV_VAR = "_51DEGREES_DD_PATH";
+
+        /// <summary>
+        /// The old names of <see cref="DD_PATH_ENV_VAR"/>, read in this
+        /// order only when that variable is not set.
+        /// </summary>
+        public static readonly string[] OLD_DD_PATH_ENV_VARS = new string[]
+        {
+            "51DEGREES_DD_PATH",
+            "DEVICEDETECTIONDATAFILE",
+        };
+
+        /// <summary>
         /// Environment variable key for the evidence file to use for the tests.
         /// </summary>
         public const string EVIDENCE_FILE_ENV_VAR = "EVIDENCEFILE";

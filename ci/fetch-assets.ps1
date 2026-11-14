@@ -31,10 +31,6 @@ if ($IpIntelligenceUrl) {
     $asset = "51Degrees-EnterpriseIpiV41.ipi"
     ./steps/fetch-assets.ps1 -IpIntelligenceUrl:$IpIntelligenceUrl -Assets $asset
     New-Item -ItemType SymbolicLink -Force -Target "$PWD/assets/$asset" -Path "$ipIntelligenceData/$asset"
-    # The mixed examples read the device detection file from the same folder.
-    if ($DeviceDetection) {
-        Copy-Item "assets/TAC-HashV41.hash" "$ipIntelligenceData/51Degrees-EnterpriseV41.hash"
-    }
 } else {
     Write-Host "::warning title=No License Key::No IP Intelligence data file URL, so the Enterprise file is not downloaded and the tests that need it are skipped."
 }
