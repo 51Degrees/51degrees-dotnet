@@ -11,6 +11,7 @@
     
     <!-- NuGet package properties -->
     <PackageId>FiftyOne.IpIntelligence.Shared</PackageId>
+    <Version Condition="'$(Version)' == ''">$(FiftyOneIpIntelligenceSharedVersion)</Version>
     <Title>51Degrees IP Intelligence Shared Components for the Pipeline API</Title>
     <Description>IP Intelligence and IP geolocation for .NET and C#. Finds an IP address's likely location (country, region, town, and coordinates), connection type, and network. This package contains shared classes used by the cloud and on-premise engines for the 51Degrees Pipeline API. An alternative to MaxMind and IPinfo.</Description>
     <Authors>51Degrees Engineering</Authors>
@@ -32,7 +33,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineEnginesFiftyOneVersion)" />
     <!-- CloudDataHelper reads JSON with Newtonsoft.Json. The engines package
          brings it only to its netstandard2.0 build, so it is named here for
          the net10.0 build. -->

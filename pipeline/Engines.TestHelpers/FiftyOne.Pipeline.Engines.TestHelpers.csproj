@@ -6,6 +6,7 @@
 	
 	<!-- NuGet package properties -->
 	<PackageId>FiftyOne.Pipeline.Engines.TestHelpers</PackageId>
+	<Version Condition="'$(Version)' == ''">$(FiftyOnePipelineEnginesTestHelpersVersion)</Version>
 	<Title>Helper classes to assist with writing unit tests for engines for the 51Degrees Pipeline API</Title>
 	<Authors>51Degrees Engineering</Authors>
     <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>

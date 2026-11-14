@@ -9,6 +9,7 @@
 
     <!-- NuGet package properties -->
     <PackageId>FiftyOne.Common.TestHelpers</PackageId>
+    <Version Condition="'$(Version)' == ''">$(FiftyOneCommonTestHelpersVersion)</Version>
     <Title>51Degrees automated test helper classes</Title>
     <PackageDescription>This package is a helper library containing implementations for classes that we often want to mock out.</PackageDescription>
     <Authors>51Degrees Engineering</Authors>

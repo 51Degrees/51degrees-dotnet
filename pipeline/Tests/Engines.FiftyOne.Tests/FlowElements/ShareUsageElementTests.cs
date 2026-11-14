@@ -602,7 +602,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 false);
             var built = typeof(ShareUsageElementTests).Assembly
                 .GetCustomAttributes<AssemblyMetadataAttribute>()
-                .Single(a => a.Key == "FiftyOnePipelineVersion")
+                .Single(a => a.Key == "FiftyOnePipelineCoreVersion")
                 .Value;
 
             // Act

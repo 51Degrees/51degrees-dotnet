@@ -11,6 +11,7 @@
     
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.Geolocation</PackageId>
+	  <Version Condition="'$(Version)' == ''">$(FiftyOneGeolocationVersion)</Version>
 	  <Title>Location services for the 51Degrees Pipeline API</Title>
 	  <Description>51Degrees Geolocation performs reverse geocoding (using longitude and latitude information) to populate postal addresses.</Description>
 	  <Authors>51Degrees Engineering</Authors>

@@ -15,6 +15,7 @@
 
     <!-- NuGet package properties -->
     <PackageId>FiftyOne.Pipeline.DerivedProperty</PackageId>
+    <Version Condition="'$(Version)' == ''">$(FiftyOnePipelineDerivedPropertyVersion)</Version>
     <Title>Derived property element for the 51Degrees Pipeline API</Title>
     <PackageDescription>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains an element that computes new properties from properties already in the flow data, according to a script written in YAML or JSON.</PackageDescription>
     <Authors>51Degrees Engineering</Authors>

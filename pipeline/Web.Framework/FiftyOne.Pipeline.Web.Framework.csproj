@@ -9,6 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>FiftyOne.Pipeline.Web.Framework</RootNamespace>
     <AssemblyName>FiftyOne.Pipeline.Web.Framework</AssemblyName>
+    <Version Condition="'$(Version)' == ''">$(FiftyOnePipelineWebVersion)</Version>
     <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <RuntimeIdentifier>win</RuntimeIdentifier>
     <FileAlignment>512</FileAlignment>

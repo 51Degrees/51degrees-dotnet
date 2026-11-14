@@ -9,6 +9,7 @@
 
     <!-- NuGet package properties -->
     <PackageId>FiftyOne.Common</PackageId>
+    <Version Condition="'$(Version)' == ''">$(FiftyOneCommonVersion)</Version>
     <Title>Common code library for 51Degrees products</Title>
     <PackageDescription>Contains common components that are shared between multiple 51Degrees projects.</PackageDescription>
     <Authors>51Degrees Engineering</Authors>

@@ -11,6 +11,7 @@
 
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.DeviceDetection.Hash.Engine.OnPremise</PackageId>
+	  <Version Condition="'$(Version)' == ''">$(FiftyOneDeviceDetectionHashEngineOnPremiseVersion)</Version>
 	  <Title>On-premise device detection service for the 51Degrees Pipeline API</Title>
     <Description>Device Detection and User-Agent parser for .NET and C#. Detects the device, browser, operating system, and crawlers from the User-Agent and User-Agent Client Hints, reading a data file on your server. This package is the on-premise Hash engine for the 51Degrees Pipeline API. CMake is used to build the native binaries. An alternative to UAParser.js, DeviceAtlas, and WURFL.</Description>
 	  <Authors>51Degrees Engineering</Authors>

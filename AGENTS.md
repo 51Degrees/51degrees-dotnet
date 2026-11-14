@@ -296,13 +296,16 @@ projects that need `msbuild` on Windows.
 
 ## Versions
 
-Each package family continues the version stream its separate repository had
-and is tagged `<family>/<version>`. A publish releases a family when a file
-under its folders changed since its last tag, and with it every family that
-depends on it, so that their packages require the new version. Only the
-patch number moves. `ci/packages.json` lists the families, their folders and
-the families each depends on, and `ci/README.md` says how the publish uses
-them.
+Each NuGet package has its own version, continues from the version it last
+published and is tagged `<package>/<version>`, for example
+`FiftyOne.Pipeline.Core/4.5.131`. A publish releases a package when a file
+under its folders changed since its last tag, and with it every package that
+depends on it, so that it requires the new version. Only the patch number
+moves. `ci/packages.json` lists the packages, their folders, the packages each
+depends on and the property in the root `Directory.Build.props` holding each
+one's version, which its project and every `FiftyOneReference` to it read.
+`ci/README.md` says how the publish uses them. A new package needs an entry
+there, its own property, a `Version` that reads it and a `FirstVersion`.
 
 ## Pull requests
 

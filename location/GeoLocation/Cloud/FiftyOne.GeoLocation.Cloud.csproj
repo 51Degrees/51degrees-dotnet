@@ -13,6 +13,7 @@
 	
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.Geolocation.Cloud</PackageId>
+	  <Version Condition="'$(Version)' == ''">$(FiftyOneGeolocationCloudVersion)</Version>
 	  <Title>Cloud-based location services for the 51Degrees Pipeline API</Title>
 	  <Description>51Degrees Geolocation performs reverse geocoding (using longitude and latitude information) to populate postal addresses. This package performs reverse geocoding using the 51Degrees cloud service.</Description>
 	  <Authors>51Degrees Engineering</Authors>
@@ -49,7 +50,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineCloudRequestEngineVersion)" />
   </ItemGroup> 
 
 </Project>

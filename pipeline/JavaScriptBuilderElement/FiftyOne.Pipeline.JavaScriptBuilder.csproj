@@ -17,6 +17,7 @@
 
     <!-- NuGet package properties -->
     <PackageId>FiftyOne.Pipeline.JavaScriptBuilder</PackageId>
+    <Version Condition="'$(Version)' == ''">$(FiftyOnePipelineJavaScriptBuilderVersion)</Version>
     <Title>JavaScript builder element for the 51Degrees Pipeline API</Title>
     <PackageDescription>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains an element that produces JavaScript code that can be used to access Pipeline results in client-side code and provide additional evidence that is not available from the initial request to the web server.</PackageDescription>
     <Authors>51Degrees Engineering</Authors>

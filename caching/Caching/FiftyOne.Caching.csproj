@@ -7,6 +7,7 @@
 	
 	<!-- NuGet package properties -->
 	<PackageId>FiftyOne.Caching</PackageId>
+	<Version Condition="'$(Version)' == ''">$(FiftyOneCachingVersion)</Version>
 	<Title>Shared library containing caching functionality used by 51Degrees products</Title>
 	<PackageDescription>The 51Degrees caching library contains shared functionality and interfaces for various caching implementations.</PackageDescription>
 	<Authors>51Degrees Engineering</Authors>

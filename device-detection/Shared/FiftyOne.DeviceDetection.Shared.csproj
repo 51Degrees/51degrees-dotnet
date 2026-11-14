@@ -11,6 +11,7 @@
     
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.DeviceDetection.Shared</PackageId>
+	  <Version Condition="'$(Version)' == ''">$(FiftyOneDeviceDetectionSharedVersion)</Version>
 	  <Title>51Degrees Device Detection – Shared Pipeline API Components (User-Agent and HTTP Header Parsing)</Title>
 	  <Description>Device Detection and User-Agent parser for .NET and C#. Detects the device, browser, operating system, and crawlers from the User-Agent and User-Agent Client Hints. This package contains shared classes used by the cloud and on-premise engines for the 51Degrees Pipeline API. An alternative to UAParser.js, DeviceAtlas, and WURFL.</Description>
 	  <Authors>51Degrees Engineering</Authors>
@@ -62,7 +63,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineEnginesFiftyOneVersion)" />
   </ItemGroup>
 
 </Project>

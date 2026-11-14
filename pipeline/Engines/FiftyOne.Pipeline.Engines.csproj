@@ -11,6 +11,7 @@
 
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.Pipeline.Engines</PackageId>
+	  <Version Condition="'$(Version)' == ''">$(FiftyOnePipelineEnginesVersion)</Version>
 	  <Title>Shared base classes for implementing engines for the 51Degrees Pipeline API</Title>
 	  <PackageDescription>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains base classes that implement the shared features available to engines - a specialized type of flow element.</PackageDescription>
 	  <Authors>51Degrees Engineering</Authors>

@@ -10,6 +10,7 @@
     
     <!-- NuGet package properties -->
     <PackageId>FiftyOne.Did.Core</PackageId>
+    <Version Condition="'$(Version)' == ''">$(FiftyOneDidCoreVersion)</Version>
     <Title>51Degrees Identifier (51Did) core types</Title>
     <PackageDescription>Shared types for the 51Degrees Identifier (51Did), used by every engine that returns one. A 51Did is issued by the 51Degrees Cloud service in six forms, being probabilistic, random and hashed-email, each of which is either global across all callers or scoped to the caller's licence key. This package holds the data interface those engines expose and the property builder they share, so most callers should reference an engine package such as FiftyOne.Did.Cloud rather than this one.</PackageDescription>
     <Authors>51Degrees Engineering</Authors>
