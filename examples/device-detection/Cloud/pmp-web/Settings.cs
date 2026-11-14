@@ -140,7 +140,7 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         /// <exception cref="InvalidOperationException">
         /// The endpoint is not an absolute http or https address.
         /// </exception>
-        public static Settings FromEnvironment()
+        public static Settings? FromEnvironment()
         {
             var (keyVariable, key) = First(
                 RESOURCE_KEY_VARIABLE, CI_RESOURCE_KEY_ENV_VAR);
