@@ -35,7 +35,7 @@ numbers follow it.
 | --- | --- | --- |
 | `fetch-assets.ps1` | Data files into the `cxx` data submodules | Same |
 | `setup-environment.ps1` | Keys, paths and the strong name key | Same |
-| `build-project.ps1` | Every family and the examples, Project mode | |
+| `build-project.ps1` | Every family and the examples, Project mode, and on the x64 msbuild job the pages of the .NET Framework sites | |
 | `run-unit-tests.ps1` | The library tests | |
 | `get-next-package-version.ps1` | | Prints the plan, each family's last and next version and why it is or is not released |
 | `release-plan-filter.ps1` | | Called by the plan, leaves out a project file or nuspec whose only changes are to package metadata |

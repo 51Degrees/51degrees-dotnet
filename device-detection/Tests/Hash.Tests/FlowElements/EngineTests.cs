@@ -63,6 +63,8 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
         [DynamicData(nameof(GetPerformanceProfiles), typeof(TestsBase))]
         public void Engine_DataSourceTier_TAC(PerformanceProfiles profile)
         {
+            TestHelpers.Utils.GetPaidFilePath(
+                TestHelpers.Constants.TAC_HASH_DATA_FILE_NAME);
             InitWrapperAndUserAgents(
                 profile,
                 TestHelpers.Constants.TAC_HASH_DATA_FILE_NAME);
@@ -100,7 +102,10 @@ namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
         [DataRow(TestHelpers.Constants.LITE_HASH_DATA_FILE_NAME, TestHelpers.Constants.JsonOutputLite)]
         public void TestParallelSerialization(string fileName, string expectedJsonExample)
         {
-            var dataFileInfo = TestHelpers.Utils.GetFilePath(fileName);
+            var dataFileInfo = fileName ==
+                TestHelpers.Constants.TAC_HASH_DATA_FILE_NAME ?
+                TestHelpers.Utils.GetPaidFilePath(fileName) :
+                TestHelpers.Utils.GetFilePath(fileName);
             using (var wrapper = new WrapperHash(dataFileInfo,
                 PerformanceProfiles.MaxPerformance,
                 TestHelpers.Constants.RequiredProperties))
