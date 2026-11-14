@@ -125,7 +125,7 @@ cost with it.
 ## Cloud
 
 A resource key configured with the properties needed to run the cloud examples
-can be created for free [here](https://configure.51degrees.com/1QWJwHxl?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud). To
+can be created for free [here](https://51degrees.com/configure/1QWJwHxl?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud). To
 use the resource key in the examples it can be supplied as an environment
 variable called "_51DEGREES_RESOURCE_KEY".
 

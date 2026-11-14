@@ -145,9 +145,9 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Metadata
                     $"accessed using a 'ResourceKey'. For more information see " +
                     $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required. " +
                     $"A free resource key can be created at " +
-                    $"https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required and populates the free " +
+                    $"https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required and populates the free " +
                     $"properties. With a paid subscription, a key created at " +
-                    $"https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required includes all the " +
+                    $"https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required includes all the " +
                     $"properties used by this example. " +
                     $"Once complete, supply the resource key as a command line argument or via " +
                     $"the environment variable mentioned at the start of this message.");
