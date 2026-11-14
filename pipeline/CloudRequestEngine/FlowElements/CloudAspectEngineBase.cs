@@ -303,6 +303,30 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
+        /// True when the accessible properties list no properties for this
+        /// engine's product. The list is read first when it has not been,
+        /// which is so when the request for it failed while the Pipeline
+        /// was built.
+        /// </summary>
+        private bool ProductMissing()
+        {
+            if (_aspectProperties == null)
+            {
+                try
+                {
+                    _ = Properties;
+                }
+                catch (PropertiesNotYetLoadedException)
+                {
+                    // The request failed again. The engine is given the
+                    // response as before, and meets the failure itself
+                    // when it asks for its properties.
+                }
+            }
+            return _productMissing;
+        }
+
+        /// <summary>
         /// Get property meta data from the <see cref="CloudRequestEngine"/> 
         /// for properties relating to this engine instance.
         /// This method will populate the <see cref="_aspectProperties"/>
@@ -491,7 +515,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 // section for it in the response, and leaves the engine
                 // no meta-data to read a value with, so the data stays
                 // empty.
-                if (_productMissing == false)
+                if (ProductMissing() == false)
                 {
                     ProcessCloudEngine(data, aspectData, json);
                 }
