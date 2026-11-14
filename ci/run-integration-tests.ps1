@@ -7,8 +7,8 @@ param (
     [string]$Version,
     [string]$TestResourceKey,
     # How deeply a pull request is tested, as select-options.ps1 chose.
-    # standard leaves out the IP Intelligence on-premise example tests, which
-    # load the Enterprise data file. Empty, for the branch itself or a
+    # standard runs only the IP Intelligence on-premise example tests that
+    # need no Enterprise data file. Empty, for the branch itself or a
     # release, runs them all.
     [string]$Depth,
     # False, from select-options.ps1, unless the pull request changes the web
@@ -43,9 +43,14 @@ if ($TestFilter) {
 # platform. The host is picked from the assembly's platform, which the
 # on-premise example test projects set, so an x86 build loads its x86 library.
 # They run in parallel lanes, which ci/run-test-lanes.ps1 describes, less
-# those a pull request's depth leaves out.
+# those a pull request leaves out. At standard depth the IP Intelligence
+# on-premise example tests run only the WithoutSettings category, which runs
+# each example as a fresh clone does, on the free data files, and the Unit
+# category, which needs no data file. The others load the Enterprise data
+# file.
+$Narrow = $Depth -eq 'standard' ?
+    '^FiftyOne\.IpIntelligence\.Example\.Tests\.OnPremise\.dll$' : ''
 $Exclude = @(
-    if ($Depth -eq 'standard') { '^FiftyOne\.IpIntelligence\.Example\.Tests\.OnPremise\.dll$' }
     if (-not $WebExamples) { '^FiftyOne\.DeviceDetection\.Example\.Tests\.Web\.' }
 ) -join '|'
 & "$PSScriptRoot/run-test-lanes.ps1" `
@@ -55,6 +60,8 @@ $Exclude = @(
     -BlameHangTimeout "20m" `
     -Filter $Filter `
     -Exclude $Exclude `
+    -Narrow $Narrow `
+    -NarrowFilter "TestCategory=WithoutSettings|TestCategory=Unit" `
     -OutputFolder "integration"
 if ($LASTEXITCODE -ne 0) {
     throw "The example tests failed."

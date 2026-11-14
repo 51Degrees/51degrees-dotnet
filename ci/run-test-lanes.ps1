@@ -6,7 +6,11 @@ param (
     [Parameter(Mandatory)][string]$OutputFolder,
     [string]$BlameHangTimeout = "20m",
     # Assemblies matching this are left out, even when they match $Filter.
-    [string]$Exclude
+    [string]$Exclude,
+    # Assemblies matching this run only the tests that $NarrowFilter, a
+    # 'dotnet test --filter' expression, selects.
+    [string]$Narrow,
+    [string]$NarrowFilter
 )
 $ErrorActionPreference = "Stop"
 
@@ -63,6 +67,14 @@ if ($assemblies.Count -eq 0) {
     exit 0
 }
 
+# The filter each narrowed assembly runs with, by its full path.
+$testFilters = @{}
+foreach ($assembly in $assemblies) {
+    if ($Narrow -and $assembly.Name -match $Narrow) {
+        $testFilters[$assembly.FullName] = $NarrowFilter
+    }
+}
+
 $exclusive = @()
 $lanes = [ordered]@{ ports = @(); memory = @(); pool = @() }
 foreach ($assembly in $assemblies) {
@@ -82,33 +94,35 @@ Write-Host "The pool runs $poolSize at once"
 # macOS a test host killed within a second of starting is retried, as the
 # shared step does.
 $runOne = {
-    param($Assembly, $Configuration, $ResultPath, $LogPath, $BlameHangTimeout)
+    param($Assembly, $Configuration, $ResultPath, $LogPath, $BlameHangTimeout, $TestFilter)
     $log = [IO.Path]::Combine($LogPath, [IO.Path]::GetFileNameWithoutExtension($Assembly) + "-" +
         [IO.Path]::GetFileName([IO.Path]::GetDirectoryName($Assembly)) + ".log")
+    $filterArgs = $TestFilter ? @('--filter', $TestFilter) : @()
     $attempt = 0
     do {
         $attempt++
         $sw = [Diagnostics.Stopwatch]::StartNew()
         & dotnet test $Assembly --no-build --configuration $Configuration `
-            --results-directory $ResultPath `
+            --results-directory $ResultPath @filterArgs `
             --blame-crash --blame-hang-timeout $BlameHangTimeout -l trx *> $log
         $code = $LASTEXITCODE
         $sw.Stop()
         $retry = $IsMacOS -and $code -eq 137 -and $sw.ElapsedMilliseconds -lt 1000 -and $attempt -le 2
     } while ($retry)
-    [pscustomobject]@{ Assembly = $Assembly; ExitCode = $code; Seconds = [int]$sw.Elapsed.TotalSeconds; Log = $log }
+    [pscustomobject]@{ Assembly = $Assembly; ExitCode = $code; Seconds = [int]$sw.Elapsed.TotalSeconds; Log = $log; TestFilter = $TestFilter }
 }
 
 $results = @()
 function Write-Result($Result, $Lane) {
     $status = $Result.ExitCode -eq 0 ? "passed" : "FAILED (exit $($Result.ExitCode))"
-    Write-Host "::group::$([IO.Path]::GetFileName($Result.Assembly)) $status in $($Result.Seconds)s ($Lane)"
+    $only = $Result.TestFilter ? ", only $($Result.TestFilter)" : ""
+    Write-Host "::group::$([IO.Path]::GetFileName($Result.Assembly)) $status in $($Result.Seconds)s ($Lane$only)"
     Get-Content $Result.Log | Write-Host
     Write-Host "::endgroup::"
 }
 
 foreach ($assembly in $exclusive) {
-    $result = & $runOne $assembly $Configuration $ResultPath $LogPath $BlameHangTimeout
+    $result = & $runOne $assembly $Configuration $ResultPath $LogPath $BlameHangTimeout $testFilters[$assembly]
     $results += $result
     Write-Result $result "exclusive"
 }
@@ -121,14 +135,15 @@ foreach ($lane in $lanes.Keys) {
     $groups = @($items | Group-Object { [IO.Path]::GetFileName($_) } |
         ForEach-Object { , @($_.Group) })
     $jobs += Start-ThreadJob -Name $lane -ThrottleLimit 3 -ScriptBlock {
-        param($Groups, $Throttle, $RunOne, $Configuration, $ResultPath, $LogPath, $BlameHangTimeout)
+        param($Groups, $Throttle, $RunOne, $Configuration, $ResultPath, $LogPath, $BlameHangTimeout, $TestFilters)
         $Groups | ForEach-Object -ThrottleLimit $Throttle -Parallel {
             $run = [scriptblock]::Create($using:RunOne)
+            $filters = $using:TestFilters
             foreach ($assembly in $_) {
-                & $run $assembly $using:Configuration $using:ResultPath $using:LogPath $using:BlameHangTimeout
+                & $run $assembly $using:Configuration $using:ResultPath $using:LogPath $using:BlameHangTimeout $filters[$assembly]
             }
         }
-    } -ArgumentList $groups, $throttle, $runOne.ToString(), $Configuration, $ResultPath, $LogPath, $BlameHangTimeout
+    } -ArgumentList $groups, $throttle, $runOne.ToString(), $Configuration, $ResultPath, $LogPath, $BlameHangTimeout, $testFilters
 }
 
 # Print each assembly's output as it finishes.
