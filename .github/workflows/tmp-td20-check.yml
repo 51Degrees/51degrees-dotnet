@@ -1,0 +1,26 @@
+name: Temporary 51Did short payload version check
+
+# Throwaway workflow for tmp/issues-dotnet-td20-* branches. Deleted with
+# the branch.
+on:
+  push:
+    branches:
+      - 'tmp/issues-dotnet-td20-*'
+
+jobs:
+  DidTests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: 51Did tests
+        shell: pwsh
+        run: >
+          dotnet test pipeline/Tests/Did.Tests/FiftyOne.Did.Tests.csproj
+          -c Release -p:FiftyOneReferences=Project
+          --logger "console;verbosity=normal"
