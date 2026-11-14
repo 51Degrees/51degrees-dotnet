@@ -430,10 +430,20 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             if (string.IsNullOrWhiteSpace(licenseKey))
             {
                 ExplainLicenseKey(dataFile, Console.Out);
+                ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
                 return;
             }
             Initialize(dataFile, licenseKey, true);
+
+            ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-device-detection-onpremise-updatedatafile-console-program.cs";
 
         /// <summary>
         /// Without a licence key there is no update to download, so the

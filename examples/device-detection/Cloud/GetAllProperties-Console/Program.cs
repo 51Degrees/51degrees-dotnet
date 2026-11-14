@@ -188,10 +188,20 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GetAllProperties
                 }
                 new Example().Run(resourceKey);
             }
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
 #if (DEBUG)
             Console.WriteLine("Done. Press any key to exit.");
             Console.ReadKey();
 #endif
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-getallproperties-console-program.cs";
     }
 }

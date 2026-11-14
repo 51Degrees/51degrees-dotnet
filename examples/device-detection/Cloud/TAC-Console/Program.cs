@@ -228,6 +228,16 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                     "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required");
                 Environment.Exit(1);
             }
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-tac-console-program.cs";
     }
 }

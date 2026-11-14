@@ -72,11 +72,54 @@ namespace Examples.UsageSharing
         {
             var instance = new Program();
             instance.RunExample();
+            WriteFindOutMore();
 
             Console.WriteLine("==========================================");
             Console.WriteLine("Example complete. Press any key to exit.");
             // Wait for user to press a key.
             Console.ReadKey();
+        }
+
+        /// <summary>
+        /// Print where to find out more, so that anyone this example is
+        /// shown to can follow up from the output itself.
+        /// </summary>
+        private static void WriteFindOutMore()
+        {
+            Console.WriteLine("==========================================");
+            Console.WriteLine("Find out more");
+            Console.WriteLine(
+                "  What usage sharing sends, and what each setting does:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation/_pipeline_api__features__usage_sharing.html" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-usagesharing-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine("  How a pipeline works:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation/_pipeline_api__concepts__pipeline_basics.html" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-usagesharing-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  Talk to 51Degrees about using the pipeline:");
+            Console.WriteLine(
+                "    https://51degrees.com/contact-us" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-usagesharing-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  This repository, where the share usage element lives:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline");
+            Console.WriteLine(
+                "  The device detection engine, whose pipeline builder " +
+                "shares usage by default:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/device-detection");
         }
 
         /// <summary>
