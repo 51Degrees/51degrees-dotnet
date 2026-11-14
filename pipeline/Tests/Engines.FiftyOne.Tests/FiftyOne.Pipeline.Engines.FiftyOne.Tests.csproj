@@ -23,6 +23,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The version the Pipeline packages are built as, for the test that
+         the usage sharing message names it. -->
+    <AssemblyMetadata Include="FiftyOnePipelineVersion" Value="$(Version)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AssemblyAttribute Include="Microsoft.VisualStudio.TestTools.UnitTesting.Parallelize">
       <_Parameter1>Workers = 0</_Parameter1>
       <_Parameter1_IsLiteral>true</_Parameter1_IsLiteral>
