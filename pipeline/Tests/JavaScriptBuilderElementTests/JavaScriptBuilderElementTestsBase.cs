@@ -68,13 +68,54 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
             chromeOptions.AddArgument("--disable-dev-shm-usage");
             chromeOptions.AddArgument("--disable-gpu");
 
-            var driver = new ChromeDriver(chromeOptions);
+            var driver = StartWithRetry(
+                () => new ChromeDriver(chromeOptions));
             // Bound a stuck navigation so GoToUrl throws quickly instead of
             // blocking until the runner's hang-dump aborts the thread and
             // crashes the tab.
             driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(60);
             return driver;
         }
+
+        /// <summary>
+        /// How many times Chrome is started before a session that was not
+        /// created fails the test.
+        /// </summary>
+        internal const int DriverStartAttempts = 3;
+
+        /// <summary>
+        /// Starts Chrome, and starts it again when it does not create a
+        /// session, which Selenium reports as an
+        /// <see cref="InvalidOperationException"/>. A busy runner now and
+        /// then loses the browser before the session exists. A driver that
+        /// is not installed is a <see cref="WebDriverException"/> and is
+        /// not tried again.
+        /// </summary>
+        internal static T StartWithRetry<T>(Func<T> start)
+        {
+            for (var attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    return start();
+                }
+                catch (InvalidOperationException ex)
+                    when (attempt < DriverStartAttempts)
+                {
+                    // CI prints the lines that start "Build log: " from the
+                    // test results, so a job's log shows each time Chrome
+                    // had to be started again. The exception's message can
+                    // run over several lines, and only its first follows.
+                    Console.WriteLine(
+                        "Build log: Chrome did not create a session on " +
+                        "attempt " + attempt + " of " + DriverStartAttempts +
+                        ". " + FirstLine(ex.Message));
+                }
+            }
+        }
+
+        private static string FirstLine(string text) =>
+            text.Split('\r', '\n')[0];
 
         /// <summary>
         /// Marks the test inconclusive when it runs where no ChromeDriver can
