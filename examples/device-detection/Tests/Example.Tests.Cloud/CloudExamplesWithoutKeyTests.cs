@@ -40,6 +40,7 @@ public class CloudExamplesWithoutKeyTests
     [DataRow("examples/device-detection/Cloud/TAC-Console", "FiftyOne.DeviceDetection.Examples.Cloud.TacLookup")]
     [DataRow("examples/device-detection/Cloud/GettingStarted-Web", "FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb")]
     [DataRow("examples/device-detection/Cloud/pmp-web", "FiftyOne.Examples.Cloud.PmpWeb")]
+    [DataRow("examples/device-detection/Cloud/GettingStarted-Web-ClientOnly", "GettingStarted-Web-ClientOnly")]
     public void CloudExample_WithoutKey_SaysWhereToCreateOne(
         string projectFolder,
         string assemblyName)

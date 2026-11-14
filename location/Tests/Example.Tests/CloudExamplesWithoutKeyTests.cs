@@ -34,6 +34,7 @@ public class CloudExamplesWithoutKeyTests
     [TestMethod]
     [DataRow("location/Examples/Cloud/GettingStarted", "Getting Started")]
     [DataRow("location/Examples/CombiningServices", "CombiningServices")]
+    [DataRow("location/Examples/Cloud/AspNetCore", "Web Integration - AspNetCore")]
     public void CloudExample_WithoutKey_SaysWhereToCreateOne(
         string projectFolder,
         string assemblyName)
