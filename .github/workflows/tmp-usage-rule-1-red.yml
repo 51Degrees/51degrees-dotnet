@@ -1,0 +1,17 @@
+name: Usage rule 1 red test
+on:
+  push:
+    branches:
+      - tmp/usage-rule-1-red
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Test the repeat comparison filter
+        run: >
+          dotnet test
+          pipeline/Tests/Engines.FiftyOne.Tests/FiftyOne.Pipeline.Engines.FiftyOne.Tests.csproj
+          --filter "FullyQualifiedName~EvidenceKeyFilterShareUsageTrackerTests"
