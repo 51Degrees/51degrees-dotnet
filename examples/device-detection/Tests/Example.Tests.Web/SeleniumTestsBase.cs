@@ -133,7 +133,10 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         /// Without this a test that follows another on the same page finds
         /// the cached result, the script makes no request, and a test that
         /// waits for that request times out. A new tab has empty session
-        /// storage, and the cookies are deleted for every site.
+        /// storage, and the cookies are deleted for every site. The old
+        /// tab leaves its page first, so no script sets a cookie again,
+        /// and the cookies are deleted before any tab closes, so the
+        /// command never meets a tab that is closing.
         /// </summary>
         private static void ResetBrowserState()
         {
@@ -141,12 +144,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             {
                 return;
             }
-            var previous = Driver.CurrentWindowHandle;
-            Driver.SwitchTo().NewWindow(WindowType.Tab);
-            var fresh = Driver.CurrentWindowHandle;
-            Driver.SwitchTo().Window(previous);
-            Driver.Close();
-            Driver.SwitchTo().Window(fresh);
+            Driver.Navigate().GoToUrl("about:blank");
             var deleting = Stopwatch.StartNew();
             if (Network != null)
             {
@@ -159,6 +157,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             Console.WriteLine(
                 "Build log: Selenium tests, the cookies were deleted in " +
                 $"{deleting.ElapsedMilliseconds} ms.");
+            var previous = Driver.CurrentWindowHandle;
+            Driver.SwitchTo().NewWindow(WindowType.Tab);
+            var fresh = Driver.CurrentWindowHandle;
+            Driver.SwitchTo().Window(previous);
+            Driver.Close();
+            Driver.SwitchTo().Window(fresh);
         }
 
         /// <summary>
