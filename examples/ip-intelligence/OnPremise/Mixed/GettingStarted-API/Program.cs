@@ -37,11 +37,19 @@ using System.Security.Cryptography;
 
 /// <summary>
 /// @example OnPremise/Mixed/GettingStarted-API/Program.cs
-/// 
-/// 
-/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Mixed/GettingStarted-API/Program.cs). 
-/// 
-/// 
+///
+/// This example answers the same requests as the 51Degrees cloud service
+/// from Device Detection and IP Intelligence data files on this machine.
+/// It uses the free Lite data files, which it downloads when they are
+/// missing. Other data files can be named as the first (Device Detection)
+/// and second (IP Intelligence) command line parameters, in the
+/// `_51DEGREES_DD_PATH` and `_51DEGREES_IPI_PATH` environment variables, or
+/// in appsettings.json. When it starts it says which of the properties it
+/// is asked for only the Enterprise data files have.
+///
+/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Mixed/GettingStarted-API/Program.cs).
+///
+///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
 /// </summary>
@@ -82,11 +90,95 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI
         
         public static void Main(string[] args)
         {
-            var app = new Program
+            var program = new Program
             {
                 Args = args,
-            }.BuildWebApp();
+            };
+            var app = program.BuildWebApp();
+            program.WriteNotes(
+                app.Services.GetRequiredService<IPipeline>(),
+                Console.Out);
             app.Run();
+        }
+
+        /// <summary>
+        /// Where to ask for a copy of the Enterprise data files, tagged with
+        /// this example.
+        /// </summary>
+        private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-ip-intelligence-onpremise-mixed-gettingstarted-api-program.cs&utm_term=enterprise-data-file";
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-ip-intelligence-onpremise-mixed-gettingstarted-api-program.cs";
+
+        /// <summary>
+        /// The name of the setting that lists the properties an engine is
+        /// asked for in configuration files.
+        /// </summary>
+        private const string PropertiesSettingName = "Properties";
+
+        /// <summary>
+        /// The properties the configuration asks the engines for.
+        /// </summary>
+        private readonly List<string> _askedFor = new();
+
+        /// <summary>
+        /// Says which of the properties the configuration asks for the data
+        /// files in use do not have, where to ask for the Enterprise data
+        /// files that have them, and where to find out more.
+        /// </summary>
+        /// <param name="pipeline">
+        /// The pipeline <see cref="BuildWebApp"/> built.
+        /// </param>
+        /// <param name="output">
+        /// Where to write the notes.
+        /// </param>
+        public void WriteNotes(IPipeline pipeline, TextWriter output)
+        {
+            var engines = pipeline.FlowElements.OfType<IAspectEngine>().ToList();
+            var available = new HashSet<string>(
+                engines.SelectMany(e => e.Properties).Select(p => p.Name),
+                StringComparer.OrdinalIgnoreCase);
+            var missing = _askedFor
+                .Where(name => available.Contains(name) == false)
+                .ToList();
+            if (missing.Count > 0)
+            {
+                output.WriteLine();
+                output.WriteLine(
+                    $"The data files in use do not have {string.Join(", ", missing)}, " +
+                    "which only the Enterprise data files have, so the answers " +
+                    "leave them out. Contact us for a copy of the Enterprise " +
+                    $"data files at {ContactUs}");
+            }
+            Examples.ExampleUtils.WriteFindOutMore(
+                output,
+                ContentSlug,
+                engines.OfType<DeviceDetectionHashEngine>().Any());
+        }
+
+        /// <summary>
+        /// Keeps the properties the configuration asks each engine for.
+        /// </summary>
+        private void KeepAskedFor(PipelineOptions options)
+        {
+            _askedFor.Clear();
+            foreach (var element in options.Elements)
+            {
+                if (element.BuildParameters != null &&
+                    element.BuildParameters.TryGetValue(
+                        PropertiesSettingName, out var value) &&
+                    value != null)
+                {
+                    _askedFor.AddRange((value.ToString() ?? string.Empty)
+                        .Split(',')
+                        .Select(name => name.Trim())
+                        .Where(name => name.Length > 0));
+                }
+            }
         }
 
         /// <summary>
@@ -120,6 +212,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI
                 out var rawOptions,
                 ddDataFileOverride: ddDataFileOverride,
                 ipiDataFileOverride: ipiDataFileOverride);
+            KeepAskedFor(rawOptions);
 
             // Add services to the container.
             builder.Services.AddAuthorization();
@@ -500,13 +593,27 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI
             var dataFileConfigKey = $"PipelineOptions:Elements:{hashEngineIndex}" +
                                     $":BuildParameters:DataFile";
 
-            // Use the command line argument if provided, otherwise use the appsettings.json value.
-            var dataFile = dataFileOverride ?? options.GetHashDataFile();
+            // Use the command line argument if provided. Otherwise, an explicit data file
+            // path supplied in an environment variable takes precedence over the value in
+            // the configuration file. The variable is '_51DEGREES_DD_PATH'.
+            var dataFile = dataFileOverride;
+            if (string.IsNullOrWhiteSpace(dataFile))
+            {
+                dataFile = Examples.ExampleUtils.FromEnvironment(
+                    Examples.Constants.DD_PATH_ENV_VAR,
+                    Examples.Constants.OLD_DD_PATH_ENV_VARS);
+            }
+            if (string.IsNullOrWhiteSpace(dataFile))
+            {
+                dataFile = options.GetHashDataFile();
+            }
             var foundDataFile = false;
             if (string.IsNullOrEmpty(dataFile))
             {
-                throw new Exception($"A data file must be specified as a command line argument " +
-                    $"or in the appsettings.json file.");
+                throw new Exception($"A data file must be specified as a command line " +
+                    $"argument, in the appsettings.json file, or in the " +
+                    $"'{Examples.Constants.DD_PATH_ENV_VAR}' environment " +
+                    $"variable.");
             }
             // The data file location provided in the configuration may be using an absolute or
             // relative path. If it is relative then search for a matching file using the

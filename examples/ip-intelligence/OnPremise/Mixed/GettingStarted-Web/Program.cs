@@ -43,12 +43,13 @@ using Microsoft.Extensions.Hosting;
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Mixed/GettingStarted-Web/Program.cs). 
 /// 
-/// Required data files:
-/// - Device Detection data file (.hash format)
-/// - IP Intelligence data file (.ipi format)
-/// 
-/// The paths to the data files should be provided as command line parameters
-/// 
+/// The example uses the free Lite data files, which it downloads when they
+/// are missing. Other data files can be named as the first (Device
+/// Detection) and second (IP Intelligence) command line parameters, in the
+/// `_51DEGREES_DD_PATH` and `_51DEGREES_IPI_PATH` environment variables, or
+/// in appsettings.json. With a free data file the page shows the properties
+/// that only the Enterprise data file has as needing it.
+///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.DeviceDetection](https://www.nuget.org/packages/FiftyOne.DeviceDetection/)
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
@@ -210,20 +211,34 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb
             var dataFileConfigKey = $"PipelineOptions:Elements:{hashEngineIndex}" +
                                     $":BuildParameters:DataFile";
 
-            // Use the command line argument if provided, otherwise use the appsettings.json value.
-            var dataFile = dataFileOverride ?? options.GetHashDataFile();
+            // Use the command line argument if provided. Otherwise, an explicit data file
+            // path supplied in an environment variable takes precedence over the value in
+            // the configuration file. The variable is '_51DEGREES_DD_PATH'.
+            var dataFile = dataFileOverride;
+            if (string.IsNullOrWhiteSpace(dataFile))
+            {
+                dataFile = Examples.ExampleUtils.FromEnvironment(
+                    Examples.Constants.DD_PATH_ENV_VAR,
+                    Examples.Constants.OLD_DD_PATH_ENV_VARS);
+            }
+            if (string.IsNullOrWhiteSpace(dataFile))
+            {
+                dataFile = options.GetHashDataFile();
+            }
             var foundDataFile = false;
             if (string.IsNullOrEmpty(dataFile))
             {
-                throw new Exception($"A data file must be specified as a command line argument " +
-                    $"or in the appsettings.json file.");
+                throw new Exception($"A data file must be specified as a command line " +
+                    $"argument, in the appsettings.json file, or in the " +
+                    $"'{Examples.Constants.DD_PATH_ENV_VAR}' environment " +
+                    $"variable.");
             }
             // The data file location provided in the configuration may be using an absolute or
             // relative path. If it is relative then search for a matching file using the
             // ExampleUtils.FindFile function.
             if (Path.IsPathRooted(dataFile) == false)
             {
-                var newPath = ExampleUtils.FindFile(dataFile);
+                var newPath = Examples.ExampleUtils.FindFile(dataFile);
                 if (newPath != null)
                 {
                     // Add an override for the absolute path to the data file.

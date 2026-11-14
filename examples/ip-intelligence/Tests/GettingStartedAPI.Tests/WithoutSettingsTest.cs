@@ -27,7 +27,9 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using FiftyOne.Pipeline.Core.FlowElements;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests;
@@ -137,5 +139,33 @@ public class WithoutSettingsTest
         Assert.Contains("\"ip\"", json,
             StringComparison.OrdinalIgnoreCase,
             "The answer should list the IP Intelligence properties.");
+    }
+
+    [TestMethod]
+    public async Task Example_WithoutSettings_SaysWhatNeedsTheEnterpriseDataFiles()
+    {
+        var program = new Program();
+        _app = program.BuildWebApp();
+        await _app.StartAsync(TestContext.CancellationToken);
+
+        var output = new StringWriter();
+        program.WriteNotes(
+            _app.Services.GetRequiredService<IPipeline>(), output);
+        var notes = output.ToString();
+        TestContext.WriteLine(notes);
+
+        Assert.Contains("which only the Enterprise data files have", notes,
+            "The example should say which properties need the Enterprise " +
+            "data files.");
+        Assert.Contains("HardwareVendor", notes,
+            "HardwareVendor needs the Enterprise Device Detection data file.");
+        Assert.Contains("IpRangeStart", notes,
+            "IpRangeStart needs the Enterprise IP Intelligence data file.");
+        Assert.DoesNotContain("RegisteredName", notes,
+            "The Lite data file has RegisteredName.");
+        Assert.Contains("https://51degrees.com/contact-us?", notes,
+            "The example should link to the contact page.");
+        Assert.Contains("Find out more", notes,
+            "The example should end by saying where to find out more.");
     }
 }
