@@ -38,7 +38,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Verification
         /// Find the value of one covered component.
         /// </summary>
         /// <param name="name">
-        /// The component name in lower case, for example '@authority' or
+        /// The component name in lower case, for example '\@authority' or
         /// 'signature-agent'.
         /// </param>
         /// <param name="component">
@@ -133,7 +133,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Verification
         }
 
         /// <summary>
-        /// Build the '@authority' derived component from the value of the
+        /// Build the '\@authority' derived component from the value of the
         /// Host header, as RFC 9421 section 2.2.3 describes. The host is
         /// lower cased and a port that is the default for the scheme is
         /// removed.

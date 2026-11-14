@@ -832,7 +832,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Keys
 
         /// <summary>
         /// Resolves the covered components of the signature a key directory
-        /// response carries over itself. The '@authority;req' component
+        /// response carries over itself. The '\@authority;req' component
         /// refers to the request this element sent, and the other components
         /// are response headers.
         /// </summary>
