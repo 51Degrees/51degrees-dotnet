@@ -292,6 +292,9 @@ namespace FiftyOne.Caching.Tests
         /// takes the old item out of its own list, so two replacements
         /// can work on the same two lists in opposite directions. Each must
         /// not hold one list's lock while it waits for the other's.
+        /// Afterwards each key must be held by exactly one item in the
+        /// lists, the one the cache returns, so that no replacement has
+        /// left an item behind that the cache has lost track of.
         /// </summary>
         [TestMethod]
         public void LruPutCache_Replace_ConcurrentReplacementsFinish()
@@ -334,6 +337,47 @@ namespace FiftyOne.Caching.Tests
                 $"The replacements did not finish in " +
                 $"{ReplaceFinishSeconds} seconds, so at least two of them " +
                 "are each waiting for a list lock the other holds.");
+
+            // Each key is held once, by a valid item in one of the lists,
+            // and that item is the one the cache returns for the key. An
+            // item left in a list that the cache no longer returns means a
+            // replacement lost track of it.
+            // The lists are read first, because reading the cache moves the
+            // item it returns to the front of its list.
+            var lists = ((LruCacheBase<int, int>)cache)._linkedLists;
+            var items = new List<KeyValuePair<int, int>>();
+            foreach (var list in lists)
+            {
+                for (var item = list.First; item != null; item = item.Next)
+                {
+                    Assert.IsTrue(
+                        item.IsValid,
+                        $"An item for key {item.Key} is in a list but not " +
+                        "valid.");
+                    items.Add(new KeyValuePair<int, int>(
+                        item.Key, item.Value));
+                }
+            }
+            var held = new List<int>();
+            foreach (var item in items)
+            {
+                Assert.AreEqual(
+                    item.Value,
+                    cache[item.Key],
+                    $"The item in the list for key {item.Key} is not the " +
+                    "one the cache returns.");
+                held.Add(item.Key);
+            }
+            held.Sort();
+            var keys = new List<int>();
+            for (var key = 0; key < ReplaceKeyCount; key++)
+            {
+                keys.Add(key);
+            }
+            CollectionAssert.AreEqual(
+                keys,
+                held,
+                "Each key must be held by exactly one item in the lists.");
         }
 
         /// <summary>
