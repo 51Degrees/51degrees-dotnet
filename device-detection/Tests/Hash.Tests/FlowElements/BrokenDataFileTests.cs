@@ -21,7 +21,6 @@
  * ********************************************************************* */
 
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
-using FiftyOne.DeviceDetection.TestHelpers;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines;
 using FiftyOne.Pipeline.Engines.Services;
@@ -33,6 +32,8 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
+using Constants = FiftyOne.DeviceDetection.TestHelpers.Constants;
+using Utils = FiftyOne.DeviceDetection.TestHelpers.Utils;
 
 namespace FiftyOne.DeviceDetection.Hash.Tests.FlowElements
 {
