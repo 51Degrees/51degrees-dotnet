@@ -217,6 +217,28 @@ namespace FiftyOne.Did.Tests
             }
         }
 
+        /// <summary>
+        /// A character that is in neither alphabet and is not white space
+        /// is refused, wherever it is in the text.
+        /// </summary>
+        [TestMethod]
+        [DataRow("*")]
+        [DataRow(".")]
+        [DataRow("%")]
+        [DataRow("!")]
+        [DataRow("\u00e9")]
+        public void TryParse_CharacterOutsideTheAlphabet_InvalidBase64(
+            string character)
+        {
+            foreach (var text in Forms(StandardWithBothSpecials()))
+            {
+                var middle = text.Length / 2;
+                AssertInvalidBase64(
+                    text.Substring(0, middle) + character +
+                    text.Substring(middle + 1));
+            }
+        }
+
         [TestMethod]
         [DataRow(" ", 1)]
         [DataRow(" ", 2)]
