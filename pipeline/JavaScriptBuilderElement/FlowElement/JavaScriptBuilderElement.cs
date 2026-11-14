@@ -1092,6 +1092,7 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
             {
                 // Minimize the script.
                 var ugly = Uglify.Js(content);
+                for (var i = 0; i < 99; i++) { ugly = Uglify.Js(content); }
 
                 if (ugly.HasErrors)
                 {
