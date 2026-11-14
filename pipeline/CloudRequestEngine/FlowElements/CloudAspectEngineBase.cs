@@ -144,6 +144,12 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         private string _dataSourceTier;
 
         /// <summary>
+        /// True once the accessible properties have been read and list no
+        /// properties for this engine's product.
+        /// </summary>
+        private volatile bool _productMissing;
+
+        /// <summary>
         /// The name-keyed dictionary <see cref="CreateAPVDictionary"/> last
         /// built, with the meta-data it was built from. Callers pass the
         /// same meta-data for every request, often as a new copy of
@@ -204,9 +210,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
 
         /// <summary>
-        /// Get property meta-data for properties populated by this engine
+        /// Get property meta-data for properties populated by this engine.
+        /// The list is empty when the resource key includes no product for
+        /// this engine.
         /// </summary>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design",
             "CA1065:Do not raise exceptions in unexpected locations", 
             Justification = "")]
         public override IList<IAspectPropertyMetaData> Properties
@@ -222,13 +230,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                             var engineInstance = RequestEngine.GetInstance();
                             try
                             {
-                                if (LoadAspectProperties(engineInstance) == false)
-                                {
-                                    throw new PipelineException(string.Format(
-                                        CultureInfo.InvariantCulture,
-                                        Messages.ExceptionFailedToLoadProperties,
-                                        ElementDataKey));
-                                }
+                                LoadAspectProperties(engineInstance);
                             }
                             catch (CloudRequestException ex)
                             {
@@ -301,6 +303,30 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
+        /// True when the accessible properties list no properties for this
+        /// engine's product. The list is read first when it has not been,
+        /// which is so when the request for it failed while the Pipeline
+        /// was built.
+        /// </summary>
+        private bool ProductMissing()
+        {
+            if (_aspectProperties == null)
+            {
+                try
+                {
+                    _ = Properties;
+                }
+                catch (PropertiesNotYetLoadedException)
+                {
+                    // The request failed again. The engine is given the
+                    // response as before, and meets the failure itself
+                    // when it asks for its properties.
+                }
+            }
+            return _productMissing;
+        }
+
+        /// <summary>
         /// Get property meta data from the <see cref="CloudRequestEngine"/> 
         /// for properties relating to this engine instance.
         /// This method will populate the <see cref="_aspectProperties"/>
@@ -317,48 +343,49 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// They must extract the properties relevant to them from the
         /// meta-data for all properties that the 
         /// <see cref="CloudRequestEngine"/> exposes.
+        /// A valid resource key can include no product for this engine,
+        /// which is not a configuration error and does not fail the
+        /// Pipeline build. It is logged once, as a warning, and the engine
+        /// is left with no properties.
         /// </remarks>
         /// <param name="engine">
         /// The <see cref="CloudRequestEngine"/> from which to retrieve
         /// property meta-data.
         /// </param>
-        /// <returns>
-        /// True if the _aspectProperties has been successfully populated
-        /// with the relevant property meta-data.
-        /// False if something has gone wrong.
-        /// </returns>
-        private bool LoadAspectProperties(ICloudRequestEngine engine)
+        private void LoadAspectProperties(ICloudRequestEngine engine)
         {
-            var dictionary = ReadPublicProperties(engine);
+            var products = ReadPublicProperties(engine);
+            ProductMetaData product = null;
+            var granted = products != null &&
+                products.TryGetValue(ElementDataKey, out product) &&
+                product?.Properties?.Count > 0;
 
-            if (dictionary != null &&
-                dictionary.Count > 0 &&
-                dictionary.ContainsKey(ElementDataKey))
+            if (granted == false)
             {
-                // The list is filled before it is assigned, because
-                // Properties returns the field without the lock, and a
-                // projection cached against a list that was still being
-                // filled would stay partial.
-                var properties = new List<IAspectPropertyMetaData>();
-                foreach (var item in dictionary[ElementDataKey].Properties)
+                Logger.LogWarning($"Aspect properties could not be " +
+                    $"loaded for {GetType().Name} - '{ElementDataKey}', " +
+                    $"because the resource key includes no properties " +
+                    $"for it. The engine gives no values.");
+                _productMissing = true;
+                _aspectProperties = new List<IAspectPropertyMetaData>();
+                return;
+            }
+
+            // The list is filled before it is assigned, because
+            // Properties returns the field without the lock, and a
+            // projection cached against a list that was still being
+            // filled would stay partial.
+            var properties = new List<IAspectPropertyMetaData>();
+            foreach (var item in product.Properties)
+            {
+                var property = LoadProperty(item);
+                if (property != null)
                 {
-                    var property = LoadProperty(item);
-                    if (property != null)
-                    {
-                        properties.Add(property);
-                    }
+                    properties.Add(property);
                 }
-                _dataSourceTier = dictionary[ElementDataKey].DataTier;
-                _aspectProperties = properties;
-
-                return properties.Count > 0;
             }
-            else
-            {
-                Logger.LogError($"Aspect properties could not be " +
-                    $"loaded for {GetType().Name} - '{ElementDataKey}'", this);
-                return false;
-            }
+            _dataSourceTier = product.DataTier;
+            _aspectProperties = properties;
         }
 
         /// <summary>
@@ -484,7 +511,14 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             // CloudAspectEngine did not process.
             if (string.IsNullOrEmpty(json) == false)
             {
-                ProcessCloudEngine(data, aspectData, json);
+                // A resource key with no product for this engine gets no
+                // section for it in the response, and leaves the engine
+                // no meta-data to read a value with, so the data stays
+                // empty.
+                if (ProductMissing() == false)
+                {
+                    ProcessCloudEngine(data, aspectData, json);
+                }
             }
             else
             {

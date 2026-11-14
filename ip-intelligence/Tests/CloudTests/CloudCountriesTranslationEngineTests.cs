@@ -28,7 +28,6 @@ using FiftyOne.IpIntelligence.Translation.Data;
 using FiftyOne.Pipeline.CloudRequestEngine.Data;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.Data;
-using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FlowElements;
@@ -181,19 +180,24 @@ public class CloudCountriesTranslationEngineTests
     }
 
     /// <summary>
-    /// When the resource key does not grant the translation properties the cloud
-    /// returns no metadata for them. Like IpiCloudEngine and
-    /// DeviceDetectionCloudEngine, the engine must then fail fast at pipeline
-    /// build time with a clear PipelineException rather than starting and
-    /// failing later per request.
+    /// When the resource key does not grant the translation properties the
+    /// cloud returns no metadata for them, and no section for them in the
+    /// response. Like IpiCloudEngine and DeviceDetectionCloudEngine, the
+    /// pipeline still builds, the engine has no properties, and a request
+    /// is processed without the engine reading the missing section.
     /// </summary>
     [TestMethod]
-    public void Build_WithoutTranslationProperties_FailsFast()
+    public void Build_WithoutTranslationProperties_BuildsAndReadsNothing()
     {
-        var ex = Assert.ThrowsExactly<PipelineException>(() =>
-            BuildPipeline("{}", new Dictionary<string, ProductMetaData>()));
+        using var pipeline = BuildPipeline(
+            "{}", new Dictionary<string, ProductMetaData>());
+        var engine = pipeline.GetElement<CloudCountriesTranslationEngine>();
 
-        StringAssert.Contains(ex.Message, Constants.CountryNamesTranslatedKey);
+        Assert.AreEqual(0, engine.Properties.Count);
+        using var data = pipeline.CreateFlowData();
+        data.Process();
+        Assert.IsFalse(data.Errors?.Any() == true,
+            "a key without the product is not an error on each request");
     }
 
     /// <summary>

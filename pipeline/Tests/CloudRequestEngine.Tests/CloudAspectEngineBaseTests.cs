@@ -34,7 +34,6 @@ using Moq;
 using Moq.Protected;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 
 namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
@@ -45,20 +44,6 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
     [TestClass]
     public class CloudAspectEngineBaseTests
     {
-
-        /// <summary>
-        /// Expected properties error, duplicated here as error Messages has 
-        /// internal access modifier.
-        /// </summary>
-        private static readonly string PropertiesError =
-            "Failed to load properties for '{0}'. This usually means your " +
-            "resource key does not include access to any properties under " +
-            "'{0}'. Check or create a resource key with the properties you " +
-            "need on the configuration page at " +
-            "https://51degrees.com/configure?utm_source=code&utm_medium=comment" +
-            "&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline." +
-            "cloudrequestengine-messages.resx&utm_term=" +
-            "exceptionfailedtoloadproperties.";
 
         #region Test Classes
 
@@ -214,24 +199,15 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         }
 
         /// <summary>
-        /// Test that an exception is thrown by the Properties auto property if 
-        /// the cloud request engine returns no properties.
+        /// Test that the pipeline builds and the engine has no properties
+        /// if the cloud request engine returns no properties.
         /// </summary>
         [TestMethod]
         public void LoadProperties_NoProperties()
         {
-            try
-            {
-                CreatePipeline();
-                Assert.Fail("PipelineException should be thrown");
-            }
-            catch (PipelineException ex) {
-                Assert.AreEqual(
-                    string.Format(CultureInfo.InvariantCulture,
-                        PropertiesError,
-                        "test"),
-                    ex.Message);
-            }
+            CreatePipeline();
+
+            Assert.AreEqual(0, _engine.Properties.Count);
         }
 
         /// <summary>
@@ -279,8 +255,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         }
 
         /// <summary>
-        /// Test that an exception is thrown by the Properties auto property if
-        /// the cloud engine only returns properties for other engines.
+        /// Test that the pipeline builds and the engine has no properties
+        /// if the cloud engine only returns properties for other engines.
         /// </summary>
         [TestMethod]
         public void LoadProperties_WrongProperties()
@@ -293,19 +269,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             devicePropertyData.Properties = properties;
             _propertiesReturnedByRequestEngine.Add("test2", devicePropertyData);
 
-            try
-            {
-                CreatePipeline();
-                Assert.Fail("PipelineException should be thrown");
-            }
-            catch (PipelineException ex)
-            {
-                Assert.AreEqual(
-                    string.Format(CultureInfo.InvariantCulture,
-                        PropertiesError,
-                        "test"),
-                    ex.Message);
-            }
+            CreatePipeline();
+
+            Assert.AreEqual(0, _engine.Properties.Count);
         }
 
         /// <summary>
