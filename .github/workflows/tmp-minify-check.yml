@@ -1,0 +1,29 @@
+name: Temporary minification timing check
+
+# Throwaway workflow for tmp/issues-dotnet-minify-* branches. Deleted with
+# the branch. One job for each image and configuration the full build and
+# the release build run the unit tests on.
+on:
+  push:
+    branches:
+      - 'tmp/issues-dotnet-minify-*'
+
+jobs:
+  Minify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04, config: Release }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Minification timing
+        shell: pwsh
+        run: >
+          dotnet test pipeline/Tests/JavaScriptBuilderElementTests/FiftyOne.Pipeline.JavaScriptBuilderElementTests.csproj
+          -c ${{ matrix.config }} -p:FiftyOneReferences=Project
+          --filter "FullyQualifiedName~MinifyPerformanceTests"
+          --logger "console;verbosity=detailed"
