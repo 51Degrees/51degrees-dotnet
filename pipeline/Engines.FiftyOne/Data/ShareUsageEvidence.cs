@@ -117,8 +117,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// <summary>
         /// The value of a key compared without regard to case, as the
         /// specification compares keys, whatever comparer the dictionary
-        /// has. The dictionary's own lookup is tried first, so a
-        /// dictionary that ignores case is never searched.
+        /// has. The dictionary's own lookup is tried first, and its
+        /// entries are walked only when that misses.
         /// </summary>
         /// <param name="values">The values.</param>
         /// <param name="key">The key.</param>
