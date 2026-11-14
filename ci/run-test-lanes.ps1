@@ -23,8 +23,6 @@ $ErrorActionPreference = "Stop"
 #              The IP Intelligence engine tests load the 6 GB Enterprise file
 #              in profiles that hold it in memory, and could not allocate
 #              their collections on a 16 GB runner with other tests alongside.
-#              The JavaScript builder tests drive Chrome, whose page loads
-#              pass their 60 second limit when the tests share the CPU.
 #
 # Then three lanes alongside each other:
 #
@@ -41,7 +39,7 @@ $ErrorActionPreference = "Stop"
 # Each assembly's output is printed in one piece when it finishes, so the log
 # reads as it did before.
 
-$ExclusivePattern = '^FiftyOne\.(Caching\.Tests|Pipeline\.Engines\.Tests|Pipeline\.Engines\.FiftyOne\.Tests|Pipeline\.JavaScriptBuilderElementTests|IpIntelligence\.OnPremise\.Tests|IpIntelligence\.Tests\.Core)\.dll$'
+$ExclusivePattern = '^FiftyOne\.(Caching\.Tests|Pipeline\.Engines\.Tests|Pipeline\.Engines\.FiftyOne\.Tests|IpIntelligence\.OnPremise\.Tests|IpIntelligence\.Tests\.Core)\.dll$'
 $PortsLane = 'Example\.Tests\.Web|IpIntelligence\.Example\.Tests\.Cloud|GettingStartedAPI\.Tests'
 $MemoryLane = '^FiftyOne\.IpIntelligence\.Example\.Tests\.OnPremise\.dll$'
 
