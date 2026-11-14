@@ -50,11 +50,16 @@
          in System.Web, the same assembly the integration under test
          reads its values from. -->
     <Reference Include="System.Web" />
+    <!-- The usage sharing test captures the message the element sends
+         with an HttpClient handler and unzips it. -->
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ApplicationRootPathTests.cs" />
     <Compile Include="Dependencies.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ShareUsageWebRequestTests.cs" />
     <Compile Include="WebPipelineEvidenceFillerTests.cs" />
   </ItemGroup>
   <ItemGroup>
