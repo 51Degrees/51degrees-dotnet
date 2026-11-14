@@ -58,6 +58,43 @@ public class DriverStartTests
             JavaScriptBuilderElementTestsBase.DriverStartAttempts, calls);
     }
 
+    /// <summary>
+    /// Each further start is written as one line for the build log, with
+    /// the first line of the reason.
+    /// </summary>
+    [TestMethod]
+    public void StartWithRetry_SessionNotCreatedOnce_WritesOneLineForTheBuildLog()
+    {
+        var calls = 0;
+        var written = new StringWriter();
+        var console = Console.Out;
+        Console.SetOut(written);
+        try
+        {
+            JavaScriptBuilderElementTestsBase.StartWithRetry(() =>
+            {
+                calls++;
+                if (calls == 1)
+                {
+                    throw new InvalidOperationException(
+                        "session not created\nfrom disconnected");
+                }
+                return Started;
+            });
+        }
+        finally
+        {
+            Console.SetOut(console);
+        }
+
+        Assert.Contains(
+            "Build log: Chrome did not create a session on attempt 1 of " +
+            JavaScriptBuilderElementTestsBase.DriverStartAttempts +
+            ". session not created" + Environment.NewLine,
+            written.ToString());
+        Assert.DoesNotContain("from disconnected", written.ToString());
+    }
+
     [TestMethod]
     public void StartWithRetry_SessionNeverCreated_ThrowsAfterTheLastAttempt()
     {

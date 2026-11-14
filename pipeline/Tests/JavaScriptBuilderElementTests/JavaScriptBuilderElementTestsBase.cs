@@ -102,15 +102,20 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
                 catch (InvalidOperationException ex)
                     when (attempt < DriverStartAttempts)
                 {
-                    // Written to the test results, so a run shows how
-                    // often Chrome had to be started again.
+                    // CI prints the lines that start "Build log: " from the
+                    // test results, so a job's log shows each time Chrome
+                    // had to be started again. The exception's message can
+                    // run over several lines, and only its first follows.
                     Console.WriteLine(
-                        "Chrome did not create a session on attempt " +
-                        attempt + " of " + DriverStartAttempts + ". " +
-                        ex.Message);
+                        "Build log: Chrome did not create a session on " +
+                        "attempt " + attempt + " of " + DriverStartAttempts +
+                        ". " + FirstLine(ex.Message));
                 }
             }
         }
+
+        private static string FirstLine(string text) =>
+            text.Split('\r', '\n')[0];
 
         /// <summary>
         /// Marks the test inconclusive when it runs where no ChromeDriver can
