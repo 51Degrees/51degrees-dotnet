@@ -323,6 +323,11 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         /// The identifier of the data file to update.
         /// This engine only uses one data file so this parameter is ignored.
         /// </param>
+        /// <exception cref="ApplicationException">
+        /// The data file cannot be used. The engine goes on using the data
+        /// it had, and the caller, usually the data update service, reports
+        /// the failure.
+        /// </exception>
         public override void RefreshData(string dataFileIdentifier)
         {
             var dataFile = DataFiles.Single();
@@ -332,18 +337,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
             }
             else
             {
-                try
-                {
-                    _engine.refreshData();
-                }
-                catch (ApplicationException e)
-                {
-                    Logger.LogError(e, $"Failed to refresh data from '{dataFile.DataFilePath}'. " +
-                        $"Update service will try again later. If issue persists, please contact " +
-                        $"support@51degrees.com");
-                    // Just return instead of running any post-update logic.
-                    return;
-                }
+                _engine.refreshData();
             }
             InitEngineMetaData();
             RefreshCompleted?.Invoke(this, null);
