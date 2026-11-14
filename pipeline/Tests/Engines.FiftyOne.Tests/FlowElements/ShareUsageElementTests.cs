@@ -585,6 +585,38 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
+        /// The message names the version the Pipeline packages were built
+        /// as, so that the release a caller runs can be told from the
+        /// message. The build gives this test project that version.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_SingleEvent_VersionIsThePackageVersion()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            var data = MockFlowData.CreateFromEvidence(
+                new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" }
+                },
+                false);
+            var built = typeof(ShareUsageElementTests).Assembly
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
+                .Single(a => a.Key == "FiftyOnePipelineVersion")
+                .Value;
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            WaitForSendDataTask();
+
+            // Assert
+            Assert.IsFalse(string.IsNullOrEmpty(built),
+                "The build gave the tests no Pipeline version.");
+            Assert.HasCount(1, _xmlContent);
+            Assert.Contains($"<Version>{built}</Version>", _xmlContent[0]);
+        }
+
+        /// <summary>
         /// Test that the ShareUsageElement behaves as expected when it is 
         /// configured to send data after two events and just one event is 
         /// logged.

@@ -553,8 +553,23 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                 return 0;
             });
 
-            return rootCommand.Parse(args).Invoke();
+            // A failure, such as an exception or arguments that cannot be
+            // read, gives an exit code other than zero.
+            var exitCode = rootCommand.Parse(args).Invoke();
+            if (exitCode == 0)
+            {
+                Examples.ExampleUtils.WriteFindOutMore(
+                    Console.Out, ContentSlug);
+            }
+            return exitCode;
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-ip-intelligence-onpremise-updatedatafile-console-program.cs";
 
         public static void Initialize(
             string dataFile, string licenseKey, string? dataUpdateUrl, bool interactive)
