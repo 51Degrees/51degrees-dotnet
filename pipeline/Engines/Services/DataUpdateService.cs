@@ -198,9 +198,10 @@ namespace FiftyOne.Pipeline.Engines.Services
 
 			// A disposed data file is not registered again, so a check that
 			// was running when the file was disposed does not bring it back.
-			// A file disposed while this runs is caught by the checks under
-			// its timer lock and the list's lock below, though a check on
-			// start-up that has already begun still runs.
+			// A file disposed while this runs is caught by the checks before
+			// the check on start-up and under its timer lock and the list's
+			// lock below, though a check on start-up that has already begun
+			// still runs.
 			if (dataFile.TimerClosed)
 			{
 				LogDebugMessage(
@@ -223,7 +224,8 @@ namespace FiftyOne.Pipeline.Engines.Services
 				// We also want to do this synchronously so that execution
 				// will block until the engine is ready.
 				if (dataFile.Configuration.UpdateOnStartup &&
-					alreadyRegistered == false)
+					alreadyRegistered == false &&
+					dataFile.TimerClosed == false)
                 {
                     LogInfoMessage(Messages.MessageAutoUpdateOnStartup, dataFile);
                     var result = CheckForUpdate(dataFile, true);
