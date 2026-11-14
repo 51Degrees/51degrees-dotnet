@@ -65,8 +65,16 @@ public class TestExamplesWithoutSettings
     public TestContext TestContext { get; set; }
 
     /// <summary>
+    /// The heading of the section every example ends with.
+    /// </summary>
+    private const string FindOutMore = "Find out more";
+
+    /// <summary>
     /// Runs the example's Main with no arguments and the settings removed,
-    /// and returns what it wrote to the console.
+    /// checks that it ends by saying where to find out more, and returns
+    /// what it wrote to the console before that section. The section has a
+    /// link to the contact page of its own, so the tests look for the
+    /// example's link in what came before it.
     /// </summary>
     private string RunWithoutSettings(Action<string[]> main)
     {
@@ -93,7 +101,12 @@ public class TestExamplesWithoutSettings
             }
             TestContext.WriteLine(output.ToString());
         }
-        return output.ToString();
+        var written = output.ToString();
+        var section = written.LastIndexOf(
+            FindOutMore, StringComparison.Ordinal);
+        Assert.IsTrue(section >= 0,
+            "The example should end by saying where to find out more.");
+        return written.Substring(0, section);
     }
 
     /// <summary>

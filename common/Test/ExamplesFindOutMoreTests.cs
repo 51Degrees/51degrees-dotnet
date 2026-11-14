@@ -44,6 +44,7 @@ public class ExamplesFindOutMoreTests
     private static readonly string[] ExampleRoots =
     {
         "examples/device-detection/",
+        "examples/ip-intelligence/",
         "location/Examples/",
         "pipeline/Examples/",
     };
@@ -109,6 +110,8 @@ public class ExamplesFindOutMoreTests
             "Program.cs"));
         Assert.IsTrue(IsEntryPoint(
             "examples/device-detection/OnPremise/Framework-Web/Global.asax"));
+        Assert.IsTrue(IsEntryPoint(
+            "examples/ip-intelligence/Cloud/Metadata-Console/Program.cs"));
         Assert.IsTrue(IsEntryPoint(
             "pipeline/Examples/ResultCaching/Program.cs"));
         Assert.IsFalse(IsEntryPoint(
