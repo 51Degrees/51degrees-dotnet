@@ -209,6 +209,8 @@ namespace FiftyOne.Did.Model
         /// </summary>
         public uint LicenseId { get; }
 
+        public int PayloadVersion => 0;
+
         /// <summary>
         /// The match key from the payload, a 32-byte SHA-256 for
         /// Probabilistic and HashedEmail identifiers, or 16 GUID bytes for
@@ -300,6 +302,12 @@ namespace FiftyOne.Did.Model
             // string, because the OWID reader accepts the standard alphabet
             // only and the URL-safe form is how a page puts a 51Did in a
             // link.
+            if (value != null)
+            {
+                value = new string(System.Linq.Enumerable.ToArray(
+                    System.Linq.Enumerable.Where(value, c => c < 128 &&
+                        (char.IsLetterOrDigit(c) || "+/-_=".IndexOf(c) >= 0))));
+            }
             var base64 = NormaliseBase64(value);
             if (value != null && base64 == null)
             {

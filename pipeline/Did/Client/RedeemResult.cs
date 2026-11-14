@@ -273,7 +273,7 @@ namespace FiftyOne.Did.Client
         // value never reads as a pass.
         private static FactorOutcome ParseFactor(string? value)
         {
-            switch (value?.ToLowerInvariant())
+            switch (value)
             {
                 case "verified": return FactorOutcome.Verified;
                 case "misconfigured": return FactorOutcome.Misconfigured;
