@@ -20,6 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.GeoLocation.Cloud.FlowElements;
 using FiftyOne.GeoLocation.Core;
 using FiftyOne.Pipeline.CloudRequestEngine;
 using FiftyOne.Pipeline.CloudRequestEngine.Data;
