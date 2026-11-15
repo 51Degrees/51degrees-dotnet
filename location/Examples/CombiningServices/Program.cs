@@ -162,17 +162,30 @@ namespace CombiningServices
             }
         }
 
+        /// <summary>
+        /// The environment variable the resource key is read from when
+        /// none is given on the command line.
+        /// </summary>
+        private const string ResourceKeyVariable =
+            "_51DEGREES_RESOURCE_KEY";
+
         static void Main(string[] args)
         {
             // Obtain a resource key for free at https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-combiningservices-program.cs&utm_term=main
             // Make sure to include the 'Country' and 'IsMobile' properties as
             // they are used by this example.
-            string resourceKey = args.Length > 0 ? args[0] : "!!YOUR_RESOURCE_KEY!!";
+            string resourceKey = args.Length > 0 ? args[0] :
+                Environment.GetEnvironmentVariable(ResourceKeyVariable);
 
-            if (resourceKey.StartsWith("!!"))
+            if (string.IsNullOrWhiteSpace(resourceKey))
             {
-                Console.WriteLine("You need to create a resource key at " +
-                    "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-combiningservices-program.cs&utm_term=resource-key-required and paste it into this example.");
+                Console.WriteLine("No resource key was given on the command " +
+                    "line or in the environment variable " +
+                    $"'{ResourceKeyVariable}'. A resource key can be " +
+                    "created at " +
+                    "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-combiningservices-program.cs&utm_term=resource-key-required. " +
+                    "Then set the environment variable to it, or give it " +
+                    "as the first argument.");
                 Console.WriteLine("Make sure to include the 'Country' and " +
                     "'IsMobile' properties as they are used by this example.");
             }
@@ -182,8 +195,12 @@ namespace CombiningServices
             }
             WriteFindOutMore();
 #if (DEBUG)
-            Console.WriteLine("Complete. Press key to exit.");
-            Console.ReadKey();
+            // Console.ReadKey throws when the input is redirected.
+            if (Console.IsInputRedirected == false)
+            {
+                Console.WriteLine("Complete. Press key to exit.");
+                Console.ReadKey();
+            }
 #endif
         }
 

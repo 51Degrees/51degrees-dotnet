@@ -103,6 +103,33 @@ namespace FiftyOne.Pipeline.Web.Services
             return result;
         }
 
+        /// <summary>
+        /// True when the request is for the JavaScript or the JSON, with
+        /// client-side evidence turned on.
+        /// </summary>
+        internal bool IsClientsideRequest(HttpContext context) =>
+            Options.Value.ClientSideEvidenceEnabled &&
+            (context.Request.Path.Value.EndsWith(
+                Options.Value.JavaScriptPath,
+                StringComparison.OrdinalIgnoreCase) ||
+            context.Request.Path.Value.EndsWith(
+                Options.Value.JsonPath,
+                StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>
+        /// Answers the request with a 304 or a 412 when its If-None-Match
+        /// matches the ETag of the evidence in <paramref name="flowData"/>,
+        /// which has not been processed. False, with nothing written, when
+        /// the request is to be processed and served.
+        /// </summary>
+        internal bool ServeNotModified(HttpContext context, IFlowData flowData)
+        {
+            var service = ClientsidePropertyService as
+                Shared.Services.ClientsidePropertyService;
+            return service != null &&
+                service.ServeNotModified(new ContextAdapter(context), flowData);
+        }
+
         private void ServeCoreJS(HttpContext context)
         {
             if (Options.Value.ClientSideEvidenceEnabled)

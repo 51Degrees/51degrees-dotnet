@@ -195,6 +195,35 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         }
 
         /// <summary>
+        /// A data source held in memory is updated by giving the service the
+        /// new data, which the engine is given unchanged. With no file
+        /// behind the data source, nothing is written to disk.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateService_UpdateFromMemory_GivesTheEngineTheData()
+        {
+            var engine = new Mock<IOnPremiseAspectEngine>();
+            var file = new AspectEngineDataFile()
+            {
+                Engine = engine.Object,
+                Configuration = new DataFileConfiguration()
+                {
+                    Identifier = "memory",
+                    MemoryOnly = true,
+                },
+            };
+            using var data = new MemoryStream(new byte[] { 1, 2, 3 });
+
+            var status = _dataUpdate.UpdateFromMemory(file, data);
+
+            Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_SUCCESS, status);
+            engine.Verify(e => e.RefreshData("memory", data), Times.Once());
+            _fileWrapper.Verify(
+                f => f.WriteAllBytes(It.IsAny<string>(), It.IsAny<byte[]>()),
+                Times.Never());
+        }
+
+        /// <summary>
         /// Check that a timer will be created with the default timing values
         /// if the AutomaticUpdatesEnabled property is set.
         /// </summary>

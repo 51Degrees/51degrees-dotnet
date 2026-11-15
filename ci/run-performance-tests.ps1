@@ -16,7 +16,7 @@ $summary = New-Item -ItemType Directory -Force "$RepoPath/test-results/performan
 # put in the local feed, at the versions being published. Without the
 # version properties they would restore the last published versions from
 # nuget.org instead.
-$references = $Version ? (Get-VersionProperties -Versions (Get-FamilyVersions -RepoName $RepoName)) : @("-p:FiftyOneReferences=Project")
+$references = $Version ? (Get-VersionProperties -Versions (Get-PackageVersions -RepoName $RepoName)) : @("-p:FiftyOneReferences=Project")
 $runConfiguration = $Configuration.Contains("Release") ? "Release" : "Debug"
 # The console examples are built one project at a time. They reach some
 # projects through references with different settings, so those projects

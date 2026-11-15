@@ -1,9 +1,9 @@
 name: Publish
 
-# Builds, tests and packs every package family that changed since its last
-# '<family>/<version>' tag, and every family depending on one of them, then
-# pushes to NuGet and tags each family. A dry run does everything except push,
-# tag and open the versions pull request.
+# Builds, tests and packs every NuGet package that changed since its last
+# '<package>/<version>' tag, and every package depending on one of them, then
+# pushes to NuGet and tags each package. A dry run does everything except
+# push, tag and open the versions pull request.
 
 on:
   workflow_dispatch:

@@ -258,7 +258,7 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Mixed.GettingStartedConsole
                     // If we don't have a resource key then log an error.
                     if (string.IsNullOrWhiteSpace(resourceKey))
                     {
-                        serviceProvider.GetRequiredService<ILogger<Program>>().LogError(
+                        serviceProvider.GetRequiredService<ILogger<Program>>().LogWarning(
                             $"No resource key specified in the configuration file " +
                             $"'appsettings.json' or the environment variable " +
                             $"'{ExampleUtils.RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud " +

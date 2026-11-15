@@ -22,9 +22,11 @@ Visual Studio 2022 or later is recommended. Although Visual Studio Code can be
 used for working with most of the projects.
 
 The core device detection projects are written in C and C++. The Pipeline
-engines are written in C\# and target .NET Standard 2.0.3. Example and test
-projects mostly target .NET 6.0 though in some cases, projects are available
-targeting other frameworks.
+engines are written in C\# and target .NET Standard 2.0 and .NET 10.
+`FiftyOne.DeviceDetection.PropertyKeyed` targets .NET Standard 2.1, .NET 8 and
+.NET 10, and the two robots.txt packages target .NET 8 and .NET 10. The examples
+target .NET 10, apart from the two `Framework-Web` examples, which target .NET
+Framework 4.6.2. The tests run under .NET 8 and .NET 10.
 
 For the .NET versions we test against, see the
 [tested versions](https://51degrees.com/documentation/_product_summaries__tested_versions.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=dependencies)
