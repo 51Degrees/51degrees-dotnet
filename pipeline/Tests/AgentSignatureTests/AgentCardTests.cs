@@ -27,8 +27,11 @@ using FiftyOne.Pipeline.Engines.Data;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.AgentSignature.Tests
 {
@@ -380,6 +383,98 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                     "tdm", result.AgentSignaturePurpose, "purpose", result);
                 AssertValue(
                     CardUrl, result.AgentSignatureCardUrl, "card URL", result);
+            }
+        }
+
+        /// <summary>
+        /// A registry read whose start blocks the thread that made it does
+        /// not hold up another request, because the read is not started
+        /// inside a lock. The other request ends inside its wait budget,
+        /// Verified and with no card, while the first read is still
+        /// blocked. The fetch time limit is longer than the hang guard, so
+        /// the blocked read is not cancelled before the guard is reached.
+        /// </summary>
+        [TestMethod]
+        public void RegistryReadBlockingItsCallerDoesNotHoldUpAnotherRequest()
+        {
+            using (var harness = ElementHarness.Create(
+                builder => builder
+                    .SetRegistry(RegistryUrl)
+                    .SetWaitBudget(
+                        TimeSpan.FromMilliseconds(RegistryWaitBudgetMs))
+                    .SetFetchTimeout(
+                        TimeSpan.FromSeconds(RegistryFetchTimeoutSeconds))))
+            {
+                harness.Handler.Add(
+                    RegistryUrl, CardUrl + "\n", "text/plain");
+                harness.Handler.Add(
+                    CardUrl,
+                    FixtureCard("jwks-uri-card").CardJson,
+                    Constants.JSON_MEDIA_TYPE);
+                harness.Handler.AddDirectory(
+                    CardKeyUrl,
+                    RequestSigner.PublicPart(Fixtures.Ed25519Key()));
+                var signed = RequestSigner.Sign(new SigningOptions
+                {
+                    SignatureAgent = CardOrigin,
+                    SignatureAgentLabel = AgentLabel,
+                });
+                harness.Handler.HoldOnCallingThread(RegistryUrl);
+                try
+                {
+                    var first = Task.Run(() => harness.ProcessSigned(signed));
+                    WaitUntil(
+                        () => harness.Handler.RequestedUrls.Contains(
+                            RegistryUrl),
+                        "The first request did not start the registry read.");
+                    var secondTime = Stopwatch.StartNew();
+                    var second = Task.Run(
+                        () => harness.ProcessSigned(signed));
+
+                    Assert.IsTrue(
+                        second.Wait(TimeSpan.FromSeconds(HangGuardSeconds)),
+                        "A second request waited for the first request's " +
+                        "registry read, which was blocked on the thread " +
+                        "that started it, so the read was started inside " +
+                        "a lock.");
+                    secondTime.Stop();
+                    Console.WriteLine(
+                        "Build log: RegistryReadBlockingItsCallerDoesNotHold" +
+                        "UpAnotherRequest, the second request ended " +
+                        $"{secondTime.ElapsedMilliseconds} ms after it " +
+                        $"started, with a wait budget of " +
+                        $"{RegistryWaitBudgetMs} ms.");
+                    AssertVerified(second.Result);
+                    Assert.IsFalse(
+                        second.Result.AgentSignatureName.HasValue,
+                        "The registry read had not finished, so no card " +
+                        "was expected.");
+                }
+                finally
+                {
+                    harness.Handler.Release();
+                }
+            }
+        }
+
+        private const int RegistryWaitBudgetMs = 1000;
+
+        private const int RegistryFetchTimeoutSeconds = 60;
+
+        private const int HangGuardSeconds = 10;
+
+        private const int WaitUntilPollMs = 10;
+
+        private static void WaitUntil(Func<bool> condition, string message)
+        {
+            var watch = Stopwatch.StartNew();
+            while (condition() == false)
+            {
+                if (watch.Elapsed > TimeSpan.FromSeconds(HangGuardSeconds))
+                {
+                    Assert.Fail(message);
+                }
+                Thread.Sleep(WaitUntilPollMs);
             }
         }
 
