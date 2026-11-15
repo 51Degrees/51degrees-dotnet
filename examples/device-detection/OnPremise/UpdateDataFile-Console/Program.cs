@@ -547,9 +547,21 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                         // download configured, the data update service
                         // refreshes the engine from the file at the location.
                         var status = dataUpdateService.CheckForUpdate(engine);
-                        output.WriteLine("A new file was put there, and " +
-                            "CheckForUpdate refreshed the engine from it, " +
-                            $"with the status {status}.");
+                        if (status == AutoUpdateStatus.AUTO_UPDATE_SUCCESS)
+                        {
+                            output.WriteLine("A new file was put there, and " +
+                                "CheckForUpdate refreshed the engine from it, " +
+                                $"with the status {status}.");
+                        }
+                        else
+                        {
+                            output.WriteLine("A new file was put there, but " +
+                                $"CheckForUpdate gave the status {status} and " +
+                                "did not refresh the engine. A refresh from a " +
+                                "file needs the engine to read a temporary copy " +
+                                "of the data, the file system watcher to be off " +
+                                "and the new file to be newer than that copy.");
+                        }
                     }
                 }
             }
