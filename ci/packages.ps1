@@ -32,7 +32,7 @@ Remove-Variable releasePlan
 # release plan reads. Name is the NuGet package id and Path the folder of the
 # project the package is built from. ExtraPaths holds what the package builds
 # with outside that folder: the root Directory.Build.targets, its family's
-# Directory.Build.props, global.json and Images, and for some packages a folder
+# Directory.Build.props and Images, and for some packages a folder
 # they compile, such as the cxx submodule of the on-premise engines. The root
 # Directory.Build.props is left out, because the publish records the released
 # versions there, which would otherwise count as a change to every package.
