@@ -22,6 +22,7 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Diagnostics;
 
 namespace FiftyOne.GeoLocation.Example.Tests
 {
@@ -37,6 +38,15 @@ namespace FiftyOne.GeoLocation.Example.Tests
     public class TestAllExamples
     {
         private string ResourceKey;
+
+        /// <summary>
+        /// The seconds the tests let a request to the cloud service take.
+        /// The examples keep the default of 2 seconds, which the live
+        /// service sometimes takes longer than, so the tests allow more and
+        /// fail only a service that does not answer. The build log has the
+        /// time each run took.
+        /// </summary>
+        private const int CloudRequestTimeoutSeconds = 30;
 
         // True once the old resource key name has been reported.
         private static bool _oldNameReported;
@@ -82,7 +92,13 @@ namespace FiftyOne.GeoLocation.Example.Tests
         public void GettingStarted()
         {
             var example = new GettingStarted.Program.Example();
-            example.Run(ResourceKey);
+            var run = Stopwatch.StartNew();
+            example.Run(
+                ResourceKey,
+                cloudRequestTimeoutSeconds: CloudRequestTimeoutSeconds);
+            Console.WriteLine(
+                "Build log: GeoLocation GettingStarted example ran in " +
+                $"{run.ElapsedMilliseconds} ms.");
         }
 
         /// <summary>
@@ -92,7 +108,13 @@ namespace FiftyOne.GeoLocation.Example.Tests
         public void CombiningServices()
         {
             var example = new CombiningServices.Program.Example();
-            example.Run(ResourceKey);
+            var run = Stopwatch.StartNew();
+            example.Run(
+                ResourceKey,
+                cloudRequestTimeoutSeconds: CloudRequestTimeoutSeconds);
+            Console.WriteLine(
+                "Build log: GeoLocation CombiningServices example ran in " +
+                $"{run.ElapsedMilliseconds} ms.");
         }
     }
 }
