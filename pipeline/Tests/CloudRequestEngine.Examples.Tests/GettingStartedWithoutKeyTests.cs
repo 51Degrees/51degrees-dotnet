@@ -44,10 +44,11 @@ public class GettingStartedWithoutKeyTests
     private const string ResourceKeyName = "_51DEGREES_RESOURCE_KEY";
 
     /// <summary>
-    /// Every variable whose name holds this is cleared, so that no resource
-    /// key of any tier reaches the example.
+    /// Every variable whose name, with an underscore put in front, holds
+    /// this is cleared, so that no resource key of any tier, and no older
+    /// name for one, reaches the example.
     /// </summary>
-    private const string KeyNamePart = "RESOURCE_KEY";
+    private const string KeyNamePart = "_RESOURCE_KEY";
 
     private static readonly Regex CreateKeyLink = new Regex(
         @"https://51degrees\.com/configure(/[A-Za-z0-9]+)?\?" +
@@ -81,7 +82,8 @@ public class GettingStartedWithoutKeyTests
             Environment.GetEnvironmentVariables())
         {
             var name = (string)entry.Key;
-            if (name.Contains(KeyNamePart, StringComparison.OrdinalIgnoreCase))
+            if (("_" + name).Contains(
+                KeyNamePart, StringComparison.OrdinalIgnoreCase))
             {
                 _previous[name] = (string)entry.Value;
                 Environment.SetEnvironmentVariable(name, null);
