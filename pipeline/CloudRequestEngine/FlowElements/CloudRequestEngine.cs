@@ -37,6 +37,8 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.ExceptionServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FiftyOne.Pipeline.Core.Exceptions;
@@ -519,6 +521,134 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// they can resolve themselves, so the caller should fall back to
         /// retrying lazily rather than failing.
         /// </summary>
+        /// <summary>
+        /// The discovery results, being the accessible properties and the
+        /// accepted Evidence keys, as JSON. They depend only on the keys and
+        /// the endpoints, hold no key, and can be stored. Give them to
+        /// <see cref="CloudRequestEngineBuilder.SetDiscoveryResults"/> to
+        /// build an engine with the same keys and endpoints without asking
+        /// the cloud service.
+        /// </summary>
+        /// <returns>
+        /// The results, or null until both have been obtained.
+        /// </returns>
+        public string GetDiscoveryResults()
+        {
+            var keys = _lazyEvidenceKeyFilter.IsValueCreated
+                ? _lazyEvidenceKeyFilter.Value as EvidenceKeyFilterWhitelist
+                : null;
+            if (keys == null ||
+                _lazyPublicProperties.IsValueCreated == false ||
+                _lazyPublicProperties.Value == null)
+            {
+                return null;
+            }
+            return JsonConvert.SerializeObject(new DiscoveryResults
+            {
+                Credentials = CredentialsHash(),
+                EvidenceKeys = keys.Whitelist.Keys
+                    .OrderBy(k => k, StringComparer.Ordinal)
+                    .ToList(),
+                AccessibleProperties = _lazyPublicProperties.Value
+                    .ToDictionary(p => p.Key, p => p.Value),
+            });
+        }
+
+        /// <summary>
+        /// Uses discovery results that <see cref="GetDiscoveryResults"/>
+        /// gave, in place of asking the cloud service.
+        /// </summary>
+        /// <exception cref="PipelineConfigurationException">
+        /// The results are not a copy of what
+        /// <see cref="GetDiscoveryResults"/> gives, or were made for other
+        /// keys or endpoints.
+        /// </exception>
+        internal void UseDiscoveryResults(string discoveryResults)
+        {
+            DiscoveryResults results;
+            try
+            {
+                results = JsonConvert.DeserializeObject<DiscoveryResults>(
+                    discoveryResults);
+            }
+            catch (JsonException ex)
+            {
+                throw new PipelineConfigurationException(
+                    DiscoveryResultsNotACopy, ex);
+            }
+            if (results?.Credentials == null ||
+                results.EvidenceKeys == null ||
+                results.AccessibleProperties == null)
+            {
+                throw new PipelineConfigurationException(
+                    DiscoveryResultsNotACopy);
+            }
+            if (string.Equals(
+                results.Credentials,
+                CredentialsHash(),
+                StringComparison.Ordinal) == false)
+            {
+                throw new PipelineConfigurationException(
+                    "The discovery results were made for other keys or " +
+                    "endpoints, so the engine cannot use them.");
+            }
+            IEvidenceKeyFilter filter =
+                new EvidenceKeyFilterWhitelist(results.EvidenceKeys);
+            IReadOnlyDictionary<string, ProductMetaData> properties =
+                results.AccessibleProperties;
+            _lazyEvidenceKeyFilter = new Lazy<IEvidenceKeyFilter>(
+                () => filter);
+            _lazyPublicProperties =
+                new Lazy<IReadOnlyDictionary<string, ProductMetaData>>(
+                    () => properties);
+            _ = _lazyEvidenceKeyFilter.Value;
+            _ = _lazyPublicProperties.Value;
+        }
+
+        private const string DiscoveryResultsNotACopy =
+            "The discovery results are not what GetDiscoveryResults gives, " +
+            "so the engine cannot use them.";
+
+        /// <summary>
+        /// Stands for the endpoints and keys the discovery results were made
+        /// with, so that results made for others are refused, without
+        /// holding a key.
+        /// </summary>
+        private string CredentialsHash()
+        {
+            var text = string.Join("\n",
+                _endpointsAndKeys.PropertiesEndpoint,
+                _endpointsAndKeys.EvidenceKeysEndpoint,
+                _endpointsAndKeys.ResourceKey,
+                _endpointsAndKeys.LicenseKey);
+            using (var sha256 = SHA256.Create())
+            {
+                var hex = new StringBuilder();
+                foreach (var b in sha256.ComputeHash(
+                    Encoding.UTF8.GetBytes(text)))
+                {
+                    hex.Append(b.ToString("x2", CultureInfo.InvariantCulture));
+                }
+                return hex.ToString();
+            }
+        }
+
+        /// <summary>
+        /// The discovery results as they are stored.
+        /// </summary>
+        private sealed class DiscoveryResults
+        {
+            [JsonProperty("credentials")]
+            public string Credentials { get; set; }
+
+            [JsonProperty("evidenceKeys")]
+            public List<string> EvidenceKeys { get; set; }
+
+            [JsonProperty("accessibleProperties")]
+            public Dictionary<string, ProductMetaData> AccessibleProperties
+            { get; set; }
+        }
+
         private static bool IsDefinitiveConfigurationError(Exception ex)
         {
             return ex is CloudRequestException cloudEx &&

@@ -56,6 +56,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         private static int _oldEndpointNameLogged;
         private readonly HttpClient _httpClient;
 
+        // What GetDiscoveryResults gave after an earlier build, or null to
+        // ask the cloud service.
+        private string _discoveryResults;
+
         // Note - Defaults for these fields are set in the Build method.
         private string _dataEndpoint = "";
         private string _propertiesEndpoint = "";
@@ -373,6 +377,27 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
+        /// Builds the engine from the discovery results that
+        /// <see cref="CloudRequestEngine.GetDiscoveryResults"/> gave after
+        /// an earlier build with the same keys and endpoints, so that
+        /// building asks the cloud service for nothing. Results made for
+        /// other keys or endpoints are refused when the engine is built.
+        /// </summary>
+        /// <param name="discoveryResults">
+        /// The results, as GetDiscoveryResults gave them, or null to ask the
+        /// cloud service.
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        public CloudRequestEngineBuilder SetDiscoveryResults(
+            string discoveryResults)
+        {
+            _discoveryResults = discoveryResults;
+            return this;
+        }
+
+        /// <summary>
         /// Build and return a new <see cref="CloudRequestEngine"/>
         /// instance using the current configuration.
         /// This calls <see cref="CloudRequestEngine.WarmUp"/> before
@@ -380,7 +405,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// of the discovery requests. See that method's documentation for
         /// the failure semantics: a definitive configuration error (4xx)
         /// throws, while a transient failure falls back to retrying on
-        /// first use.
+        /// first use. With discovery results set by
+        /// <see cref="SetDiscoveryResults"/>, the engine uses them and asks
+        /// the cloud service for nothing.
         /// </summary>
         /// <returns>
         /// A new <see cref="CloudRequestEngine"/>.
@@ -389,6 +416,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// Thrown if the cloud service definitively rejected a discovery
         /// request (4xx response), for example because the resource key
         /// is invalid.
+        /// </exception>
+        /// <exception cref="PipelineConfigurationException">
+        /// Thrown if the discovery results set are not what
+        /// <see cref="CloudRequestEngine.GetDiscoveryResults"/> gives, or
+        /// were made for other keys or endpoints.
         /// </exception>
         public CloudRequestEngine Build()
         {
@@ -421,7 +453,14 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             var engine = BuildEngine();
             try
             {
-                engine.WarmUp();
+                if (_discoveryResults == null)
+                {
+                    engine.WarmUp();
+                }
+                else
+                {
+                    engine.UseDiscoveryResults(_discoveryResults);
+                }
             }
             catch
             {
