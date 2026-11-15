@@ -11,7 +11,6 @@
     
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.DeviceDetection.Cloud</PackageId>
-	  <Version Condition="'$(Version)' == ''">$(FiftyOneDeviceDetectionCloudVersion)</Version>
 	  <Title>Cloud-based device detection service for the 51Degrees Pipeline API</Title>
     <Description>Device Detection and User-Agent parser for .NET and C#. Detects the device, browser, operating system, and crawlers from the User-Agent and User-Agent Client Hints, using the 51Degrees cloud service with a Resource Key. This package is the cloud engine for the 51Degrees Pipeline API. An alternative to UAParser.js, DeviceAtlas, and WURFL.</Description>
 	  <Authors>51Degrees Engineering</Authors>

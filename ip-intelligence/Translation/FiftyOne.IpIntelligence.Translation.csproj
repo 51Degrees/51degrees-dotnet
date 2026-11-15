@@ -10,7 +10,6 @@
     <WarningsAsErrors />
     <!-- NuGet package properties -->
     <PackageId>FiftyOne.IpIntelligence.Translation</PackageId>
-    <Version Condition="'$(Version)' == ''">$(FiftyOneIpIntelligenceTranslationVersion)</Version>
     <Title>51Degrees IP Intelligence Country Translation Engines</Title>
     <Description>Translation engines which take country code lists provided by FiftyOne.IpIntelligence and translate into country names in the requested language.</Description>
     <Authors>51Degrees Engineering</Authors>

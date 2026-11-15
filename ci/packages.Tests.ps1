@@ -111,14 +111,23 @@ Describe 'packages.json' {
         ($defined | Sort-Object) | Should -Be (@($PackageList.Property) | Sort-Object)
     }
 
-    It 'gives each project a package is built from that package''s version' {
-        foreach ($package in $PackageList) {
-            foreach ($project in Get-PackageProjects $package) {
-                $versions = @(Get-Items (Get-ProjectXml $project) 'Version' |
-                    ForEach-Object InnerText)
-                $versions | Should -Contain "`$($($package.Property))" -Because $project
+    It 'sets each project a package is built from to that package''s version' {
+        $set = @{}
+        foreach ($item in Get-Items (Get-ProjectXml 'Directory.Build.props') 'Version') {
+            $match = [regex]::Match($item.Condition, "'\$\(MSBuildProjectName\)' == '([^']+)'")
+            if ($match.Success) {
+                $set[$match.Groups[1].Value] = $item.InnerText
             }
         }
+        $projects = 0
+        foreach ($package in $PackageList) {
+            foreach ($project in Get-PackageProjects $package) {
+                $name = [IO.Path]::GetFileNameWithoutExtension($project)
+                $set[$name] | Should -Be "`$($($package.Property))" -Because $project
+                $projects++
+            }
+        }
+        $set.Count | Should -Be $projects
     }
 
     It 'has every FiftyOneReference name the version of the package it references' {

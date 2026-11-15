@@ -11,7 +11,6 @@
 
     <!-- NuGet package properties -->
     <PackageId>FiftyOne.Pipeline.Translation</PackageId>
-    <Version Condition="'$(Version)' == ''">$(FiftyOnePipelineTranslationVersion)</Version>
     <Title>Translation engine for the 51Degrees Pipeline API</Title>
     <PackageDescription>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains an element that translates values from other engines into other languages.</PackageDescription>
     <Authors>51Degrees Engineering</Authors>

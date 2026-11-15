@@ -11,7 +11,6 @@
 
     <!-- NuGet package properties -->
     <PackageId>FiftyOne.DeviceDetection.RobotsTxt.Cloud</PackageId>
-    <Version Condition="'$(Version)' == ''">$(FiftyOneDeviceDetectionRobotsTxtCloudVersion)</Version>
     <Title>51Degrees Device Detection – Robots.txt Cloud Engines</Title>
     <Description>51Degrees engine that unpacks the contents of a 51Degrees cloud response for robots.txt data.</Description>
     <Authors>51Degrees Engineering</Authors>

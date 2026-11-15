@@ -77,13 +77,12 @@ $NativeEngines = @(
     @{ Project = 'ip-intelligence/Engine.OnPremise';        Library = 'FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll' }
 )
 
-# Until each package had its own version, every package of a family was
-# published at the family's version and tagged '<family>/<version>' once. A
-# package with no tag of its own continues from its family's last tag: this
-# tags it '<package>/<version>' at the family tag's commit, in this checkout
-# only. Only a package whose project was there at that commit was published
-# then, so a package added since gets no tag and starts from the FirstVersion
-# packages.json gives it.
+# A family tag, '<family>/<version>', marks a release that published every
+# package of the family at that version. A package with no tag of its own
+# continues from its family's last tag, so this tags it '<package>/<version>'
+# at the family tag's commit, in this checkout only. A package whose project
+# is not at that commit was not in that release, so it gets no tag and starts
+# from the FirstVersion packages.json gives it.
 function Add-FamilyStartTags {
     param (
         [Parameter(Mandatory)][string]$RepoPath,

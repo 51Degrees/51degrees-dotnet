@@ -12,7 +12,6 @@
 	
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.Pipeline.Core</PackageId>
-	  <Version Condition="'$(Version)' == ''">$(FiftyOnePipelineCoreVersion)</Version>
 	  <Title>Core library for the 51Degrees Pipeline API</Title>
 	  <PackageDescription>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains the core components of the Pipeline API.</PackageDescription>
 	  <Authors>51Degrees Engineering</Authors>

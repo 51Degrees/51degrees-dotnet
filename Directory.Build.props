@@ -116,4 +116,46 @@
     <FiftyOneDeviceDetectionRobotsTxtCloudVersion>4.5.181</FiftyOneDeviceDetectionRobotsTxtCloudVersion>
   </PropertyGroup>
 
+  <!--
+    The version each package's project builds at, by the project's
+    name. It is set here, where a change releases no package, so how a
+    version is set is never a change to the package itself.
+  -->
+  <PropertyGroup>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Common'">$(FiftyOneCommonVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Caching'">$(FiftyOneCachingVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Did'">$(FiftyOneDidVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Core'">$(FiftyOnePipelineCoreVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Common.TestHelpers'">$(FiftyOneCommonTestHelpersVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Engines'">$(FiftyOnePipelineEnginesVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.AgentSignature'">$(FiftyOnePipelineAgentSignatureVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.CloudRequestEngine'">$(FiftyOnePipelineCloudRequestEngineVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.DerivedProperty'">$(FiftyOnePipelineDerivedPropertyVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Engines.FiftyOne'">$(FiftyOnePipelineEnginesFiftyOneVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Engines.TestHelpers'">$(FiftyOnePipelineEnginesTestHelpersVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Examples.Shared'">$(FiftyOnePipelineExamplesSharedVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Translation'">$(FiftyOnePipelineTranslationVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Did.Core'">$(FiftyOneDidCoreVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.JsonBuilder'">$(FiftyOnePipelineJsonBuilderVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.Shared'">$(FiftyOneDeviceDetectionSharedVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Shared'">$(FiftyOneIpIntelligenceSharedVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.GeoLocation.Core'">$(FiftyOneGeolocationCoreVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Did.Cloud'">$(FiftyOneDidCloudVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.JavaScriptBuilder'">$(FiftyOnePipelineJavaScriptBuilderVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.Cloud'">$(FiftyOneDeviceDetectionCloudVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.Hash.Engine.OnPremise'">$(FiftyOneDeviceDetectionHashEngineOnPremiseVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Engine.OnPremise'">$(FiftyOneIpIntelligenceEngineOnPremiseVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Translation'">$(FiftyOneIpIntelligenceTranslationVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.GeoLocation.Cloud'">$(FiftyOneGeolocationCloudVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Web.Shared'">$(FiftyOnePipelineWebSharedVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection'">$(FiftyOneDeviceDetectionVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.PropertyKeyed'">$(FiftyOneDeviceDetectionPropertyKeyedVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Cloud'">$(FiftyOneIpIntelligenceCloudVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.GeoLocation'">$(FiftyOneGeolocationVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Web'">$(FiftyOnePipelineWebVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Web.Framework'">$(FiftyOnePipelineWebVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.RobotsTxt'">$(FiftyOneDeviceDetectionRobotsTxtVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence'">$(FiftyOneIpIntelligenceVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.RobotsTxt.Cloud'">$(FiftyOneDeviceDetectionRobotsTxtCloudVersion)</Version>
+  </PropertyGroup>
 </Project>

@@ -11,7 +11,6 @@
 
     <!-- NuGet package properties -->
     <PackageId>FiftyOne.Pipeline.AgentSignature</PackageId>
-    <Version Condition="'$(Version)' == ''">$(FiftyOnePipelineAgentSignatureVersion)</Version>
     <Title>Agent signature element for the 51Degrees Pipeline API</Title>
     <PackageDescription>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains an element that verifies the HTTP Message Signature an automated agent sends under the IETF Web Bot Auth protocol.</PackageDescription>
     <Authors>51Degrees Engineering</Authors>

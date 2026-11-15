@@ -12,7 +12,6 @@
 
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.DeviceDetection.RobotsTxt</PackageId>
-	  <Version Condition="'$(Version)' == ''">$(FiftyOneDeviceDetectionRobotsTxtVersion)</Version>
 	  <Title>51Degrees Device Detection – Robots.txt Engines</Title>
 	  <Description>51Degrees Device Detection engine that generates the contents of robots.txt files based on allowed preferences.</Description>
 	  <Authors>51Degrees Engineering</Authors>

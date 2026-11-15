@@ -305,7 +305,8 @@ moves. `ci/packages.json` lists the packages, their folders, the packages each
 depends on and the property in the root `Directory.Build.props` holding each
 one's version, which its project and every `FiftyOneReference` to it read.
 `ci/README.md` says how the publish uses them. A new package needs an entry
-there, its own property, a `Version` that reads it and a `FirstVersion`.
+there with a `FirstVersion`, its own property, and a line in the root
+`Directory.Build.props` that sets its project's `Version` from it.
 
 ## Pull requests
 

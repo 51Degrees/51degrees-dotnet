@@ -12,7 +12,6 @@
 
 	  <!-- NuGet package properties -->
 	  <PackageId>FiftyOne.DeviceDetection.PropertyKeyed</PackageId>
-	  <Version Condition="'$(Version)' == ''">$(FiftyOneDeviceDetectionPropertyKeyedVersion)</Version>
 	  <Title>51Degrees Device Detection – Property Keyed Engines</Title>
 	  <Description>Device Detection engines for .NET and C# that look up a device by Type Allocation Code (TAC) or native model name in an on-premise 51Degrees Hash data file, for the 51Degrees Pipeline API. An alternative to UAParser.js, DeviceAtlas, and WURFL.</Description>
 	  <Authors>51Degrees Engineering</Authors>

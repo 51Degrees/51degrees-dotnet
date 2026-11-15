@@ -11,7 +11,6 @@
 
     <!-- NuGet package properties -->
     <PackageId>FiftyOne.Pipeline.JsonBuilder</PackageId>
-    <Version Condition="'$(Version)' == ''">$(FiftyOnePipelineJsonBuilderVersion)</Version>
     <Title>JSON builder element for the 51Degrees Pipeline API</Title>
     <PackageDescription>The 51Degrees Pipeline API provides a fast, modern architecture for consuming real-time digital data services. This package contains an element that serializes all values in flowdata into a JSON formatted string.</PackageDescription>
     <Authors>51Degrees Engineering</Authors>
