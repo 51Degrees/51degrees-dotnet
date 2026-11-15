@@ -14,7 +14,12 @@
  * the purposes of the Work and the provisions of the compatibility
  * clause in Article 5 of the EUPL shall not apply.
  *
- * If using FiftyOne.GeoLocation.Cloud.FlowElements;
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
 using FiftyOne.GeoLocation.Core;
 using FiftyOne.Pipeline.CloudRequestEngine;
 using FiftyOne.Pipeline.CloudRequestEngine.Data;

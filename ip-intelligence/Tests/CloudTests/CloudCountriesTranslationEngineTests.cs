@@ -25,7 +25,6 @@ using FiftyOne.IpIntelligence.Cloud.Data;
 using FiftyOne.IpIntelligence.Cloud.FlowElements;
 using FiftyOne.IpIntelligence.Translation;
 using FiftyOne.IpIntelligence.Translation.Data;
-using FiftyOne.Pipeline.CloudRequestEngine;
 using FiftyOne.Pipeline.CloudRequestEngine.Data;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.Data;
@@ -330,7 +329,7 @@ public class CloudCountriesTranslationEngineTests
         /// it, as before the cloud request engine's discovery has completed.
         /// </summary>
         public IReadOnlyDictionary<string, ProductMetaData> PublicProperties =>
-            _publicProperties ?? throw new CloudRequestException(
+            _publicProperties ?? throw new FiftyOne.Pipeline.CloudRequestEngine.CloudRequestException(
                 "The property list has not been read yet.");
 
         public override string DataSourceTier => "";
