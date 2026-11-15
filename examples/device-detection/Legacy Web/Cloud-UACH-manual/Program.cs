@@ -48,13 +48,19 @@ public class Program
             // one and the example ends without a server.
             return;
         }
-        CreateHostBuilder(args, overrides).Build().Run();
+        CreateHostBuilderWithSettings(args, overrides).Build().Run();
     }
 
     public static IHostBuilder CreateHostBuilder(string[] args) =>
-        CreateHostBuilder(args, new Dictionary<string, string>());
+        CreateHostBuilderWithSettings(
+            args, new Dictionary<string, string>());
 
-    private static IHostBuilder CreateHostBuilder(
+    /// <summary>
+    /// The host, with settings added to those in appsettings.json. It
+    /// has its own name because the test host finds the one named
+    /// CreateHostBuilder by name alone.
+    /// </summary>
+    private static IHostBuilder CreateHostBuilderWithSettings(
         string[] args,
         IDictionary<string, string> overrides) =>
         Host.CreateDefaultBuilder(args)
