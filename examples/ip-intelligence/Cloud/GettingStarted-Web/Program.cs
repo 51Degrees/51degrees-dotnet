@@ -74,6 +74,12 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.GettingStartedWeb
         {
             var config = CreateConfiguration();
             var configOverrides = CreateConfigOverrides(config);
+            if (configOverrides == null)
+            {
+                // There is no resource key, so the message says where
+                // to create one and the example ends without a server.
+                return Task.CompletedTask;
+            }
             return CreateHostBuilder(config, configOverrides, args).Build().RunAsync(
                 stopToken);
         }
@@ -142,8 +148,8 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.GettingStartedWeb
                 }
                 else
                 {
-                    throw new Exception($"No resource key specified in the configuration file " +
-                        $"'appsettings.json' or the environment variable " +
+                    Console.WriteLine($"No resource key specified in the configuration file " +
+                        $"'appsettings_51.json' or the environment variable " +
                         $"'{ExampleUtils.RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud " +
                         $"service is accessed using a 'ResourceKey'. For more information " +
                         $"see https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-web-program.cs&utm_term=resource-key-required. " +
@@ -151,6 +157,7 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.GettingStartedWeb
                         $"created for free at https://51degrees.com/configure/1QWJwHxl?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-web-program.cs&utm_term=resource-key-required. " +
                         $"Once complete, populate the config file or environment variable " +
                         $"mentioned at the start of this message with the key.");
+                    return null;
                 }
             }
 

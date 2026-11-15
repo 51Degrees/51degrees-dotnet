@@ -217,41 +217,46 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Data
                 Results.HasResults())
             {
                 object obj = null;
-                if (key.Equals("DeviceId", StringComparison.InvariantCultureIgnoreCase))
+                // The metrics are read from the native results, so under
+                // the same lock as every other read of them.
+                lock (ResultsLock)
                 {
-                    obj = GetDeviceId();
-                    result = true;
-                }
-                else if (key.Equals("Method", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    obj = GetMethod();
-                    result = true;
-                }
+                    if (key.Equals("DeviceId", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        obj = GetDeviceId();
+                        result = true;
+                    }
+                    else if (key.Equals("Method", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        obj = GetMethod();
+                        result = true;
+                    }
 
-                else if (key.Equals("Difference", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    obj = GetDifference();
-                    result = true;
-                }
-                else if (key.Equals("Drift", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    obj = GetDrift();
-                    result = true;
-                }
-                else if (key.Equals("MatchedNodes", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    obj = GetMatchedNodes();
-                    result = true;
-                }
-                else if (key.Equals("Iterations", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    obj = GetIterations();
-                    result = true;
-                }
-                else if (key.Equals("UserAgents", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    obj = GetUserAgents();
-                    result = true;
+                    else if (key.Equals("Difference", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        obj = GetDifference();
+                        result = true;
+                    }
+                    else if (key.Equals("Drift", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        obj = GetDrift();
+                        result = true;
+                    }
+                    else if (key.Equals("MatchedNodes", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        obj = GetMatchedNodes();
+                        result = true;
+                    }
+                    else if (key.Equals("Iterations", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        obj = GetIterations();
+                        result = true;
+                    }
+                    else if (key.Equals("UserAgents", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        obj = GetUserAgents();
+                        result = true;
+                    }
                 }
                 if (result == true)
                 {
@@ -285,8 +290,11 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Data
             {
                 return available;
             }
-            available = Results.ResultsList
-                .Any(r => r.containsProperty(propertyName));
+            lock (ResultsLock)
+            {
+                available = Results.ResultsList
+                    .Any(r => r.containsProperty(propertyName));
+            }
             _engine.PropertyAvailableCache[propertyName] = available;
             return available;
         }
@@ -378,22 +386,24 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Data
         public override IAspectPropertyValue<IReadOnlyList<string>> GetValues(string propertyName)
         {
             var result = new AspectPropertyValue<IReadOnlyList<string>>();
-            var results = GetSingleResults(propertyName);
-
-            if (results != null)
+            lock (ResultsLock)
             {
-                using (var value = results.getValues(propertyName))
+                var results = GetSingleResults(propertyName);
+                if (results != null)
                 {
-                    if (value.hasValue())
+                    using (var value = results.getValues(propertyName))
                     {
-                        using (var vector = value.getValue()) 
+                        if (value.hasValue())
                         {
-                            result.Value = vector.ToList();
+                            using (var vector = value.getValue())
+                            {
+                                result.Value = vector.ToList();
+                            }
                         }
-                    }
-                    else
-                    {
-                        result.NoValueMessage = value.getNoValueMessage();
+                        else
+                        {
+                            result.NoValueMessage = value.getNoValueMessage();
+                        }
                     }
                 }
             }
@@ -407,7 +417,11 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Data
                 var results =  Results.ResultsList[0] as ResultsSwigWrapper;
                 if (results != null)
                 {
-                    return resultsHashSerializer.Value.allValuesJson(results.Object);
+                    lock (ResultsLock)
+                    {
+                        return resultsHashSerializer.Value.allValuesJson(
+                            results.Object);
+                    }
                 }
             }
             return null;
