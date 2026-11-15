@@ -3,7 +3,9 @@
 #
 # Each test makes a folder holding empty files named as two example test
 # assemblies, puts a stand-in for dotnet first on the path that writes each
-# command line it is given to a file, runs the script and reads that file.
+# command line it is given to a file of its own, runs the script and reads
+# those files. The script runs assemblies in parallel, and on Windows two
+# writers appending to one file can collide, which loses a command line.
 
 BeforeAll {
     $script:Script = Join-Path $PSScriptRoot 'run-integration-tests.ps1'
@@ -24,13 +26,13 @@ BeforeAll {
         # A PowerShell script rather than a batch file, because cmd would read
         # the '|' in a test filter as a pipe.
         Set-Content -LiteralPath (Join-Path $Tools 'dotnet.ps1') -Value (@(
-            'Add-Content -LiteralPath $env:DOTNET_CALLS -Value ($args -join " ")',
+            'Set-Content -LiteralPath ($env:DOTNET_CALLS + "." + [Guid]::NewGuid()) -Value ($args -join " ")',
             'exit 0') -join "`r`n")
     } else {
         $dotnet = Join-Path $Tools 'dotnet'
         Set-Content -LiteralPath $dotnet -Value (@(
             '#!/bin/sh',
-            'echo "$*" >> "$DOTNET_CALLS"',
+            'echo "$*" > "$DOTNET_CALLS.$$"',
             'exit 0') -join "`n")
         chmod +x $dotnet
     }
@@ -44,16 +46,16 @@ BeforeAll {
     # The command lines dotnet was given for the assembly named, none when
     # the script did not run it.
     function Get-Calls([string]$Depth, [string]$Assembly) {
-        Remove-Item -LiteralPath $Calls -ErrorAction SilentlyContinue
+        Remove-Item -Path "$Calls.*" -ErrorAction SilentlyContinue
         Push-Location $Root
         try {
             & $Script -RepoName $Repo -Depth $Depth -SeleniumContract $false *> $null
         } finally {
             Pop-Location
         }
-        if (Test-Path $Calls) {
-            @(Get-Content $Calls | Where-Object { $_ -like "*$Assembly*" })
-        }
+        @(Get-ChildItem -Path "$Calls.*" -File |
+            Get-Content |
+            Where-Object { $_ -like "*$Assembly*" })
     }
 }
 
