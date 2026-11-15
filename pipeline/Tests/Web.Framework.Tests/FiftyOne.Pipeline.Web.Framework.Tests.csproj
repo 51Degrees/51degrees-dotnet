@@ -62,6 +62,7 @@
     <Compile Include="RevalidationTests.cs" />
     <Compile Include="ShareUsageWebRequestTests.cs" />
     <Compile Include="WebPipelineEvidenceFillerTests.cs" />
+    <Compile Include="WebPipelineRequestEvidenceTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Core\FiftyOne.Pipeline.Core.csproj">

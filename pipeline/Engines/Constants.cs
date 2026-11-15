@@ -58,6 +58,31 @@ namespace FiftyOne.Pipeline.Engines
         public const string DEFAULT_JSON_ENDPOINT = "/51dpipeline/json";
 
         /// <summary>
+        /// The default timeout in seconds for a lazily loaded value, which
+        /// the pre-packaged pipeline builders use when lazy loading is
+        /// turned on without a timeout.
+        /// </summary>
+        public const int LAZY_LOADING_DEFAULT_TIMEOUT_SECONDS = 5;
+
+        /// <summary>
+        /// The default number of results held by the results cache that the
+        /// pre-packaged pipeline builders add when no size is given.
+        /// </summary>
+        public const int RESULTS_CACHE_DEFAULT_SIZE = 1000;
+
+        /// <summary>
+        /// Whether the pre-packaged pipeline builders turn on lazy loading
+        /// when no method asks for it.
+        /// </summary>
+        public const bool LAZY_LOADING_DEFAULT_ENABLED = false;
+
+        /// <summary>
+        /// Whether the pre-packaged pipeline builders add a results cache
+        /// when no method asks for one.
+        /// </summary>
+        public const bool RESULTS_CACHE_DEFAULT_ENABLED = false;
+
+        /// <summary>
         /// Default value for the flag that controls whether data files automatically look
         /// for updates or not.
         /// </summary>

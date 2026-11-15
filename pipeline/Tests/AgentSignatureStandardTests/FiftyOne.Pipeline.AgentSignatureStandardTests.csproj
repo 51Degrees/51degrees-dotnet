@@ -1,7 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- .NET Framework, where only Windows runs it, is the runtime that
+         loads the netstandard2.0 build in practice, and its RSA.Create()
+         gives an RSA that differs from the one net8.0 gives. -->
+    <TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">net8.0;net462</TargetFrameworks>
+    <TargetFrameworks Condition=" '$(OS)' != 'Windows_NT' ">net8.0</TargetFrameworks>
 
     <IsPackable>false</IsPackable>
 
@@ -12,6 +16,14 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.9.3" />
     <PackageReference Include="MSTest.TestFramework" Version="3.9.3" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net462' ">
+    <!-- The shared signing helpers read JSON with System.Text.Json and
+         serve keys through HttpClient, which .NET Framework does not
+         carry by default. -->
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+    <Reference Include="System.Net.Http" />
   </ItemGroup>
 
   <ItemGroup>
@@ -50,12 +62,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The signing helper reads the RFC 9421 Ed25519 test key from the
-         main test project's fixture folder, so the file travels to the
-         output by link rather than by copy. -->
+    <!-- The signing helper reads the RFC 9421 Ed25519 and RSA-PSS test
+         keys from the main test project's fixture folder, so the files
+         travel to the output by link rather than by copy. -->
     <None
         Include="..\AgentSignatureTests\Fixtures\ed25519.json"
         Link="Fixtures\ed25519.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None
+        Include="..\AgentSignatureTests\Fixtures\rsapss.json"
+        Link="Fixtures\rsapss.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

@@ -323,6 +323,11 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         /// The identifier of the data file to update.
         /// This engine only uses one data file so this parameter is ignored.
         /// </param>
+        /// <exception cref="ApplicationException">
+        /// The data file cannot be used. The engine goes on using the data
+        /// it had, and the caller, usually the data update service, reports
+        /// the failure.
+        /// </exception>
         public override void RefreshData(string dataFileIdentifier)
         {
             var dataFile = DataFiles.Single();
@@ -332,18 +337,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
             }
             else
             {
-                try
-                {
-                    _engine.refreshData();
-                }
-                catch (ApplicationException e)
-                {
-                    Logger.LogError(e, $"Failed to refresh data from '{dataFile.DataFilePath}'. " +
-                        $"Update service will try again later. If issue persists, please contact " +
-                        $"support@51degrees.com");
-                    // Just return instead of running any post-update logic.
-                    return;
-                }
+                _engine.refreshData();
             }
             InitEngineMetaData();
             RefreshCompleted?.Invoke(this, null);
@@ -405,7 +399,7 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
                     if (EvidenceKeyFilter.Include(evidenceItem.Key))
                     {
                         relevantEvidence.Add(new KeyValuePair<string, string>(
-                            evidenceItem.Key,
+                            NativeKey(evidenceItem.Key),
                             evidenceItem.Value.ToString()));
                     }
                 }
@@ -417,6 +411,27 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
                     _engine.process(relevantEvidence)));
 #pragma warning restore CA2000 // Dispose objects before losing scope
             }
+        }
+
+        /// <summary>
+        /// The key as the native code reads it. Evidence keys are
+        /// case-insensitive, but the native code matches the prefix, the
+        /// part up to the first full stop, in lower case only, so the
+        /// prefix is passed in lower case. The native code compares the
+        /// field after it ignoring case, so the field is passed as it is.
+        /// </summary>
+        private static string NativeKey(string key)
+        {
+            var dot = key.IndexOf('.');
+            for (var i = 0; i < dot; i++)
+            {
+                if (char.IsUpper(key[i]))
+                {
+                    return key.Substring(0, dot).ToLowerInvariant() +
+                        key.Substring(dot);
+                }
+            }
+            return key;
         }
 
         /// <summary>

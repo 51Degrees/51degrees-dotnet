@@ -1209,6 +1209,14 @@ namespace FiftyOne.Did.Tests
             + "\"verifiedAt\":\"2026-09-26T09:15:32Z\","
             + "\"secondsSinceVerified\":2}";
 
+        private const string RedeemedFactorsInOtherCase =
+            "{\"signature\":\"verified\",\"context\":\"verified\","
+            + "\"factors\":{\"transport\":\"NotRecorded\","
+            + "\"device\":\"Verified\",\"browserip\":\"MISMATCH\","
+            + "\"asn\":\"MisConfigured\"},"
+            + "\"verifiedAt\":\"2026-09-26T09:15:32Z\","
+            + "\"secondsSinceVerified\":2}";
+
         private const string RedeemedUnknownFactorValue =
             "{\"signature\":\"verified\",\"context\":\"mismatch\","
             + "\"factors\":{\"transport\":\"somethingnewer\"},"
@@ -1363,6 +1371,31 @@ namespace FiftyOne.Did.Tests
                 FactorOutcome.Misconfigured,
                 result.Factors[FactorName.Transport],
                 "a factor with no recorded value is not misconfigured");
+        }
+
+        /// <summary>
+        /// The service writes the factor words in lower case, and the client
+        /// reads them whatever their case.
+        /// </summary>
+        [TestMethod]
+        public async Task Redeem_FactorWordsInAnyCase_ReadTheSame()
+        {
+            _handler.Enqueue(HttpStatusCode.OK, RedeemedFactorsInOtherCase);
+            using var client = NewClient();
+
+            var result = await client.RedeemAsync(
+                SignedAt(T0.AddDays(1)), "sealed", "abc123");
+
+            Assert.IsNotNull(result.Factors);
+            Assert.AreEqual(
+                FactorOutcome.Verified, result.Factors![FactorName.Device]);
+            Assert.AreEqual(
+                FactorOutcome.NotRecorded,
+                result.Factors[FactorName.Transport]);
+            Assert.AreEqual(
+                FactorOutcome.Misconfigured, result.Factors[FactorName.Asn]);
+            Assert.AreEqual(
+                FactorOutcome.Mismatch, result.Factors[FactorName.BrowserIp]);
         }
 
         /// <summary>

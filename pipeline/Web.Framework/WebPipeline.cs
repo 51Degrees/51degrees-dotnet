@@ -396,6 +396,28 @@ namespace FiftyOne.Pipeline.Web.Framework
         }
 
         /// <summary>
+        /// The start of the evidence key of each request header.
+        /// </summary>
+        private const string HeaderPrefix =
+            Core.Constants.EVIDENCE_HTTPHEADER_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR;
+
+        /// <summary>
+        /// The start of the evidence key of each cookie.
+        /// </summary>
+        private const string CookiePrefix =
+            Core.Constants.EVIDENCE_COOKIE_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR;
+
+        /// <summary>
+        /// The start of the evidence key of each query string or form
+        /// parameter.
+        /// </summary>
+        private const string QueryPrefix =
+            Core.Constants.EVIDENCE_QUERY_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR;
+
+        /// <summary>
         /// Add the values of the request to the filler, being the evidence
         /// the pipeline accepts or every value for a
         /// <see cref="RequestView"/>.
@@ -404,9 +426,9 @@ namespace FiftyOne.Pipeline.Web.Framework
         /// <param name="request">The request to read.</param>
         private static void Fill(ref EvidenceFiller filler, HttpRequest request)
         {
-            filler.CheckAndAddAll("header.", request.Headers, (headers, k) => headers[k]);
-            filler.CheckAndAddAll("cookie.", request.Cookies, (cookies, k) => cookies[k].Value);
-            filler.CheckAndAddAll("query.", request.QueryString, (query, k) => query[k]);
+            filler.CheckAndAddAll(HeaderPrefix, request.Headers, (headers, k) => headers[k]);
+            filler.CheckAndAddAll(CookiePrefix, request.Cookies, (cookies, k) => cookies[k].Value);
+            filler.CheckAndAddParameters(QueryPrefix, request.QueryString);
             if (request.RequestContext.HttpContext.Session is HttpSessionStateBase session)
             {
                 filler.AddSessionToEvidence(session);
@@ -414,13 +436,18 @@ namespace FiftyOne.Pipeline.Web.Framework
 
             // Add form parameters to the evidence.
             if (request.HttpMethod == Shared.Constants.METHOD_POST &&
-                Shared.Constants.CONTENT_TYPE_FORM.Contains(request.ContentType))
+                FormContentType.IsForm(request.ContentType))
             {
-                filler.CheckAndAddAll(Core.Constants.EVIDENCE_QUERY_PREFIX
-                    + Core.Constants.EVIDENCE_SEPERATOR, request.Form, (form, k) => form[k]);
+                filler.CheckAndAddParameters(QueryPrefix, request.Form);
             }
 
-            filler.CheckAndAdd("server.client-ip", request.UserHostAddress);
+            // A request handed over with no client address has no client
+            // IP to add.
+            var clientIp = request.UserHostAddress;
+            if (string.IsNullOrEmpty(clientIp) == false)
+            {
+                filler.CheckAndAdd(Core.Constants.EVIDENCE_CLIENTIP_KEY, clientIp);
+            }
             filler.AddRequestProtocolToEvidence(request);
             filler.AddRequestLineToEvidence(request);
         }
@@ -575,6 +602,36 @@ namespace FiftyOne.Pipeline.Web.Framework
             /// </summary>
             public void CheckAndAddAll<T>(string keyPrefix, T nameObjectCollection, Func<T, string, object> valueGetter) where T : NameObjectCollectionBase
                 => CheckAndAddAll(keyPrefix, nameObjectCollection.Keys, (k) => valueGetter(nameObjectCollection, k));
+
+            /// <summary>
+            /// Add each parameter of a query string or a form. System.Web
+            /// holds a parameter written with no '=' under a null name,
+            /// with the parameter's text as its value, and each of those is
+            /// added as a name with an empty value, as the URL standard
+            /// parses it and as ASP.NET Core gives it.
+            /// </summary>
+            /// <param name="keyPrefix">The start of each evidence key.</param>
+            /// <param name="parameters">The parameters to add.</param>
+            internal void CheckAndAddParameters(
+                string keyPrefix,
+                NameValueCollection parameters)
+            {
+                foreach (string name in parameters.Keys)
+                {
+                    if (name == null)
+                    {
+                        foreach (var bare in
+                            parameters.GetValues(name) ?? new string[0])
+                        {
+                            CheckAndAdd(keyPrefix + bare, string.Empty);
+                        }
+                    }
+                    else
+                    {
+                        CheckAndAdd(keyPrefix + name, parameters[name]);
+                    }
+                }
+            }
 
             /// <summary>
             /// Get the request protocol using .NET's Request object
