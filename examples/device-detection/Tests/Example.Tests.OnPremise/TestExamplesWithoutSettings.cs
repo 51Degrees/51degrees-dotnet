@@ -134,6 +134,23 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
                 "The example should link to the contact page.");
         }
 
+        /// <summary>
+        /// With no licence key the example still shows a programmatic
+        /// update, which refreshes the engine from a new file put where the
+        /// engine reads its data, as the required examples ask.
+        /// </summary>
+        [TestMethod]
+        public void UpdateDataFile_WithoutSettings_UpdatesProgrammatically()
+        {
+            var output = RunWithoutSettings(
+                Examples.OnPremise.UpdateDataFile.Program.Main);
+            StringAssert.Contains(output, "CheckForUpdate",
+                "The example should show a programmatic update.");
+            StringAssert.Contains(output, "AUTO_UPDATE_SUCCESS",
+                "The programmatic update should refresh the engine from " +
+                "the new file.");
+        }
+
         [TestMethod]
         public void Performance_WithoutSettings()
         {
