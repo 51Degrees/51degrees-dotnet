@@ -131,8 +131,15 @@ namespace FiftyOne.IpIntelligence.Cloud.FlowElements
                     Converters = JSON_CONVERTERS,
                 });
 
+            var properties = PropertiesForResponse.ToList();
+            // With no meta-data yet every value would be logged as having
+            // none, on every response.
             var translated = CloudDataHelper.CreateAPVDictionary(
-                propertyValues, Properties.ToList(), null, Logger, GetType().Name);
+                propertyValues,
+                properties,
+                null,
+                properties.Count > 0 ? Logger : null,
+                GetType().Name);
             aspectData.PopulateFrom(translated);
         }
 

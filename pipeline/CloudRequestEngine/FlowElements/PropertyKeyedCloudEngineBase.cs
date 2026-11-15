@@ -119,9 +119,12 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                         Converters = JSON_CONVERTERS,
                     });
                 var device = CreateProfileData();
-                // Get the meta-data for properties on device instances.
-                var propertyMetaData = Properties
-                    .Single(p => p.Name == "Profiles").ItemProperties;
+                // Get the meta-data for properties on device instances,
+                // which is empty while the property list cannot be read.
+                var propertyMetaData = PropertiesForResponse
+                    .SingleOrDefault(p => p.Name == "Profiles")?
+                    .ItemProperties ??
+                    Array.Empty<IElementPropertyMetaData>();
 
                 var deviceData = CreateAPVDictionary(
                     propertyValues, 

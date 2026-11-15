@@ -52,6 +52,48 @@ namespace FiftyOne.Caching.Tests
         /// </summary>
         private const int CANCELLED_GET_TIMEOUT_MS = 60000;
 
+        /// <summary>
+        /// How long a held load waits to be let go. A test makes its
+        /// assertions while the load is held, so the wait runs out only
+        /// if a read waited for the load.
+        /// </summary>
+        private const int HELD_LOAD_TIMEOUT_MS = 60000;
+
+        /// <summary>
+        /// Holds each load the loader starts, after any handler added
+        /// before it has run, until the HeldLoad is disposed, so that what
+        /// a test asserts about a read that ended early does not depend on
+        /// how long the load takes or how long the runner takes to get
+        /// there. A test holds it with using, so the load is let go however
+        /// the test ends.
+        /// </summary>
+        private static HeldLoad HoldLoad(ReturnKeyLoader<string> loader)
+        {
+            var load = new HeldLoad();
+            loader.OnTaskStarted += _ =>
+            {
+                load.Started.Set();
+                load.Release.Wait(HELD_LOAD_TIMEOUT_MS);
+            };
+            return load;
+        }
+
+        /// <summary>
+        /// A load held by HoldLoad. Disposing it lets the load go. The two
+        /// events are left to the garbage collector, because the load may
+        /// still be waking from its wait when the test ends.
+        /// </summary>
+        private sealed class HeldLoad : IDisposable
+        {
+            public ManualResetEventSlim Started { get; } =
+                new ManualResetEventSlim(false);
+
+            public ManualResetEventSlim Release { get; } =
+                new ManualResetEventSlim(false);
+
+            public void Dispose() => Release.Set();
+        }
+
         [TestInitialize]
         public void Init()
         {
@@ -536,6 +578,7 @@ namespace FiftyOne.Caching.Tests
             // Act
 
             loader.OnTaskStarted += _ => _token.Cancel();
+            using var load = HoldLoad(loader);
             var getter = Task.Run(() => dict[value, _token.Token]);
             try
             {
@@ -574,10 +617,12 @@ namespace FiftyOne.Caching.Tests
             var loader = new ReturnKeyLoader<string>(millis, true);
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
             OperationCanceledException exception = null;
+            using var load = HoldLoad(loader);
 
             // Act
 
             _token.Cancel();
+            var read = Stopwatch.StartNew();
             try
             {
                 _ = dict[value, _token.Token];
@@ -586,8 +631,14 @@ namespace FiftyOne.Caching.Tests
             {
                 exception = e;
             }
+            Console.WriteLine(
+                "Build log: LoadingDictionary_GetAlreadyCancelled, the read ended " +
+                $"{read.ElapsedMilliseconds} ms after it started.");
 
             // Assert
+
+            Assert.IsTrue(load.Started.Wait(HELD_LOAD_TIMEOUT_MS),
+                "The load should have started.");
 
             Assert.AreEqual(1, loader.Calls);
             Assert.AreEqual(1, loader.TaskCalls);
@@ -615,6 +666,7 @@ namespace FiftyOne.Caching.Tests
             // Act
 
             loader.OnTaskStarted += _ => _token.Cancel();
+            using var load = HoldLoad(loader);
             var getter = Task.Run(() => dict.TryGet(value, _token.Token, out _));
             try
             {
@@ -654,10 +706,12 @@ namespace FiftyOne.Caching.Tests
             var loader = new ReturnKeyLoader<string>(millis, true);
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
             OperationCanceledException exception = null;
+            using var load = HoldLoad(loader);
 
             // Act
 
             _token.Cancel();
+            var read = Stopwatch.StartNew();
             try
             {
                 _ = dict.TryGet(value, _token.Token, out _);
@@ -666,8 +720,14 @@ namespace FiftyOne.Caching.Tests
             {
                 exception = e;
             }
+            Console.WriteLine(
+                "Build log: LoadingDictionary_TryGetAlreadyCancelled, the read ended " +
+                $"{read.ElapsedMilliseconds} ms after it started.");
 
             // Assert
+
+            Assert.IsTrue(load.Started.Wait(HELD_LOAD_TIMEOUT_MS),
+                "The load should have started.");
 
             Assert.AreEqual(1, loader.Calls);
             Assert.AreEqual(0, loader.CompleteWaits);
