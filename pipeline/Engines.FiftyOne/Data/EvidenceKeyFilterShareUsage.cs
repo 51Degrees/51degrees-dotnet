@@ -68,12 +68,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// Any header names added here are hard-coded to be blocked
         /// regardless of the settings passed to the constructor. 'cookie' is
         /// the header that carries every cookie, including the ones this
-        /// filter leaves out.
+        /// filter leaves out, and is the only header the specification
+        /// blocks by default.
         /// </summary>
         private HashSet<string> _blockedHttpHeaders = new HashSet<string>()
         {
-            "cookie",
-            "cookies"
+            "cookie"
         };
 
         /// <summary>
@@ -98,13 +98,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// 'request-query' is the whole query string of the request, added
         /// as 'server.request-query' by the web integrations so that a
         /// signature made over the request line can be checked. It is held
-        /// back here because this class already withholds query string
-        /// parameters by default, only sharing the ones a caller names
-        /// through the constructor, and the whole query string carries every
-        /// one of those parameters together. Without this entry the same
-        /// value would be withheld under its 'query' prefix and shared under
-        /// its 'server' prefix, which would quietly undo a choice a caller
-        /// had made.
+        /// back here because a caller can withhold query string parameters,
+        /// sharing only the ones named through the constructor, and the
+        /// whole query string carries every one of those parameters
+        /// together. Without this entry the same value would be withheld
+        /// under its 'query' prefix and shared under its 'server' prefix,
+        /// which would quietly undo a choice a caller had made.
         /// </para>
         /// <para>
         /// 'request-path' is held back for a different reason, being what it
@@ -139,15 +138,44 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         };
 
         /// <summary>
+        /// The prefix of every cookie's evidence key, with its separator.
+        /// </summary>
+        private static readonly string _cookiePrefix =
+            Core.Constants.EVIDENCE_COOKIE_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR;
+
+        /// <summary>
         /// Constructor
         /// Using this constructor will create a filter that allows all
         /// evidence. I.e. All evidence will be shared, except for the
         /// hard-coded exceptions that <see cref="Include"/> never shares
-        /// regardless of this setting (such as caller-supplied personal data).
+        /// regardless of this setting, such as caller-supplied personal data
+        /// and every cookie whose name does not start 51D_.
         /// </summary>
         public EvidenceKeyFilterShareUsage()
         {
             _shareAll = true;
+        }
+
+        /// <summary>
+        /// Creates a filter that allows all evidence but what
+        /// <see cref="Include"/> never shares, for a filter that derives
+        /// from this one and keys on the asp.net session cookie.
+        /// </summary>
+        /// <param name="includeSession">
+        /// If true then a filter that derives from this one keys on the
+        /// session cookie. This filter does not share it either way.
+        /// </param>
+        /// <param name="aspSessionCookieName">
+        /// The name of the cookie that contains the asp.net session id.
+        /// </param>
+        protected EvidenceKeyFilterShareUsage(
+            bool includeSession,
+            string aspSessionCookieName)
+        {
+            _shareAll = true;
+            _includeSession = includeSession;
+            _aspSessionCookieName = aspSessionCookieName ?? string.Empty;
         }
 
         /// <summary>
@@ -273,6 +301,17 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                 return false;
             }
 
+            // A cookie is shared only when its name starts 51D_, whatever
+            // the settings, so a cookie a site sets for itself, such as its
+            // session cookie, is never shared.
+            if (key.StartsWith(_cookiePrefix, StringComparison.OrdinalIgnoreCase) &&
+                key.Substring(_cookiePrefix.Length).StartsWith(
+                    Engines.Constants.FIFTYONE_COOKIE_PREFIX,
+                    StringComparison.OrdinalIgnoreCase) == false)
+            {
+                return false;
+            }
+
             bool result = _shareAll;
 
             if (_shareAll == false)
@@ -294,14 +333,6 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                             // Pipeline specification is for keys to be lower-case.
                             .Contains(lastPart.ToLowerInvariant()) == false;
 #pragma warning restore CA1308 // Normalize strings to uppercase
-                    }
-                    else if (string.Equals(firstPart, Core.Constants.EVIDENCE_COOKIE_PREFIX,
-                        StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Only add cookies that start with the 51Degrees cookie 
-                        // prefix.
-                        result = lastPart.StartsWith(Engines.Constants.FIFTYONE_COOKIE_PREFIX,
-                            StringComparison.OrdinalIgnoreCase);
                     }
                     else if (string.Equals(firstPart, Core.Constants.EVIDENCE_SESSION_PREFIX,
                         StringComparison.OrdinalIgnoreCase))
@@ -330,8 +361,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                     }
                     else
                     {
-                        // Add anything that is not a cookie, header, session 
-                        // variable or quest string parameter.
+                        // Add anything that is not a header, session
+                        // variable or query string parameter. A cookie
+                        // that gets here starts 51D_.
                         result = true;
                     }
                 }

@@ -329,7 +329,7 @@ namespace FiftyOne.IpIntelligence.Tests.Core
         [DynamicData(nameof(AllTestParams))]
         public void IpiPipelineBuilder_CheckConfiguration(TestParamsComplete testParams)
         {
-            var datafile = Utils.GetFilePath(testParams.DataFileName);
+            var datafile = Utils.GetPaidFilePath(testParams.DataFileName);
             var updateService = new Mock<IDataUpdateService>();
 
             Console.WriteLine(

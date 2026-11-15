@@ -21,16 +21,13 @@
  * ********************************************************************* */
 
 using FiftyOne.DeviceDetection;
-using FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements;
 using FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb.Model;
-using FiftyOne.IpIntelligence.Translation.Data;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Web.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -42,10 +39,10 @@ using System.Text;
 /// 
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/ip-intelligence/OnPremise/Mixed/GettingStarted-Web/Controllers/HomeController.cs). 
 /// 
-/// Required data files:
-/// - Device Detection data file (.hash format)
-/// - IP Intelligence data file (.ipi format)
-/// 
+/// The example uses the free Lite data files unless others are named, and
+/// then shows the properties that only the Enterprise data files have as
+/// needing them.
+///
 /// Required NuGet Dependencies:
 /// - [FiftyOne.DeviceDetection](https://www.nuget.org/packages/FiftyOne.DeviceDetection/)
 /// - [FiftyOne.IpIntelligence](https://www.nuget.org/packages/FiftyOne.IpIntelligence/)
@@ -85,22 +82,11 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb.Con
             // The 51Degrees middleware automatically adds query parameters with "query." prefix
             var flowData = _provider.GetFlowData();
             
-            // Create the model to pass to the view
-            var model = new IndexModel();
-            
-            // Get Device Detection results from the flow data
-            model.Device = flowData.Get<IDeviceData>();
-            
-            // Get IP Intelligence results from the flow data
-            model.IpData = flowData.Get<IIpIntelligenceData>();
-
-            model.TranslationData = flowData.Get<ICountriesTranslationData>();
-            model.CodeTranslationData = flowData.Get<ICountryCodeTranslationData>();
-
-            // Determine whether the free 'Lite' IP Intelligence data file is in use
-            // so the view can surface a contact-us message for on-premise users.
-            var ipiEngine = flowData.Pipeline.GetElement<IpiOnPremiseEngine>();
-            model.IsLiteDataFile = ipiEngine?.DataSourceTier == "Lite";
+            // Create the model to pass to the view. It reads the Device Detection
+            // and IP Intelligence results from the flow data, and shows a property
+            // that a data file in use does not have as needing the Enterprise
+            // data file.
+            var model = new IndexModel(flowData);
 
             // Check if a custom IP was provided via query parameter
             var clientIp = Request.Query["client-ip"].FirstOrDefault();
@@ -117,30 +103,9 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb.Con
                 model.IpMessage = "Showing location data for your IP address";
             }
             
-            // Note: JavaScript for client-side evidence gathering is handled 
+            // Note: JavaScript for client-side evidence gathering is handled
             // by the FiftyOneJS view component in the view
-            
-            // Build device message
-            if (model.Device != null)
-            {
-                var deviceType = model.Device.DeviceType.HasValue ? model.Device.DeviceType.Value : "Unknown";
-                var browserName = model.Device.BrowserName.HasValue ? model.Device.BrowserName.Value : "Unknown";
-                var platformName = model.Device.PlatformName.HasValue ? model.Device.PlatformName.Value : "Unknown";
-                
-                model.DeviceMessage = $"You are using {browserName} on {platformName} ({deviceType})";
-            }
-            
-            // Collect evidence for display
-            model.Evidence = new List<EvidenceModel>();
-            foreach (var evidence in flowData.GetEvidence().AsDictionary())
-            {
-                model.Evidence.Add(new EvidenceModel
-                {
-                    Key = evidence.Key,
-                    Value = evidence.Value?.ToString() ?? "null"
-                });
-            }
-            
+
             // Set response headers for client hints
             if (Response != null && Response.Headers != null)
             {

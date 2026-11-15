@@ -18,11 +18,11 @@ See the [data](https://github.com/51Degrees/data) repository, which is the `cxx/
 
 For the **Mixed examples** that combine Device Detection and IP Intelligence:
 
-1. **IP Intelligence data file**: Place `51Degrees-EnterpriseIpiV41.ipi` in the `cxx/data/ip-intelligence/` directory, or use the free `51Degrees-LiteV41.ipi`, which the data repository's scripts download there.
+1. **IP Intelligence data file**: The examples use the free `51Degrees-LiteV41.ipi`, which the data repository's scripts download into `cxx/data/ip-intelligence/`. To use another file, such as the Enterprise file `51Degrees-EnterpriseIpiV41.ipi`, give its path in the `_51DEGREES_IPI_PATH` environment variable.
 
-2. **Device Detection data file**: Place `51Degrees-EnterpriseV41.hash` in the `cxx/data/ip-intelligence/` directory, or use the free `51Degrees-LiteV4.1.hash`, which the data repository's scripts download into `cxx/data/device-detection/`.
+2. **Device Detection data file**: The examples use the free `51Degrees-LiteV4.1.hash`, which the data repository's scripts download into `cxx/data/device-detection/`. To use another file, give its path in the `_51DEGREES_DD_PATH` environment variable.
 
-The console example downloads the free files itself when it needs them and they are missing.
+Each mixed example downloads the free files itself when it needs them and they are missing. With a free file, an example shows the properties that only the Enterprise file has as needing it, and says where to ask for a copy.
 
 ## On-premise data file
 
@@ -37,10 +37,11 @@ the file in the following order:
 3. A search of the folder hierarchy, walking up from the working directory,
    for the expected data file name.
 
-Most of the examples ask for the Enterprise file,
-`51Degrees-EnterpriseIpiV41.ipi`, which is not free and has to be supplied.
-See the Required files section above on how to download and generate the free
-files.
+The examples ask for a free file, which is `51Degrees-LiteV41.ipi` for most
+of them. The Enterprise file, `51Degrees-EnterpriseIpiV41.ipi`, is not free
+and has to be supplied through the environment variable. An example that
+runs on a free file says which of the properties it shows need the
+Enterprise file, and where to ask for a copy.
 
 ## 📦 NuGet Package
 
@@ -125,7 +126,7 @@ cost with it.
 ## Cloud
 
 A resource key configured with the properties needed to run the cloud examples
-can be created for free [here](https://configure.51degrees.com/1QWJwHxl?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud). To
+can be created for free [here](https://51degrees.com/configure/1QWJwHxl?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud). To
 use the resource key in the examples it can be supplied as an environment
 variable called "_51DEGREES_RESOURCE_KEY".
 
@@ -165,6 +166,7 @@ Automated tests live in the `Tests/` folder and run as part of CI:
 | ---------------------------------------------------------------------| --------------------------------------------------- |
 | `FiftyOne.IpIntelligence.Example.Tests.Cloud`                        | The Cloud console examples and Cloud web examples   |
 | `FiftyOne.IpIntelligence.Example.Tests.OnPremise`                    | The on-premise console examples                     |
+| `FiftyOne.IpIntelligence.Example.Tests.Web.OnPremise`                | The on-premise web examples, with no settings       |
 | `FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests` | The on-premise `Mixed/GettingStarted-API` example   |
 
 Most runnable examples have an associated test. The exceptions, and why:
@@ -176,12 +178,10 @@ Most runnable examples have an associated test. The exceptions, and why:
   targets .NET on Linux, macOS and Windows), cannot be hosted in-process by the
   `net10.0` test harness, and are therefore verified by compilation only.
 - **`OnPremise/GettingStarted-Web` and `OnPremise/Mixed/GettingStarted-Web`** are
-  exercised manually rather than by an automated test. Unlike the Cloud web
-  examples (which are tested in-process), these resolve their on-premise data file
-  through a relative-path configuration override; hosting them in-process from the
-  test project corrupts the pipeline element configuration. They run correctly
-  when launched normally (`dotnet run`), which is how they should be verified
-  until the in-process hosting issue is addressed.
+  each started from their own folder with no settings, as a fresh clone runs
+  them, and asked for their page. The tests check that the page is served from
+  the free data files and shows the properties only the Enterprise file has as
+  needing it. They are not tested with the Enterprise file.
 
 ### Test prerequisites
 
@@ -194,4 +194,6 @@ The example tests are integration tests and need the same inputs the examples do
   (located automatically, or via `_51DEGREES_IPI_PATH`) and the **Mixed** examples
   additionally require a device detection data file. When a required data file is
   absent, those tests report **inconclusive** rather than failing, so the gap is
-  visible without being masked as a regression.
+  visible without being masked as a regression. The tests that run an example
+  with no settings need only the free data files, which the examples download
+  when they are missing.

@@ -66,11 +66,55 @@ namespace Examples.OnPremiseEngine
         {
             var instance = new Program();
             instance.RunExample();
+            WriteFindOutMore();
 
             Console.WriteLine("==========================================");
             Console.WriteLine("Example complete. Press any key to exit.");
             // Wait for user to press a key.
             Console.ReadKey();
+        }
+
+        /// <summary>
+        /// Print where to find out more, so that anyone this example is
+        /// shown to can follow up from the output itself.
+        /// </summary>
+        private static void WriteFindOutMore()
+        {
+            Console.WriteLine("==========================================");
+            Console.WriteLine("Find out more");
+            Console.WriteLine(
+                "  How a pipeline works, and where an engine fits:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation/_pipeline_api__concepts__pipeline_basics.html" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-customflowelement-2.-on-premise-engine-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine("  The 51Degrees documentation:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-customflowelement-2.-on-premise-engine-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  Talk to 51Degrees about using the pipeline:");
+            Console.WriteLine(
+                "    https://51degrees.com/contact-us" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-customflowelement-2.-on-premise-engine-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  This repository, where the pipeline and this example " +
+                "live:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline");
+            Console.WriteLine(
+                "  The device detection engine, which is an on-premise " +
+                "engine that reads a data file:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/device-detection");
         }
     }
 }

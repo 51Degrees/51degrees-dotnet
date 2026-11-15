@@ -76,35 +76,6 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         }
 
         /// <summary>
-        /// Check that a period setting is one the element can work with.
-        /// A negative period, or one longer than a year, would otherwise
-        /// reach the request path and throw there, where the request that
-        /// happened to arrive first would carry the blame for a setting
-        /// made at start up.
-        /// </summary>
-        /// <param name="value">The period given.</param>
-        /// <param name="name">The parameter name to report.</param>
-        /// <returns>The period.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown when the period is negative or longer than a year.
-        /// </exception>
-        private static TimeSpan CheckPeriod(TimeSpan value, string name)
-        {
-            if (value < TimeSpan.Zero ||
-                value > Constants.MAXIMUM_PERIOD)
-            {
-                throw new ArgumentOutOfRangeException(
-                    name,
-                    value,
-                    string.Format(
-                        CultureInfo.InvariantCulture,
-                        Messages.ExceptionPeriodOutOfRange,
-                        Constants.MAXIMUM_PERIOD));
-            }
-            return value;
-        }
-
-        /// <summary>
         /// Set the client the element fetches key directories and agent
         /// cards with. By default the element makes a client of its own and
         /// disposes it with itself. A client set here is not disposed by the
@@ -153,7 +124,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             TimeSpan lifetime)
         {
             Configuration.CacheLifetime =
-                CheckPeriod(lifetime, nameof(lifetime));
+                AgentSignatureConfiguration.CheckPeriod(
+                    lifetime, nameof(lifetime));
             return this;
         }
 
@@ -168,7 +140,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             TimeSpan lifetime)
         {
             Configuration.NegativeCacheLifetime =
-                CheckPeriod(lifetime, nameof(lifetime));
+                AgentSignatureConfiguration.CheckPeriod(
+                    lifetime, nameof(lifetime));
             return this;
         }
 
@@ -185,7 +158,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             TimeSpan waitBudget)
         {
             Configuration.WaitBudget =
-                CheckPeriod(waitBudget, nameof(waitBudget));
+                AgentSignatureConfiguration.CheckPeriod(
+                    waitBudget, nameof(waitBudget));
             return this;
         }
 
@@ -199,7 +173,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             TimeSpan fetchTimeout)
         {
             Configuration.FetchTimeout =
-                CheckPeriod(fetchTimeout, nameof(fetchTimeout));
+                AgentSignatureConfiguration.CheckPeriod(
+                    fetchTimeout, nameof(fetchTimeout));
             return this;
         }
 
@@ -213,7 +188,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         public AgentSignatureElementBuilder SetClockSkew(TimeSpan clockSkew)
         {
             Configuration.ClockSkew =
-                CheckPeriod(clockSkew, nameof(clockSkew));
+                AgentSignatureConfiguration.CheckPeriod(
+                    clockSkew, nameof(clockSkew));
             return this;
         }
 
@@ -230,7 +206,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             TimeSpan maxLifetime)
         {
             Configuration.MaxLifetime =
-                CheckPeriod(maxLifetime, nameof(maxLifetime));
+                AgentSignatureConfiguration.CheckPeriod(
+                    maxLifetime, nameof(maxLifetime));
             return this;
         }
 
@@ -250,11 +227,17 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// </remarks>
         /// <param name="url">The registry URL.</param>
         /// <returns>This builder.</returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when the URL is not HTTPS, carries user information or is
+        /// written as a private address, which the element may not fetch.
+        /// </exception>
         public AgentSignatureElementBuilder SetRegistry(string url)
         {
             if (string.IsNullOrEmpty(url) == false)
             {
-                Configuration.Registries.Add(url);
+                Configuration.Registries.Add(
+                    AgentSignatureConfiguration.CheckRegistry(
+                        url, nameof(url)));
             }
             return this;
         }
