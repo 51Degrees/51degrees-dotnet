@@ -288,13 +288,6 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests.Helpers
             _gate.Set();
             _callerGate.Set();
         }
-        /// <summary>
-        /// Let the held requests finish.
-        /// </summary>
-        public void Release()
-        {
-            _gate.Set();
-        }
 
         /// <inheritdoc/>
         protected override async Task<HttpResponseMessage> SendAsync(
