@@ -36,7 +36,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.OnPremise;
 /// them and says what the Enterprise data file adds.
 /// </summary>
 [TestClass]
-[TestCategory(TestCategories.Integration)]
+[TestCategory(TestCategories.WithoutSettings)]
 [DoNotParallelize]
 public class TestExamplesWithoutSettings
 {
@@ -51,6 +51,7 @@ public class TestExamplesWithoutSettings
             Constants.EVIDENCE_FILE_ENV_VAR,
             Constants.GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR,
             Constants.LICENSE_KEY_ENV_VAR,
+            "_51DEGREES_LICENSE_KEY",
             "_51DEGREES_DD_PATH"
         }
         .Concat(Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS)
@@ -65,8 +66,16 @@ public class TestExamplesWithoutSettings
     public TestContext TestContext { get; set; }
 
     /// <summary>
+    /// The heading of the section every example ends with.
+    /// </summary>
+    private const string FindOutMore = "Find out more";
+
+    /// <summary>
     /// Runs the example's Main with no arguments and the settings removed,
-    /// and returns what it wrote to the console.
+    /// checks that it ends by saying where to find out more, and returns
+    /// what it wrote to the console before that section. The section has a
+    /// link to the contact page of its own, so the tests look for the
+    /// example's link in what came before it.
     /// </summary>
     private string RunWithoutSettings(Action<string[]> main)
     {
@@ -93,7 +102,11 @@ public class TestExamplesWithoutSettings
             }
             TestContext.WriteLine(output.ToString());
         }
-        return output.ToString();
+        var written = output.ToString();
+        Assert.Contains(FindOutMore, written,
+            "The example should end by saying where to find out more.");
+        return written.Substring(0, written.LastIndexOf(
+            FindOutMore, StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -196,6 +209,8 @@ public class TestExamplesWithoutSettings
             "Without a licence key the example should explain and finish.");
         Assert.Contains("Updating the data file downloads the Enterprise data file",
             output, "The example should say what an update needs.");
+        Assert.Contains("'_51DEGREES_LICENSE_KEY'", output,
+            "The example should name the variable that holds the key.");
         Assert.Contains(ContactUs, output,
             "The example should link to the contact page.");
     }

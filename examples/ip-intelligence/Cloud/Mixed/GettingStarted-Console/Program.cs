@@ -258,7 +258,7 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Mixed.GettingStartedConsole
                     // If we don't have a resource key then log an error.
                     if (string.IsNullOrWhiteSpace(resourceKey))
                     {
-                        serviceProvider.GetRequiredService<ILogger<Program>>().LogError(
+                        serviceProvider.GetRequiredService<ILogger<Program>>().LogWarning(
                             $"No resource key specified in the configuration file " +
                             $"'appsettings.json' or the environment variable " +
                             $"'{ExampleUtils.RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud " +
@@ -310,6 +310,19 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Mixed.GettingStartedConsole
             }
 
             new Example().Run(options, Console.Out);
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out,
+                ContentSlug,
+                deviceDetection: true,
+                onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-mixed-gettingstarted-console-program.cs";
     }
 }

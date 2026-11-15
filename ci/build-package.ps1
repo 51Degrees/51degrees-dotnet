@@ -25,12 +25,12 @@ foreach ($built in Get-ChildItem -Path "$pwd/package-files/*" -Recurse -Director
     }
 }
 
-# Only the families the release plan names are packed, each at its next
-# version, which is every family that changed since its last tag and every
-# family depending on one of them. Every family's version is passed so a
-# package depends on the other families at the versions being published, or
-# at the last ones published.
-$versions = Get-FamilyVersions -RepoName $RepoName
+# Only the packages the release plan names are packed, each at its next
+# version, which is every package that changed since its last tag and every
+# package depending on one of them. Every package's version is passed so a
+# package depends on the others at the versions being published, or at the
+# last ones published.
+$versions = Get-PackageVersions -RepoName $RepoName
 $properties = Get-VersionProperties -Versions $versions
 $packArgs = @(
     "--output=$PackagesFolder"
@@ -42,38 +42,45 @@ $packArgs = @(
 
 Push-Location $RepoPath
 try {
-    foreach ($family in $Families) {
-        $v = $versions[$family.Name]
-        if (-not $v.Release) {
-            Write-Host "$($family.Name) stays at $($v.Last), so it is not packed"
+    # Each project is packed on its own, as the separate repositories did,
+    # so it builds as Any CPU. Packed through a solution, the engines take the
+    # platform the solution maps them to, which is x64, and an Arm64 or x86
+    # project cannot reference an x64 assembly. The native libraries are
+    # added per platform from package-files.
+    foreach ($name in $versions.Keys) {
+        $v = $versions[$name]
+        if ($v.Package.Nuspec) {
             continue
         }
-        Write-Host "::group::Packing $($family.Name) $($v.Next)"
-        # Each project is packed on its own, as the separate repositories did,
-        # so it builds as Any CPU. Packed through a solution, the engines take
-        # the platform the solution maps them to, which is x64, and an Arm64
-        # or x86 project cannot reference an x64 assembly. The native
-        # libraries are added per platform from package-files.
-        foreach ($project in Get-PackableProjects -Solutions $family.Solutions) {
-            dotnet pack $project @packArgs
+        if (-not $v.Release) {
+            Write-Host "$name stays at $($v.Last), so it is not packed"
+            continue
         }
+        Write-Host "::group::Packing $name $($v.Next)"
+        dotnet pack $v.Package.Project @packArgs
         Write-Host "::endgroup::"
     }
 
     # The nuspec packages. Only on Windows, where the .NET Framework half
-    # builds, with msbuild, which the shared step puts on the path.
-    if ($NuspecPackages) {
+    # builds, with msbuild, which the shared step puts on the path. The
+    # nuspec names each FiftyOne dependency's version by its property.
+    $nuspecs = @($versions.Values | Where-Object { $_.Package.Nuspec })
+    if (@($nuspecs | Where-Object Release).Count -gt 0) {
         Pop-Location
         try { ./environments/setup-msbuild.ps1 } finally { Push-Location $RepoPath }
     }
-    foreach ($package in $NuspecPackages) {
-        $v = $versions[$package.Family]
-        if (-not $v.Release) { continue }
+    $nuspecProperties = @("config=$Configuration") +
+        @($versions.Values | ForEach-Object { "$($_.Property)=$($_.Next)" })
+    foreach ($v in $nuspecs) {
+        $package = $v.Package
+        if (-not $v.Release) {
+            Write-Host "$($package.Name) stays at $($v.Last), so it is not packed"
+            continue
+        }
         Write-Host "::group::Packing $($package.Nuspec) $($v.Next)"
-        dotnet build $package.Core -c $Configuration -p:FiftyOneReferences=Project -p:BuiltOnCI=true @properties
-        msbuild $package.Framework -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=Any CPU" "-p:FiftyOneReferences=Project" "-p:BuiltOnCI=true" @properties
-        $env:Version = $v.Next
-        nuget pack $package.Nuspec -NonInteractive -OutputDirectory $PackagesFolder -Properties config=$Configuration -version $v.Next
+        dotnet build $package.Projects[0] -c $Configuration -p:FiftyOneReferences=Project -p:BuiltOnCI=true @properties
+        msbuild $package.Solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=Any CPU" "-p:FiftyOneReferences=Project" "-p:BuiltOnCI=true" @properties
+        nuget pack $package.Nuspec -NonInteractive -OutputDirectory $PackagesFolder -Properties ($nuspecProperties -join ';') -version $v.Next
         Write-Host "::endgroup::"
     }
 } finally {
@@ -83,7 +90,7 @@ try {
 $packages = @(Get-ChildItem "$PackagesFolder/*.nupkg")
 if (-not $packages) {
     # The workflow uploads the folder as an artifact, which must not be empty.
-    Write-Host "No family is released, so there is nothing to publish."
+    Write-Host "No package is released, so there is nothing to publish."
     Set-Content "$PackagesFolder/dummy.txt" "No packages to publish"
     return
 }

@@ -192,8 +192,12 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GetAllProperties
             ExampleUtils.WriteFindOutMore(
                 Console.Out, ContentSlug, onPremise: false);
 #if (DEBUG)
-            Console.WriteLine("Done. Press any key to exit.");
-            Console.ReadKey();
+            // Console.ReadKey throws when the input is redirected.
+            if (Console.IsInputRedirected == false)
+            {
+                Console.WriteLine("Done. Press any key to exit.");
+                Console.ReadKey();
+            }
 #endif
         }
 

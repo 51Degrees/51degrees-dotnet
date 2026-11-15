@@ -20,8 +20,12 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.DeviceDetection.Examples;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Client_Hints_Not_Integrated
 {
@@ -36,7 +40,42 @@ namespace Client_Hints_Not_Integrated
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
+                    webBuilder.ConfigureAppConfiguration(UseDataFile);
                     webBuilder.UseStartup<Startup>();
                 });
+
+        /// <summary>
+        /// The setting that holds the data file of the device detection
+        /// engine, which is the first element in appsettings.json.
+        /// </summary>
+        private const string DataFileSetting =
+            "PipelineOptions:Elements:0:BuildParameters:DataFile";
+
+        /// <summary>
+        /// The engine looks for a data file named without a path in the
+        /// current directory only, and the examples share one copy of each
+        /// data file. So a name without a path is found here, in the
+        /// '_51DEGREES_DD_PATH' environment variable or the data folder of
+        /// the repository, where the free Lite file is downloaded when it is
+        /// missing, and the engine is given the full path. An application
+        /// of your own can name the full path in its configuration.
+        /// </summary>
+        private static void UseDataFile(IConfigurationBuilder config)
+        {
+            var configured = config.Build()[DataFileSetting];
+            if (string.IsNullOrEmpty(configured) ||
+                Path.IsPathRooted(configured))
+            {
+                return;
+            }
+            var found = ExampleUtils.FindDataFile(configured);
+            if (found != null)
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    [DataFileSetting] = found
+                });
+            }
+        }
     }
 }

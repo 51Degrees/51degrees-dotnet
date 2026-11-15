@@ -273,6 +273,120 @@ namespace FiftyOne.Pipeline.JsonBuilderElementTests
                 $"Complete JSON: " + Environment.NewLine + json);
         }
 
+        /// <summary>
+        /// A WKT value is written as an object with one member, value,
+        /// holding the WKT text.
+        /// </summary>
+        [TestMethod]
+        public void JsonBuilder_WktValue_ObjectWithOneMemberValue()
+        {
+            _elementDataMock.Setup(ed => ed.AsDictionary()).
+                Returns(new Dictionary<string, object>() {
+                    { "area", new AspectPropertyValue<WktString>(
+                        new WktString("POINT(2 4)")) },
+                });
+            var testElementMetaData =
+                new Dictionary<string, IElementPropertyMetaData>();
+            testElementMetaData.Add("area", new ElementPropertyMetaData(
+                _testEngine.Object, "area", typeof(WktString), true));
+            _propertyMetaData.Add("test", testElementMetaData);
+
+            var json = TestIteration(1);
+
+            var area = JObject.Parse(json)["test"]?["area"] as JObject;
+            Assert.IsNotNull(area,
+                $"The WKT value is not an object. Complete JSON: {json}");
+            var members = area.Count;
+            Assert.AreEqual(1, members,
+                $"The WKT object has more than one member. Complete JSON: {json}");
+            Assert.AreEqual("POINT(2 4)", area["value"]?.ToString(),
+                $"The WKT object's value is not the WKT text. Complete JSON: {json}");
+        }
+
+        /// <summary>
+        /// A property whose value is null without having been assigned
+        /// 'no value' has no entry of its own and no nullreason, whilst a
+        /// property with a value beside it is written.
+        /// </summary>
+        [TestMethod]
+        public void JsonBuilder_PlainNull_NoEntryAndNoNullReason()
+        {
+            _elementDataMock.Setup(ed => ed.AsDictionary()).
+                Returns(new Dictionary<string, object>() {
+                    { "property", null },
+                    { "other", "value" },
+                });
+            var testElementMetaData =
+                new Dictionary<string, IElementPropertyMetaData>();
+            testElementMetaData.Add("property", new ElementPropertyMetaData(
+                _testEngine.Object, "property", typeof(string), true));
+            testElementMetaData.Add("other", new ElementPropertyMetaData(
+                _testEngine.Object, "other", typeof(string), true));
+            _propertyMetaData.Add("test", testElementMetaData);
+
+            var json = TestIteration(1);
+
+            var test = (JObject)JObject.Parse(json)["test"];
+            Assert.IsFalse(test.ContainsKey("property"),
+                $"A plain null has an entry. Complete JSON: {json}");
+            Assert.IsFalse(test.ContainsKey("propertynullreason"),
+                $"A plain null has a nullreason. Complete JSON: {json}");
+            Assert.AreEqual("value", test["other"]?.ToString(),
+                $"The property with a value is missing. Complete JSON: {json}");
+        }
+
+        /// <summary>
+        /// Each item of a property whose value is a list of element data
+        /// is written with the same rules as a top level property, so a
+        /// property with no value is null with its nullreason, and a plain
+        /// null has no entry.
+        /// </summary>
+        [TestMethod]
+        public void JsonBuilder_ListItems_NoValueAndPlainNull()
+        {
+            var item = new Mock<IElementData>();
+            item.Setup(i => i.AsDictionary()).Returns(
+                new Dictionary<string, object>() {
+                    { "novalue", new AspectPropertyValue<string>()
+                        { NoValueMessage = "The reason." } },
+                    { "plainnull", null },
+                    { "text", "value" },
+                });
+            _elementDataMock.Setup(ed => ed.AsDictionary()).
+                Returns(new Dictionary<string, object>() {
+                    { "items", new List<IElementData>() { item.Object } },
+                });
+            var itemMetaData = new List<IElementPropertyMetaData>() {
+                new ElementPropertyMetaData(
+                    _testEngine.Object, "novalue", typeof(string), true),
+                new ElementPropertyMetaData(
+                    _testEngine.Object, "plainnull", typeof(string), true),
+                new ElementPropertyMetaData(
+                    _testEngine.Object, "text", typeof(string), true),
+            };
+            var testElementMetaData =
+                new Dictionary<string, IElementPropertyMetaData>();
+            testElementMetaData.Add("items", new ElementPropertyMetaData(
+                _testEngine.Object, "items", typeof(List<IElementData>),
+                true, "", itemMetaData));
+            _propertyMetaData.Add("test", testElementMetaData);
+
+            var json = TestIteration(1);
+
+            var written = (JObject)((JArray)JObject.Parse(json)["test"]["items"])
+                .Single();
+            Assert.IsTrue(written.ContainsKey("novalue") &&
+                written["novalue"].Type == JTokenType.Null,
+                $"A property with no value is not null. Complete JSON: {json}");
+            Assert.AreEqual("The reason.",
+                written["novaluenullreason"]?.ToString(),
+                $"The nullreason is missing. Complete JSON: {json}");
+            Assert.IsFalse(written.ContainsKey("plainnull"),
+                $"A plain null has an entry. Complete JSON: {json}");
+            Assert.AreEqual("value", written["text"]?.ToString(),
+                $"The property with a value is missing. Complete JSON: {json}");
+        }
+
         public static IEnumerable<object[]> GetDelayedExecutionTestParameters
         {
             get

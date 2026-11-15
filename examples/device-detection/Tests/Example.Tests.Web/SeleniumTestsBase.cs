@@ -27,6 +27,7 @@ using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Firefox;
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -132,7 +133,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         /// Without this a test that follows another on the same page finds
         /// the cached result, the script makes no request, and a test that
         /// waits for that request times out. A new tab has empty session
-        /// storage, and the cookies are deleted for every site.
+        /// storage, and through WebDriver BiDi the cookies of every site
+        /// are deleted. Without BiDi the classic call deletes only the
+        /// cookies of the page the tab is on, which on about:blank are
+        /// none. The old tab leaves its page first, so no script sets a
+        /// cookie again, and the cookies are deleted before any tab
+        /// closes, so the command never meets a tab that is closing.
         /// </summary>
         private static void ResetBrowserState()
         {
@@ -140,12 +146,8 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             {
                 return;
             }
-            var previous = Driver.CurrentWindowHandle;
-            Driver.SwitchTo().NewWindow(WindowType.Tab);
-            var fresh = Driver.CurrentWindowHandle;
-            Driver.SwitchTo().Window(previous);
-            Driver.Close();
-            Driver.SwitchTo().Window(fresh);
+            Driver.Navigate().GoToUrl("about:blank");
+            var deleting = Stopwatch.StartNew();
             if (Network != null)
             {
                 Network.DeleteAllCookiesAsync().Wait();
@@ -154,6 +156,15 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             {
                 Driver.Manage().Cookies.DeleteAllCookies();
             }
+            Console.WriteLine(
+                "Build log: Selenium tests, the cookies were deleted in " +
+                $"{deleting.ElapsedMilliseconds} ms.");
+            var previous = Driver.CurrentWindowHandle;
+            Driver.SwitchTo().NewWindow(WindowType.Tab);
+            var fresh = Driver.CurrentWindowHandle;
+            Driver.SwitchTo().Window(previous);
+            Driver.Close();
+            Driver.SwitchTo().Window(fresh);
         }
 
         /// <summary>

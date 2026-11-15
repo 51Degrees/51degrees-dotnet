@@ -154,8 +154,8 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Metadata
 
             if (string.IsNullOrEmpty(resourceKey))
             {
-                logger.LogError($"No resource key specified in the configuration file " +
-                    $"'appsettings.json' or the environment variable " +
+                logger.LogWarning($"No resource key specified on the command line or in " +
+                    $"the environment variable " +
                     $"'{ExampleUtils.RESOURCE_KEY_ENV_VAR}'. The 51Degrees Cloud service is " +
                     $"accessed using a 'ResourceKey'. For more information see " +
                     $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required. " +
@@ -171,7 +171,17 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.Metadata
 
             // Dispose the logger to ensure any messages get flushed
             loggerFactory.Dispose();
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-metadata-console-program.cs";
 
         private static void AppendPrettyTypeName(Type type, StringBuilder typeNameBuilder)
         {
