@@ -112,6 +112,9 @@
   <data name="NoValueDetailInlineDirectory" xml:space="preserve">
     <value>The agent sent its key with the request rather than publishing it, which this element does not accept.</value>
   </data>
+  <data name="ExceptionRegistryNotFetchable" xml:space="preserve">
+    <value>The registry address '{0}' may not be fetched, because it is not HTTPS, carries user information or is written as a private address.</value>
+  </data>
   <data name="ExceptionPeriodOutOfRange" xml:space="preserve">
     <value>The period must not be negative and must not be longer than {0}.</value>
   </data>

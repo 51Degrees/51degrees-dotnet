@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 # The packages built here are left out by name. In the default Package mode
 # the root Directory.Build.targets turns each FiftyOneReference item into a
 # PackageReference, which dotnet-outdated finds but cannot change, because the
-# item is in an imported file. Their versions are the family versions in the
+# item is in an imported file. Their versions are the package versions in the
 # root Directory.Build.props, which publish-package.ps1 records.
 # dotnet-outdated's --exclude leaves out every package whose name contains the
 # text anywhere, ignoring case.

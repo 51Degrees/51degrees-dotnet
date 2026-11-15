@@ -12,11 +12,11 @@ Each property value is set to the default for that property.*/
         "BuilderName": "ShareUsageBuilder",
         "BuildParameters": {
           /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetIncludedQueryStringParameters(String)*/
-          "SetIncludedQueryStringParameters": "No sharing unless the query/form parameter starts with 51D_"
+          "SetIncludedQueryStringParameters": "Only those starting 51D_, when share all query string parameters is off"
           /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetIncludedQueryStringParameter(String)*/,
-          "SetIncludedQueryStringParameter": "No sharing unless the query/form parameter starts with 51D_"
+          "SetIncludedQueryStringParameter": "Only those starting 51D_, when share all query string parameters is off"
           /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetShareAllQueryStringParameters(Boolean)*/,
-          "SetShareAllQueryStringParameters": false
+          "SetShareAllQueryStringParameters": true
           /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetShareAllEvidence(Boolean)*/,
           "SetShareAllEvidence": false
           /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetBlockedHttpHeaders(List`1)*/,
