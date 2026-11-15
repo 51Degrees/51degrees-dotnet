@@ -201,6 +201,27 @@ public class CloudCountriesTranslationEngineTests
     }
 
     /// <summary>
+    /// A response with no countrynamestranslated section, from a key whose
+    /// product list has it, leaves the data without values and raises no
+    /// error.
+    /// </summary>
+    [TestMethod]
+    public void Process_ResponseWithNoTranslatedSection_LeavesDataWithoutValues()
+    {
+        using var pipeline = BuildPipeline(
+            @"{ ""ip"": { ""asnname"": ""Example Networks"" } }",
+            CountriesPublicProperties());
+        using var data = pipeline.CreateFlowData();
+
+        data.Process();
+
+        Assert.IsEmpty(data.Errors ?? new List<IFlowError>(),
+            "A response with no section for the engine is not an error.");
+        Assert.IsEmpty(data.Get<ICountriesTranslationData>().AsDictionary(),
+            "The engine's data has no values.");
+    }
+
+    /// <summary>
     /// Build a pipeline containing a stub cloud request engine (supplying the
     /// given property metadata and JSON response) followed by the engine under
     /// test.

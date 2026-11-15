@@ -119,6 +119,25 @@ public class IpiCloudEngineProcessTests
     }
 
     /// <summary>
+    /// A response with no ip section, from a key whose product list has ip,
+    /// leaves the data without values and records no error.
+    /// </summary>
+    [TestMethod]
+    public void Process_ResponseWithNoIpSection_LeavesDataWithoutValues()
+    {
+        using var pipeline = BuildPipeline(
+            @"{ ""device"": { ""ismobile"": true } }");
+        using var data = pipeline.CreateFlowData();
+
+        data.Process();
+
+        Assert.IsEmpty(data.Errors ?? new List<IFlowError>(),
+            "A response with no section for the engine is not an error.");
+        Assert.IsEmpty(data.Get<IIpIntelligenceData>().AsDictionary(),
+            "The engine's data has no values.");
+    }
+
+    /// <summary>
     /// Build a pipeline containing a stub cloud request engine returning the
     /// given JSON response followed by the engine under test. Process
     /// exceptions are suppressed, matching how consumers configure cloud
