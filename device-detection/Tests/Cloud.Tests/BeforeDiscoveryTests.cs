@@ -85,6 +85,36 @@ public class BeforeDiscoveryTests
             "The profile holds the value from the response.");
     }
 
+    [TestMethod]
+    public void DeviceEngine_ResponseBeforeDiscovery_LogsNoWarningPerValue()
+    {
+        var warnings = new MissingMetaDataWarnings();
+        var engine = new DeviceDetectionCloudEngineBuilder(warnings).Build();
+        using var pipeline = BuildPipeline(engine, "{ \"device\": { \"hardwarevendor\": \"Apple\", \"ismobile\": true } }");
+        using var data = pipeline.CreateFlowData();
+
+        data.Process();
+
+        Assert.AreEqual(0, warnings.Count,
+            "A response read before discovery logs no warning for each " +
+            "value that has no meta-data.");
+    }
+
+    [TestMethod]
+    public void HardwareProfileEngine_ResponseBeforeDiscovery_LogsNoWarningPerValue()
+    {
+        var warnings = new MissingMetaDataWarnings();
+        var engine = new HardwareProfileCloudEngineBuilder(warnings).Build();
+        using var pipeline = BuildPipeline(engine, "{ \"hardware\": { \"profiles\": [ { \"hardwarevendor\": \"Apple\", \"ismobile\": true } ] } }");
+        using var data = pipeline.CreateFlowData();
+
+        data.Process();
+
+        Assert.AreEqual(0, warnings.Count,
+            "A response read before discovery logs no warning for each " +
+            "value that has no meta-data.");
+    }
+
     /// <summary>
     /// A pipeline of a stub cloud request engine that cannot give its
     /// property list, followed by the engine.
@@ -148,5 +178,42 @@ public class BeforeDiscoveryTests
             aspectData.JsonResponse = _json;
 
         protected override void UnmanagedResourcesCleanup() { }
+    }
+
+    /// <summary>
+    /// A logger factory that counts the warnings that a value has no
+    /// meta-data.
+    /// </summary>
+    private sealed class MissingMetaDataWarnings : ILoggerFactory, ILogger
+    {
+        private int _count;
+
+        public int Count => System.Threading.Volatile.Read(ref _count);
+
+        public void AddProvider(ILoggerProvider provider) { }
+
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public void Dispose() { }
+
+        public IDisposable BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception exception,
+            Func<TState, Exception, string> formatter)
+        {
+            if (logLevel == LogLevel.Warning &&
+                formatter(state, exception).StartsWith(
+                    "No meta-data entry", StringComparison.Ordinal))
+            {
+                System.Threading.Interlocked.Increment(ref _count);
+            }
+        }
     }
 }
