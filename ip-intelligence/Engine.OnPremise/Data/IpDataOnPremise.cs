@@ -252,8 +252,13 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
             {
                 return true;
             }
-            return Results.ResultsList
-                .Any(r => r.containsProperty(propertyName));
+            // Finding whether the results hold the property reads them, so
+            // under the same lock as every other read of them.
+            lock (ResultsLock)
+            {
+                return Results.ResultsList
+                    .Any(r => r.containsProperty(propertyName));
+            }
         }
 
         protected override IAspectPropertyValue<IReadOnlyList<IWeightedValue<bool>>> GetValuesAsWeightedBoolList(string propertyName)
@@ -366,6 +371,16 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.Data
         }
 
         public override IAspectPropertyValue<IReadOnlyList<string>> GetValues(string propertyName)
+        {
+            // A public read of the native results, so under the same lock as
+            // every other read of them.
+            lock (ResultsLock)
+            {
+                return ReadValues(propertyName);
+            }
+        }
+
+        private IAspectPropertyValue<IReadOnlyList<string>> ReadValues(string propertyName)
         {
             var result = new AspectPropertyValue<IReadOnlyList<string>>();
             var results = GetResults(propertyName, out var index);

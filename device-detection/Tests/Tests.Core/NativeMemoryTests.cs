@@ -100,6 +100,14 @@ public class NativeMemoryTests
             }
         }
 
+        // Written whether the test passes or fails. CI prints the lines
+        // that start "Build log: " from the test results, so each job's
+        // log holds what its runner kept.
+        Console.WriteLine(
+            "Build log: Device Detection NativeMemory_FreedByDispose kept " +
+            $"{after - before} MB of the {loaded - before} MB the " +
+            "pipeline used.");
+
         Assert.IsLessThan(MemoryMarginMegabytes, after - before,
             $"Disposing kept {after - before} MB of the {loaded - before} " +
             "MB the pipeline used.");

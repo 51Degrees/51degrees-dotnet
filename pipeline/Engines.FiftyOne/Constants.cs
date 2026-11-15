@@ -101,6 +101,19 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne
         internal const bool SHARE_USAGE_DEFAULT_SHARE_ALL_EVIDENCE = false;
 
         /// <summary>
+        /// Every query string and HTTP form parameter is shared by default.
+        /// </summary>
+        internal const bool SHARE_USAGE_DEFAULT_SHARE_ALL_QUERY_STRING_PARAMETERS = true;
+
+        /// <summary>
+        /// The default of the included query string parameters, as the
+        /// configuration documentation shows it.
+        /// </summary>
+        internal const string SHARE_USAGE_DEFAULT_INCLUDED_QUERY_STRING_PARAMETERS =
+            "Only those starting 51D_, when share all query string " +
+            "parameters is off";
+
+        /// <summary>
         /// Share just one set of evidence from each user session or not?
         /// This defaults to false because there may be useful data in subsequent requests 
         /// (e.g. client-side properties or high entropy UACH values).

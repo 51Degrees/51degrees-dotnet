@@ -21,9 +21,11 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Web.Framework.Adapters;
 using FiftyOne.Pipeline.Web.Shared.Services;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Web;
 
 namespace FiftyOne.Pipeline.Web.Framework.Providers
@@ -93,6 +95,13 @@ namespace FiftyOne.Pipeline.Web.Framework.Providers
         /// </param>
         public void ServeJavascript(HttpContext context)
         {
+            if (ServeNotModified(
+                context,
+                WebPipeline.GetInstance().Pipeline,
+                _clientsidePropertyService))
+            {
+                return;
+            }
             _clientsidePropertyService.ServeJavascript(
                 new ContextAdapter(context), 
                 GetFlowData(context));
@@ -107,10 +116,76 @@ namespace FiftyOne.Pipeline.Web.Framework.Providers
         /// </param>
         public void ServeJson(HttpContext context)
         {
+            if (ServeNotModified(
+                context,
+                WebPipeline.GetInstance().Pipeline,
+                _clientsidePropertyService))
+            {
+                return;
+            }
             _clientsidePropertyService.ServeJson(
                 new ContextAdapter(context), 
                 GetFlowData(context));
         }
+
+        /// <summary>
+        /// The key of the item that marks a request answered by
+        /// <see cref="ServeNotModified"/>.
+        /// </summary>
+        internal const string AnsweredWithoutProcessingKey =
+            "FiftyOne.Pipeline.Web.Framework.AnsweredWithoutProcessing";
+
+        /// <summary>
+        /// Answers a request whose If-None-Match matches the ETag of the
+        /// evidence it supplies with a 304 or a 412, without processing it,
+        /// because the web integration specification says the endpoint
+        /// "MUST NOT process a request whose 'If-None-Match' header
+        /// matches". False, with nothing written, when the request has no
+        /// If-None-Match, it does not match, or its evidence cannot be read,
+        /// and the request is then processed and served.
+        /// </summary>
+        internal static bool ServeNotModified(
+            HttpContext context,
+            IPipeline pipeline,
+            IClientsidePropertyService service)
+        {
+            var clientside = service as ClientsidePropertyService;
+            if (clientside == null ||
+                string.IsNullOrWhiteSpace(
+                    context.Request.Headers["If-None-Match"]))
+            {
+                return false;
+            }
+            bool answered;
+            using (var flowData = pipeline.CreateFlowData())
+            {
+                try
+                {
+                    WebPipeline.AddEvidenceFromRequest(
+                        flowData, context.Request);
+                }
+                catch (Exception)
+                {
+                    // Processing meets the same failure and reports it.
+                    return false;
+                }
+                answered = clientside.ServeNotModified(
+                    new ContextAdapter(context), flowData);
+            }
+            if (answered)
+            {
+                context.Items[AnsweredWithoutProcessingKey] = true;
+            }
+            return answered;
+        }
+
+        /// <summary>
+        /// True when <see cref="ServeNotModified"/> answered the request, so
+        /// the request was not processed and its browser capabilities must
+        /// not be read, as reading them processes it.
+        /// </summary>
+        internal static bool AnsweredWithoutProcessing(HttpContext context) =>
+            context.Items.Contains(AnsweredWithoutProcessingKey);
 
         private static IFlowData GetFlowData(HttpContext context)
         {
