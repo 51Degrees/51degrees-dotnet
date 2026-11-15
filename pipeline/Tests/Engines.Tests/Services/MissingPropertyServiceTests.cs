@@ -28,6 +28,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace FiftyOne.Pipeline.Engines.Tests.Services
 {
@@ -198,6 +199,41 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
                 Messages.MissingPropertyMessageProductNotInCloudResource,
                 "testElement"),
             result.Description);
+        }
+
+        /// <summary>
+        /// The two resource key messages read as the table of reasons in the
+        /// specification's properties feature gives them, once the campaign
+        /// parameters added to the link are taken out.
+        /// </summary>
+        [TestMethod]
+        public void MissingPropertyService_ResourceKeyMessages_MatchSpecification()
+        {
+            Assert.AreEqual(
+                "This is because your resource key does not include access " +
+                "to any properties under 'testElement'. Check or create a " +
+                "resource key with the properties you need in the " +
+                "configurator at https://configure.51degrees.com.",
+                WithoutCampaign(string.Format(
+                    Messages.MissingPropertyMessageProductNotInCloudResource,
+                    "testElement")));
+            Assert.AreEqual(
+                "This is because your resource key does not include access " +
+                "to this property. The properties included for your key " +
+                "under 'testElement' are testProperty. Check or change your " +
+                "key in the configurator at https://configure.51degrees.com.",
+                WithoutCampaign(string.Format(
+                    Messages.MissingPropertyMessagePropertyNotInCloudResource,
+                    "testElement",
+                    "testProperty")));
+        }
+
+        /// <summary>
+        /// Takes out the campaign parameters that end a message's link.
+        /// </summary>
+        private static string WithoutCampaign(string message)
+        {
+            return Regex.Replace(message, @"\?utm_\S*(?=\.$)", string.Empty);
         }
 
         /// <summary>
