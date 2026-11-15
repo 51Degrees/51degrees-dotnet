@@ -1026,4 +1026,72 @@ public static class ExampleUtils
         }
         return readable;
     }
+
+    /// <summary>
+    /// The line that separates the closing section from an example's own
+    /// output.
+    /// </summary>
+    private const string FindOutMoreRule =
+        "==========================================";
+
+    /// <summary>
+    /// A link to a 51degrees.com page, tagged with the example's file so
+    /// that a visit can be traced to the example.
+    /// </summary>
+    /// <param name="page">
+    /// The page's path, without a leading slash.
+    /// </param>
+    /// <param name="content">
+    /// The example's file as a lower case slug.
+    /// </param>
+    public static string FindOutMoreLink(string page, string content)
+    {
+        return "https://51degrees.com/" +
+            page + "?utm_source=code&utm_medium=example" +
+            "&utm_campaign=51degrees-dotnet" +
+            "&utm_content=" + content + "&utm_term=find-out-more";
+    }
+
+    /// <summary>
+    /// Writes the section every example ends with, which says where to
+    /// find out more about what the example showed.
+    /// </summary>
+    /// <param name="output">
+    /// Where to write the section.
+    /// </param>
+    /// <param name="content">
+    /// The example's file as a lower case slug, which tags each link.
+    /// </param>
+    /// <param name="onPremise">
+    /// True for an example that reads a data file, which uses the native
+    /// engine as well.
+    /// </param>
+    public static void WriteFindOutMore(
+        TextWriter output,
+        string content,
+        bool onPremise = true)
+    {
+        const string repository =
+            "    https://github.com/51Degrees/51degrees-dotnet/tree/main/";
+        output.WriteLine();
+        output.WriteLine(FindOutMoreRule);
+        output.WriteLine("Find out more");
+        output.WriteLine("  Device detection:");
+        output.WriteLine("    " + FindOutMoreLink("device-detection", content));
+        output.WriteLine(onPremise ?
+            "  Data files and prices:" :
+            "  Plans and prices:");
+        output.WriteLine("    " + FindOutMoreLink("pricing", content));
+        output.WriteLine("  Talk to 51Degrees about using it:");
+        output.WriteLine("    " + FindOutMoreLink("contact-us", content));
+        output.WriteLine(
+            "  The source code for this example and what it uses:");
+        output.WriteLine(repository + "examples/device-detection");
+        output.WriteLine(repository + "device-detection");
+        if (onPremise)
+        {
+            output.WriteLine("    https://github.com/51Degrees/51degrees-cxx");
+        }
+        output.WriteLine(repository + "pipeline");
+    }
 }

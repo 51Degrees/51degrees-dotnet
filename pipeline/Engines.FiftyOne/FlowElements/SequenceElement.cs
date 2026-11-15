@@ -162,9 +162,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Gets the sequence from a whole number or a string of decimal
-        /// digits. The value must be at least 1 and must be one that can
-        /// have 1 added without leaving the range of an int.
+        /// Gets the sequence from a whole number or a string made only of
+        /// the digits 0 to 9. The value must be at least 1 and must be one
+        /// that can have 1 added without leaving the range of an int.
         /// </summary>
         private static bool TryGetSequence(object value, out int sequence)
         {
@@ -178,11 +178,15 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 case byte by: number = by; break;
                 case uint ui: number = ui; break;
                 case string text:
-                    if (int.TryParse(
-                        text,
-                        NumberStyles.None,
-                        CultureInfo.InvariantCulture,
-                        out int parsed) == false)
+                    // int.TryParse with NumberStyles.None still accepts
+                    // trailing NUL characters, so the digits are checked
+                    // first.
+                    if (IsDigits(text) == false ||
+                        int.TryParse(
+                            text,
+                            NumberStyles.None,
+                            CultureInfo.InvariantCulture,
+                            out int parsed) == false)
                     {
                         return false;
                     }
@@ -196,6 +200,26 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 return false;
             }
             sequence = (int)number;
+            return true;
+        }
+
+        /// <summary>
+        /// True when the text is not empty and every character is one of
+        /// the digits 0 to 9.
+        /// </summary>
+        private static bool IsDigits(string text)
+        {
+            if (text.Length == 0)
+            {
+                return false;
+            }
+            foreach (var c in text)
+            {
+                if (c < '0' || c > '9')
+                {
+                    return false;
+                }
+            }
             return true;
         }
 

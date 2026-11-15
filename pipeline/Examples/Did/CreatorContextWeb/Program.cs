@@ -83,10 +83,13 @@ var resource = EnvironmentSetting.Read(
     "_51DEGREES_RESOURCE_KEY", "RESOURCE_KEY");
 if (string.IsNullOrEmpty(resource))
 {
-    Console.Error.WriteLine(
-        "Set _51DEGREES_RESOURCE_KEY to the "
-        + "resource key of the page.");
-    return 1;
+    // A fresh clone has no key, so this says where to create one and
+    // ends without a server.
+    Console.WriteLine(
+        "Set _51DEGREES_RESOURCE_KEY to the resource key of the page. "
+        + "A resource key can be created at "
+        + "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-did-creatorcontextweb-program.cs&utm_term=resource-key-required");
+    return 0;
 }
 var licence = EnvironmentSetting.Read(
     "_51DEGREES_LICENSE_KEY", "LICENSE_KEY");

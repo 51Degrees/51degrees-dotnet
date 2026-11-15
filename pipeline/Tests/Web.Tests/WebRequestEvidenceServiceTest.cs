@@ -22,6 +22,7 @@
 
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Web.Services;
+using FiftyOne.Pipeline.Web.Shared.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;
@@ -32,6 +33,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.Web.Tests
 {
@@ -665,6 +668,88 @@ namespace FiftyOne.Pipeline.Web.Tests
         public void WebRequestEvidenceService_NullParamValue()
         {
             CheckNullValue("query");
+        }
+
+        /// <summary>
+        /// A session that holds values in memory.
+        /// </summary>
+        private class MemorySession : ISession
+        {
+            private readonly Dictionary<string, byte[]> _values =
+                new Dictionary<string, byte[]>();
+
+            public bool IsAvailable => true;
+
+            public string Id => "session-id";
+
+            public IEnumerable<string> Keys => _values.Keys;
+
+            public void Clear() => _values.Clear();
+
+            public Task CommitAsync(CancellationToken cancellationToken = default) =>
+                Task.CompletedTask;
+
+            public Task LoadAsync(CancellationToken cancellationToken = default) =>
+                Task.CompletedTask;
+
+            public void Remove(string key) => _values.Remove(key);
+
+            public void Set(string key, byte[] value) => _values[key] = value;
+
+            public bool TryGetValue(string key, out byte[] value) =>
+                _values.TryGetValue(key, out value);
+        }
+
+        /// <summary>
+        /// Each session value is added under the session prefix, and the
+        /// session itself under session.session, as the web integration
+        /// section of the specification names them.
+        /// </summary>
+        [TestMethod]
+        public void WebRequestEvidenceService_Session()
+        {
+            var sessionValueKey = Core.Constants.EVIDENCE_SESSION_PREFIX +
+                Core.Constants.EVIDENCE_SEPERATOR + "colour";
+            _flowData.SetupGet(f => f.EvidenceKeyFilter)
+                .Returns(new EvidenceKeyFilterWhitelist(new List<string>() {
+                    sessionValueKey,
+                    Core.Constants.EVIDENCE_SESSION_KEY }));
+            var session = new MemorySession();
+            session.SetString("colour", "blue");
+            _request.SetupGet(r => r.HttpContext.Session).Returns(session);
+
+            _service.AddEvidenceFromRequest(_flowData.Object, _request.Object);
+
+            _flowData.Verify(f => f.AddEvidence(sessionValueKey, "blue"),
+                Times.Once);
+            _flowData.Verify(f => f.AddEvidence(
+                Core.Constants.EVIDENCE_SESSION_KEY,
+                It.Is<object>(o => o is IAspSession)),
+                Times.Once);
+        }
+
+        /// <summary>
+        /// With no session, nothing is added under the session prefix,
+        /// neither the session itself nor any value.
+        /// </summary>
+        [TestMethod]
+        public void WebRequestEvidenceService_NoSession()
+        {
+            _flowData.SetupGet(f => f.EvidenceKeyFilter)
+                .Returns(new EvidenceKeyFilterWhitelist(new List<string>() {
+                    Core.Constants.EVIDENCE_SESSION_KEY }));
+            _request.SetupGet(r => r.HttpContext.Session)
+                .Returns((ISession)null);
+
+            _service.AddEvidenceFromRequest(_flowData.Object, _request.Object);
+
+            _flowData.Verify(f => f.AddEvidence(
+                It.Is<string>(k => k.StartsWith(
+                    Core.Constants.EVIDENCE_SESSION_PREFIX +
+                        Core.Constants.EVIDENCE_SEPERATOR,
+                    System.StringComparison.OrdinalIgnoreCase)),
+                It.IsAny<object>()),
+                Times.Never);
         }
     }
 }

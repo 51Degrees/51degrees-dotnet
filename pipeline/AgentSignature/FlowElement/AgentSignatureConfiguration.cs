@@ -20,8 +20,10 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.Pipeline.AgentSignature.Keys;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net.Http;
 
 namespace FiftyOne.Pipeline.AgentSignature.FlowElement
@@ -169,5 +171,79 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// </summary>
         internal Func<DateTimeOffset> Clock { get; set; } =
             () => DateTimeOffset.UtcNow;
+
+        /// <summary>
+        /// Refuses a period the element cannot work with, being a negative
+        /// one or one longer than a year, so that a bad setting fails when
+        /// the element is built and not on the first request that reads it.
+        /// </summary>
+        /// <param name="value">The period.</param>
+        /// <param name="name">The parameter name to report.</param>
+        /// <returns>The period.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when the period is negative or longer than a year.
+        /// </exception>
+        internal static TimeSpan CheckPeriod(TimeSpan value, string name)
+        {
+            if (value < TimeSpan.Zero ||
+                value > Constants.MAXIMUM_PERIOD)
+            {
+                throw new ArgumentOutOfRangeException(
+                    name,
+                    value,
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        Messages.ExceptionPeriodOutOfRange,
+                        Constants.MAXIMUM_PERIOD));
+            }
+            return value;
+        }
+
+        /// <summary>
+        /// Refuses a registry address the element may not fetch, being one
+        /// that is not HTTPS, carries user information or is written as a
+        /// private address, which no address the element fetches may be.
+        /// </summary>
+        /// <param name="url">The registry address.</param>
+        /// <param name="name">The parameter name to report.</param>
+        /// <returns>The address.</returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when the address may not be fetched.
+        /// </exception>
+        internal static string CheckRegistry(string url, string name)
+        {
+            if (DirectoryFetcher.IsSafeUrl(url) == false)
+            {
+                throw new ArgumentException(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        Messages.ExceptionRegistryNotFetchable,
+                        url),
+                    name);
+            }
+            return url;
+        }
+
+        /// <summary>
+        /// Checks every period and every registry address, so that a
+        /// configuration given straight to the element is held to the same
+        /// rules as one made through the builder's setters.
+        /// </summary>
+        /// <param name="name">The parameter name to report.</param>
+        internal void Check(string name)
+        {
+            CheckPeriod(CacheLifetime, name + "." + nameof(CacheLifetime));
+            CheckPeriod(
+                NegativeCacheLifetime,
+                name + "." + nameof(NegativeCacheLifetime));
+            CheckPeriod(WaitBudget, name + "." + nameof(WaitBudget));
+            CheckPeriod(FetchTimeout, name + "." + nameof(FetchTimeout));
+            CheckPeriod(ClockSkew, name + "." + nameof(ClockSkew));
+            CheckPeriod(MaxLifetime, name + "." + nameof(MaxLifetime));
+            foreach (var registry in Registries)
+            {
+                CheckRegistry(registry, name + "." + nameof(Registries));
+            }
+        }
     }
 }
