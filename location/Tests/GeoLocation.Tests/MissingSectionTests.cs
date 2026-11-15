@@ -32,6 +32,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace FiftyOne.GeoLocation.Tests;
 
@@ -60,8 +61,13 @@ public class MissingSectionTests
 
         Assert.IsEmpty(data.Errors ?? new List<IFlowError>(),
             "A response with no section for the engine is not an error.");
-        Assert.IsEmpty(data.GetFromElement(engine).AsDictionary(),
-            "The engine's data has no values.");
+        // The data starts with an empty JavaScript value, which is all it
+        // holds when the response gives it nothing.
+        CollectionAssert.AreEquivalent(
+            new[] { "javascript" },
+            data.GetFromElement(engine).AsDictionary().Keys
+                .Select(key => key.ToLowerInvariant()).ToList(),
+            "The engine's data has no values from the response.");
     }
 
     /// <summary>

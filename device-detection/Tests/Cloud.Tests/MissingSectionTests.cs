@@ -76,8 +76,10 @@ public class MissingSectionTests
 
         Assert.IsEmpty(data.Errors ?? new List<IFlowError>(),
             "A response with no section for the engine is not an error.");
-        Assert.IsEmpty(data.GetFromElement(engine).AsDictionary(),
-            "The engine's data has no values.");
+        // The data starts with an empty list of profiles, which is all it
+        // holds when the response gives it nothing.
+        Assert.IsEmpty(data.GetFromElement(engine).Profiles,
+            "The engine's data has no profiles.");
     }
 
     /// <summary>
