@@ -210,6 +210,44 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
+        /// A sequence held in any of the C# integer types counts, from 1
+        /// up to one less than the largest int, and a value outside that
+        /// range counts as absent whatever its type.
+        /// </summary>
+        [TestMethod]
+        [DataRow((sbyte)3, 4)]
+        [DataRow((byte)3, 4)]
+        [DataRow((short)3, 4)]
+        [DataRow((ushort)3, 4)]
+        [DataRow(3, 4)]
+        [DataRow(3u, 4)]
+        [DataRow(3L, 4)]
+        [DataRow(3UL, 4)]
+        [DataRow(sbyte.MaxValue, 128)]
+        [DataRow(ushort.MaxValue, 65536)]
+        [DataRow(2147483646UL, int.MaxValue)]
+        [DataRow(2147483647UL, 1)]
+        [DataRow(ulong.MaxValue, 1)]
+        [DataRow((sbyte)-1, 1)]
+        [DataRow((sbyte)0, 1)]
+        [DataRow((ushort)0, 1)]
+        [DataRow(0UL, 1)]
+        public void SequenceElement_EveryIntegerType_Counts(
+            object sequence, int expected)
+        {
+            var session = Guid.NewGuid().ToString();
+            using (var data = _pipeline.CreateFlowData())
+            {
+                data.AddEvidence(Constants.EVIDENCE_SESSIONID, session);
+                data.AddEvidence(Constants.EVIDENCE_SEQUENCE, sequence);
+                data.Process();
+
+                AssertOutputs(data, session, expected);
+                Assert.IsEmpty(data.Errors ?? Enumerable.Empty<IFlowError>().ToList());
+            }
+        }
+
+        /// <summary>
         /// A session id that is not a string, or is empty, counts as
         /// absent, so a new one is made.
         /// </summary>
