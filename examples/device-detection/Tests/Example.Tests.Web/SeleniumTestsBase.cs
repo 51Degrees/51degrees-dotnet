@@ -133,10 +133,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         /// Without this a test that follows another on the same page finds
         /// the cached result, the script makes no request, and a test that
         /// waits for that request times out. A new tab has empty session
-        /// storage, and the cookies are deleted for every site. The old
-        /// tab leaves its page first, so no script sets a cookie again,
-        /// and the cookies are deleted before any tab closes, so the
-        /// command never meets a tab that is closing.
+        /// storage, and through WebDriver BiDi the cookies of every site
+        /// are deleted. Without BiDi the classic call deletes only the
+        /// cookies of the page the tab is on, which on about:blank are
+        /// none. The old tab leaves its page first, so no script sets a
+        /// cookie again, and the cookies are deleted before any tab
+        /// closes, so the command never meets a tab that is closing.
         /// </summary>
         private static void ResetBrowserState()
         {
