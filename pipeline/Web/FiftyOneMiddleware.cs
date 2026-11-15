@@ -115,9 +115,33 @@ namespace FiftyOne.Pipeline.Web
         /// </returns>
         public async Task Invoke(HttpContext context)
         {
-            // Populate the request properties and store against the 
-            // HttpContext.
-            PipelineResultService.Process(context);
+            if (context == null) { throw new System.ArgumentNullException(nameof(context)); }
+
+            // A request for the JavaScript or JSON whose If-None-Match
+            // matches the ETag of the evidence it supplies is answered
+            // without processing it (RFC 9110 sections 13.1.2 and 13.2.1).
+            // That needs the built-in services, so with a replacement for
+            // either every request is processed first.
+            if (PipelineResultService is Services.PipelineResultService results &&
+                JsService is Services.FiftyOneJSService js &&
+                js.IsClientsideRequest(context))
+            {
+                var flowData = results.AddEvidence(context);
+                if (flowData != null)
+                {
+                    if (js.ServeNotModified(context, flowData))
+                    {
+                        return;
+                    }
+                    Services.PipelineResultService.ProcessFlowData(flowData);
+                }
+            }
+            else
+            {
+                // Populate the request properties and store against the
+                // HttpContext.
+                PipelineResultService.Process(context);
+            }
             // Set HTTP headers in the response based on the results
             // from the engines in the pipeline.
             HeaderService.SetHeaders(context);
