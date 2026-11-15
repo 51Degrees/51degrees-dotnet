@@ -1075,6 +1075,8 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
 
             private readonly TcpListener _listener =
                 new TcpListener(IPAddress.Loopback, 0);
+            private readonly CancellationTokenSource _stopping =
+                new CancellationTokenSource();
             private readonly Task _serving;
             private int _requests;
 
@@ -1105,12 +1107,12 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                     {
                         connection = _listener.AcceptTcpClient();
                     }
-                    catch (SocketException)
+                    catch (Exception) when (_stopping.IsCancellationRequested)
                     {
-                        return;
-                    }
-                    catch (ObjectDisposedException)
-                    {
+                        // Stopping the listener ends a wait to accept with
+                        // an exception that depends on when it lands, so
+                        // any exception once stopping is the end. One
+                        // before that faults the task, and Dispose throws.
                         return;
                     }
                     using (connection)
@@ -1153,8 +1155,10 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
 
             public void Dispose()
             {
+                _stopping.Cancel();
                 _listener.Stop();
                 _serving.Wait(StopWaitMilliseconds);
+                _stopping.Dispose();
             }
         }
 
