@@ -308,6 +308,29 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
         }
 
         /// <summary>
+        /// A query string parameter is shared only when its name starts with
+        /// 51D_ or is on the allow list, unless all Evidence is shared.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_QueryOutsideTheAllowListIsNotShared()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>() { "allowed" },
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("query.other"));
+            Assert.IsTrue(filter.Include("query.allowed"));
+            Assert.IsTrue(filter.Include("QUERY.Allowed"));
+            Assert.IsTrue(filter.Include("query.51D_ScreenPixelsWidth"));
+
+            var shareAll = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsTrue(shareAll.Include("query.other"));
+        }
+
+        /// <summary>
         /// Keys are compared without regard to case, so a prefix written in
         /// capitals gets the same answer as the prefix in lower case.
         /// </summary>

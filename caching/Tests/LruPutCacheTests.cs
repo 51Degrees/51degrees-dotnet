@@ -265,6 +265,122 @@ namespace FiftyOne.Caching.Tests
         }
 
         /// <summary>
+        /// The number of keys the concurrent replacement test uses, which
+        /// is also the cache's size, so no item is removed for space.
+        /// </summary>
+        private const int ReplaceKeyCount = 16;
+
+        /// <summary>
+        /// The number of threads replacing items at once.
+        /// </summary>
+        private const int ReplaceThreadCount = 8;
+
+        /// <summary>
+        /// The number of replacements each thread makes.
+        /// </summary>
+        private const int ReplacementsPerThread = 200000;
+
+        /// <summary>
+        /// How long the replacements are given to finish. The time each run
+        /// took is written to the test output.
+        /// </summary>
+        private const int ReplaceFinishSeconds = 60;
+
+        /// <summary>
+        /// Replacements made on several threads at once all finish. A
+        /// replacement puts the new item in a list chosen at random and
+        /// takes the old item out of its own list, so two replacements
+        /// can work on the same two lists in opposite directions. Each must
+        /// not hold one list's lock while it waits for the other's.
+        /// Afterwards each key must be held by exactly one item in the
+        /// lists, the one the cache returns, so that no replacement has
+        /// left an item behind that the cache has lost track of.
+        /// </summary>
+        [TestMethod]
+        public void LruPutCache_Replace_ConcurrentReplacementsFinish()
+        {
+            var cache = new LruPutCacheBuilder()
+                .SetUpdateExisting(true)
+                // Two lists, so that half of the replacements move an item
+                // from one list to the other.
+                .SetConcurrency(2)
+                .Build<int, int>(ReplaceKeyCount);
+            for (var key = 0; key < ReplaceKeyCount; key++)
+            {
+                cache.Put(key, 0);
+            }
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            var tasks = new Task[ReplaceThreadCount];
+            for (var t = 0; t < tasks.Length; t++)
+            {
+                var seed = t;
+                // A long running task has its own background thread, so a
+                // thread that never finishes does not stop the test run
+                // from ending.
+                tasks[t] = Task.Factory.StartNew(() =>
+                {
+                    var random = new Random(seed);
+                    for (var i = 0; i < ReplacementsPerThread; i++)
+                    {
+                        cache.Put(random.Next(ReplaceKeyCount), i);
+                    }
+                }, TaskCreationOptions.LongRunning);
+            }
+            var finished = Task.WaitAll(
+                tasks, TimeSpan.FromSeconds(ReplaceFinishSeconds));
+            Console.WriteLine(
+                $"{ReplaceThreadCount} threads made {ReplacementsPerThread} " +
+                $"replacements each in {timer.ElapsedMilliseconds} ms, " +
+                $"finished: {finished}.");
+            Assert.IsTrue(
+                finished,
+                $"The replacements did not finish in " +
+                $"{ReplaceFinishSeconds} seconds, so at least two of them " +
+                "are each waiting for a list lock the other holds.");
+
+            // Each key is held once, by a valid item in one of the lists,
+            // and that item is the one the cache returns for the key. An
+            // item left in a list that the cache no longer returns means a
+            // replacement lost track of it.
+            // The lists are read first, because reading the cache moves the
+            // item it returns to the front of its list.
+            var lists = ((LruCacheBase<int, int>)cache)._linkedLists;
+            var items = new List<KeyValuePair<int, int>>();
+            foreach (var list in lists)
+            {
+                for (var item = list.First; item != null; item = item.Next)
+                {
+                    Assert.IsTrue(
+                        item.IsValid,
+                        $"An item for key {item.Key} is in a list but not " +
+                        "valid.");
+                    items.Add(new KeyValuePair<int, int>(
+                        item.Key, item.Value));
+                }
+            }
+            var held = new List<int>();
+            foreach (var item in items)
+            {
+                Assert.AreEqual(
+                    item.Value,
+                    cache[item.Key],
+                    $"The item in the list for key {item.Key} is not the " +
+                    "one the cache returns.");
+                held.Add(item.Key);
+            }
+            held.Sort();
+            var keys = new List<int>();
+            for (var key = 0; key < ReplaceKeyCount; key++)
+            {
+                keys.Add(key);
+            }
+            CollectionAssert.AreEqual(
+                keys,
+                held,
+                "Each key must be held by exactly one item in the lists.");
+        }
+
+        /// <summary>
         /// Test the Time-based LRU cache feature.
         /// Check if the item expiring will result in the default value 
         /// being returned.

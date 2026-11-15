@@ -110,7 +110,14 @@ namespace FiftyOne.IpIntelligence.Cloud.FlowElements
             if (aspectData == null) { throw new ArgumentNullException(nameof(aspectData)); }
 
             var dictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
-            var propertyValues = JsonConvert.DeserializeObject<Dictionary<string, object>>(dictionary["ip"].ToString(),
+            // A response with no section for this engine leaves its data
+            // without values.
+            if (dictionary.TryGetValue("ip", out var section) == false ||
+                section == null)
+            {
+                return;
+            }
+            var propertyValues = JsonConvert.DeserializeObject<Dictionary<string, object>>(section.ToString(),
                 new JsonSerializerSettings()
                 {
                     Converters = JSON_CONVERTERS,

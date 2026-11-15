@@ -37,6 +37,21 @@ namespace GettingStarted
 
         static void Main(string[] args)
         {
+            var resourceKey = GetResourceKey();
+            if (resourceKey == null)
+            {
+                // There is no resource key, so the message says where to
+                // create one and the example ends.
+                Console.WriteLine(
+                    "No resource key is set in the environment variable " +
+                    "'_51DEGREES_RESOURCE_KEY'. The 51Degrees cloud service " +
+                    "is accessed with a resource key, and a free one with " +
+                    "the properties this example uses can be created at " +
+                    "https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloudrequestengine-gettingstarted-program.cs&utm_term=resource-key-required " +
+                    "and set in that variable.");
+                return;
+            }
+
             var ct = new CancellationToken();
 
             var cfg = new LazyLoadingConfiguration(10000, ct);
@@ -55,7 +70,7 @@ namespace GettingStarted
                 // can be created at https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloudrequestengine-gettingstarted-program.cs&utm_term=main.
                 // It is read from the _51DEGREES_RESOURCE_KEY environment
                 // variable.
-                .SetResourceKey(GetResourceKey())
+                .SetResourceKey(resourceKey)
                 .SetLazyLoading(cfg)
                 .Build();
 
@@ -150,18 +165,16 @@ namespace GettingStarted
 
         /// <summary>
         /// Get the resource key to use for this example, from the
-        /// _51DEGREES_RESOURCE_KEY environment variable. If it is not set
-        /// then the hard-coded key below is used.
+        /// _51DEGREES_RESOURCE_KEY environment variable.
         /// </summary>
+        /// <returns>
+        /// The key, or null when it is not set.
+        /// </returns>
         private static string GetResourceKey()
         {
             var resourceKey =
                 FromEnvironment("_51DEGREES_RESOURCE_KEY", "RESOURCE_KEY");
-            if (string.IsNullOrEmpty(resourceKey))
-            {
-                resourceKey = "AQS5HKcyHJbECm6E10g";
-            }
-            return resourceKey;
+            return string.IsNullOrWhiteSpace(resourceKey) ? null : resourceKey;
         }
 
         /// <summary>
