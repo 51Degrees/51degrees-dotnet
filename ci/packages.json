@@ -32,7 +32,6 @@
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
       "pipeline/Images",
-      "pipeline/global.json",
       "pipeline/owid-dotnet"
     ],
     "DependsOn": [],
@@ -47,8 +46,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [],
     "Publish": true,
@@ -77,8 +75,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Caching",
@@ -96,8 +93,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Pipeline.Engines"
@@ -113,8 +109,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Pipeline.Engines"
@@ -130,8 +125,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Pipeline.Engines"
@@ -147,8 +141,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Pipeline.Engines"
@@ -164,8 +157,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Pipeline.Engines"
@@ -181,8 +173,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Pipeline.Core",
@@ -199,8 +190,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Pipeline.Engines"
@@ -216,8 +206,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Pipeline.Engines",
@@ -234,8 +223,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Pipeline.Engines.FiftyOne"
@@ -251,8 +239,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "device-detection/Directory.Build.props",
-      "device-detection/Images",
-      "device-detection/global.json"
+      "device-detection/Images"
     ],
     "DependsOn": [
       "FiftyOne.Pipeline.Engines.FiftyOne"
@@ -300,8 +287,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Did.Core",
@@ -320,7 +306,6 @@
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
       "pipeline/Images",
-      "pipeline/global.json",
       "pipeline/vendor"
     ],
     "DependsOn": [
@@ -338,8 +323,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "device-detection/Directory.Build.props",
-      "device-detection/Images",
-      "device-detection/global.json"
+      "device-detection/Images"
     ],
     "DependsOn": [
       "FiftyOne.DeviceDetection.Shared",
@@ -357,7 +341,6 @@
       "Directory.Build.targets",
       "device-detection/Directory.Build.props",
       "device-detection/Images",
-      "device-detection/global.json",
       "cxx",
       "device-detection/.editorconfig"
     ],
@@ -427,8 +410,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
-      "pipeline/Images",
-      "pipeline/global.json"
+      "pipeline/Images"
     ],
     "DependsOn": [
       "FiftyOne.Pipeline.Core",
@@ -446,8 +428,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "device-detection/Directory.Build.props",
-      "device-detection/Images",
-      "device-detection/global.json"
+      "device-detection/Images"
     ],
     "DependsOn": [
       "FiftyOne.DeviceDetection.Cloud",
@@ -464,8 +445,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "device-detection/Directory.Build.props",
-      "device-detection/Images",
-      "device-detection/global.json"
+      "device-detection/Images"
     ],
     "DependsOn": [
       "FiftyOne.DeviceDetection.Hash.Engine.OnPremise",
@@ -517,7 +497,6 @@
       "Directory.Build.targets",
       "pipeline/Directory.Build.props",
       "pipeline/Images",
-      "pipeline/global.json",
       "pipeline/Web.Framework",
       "pipeline/FiftyOne.Pipeline.Web.nuspec"
     ],
@@ -545,8 +524,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "device-detection/Directory.Build.props",
-      "device-detection/Images",
-      "device-detection/global.json"
+      "device-detection/Images"
     ],
     "DependsOn": [
       "FiftyOne.DeviceDetection.PropertyKeyed",
@@ -580,8 +558,7 @@
     "ExtraPaths": [
       "Directory.Build.targets",
       "device-detection/Directory.Build.props",
-      "device-detection/Images",
-      "device-detection/global.json"
+      "device-detection/Images"
     ],
     "DependsOn": [
       "FiftyOne.DeviceDetection.RobotsTxt",
