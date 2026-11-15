@@ -120,7 +120,8 @@ public class RobotsTxtCloudEngine : CloudAspectEngineBase<RobotsTxtDataCloud>
                 Converters = JSON_CONVERTERS,
             });
 
-        var device = CreateAPVDictionary(propertyValues, Properties.ToList());
+        var device = CreateAPVDictionary(
+            propertyValues, PropertiesForResponse.ToList());
         aspectData.PopulateFrom(device);
     }
 
