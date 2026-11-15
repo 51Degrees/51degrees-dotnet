@@ -43,6 +43,15 @@ namespace FiftyOne.Caching.Tests
 
         private Mock<ILogger<LoadingDictionary<string, string>>> _logger;
 
+        /// <summary>
+        /// How long the unresponsive load tests wait for a get once its
+        /// token is cancelled. On the slowest runner measured, macOS on
+        /// Intel, the get ended within about two seconds of the cancel, so
+        /// this fails only a get that never ends. The build log has the
+        /// time each run took.
+        /// </summary>
+        private const int CANCELLED_GET_TIMEOUT_MS = 60000;
+
         [TestInitialize]
         public void Init()
         {
@@ -954,22 +963,35 @@ namespace FiftyOne.Caching.Tests
             var value = "testvalue";
             var loader = new UnresponsiveLoader<string>();
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
+            Stopwatch sinceCancelled = null;
 
             // Act
 
-            loader.OnTaskStarted += _ => _token.Cancel();
+            loader.OnTaskStarted += _ =>
+            {
+                sinceCancelled = Stopwatch.StartNew();
+                _token.Cancel();
+            };
             var getter = Task.Run(() => dict[value, _token.Token]);
             try
             {
-                getter.Wait(1000);
+                var ended = getter.Wait(CANCELLED_GET_TIMEOUT_MS);
                 Assert.IsTrue(
                     _token.IsCancellationRequested,
                     $"{nameof(loader.OnTaskStarted)} has not cancelled the token source.");
+                Assert.IsTrue(
+                    ended,
+                    $"The get had not ended {CANCELLED_GET_TIMEOUT_MS} ms " +
+                    "after it started, although its token was cancelled.");
                 Assert.Fail(
                     "The prior cancel of the token should prevent getting here");
             }
             catch (AggregateException ex)
             {
+                Console.WriteLine(
+                    "Build log: LoadingDictionary_GetUnresponsive, the get ended " +
+                    $"{sinceCancelled?.ElapsedMilliseconds} ms after its " +
+                    "token was cancelled.");
                 Assert.IsTrue(ex.InnerExceptions.Count == 1);
                 Assert.IsTrue(typeof(TaskCanceledException) == ex.InnerException.GetType());
             }
@@ -995,22 +1017,35 @@ namespace FiftyOne.Caching.Tests
             var value = "testvalue";
             var loader = new UnresponsiveLoader<string>();
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
+            Stopwatch sinceCancelled = null;
 
             // Act
 
-            loader.OnTaskStarted += _ => _token.Cancel();
+            loader.OnTaskStarted += _ =>
+            {
+                sinceCancelled = Stopwatch.StartNew();
+                _token.Cancel();
+            };
             var getter = Task.Run(() => dict.TryGet(value, _token.Token, out _));
             try
             {
-                getter.Wait(1000);
+                var ended = getter.Wait(CANCELLED_GET_TIMEOUT_MS);
                 Assert.IsTrue(
                     _token.IsCancellationRequested, 
                     $"{nameof(loader.OnTaskStarted)} has not cancelled the token source.");
+                Assert.IsTrue(
+                    ended,
+                    $"The get had not ended {CANCELLED_GET_TIMEOUT_MS} ms " +
+                    "after it started, although its token was cancelled.");
                 Assert.Fail(
                     "The prior cancel of the token should prevent getting here");
             }
             catch (AggregateException ex)
             {
+                Console.WriteLine(
+                    "Build log: LoadingDictionary_TryGetUnresponsive, the get ended " +
+                    $"{sinceCancelled?.ElapsedMilliseconds} ms after its " +
+                    "token was cancelled.");
                 Assert.IsTrue(ex.InnerExceptions.Count == 1);
                 Assert.IsTrue(typeof(TaskCanceledException) == ex.InnerException.GetType());
             }
