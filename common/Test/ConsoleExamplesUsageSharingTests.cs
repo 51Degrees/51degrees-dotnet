@@ -57,16 +57,23 @@ public class ConsoleExamplesUsageSharingTests
         "SetShareUsage(true)",
     };
 
+    /// <summary>
+    /// What a console example writes to turn off the Usage Sharing Element
+    /// that an on-premise pipeline builder adds by default.
+    /// </summary>
+    private const string TurnsOff = "SetShareUsage(false)";
+
+    /// <summary>
+    /// The call that makes a pipeline builder an on-premise one, which adds
+    /// the Usage Sharing Element unless told not to.
+    /// </summary>
+    private const string OnPremiseBuilder = ".UseOnPremise(";
+
     [TestMethod]
     public void ConsoleExamples_DoNotShareUsage()
     {
         var root = Repository.Root();
-        var sharing = Repository.TrackedFiles(root)
-            .Where(f => ExampleRoots.Any(r =>
-                f.StartsWith(r, StringComparison.Ordinal)))
-            .Where(f => f.Split('/').Any(part =>
-                part.EndsWith("-Console", StringComparison.Ordinal)))
-            .Where(f => f.EndsWith(".cs", StringComparison.Ordinal))
+        var sharing = ConsoleExampleFiles(root)
             .Where(f => Adds.Any(a => File
                 .ReadAllText(Path.Combine(root, f))
                 .Contains(a, StringComparison.Ordinal)))
@@ -75,5 +82,59 @@ public class ConsoleExamplesUsageSharingTests
         Assert.AreEqual(0, sharing.Count,
             "These console examples add the Usage Sharing Element: " +
             string.Join(", ", sharing));
+    }
+
+    /// <summary>
+    /// A console example that builds with an on-premise pipeline builder
+    /// turns usage sharing off, because the builder adds the element
+    /// unless it is told not to. Comment lines are not read, so a call
+    /// that only appears in the documentation does not count.
+    /// </summary>
+    [TestMethod]
+    public void ConsoleExamples_TurnOffOnPremiseBuilderUsageSharing()
+    {
+        var root = Repository.Root();
+        var sharing = ConsoleExampleFiles(root)
+            .Where(f =>
+            {
+                var code = CodeLines(Path.Combine(root, f));
+                return code.Any(l => l.Contains(
+                        OnPremiseBuilder, StringComparison.Ordinal)) &&
+                    code.Any(l => l.Contains(
+                        TurnsOff, StringComparison.Ordinal)) == false;
+            })
+            .ToList();
+
+        Assert.AreEqual(0, sharing.Count,
+            "These console examples build with an on-premise pipeline " +
+            "builder, which adds the Usage Sharing Element unless " +
+            TurnsOff + " is called, and do not call it: " +
+            string.Join(", ", sharing));
+    }
+
+    /// <summary>
+    /// The C# files git tracks in every folder whose name ends -Console
+    /// under <see cref="ExampleRoots"/>.
+    /// </summary>
+    private static string[] ConsoleExampleFiles(string root)
+    {
+        return Repository.TrackedFiles(root)
+            .Where(f => ExampleRoots.Any(r =>
+                f.StartsWith(r, StringComparison.Ordinal)))
+            .Where(f => f.Split('/').Any(part =>
+                part.EndsWith("-Console", StringComparison.Ordinal)))
+            .Where(f => f.EndsWith(".cs", StringComparison.Ordinal))
+            .ToArray();
+    }
+
+    /// <summary>
+    /// The lines of a file that are not comment lines.
+    /// </summary>
+    private static string[] CodeLines(string path)
+    {
+        return File.ReadAllLines(path)
+            .Where(l => l.TrimStart().StartsWith(
+                "//", StringComparison.Ordinal) == false)
+            .ToArray();
     }
 }
