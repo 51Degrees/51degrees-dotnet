@@ -25,4 +25,16 @@
     <PackageReference Include="@(FiftyOneReference)" />
   </ItemGroup>
 
+  <!--
+    Records in each assembly the id of the NuGet package it ships in, which
+    is not always the assembly's name, so that usage sharing can name the
+    package. An assembly that ships in no package records 'none'.
+  -->
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <AssemblyMetadata Include="FiftyOne.PackageId" Value="$(PackageId)" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsPackable)' == 'false'">
+    <AssemblyMetadata Include="FiftyOne.PackageId" Value="none" />
+  </ItemGroup>
+
 </Project>

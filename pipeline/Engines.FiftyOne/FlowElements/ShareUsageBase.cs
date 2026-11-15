@@ -34,6 +34,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -265,6 +266,138 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             }
             var revision = version.IndexOf('+');
             return revision < 0 ? version : version.Substring(0, revision);
+        }
+
+        /// <summary>
+        /// The key of the assembly metadata in which the build records the
+        /// id of the NuGet package an assembly ships in.
+        /// </summary>
+        private const string PACKAGE_ID_KEY = "FiftyOne.PackageId";
+
+        /// <summary>
+        /// What the build records for an assembly that ships in no package.
+        /// </summary>
+        private const string NOT_A_PACKAGE = "none";
+
+        /// <summary>
+        /// How the name of every 51Degrees assembly starts.
+        /// </summary>
+        private const string FIFTYONE_ASSEMBLY_PREFIX = "FiftyOne.";
+
+        private List<KeyValuePair<string, string>> _packages = null;
+
+        /// <summary>
+        /// The 51Degrees packages in use, in order of package id, each with
+        /// the version in use. They are the package that holds the
+        /// Pipeline, the package that holds each flow element, and every
+        /// 51Degrees package those depend on.
+        /// </summary>
+        private List<KeyValuePair<string, string>> Packages
+        {
+            get
+            {
+                if (_packages == null)
+                {
+                    var assemblies = new List<Assembly>()
+                    {
+                        typeof(IPipeline).Assembly
+                    };
+                    if (Pipelines.Count == 1)
+                    {
+                        assemblies.AddRange(Pipelines.Single().FlowElements
+                            .Select(e => e.GetType().Assembly));
+                    }
+                    _packages = FindPackages(assemblies);
+                }
+                return _packages;
+            }
+        }
+
+        /// <summary>
+        /// The packages the assemblies ship in, and the packages of the
+        /// 51Degrees assemblies they reference, and of the ones those
+        /// reference, each once.
+        /// </summary>
+        private static List<KeyValuePair<string, string>> FindPackages(
+            IEnumerable<Assembly> assemblies)
+        {
+            var packages = new SortedDictionary<string, string>(
+                StringComparer.OrdinalIgnoreCase);
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var pending = new Queue<Assembly>(assemblies);
+            while (pending.Count > 0)
+            {
+                var assembly = pending.Dequeue();
+                if (assembly.IsDynamic ||
+                    seen.Add(assembly.GetName().Name) == false)
+                {
+                    continue;
+                }
+                var id = PackageId(assembly);
+                if (id != null && packages.ContainsKey(id) == false)
+                {
+                    packages.Add(id, PackageVersion(assembly));
+                }
+                foreach (var reference in assembly.GetReferencedAssemblies())
+                {
+                    if (reference.Name.StartsWith(
+                            FIFTYONE_ASSEMBLY_PREFIX, StringComparison.Ordinal) &&
+                        seen.Contains(reference.Name) == false)
+                    {
+                        var loaded = Load(reference);
+                        if (loaded != null)
+                        {
+                            pending.Enqueue(loaded);
+                        }
+                    }
+                }
+            }
+            return packages.ToList();
+        }
+
+        /// <summary>
+        /// The id of the package the assembly ships in, as the build
+        /// recorded it, or null when it ships in none. An assembly built
+        /// before the build recorded it ships in the package named after
+        /// it, when it is a 51Degrees one.
+        /// </summary>
+        private static string PackageId(Assembly assembly)
+        {
+            var recorded = assembly
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
+                .FirstOrDefault(a => a.Key == PACKAGE_ID_KEY)?.Value;
+            if (recorded != null)
+            {
+                return recorded.Length == 0 || recorded == NOT_A_PACKAGE ?
+                    null : recorded;
+            }
+            var name = assembly.GetName().Name;
+            return name.StartsWith(
+                FIFTYONE_ASSEMBLY_PREFIX, StringComparison.Ordinal) ?
+                name : null;
+        }
+
+        /// <summary>
+        /// The referenced assembly, or null when it cannot be loaded.
+        /// </summary>
+        private static Assembly Load(AssemblyName name)
+        {
+            try
+            {
+                return Assembly.Load(name);
+            }
+            catch (FileNotFoundException)
+            {
+                return null;
+            }
+            catch (FileLoadException)
+            {
+                return null;
+            }
+            catch (BadImageFormatException)
+            {
+                return null;
+            }
         }
 
         private string _osVersion = "";
@@ -1474,6 +1607,14 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                             writer.WriteElementString("Version", _coreVersion);
                             // Write Pipeline information
                             WritePipelineInfo(writer);
+                            // The 51Degrees packages in use, with versions
+                            foreach (var package in Packages)
+                            {
+                                writer.WriteStartElement("Package");
+                                writer.WriteAttributeString("Name", package.Key);
+                                writer.WriteString(package.Value);
+                                writer.WriteEndElement();
+                            }
                             // The software language
                             writer.WriteElementString("Language", "dotnet");
                             // The software language version
