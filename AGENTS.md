@@ -230,11 +230,11 @@ The root `Directory.Build.targets` turns it into one or the other from the
 `FiftyOneReferences` property, which defaults to `Package`. CI builds and
 tests with `Project`, so a change that crosses folders is tested together.
 When a package's dependency changes, change the item, and when a version
-changes, change the `FiftyOne*Version` property in the root
-`Directory.Build.props`. A package that starts to reference a family it did
-not reference before also needs that family in its own family's `DependsOn` in
-`ci/packages.json`, or a release of the family it references leaves it at the
-old requirement. The metadata that holds the path is `ProjectPath`, because
+changes, change the package's `FiftyOne*Version` property in the root
+`Directory.Build.props`. A package that starts to reference another package
+also needs it in its own `DependsOn` in `ci/packages.json`, or a release of the
+package it references leaves it at the old requirement.
+`ci/packages.Tests.ps1` checks both. The metadata that holds the path is `ProjectPath`, because
 `Project` is the name MSBuild gives a `ProjectReference` GUID.
 
 Each folder that came from a separate repository keeps its own
@@ -296,13 +296,17 @@ projects that need `msbuild` on Windows.
 
 ## Versions
 
-Each package family continues the version stream its separate repository had
-and is tagged `<family>/<version>`. A publish releases a family when a file
-under its folders changed since its last tag, and with it every family that
-depends on it, so that their packages require the new version. Only the
-patch number moves. `ci/packages.json` lists the families, their folders and
-the families each depends on, and `ci/README.md` says how the publish uses
-them.
+Each NuGet package has its own version, continues from the version it last
+published and is tagged `<package>/<version>`, for example
+`FiftyOne.Pipeline.Core/4.5.131`. A publish releases a package when a file
+under its folders changed since its last tag, and with it every package that
+depends on it, so that it requires the new version. Only the patch number
+moves. `ci/packages.json` lists the packages, their folders, the packages each
+depends on and the property in the root `Directory.Build.props` holding each
+one's version, which its project and every `FiftyOneReference` to it read.
+`ci/README.md` says how the publish uses them. A new package needs an entry
+there with a `FirstVersion`, its own property, and a line in the root
+`Directory.Build.props` that sets its project's `Version` from it.
 
 ## Pull requests
 
