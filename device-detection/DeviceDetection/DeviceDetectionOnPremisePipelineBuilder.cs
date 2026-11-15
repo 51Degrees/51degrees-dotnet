@@ -74,7 +74,8 @@ namespace FiftyOne.DeviceDetection
             PerformanceProfiles.Balanced;
         private DeviceDetectionAlgorithm _algorithm =
             DeviceDetectionAlgorithm.Hash;
-        private bool _shareUsageEnabled = true;
+        private bool _shareUsageEnabled =
+            Pipeline.Engines.FiftyOne.Constants.SHARE_USAGE_DEFAULT_ENABLED;
         private List<string> _requestedProperties = new List<string>();
 
         private IDataUpdateService _dataUpdateService;
