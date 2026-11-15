@@ -23,6 +23,7 @@
 using FiftyOne.Common.TestHelpers;
 using FiftyOne.IpIntelligence.Cloud.Data;
 using FiftyOne.IpIntelligence.Cloud.FlowElements;
+using FiftyOne.Pipeline.CloudRequestEngine;
 using FiftyOne.Pipeline.CloudRequestEngine.Data;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.CloudRequestEngine.Services;
@@ -34,7 +35,9 @@ using FiftyOne.Pipeline.Engines.FlowElements;
 using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace FiftyOne.IpIntelligence.CloudTests;
 
@@ -138,6 +141,33 @@ public class IpiCloudEngineProcessTests
     }
 
     /// <summary>
+    /// A response that arrives while the property list cannot be read, as
+    /// before discovery has completed, is still read, each value keeping the
+    /// type it has in the response.
+    /// </summary>
+    [TestMethod]
+    public void Process_ResponseBeforeDiscovery_KeepsItsValues()
+    {
+        using var pipeline = new PipelineBuilder(new LoggerFactory())
+            .AddFlowElement(new StubRequestEngine(
+                @"{ ""ip"": { ""asnname"": ""Example Networks"" } }", null))
+            .AddFlowElement(NewEngine())
+            .Build();
+        using var data = pipeline.CreateFlowData();
+
+        data.Process();
+
+        Assert.IsEmpty(data.Errors ?? new List<IFlowError>(),
+            "A response read before discovery is not an error.");
+        var value = data.Get<IIpIntelligenceData>().AsDictionary()
+            .Single(v => string.Equals(
+                v.Key, "asnname", StringComparison.OrdinalIgnoreCase))
+            .Value;
+        Assert.AreEqual("Example Networks", value?.ToString(),
+            "The engine's data holds the value from the response.");
+    }
+
+    /// <summary>
     /// Build a pipeline containing a stub cloud request engine returning the
     /// given JSON response followed by the engine under test. Process
     /// exceptions are suppressed, matching how consumers configure cloud
@@ -203,7 +233,7 @@ public class IpiCloudEngineProcessTests
             : base(new LoggerFactory().CreateLogger<StubRequestEngine>(), CreateData)
         {
             _json = json;
-            PublicProperties = publicProperties;
+            _publicProperties = publicProperties;
         }
 
         private static CloudRequestData CreateData(
@@ -211,8 +241,16 @@ public class IpiCloudEngineProcessTests
             FlowElementBase<CloudRequestData, IAspectPropertyMetaData> element) =>
             new CloudRequestData(null, pipeline, element as IAspectEngine);
 
-        public IReadOnlyDictionary<string, ProductMetaData> PublicProperties
-        { get; }
+        private readonly IReadOnlyDictionary<string, ProductMetaData>
+            _publicProperties;
+
+        /// <summary>
+        /// The property list given or, when none is given, a failed read of
+        /// it, as before the cloud request engine's discovery has completed.
+        /// </summary>
+        public IReadOnlyDictionary<string, ProductMetaData> PublicProperties =>
+            _publicProperties ?? throw new CloudRequestException(
+                "The property list has not been read yet.");
 
         public override string DataSourceTier => "";
         public override string ElementDataKey => "cloud";

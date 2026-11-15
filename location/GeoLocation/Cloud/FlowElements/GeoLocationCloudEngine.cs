@@ -161,7 +161,8 @@ namespace FiftyOne.GeoLocation.Cloud
                     Converters = JSON_CONVERTERS,
                 });
 
-            var location = CreateAPVDictionary(propertyValues, Properties.ToList());
+            var location = CreateAPVDictionary(
+                propertyValues, PropertiesForResponse.ToList());
             aspectData.PopulateFrom(location);
         }
 
