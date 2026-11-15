@@ -130,7 +130,7 @@ public class DoxyfileInputTests
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
     /// <summary>
-    /// A package family from ci/packages.json that has a Doxyfile.
+    /// A family from ci/families.json that has a Doxyfile.
     /// </summary>
     /// <param name="Name">The family's name.</param>
     /// <param name="Folder">The family's folder, relative to the root.</param>
@@ -205,14 +205,14 @@ public class DoxyfileInputTests
         tags.TryGetValue(tag, out var values) ? values : new List<string>();
 
     /// <summary>
-    /// Each family in ci/packages.json whose folder holds docs/Doxyfile,
+    /// Each family in ci/families.json whose folder holds docs/Doxyfile,
     /// which is where the documentation build looks for it.
     /// </summary>
     private static List<Family> Families(string root)
     {
         var families = new List<Family>();
         using var json = JsonDocument.Parse(
-            File.ReadAllText(FullPath(root, "ci/packages.json")));
+            File.ReadAllText(FullPath(root, "ci/families.json")));
         foreach (var family in json.RootElement.EnumerateArray())
         {
             var folder = family.GetProperty("Path").GetString();
@@ -237,7 +237,7 @@ public class DoxyfileInputTests
         Assert.AreNotEqual(
             0,
             families.Count,
-            "No family in ci/packages.json has a docs/Doxyfile.");
+            "No family in ci/families.json has a docs/Doxyfile.");
         return families;
     }
 

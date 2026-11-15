@@ -47,7 +47,8 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
             Constants.DATA_FILE_ENV_VARS.Concat(new[]
             {
                 Constants.EVIDENCE_FILE_ENV_VAR,
-                Constants.LICENSE_KEY_ENV_VAR
+                Constants.LICENSE_KEY_ENV_VAR,
+                "_51DEGREES_LICENSE_KEY"
             }).ToArray();
 
         /// <summary>
@@ -126,6 +127,42 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
             StringAssert.Contains(output,
                 "Updating the data file downloads the Enterprise data file",
                 "The example should say what an update needs.");
+            StringAssert.Contains(output,
+                "'_51DEGREES_LICENSE_KEY'",
+                "The example should name the variable that holds the key.");
+            StringAssert.Contains(output, ContactUs,
+                "The example should link to the contact page.");
+        }
+
+        [TestMethod]
+        public void Performance_WithoutSettings()
+        {
+            var output = RunWithoutSettings(
+                Examples.OnPremise.Performance.Program.Main);
+            StringAssert.Contains(output, "This example used the free Lite data file",
+                "The example should say what the Enterprise data file adds.");
+            StringAssert.Contains(output, ContactUs,
+                "The example should link to the contact page.");
+        }
+
+        [TestMethod]
+        public void PerformanceMultiProperty_WithoutSettings()
+        {
+            var output = RunWithoutSettings(
+                Examples.OnPremise.PerformanceMultiProperty.Program.Main);
+            StringAssert.Contains(output, "This example used the free Lite data file",
+                "The example should say what the Enterprise data file adds.");
+            StringAssert.Contains(output, ContactUs,
+                "The example should link to the contact page.");
+        }
+
+        [TestMethod]
+        public void PerformanceSweep_WithoutSettings()
+        {
+            var output = RunWithoutSettings(
+                Examples.OnPremise.PerformanceSweep.Program.Main);
+            StringAssert.Contains(output, "This example used the free Lite data file",
+                "The example should say what the Enterprise data file adds.");
             StringAssert.Contains(output, ContactUs,
                 "The example should link to the contact page.");
         }
