@@ -229,10 +229,12 @@ namespace FiftyOne.Caching.Tests
 
             const int loadTimeMS = 10;
             var value = "teststring";
-            // How long each gate waits for another thread. Each thread
-            // reaches its gate within milliseconds, so this is far above
-            // what a busy runner takes, and fails only a test whose thread
-            // never gets there. The build log has the time each run took.
+            // How long each gate in the handler waits for another thread,
+            // and the test thread waits twice this for the handler. Each
+            // thread reaches its gate within milliseconds, so this is far
+            // above what a busy runner takes, and fails only a test whose
+            // thread never gets there. The build log has the time each run
+            // took.
             const int GATE_TIMEOUT_MS = 60000;
             var sourceForLoader = new CancellationTokenSource();
             Func<CancellationToken, CancellationToken> tokenOverride = _ => sourceForLoader.Token;
