@@ -41,6 +41,24 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         { }
 
         /// <summary>
+        /// Creates a filter that includes all evidence but the default
+        /// excluded items, for when all evidence is shared, and keys on the
+        /// asp.net session cookie when the session is tracked.
+        /// </summary>
+        /// <param name="includeSession">
+        /// If true then the asp.net session cookie is part of the key, so
+        /// the same evidence from two sessions is not a repeat.
+        /// </param>
+        /// <param name="aspSessionCookieName">
+        /// The name of the cookie that contains the asp.net session id.
+        /// </param>
+        public EvidenceKeyFilterShareUsageTracker(
+            bool includeSession,
+            string aspSessionCookieName)
+            : base(includeSession, aspSessionCookieName)
+        { }
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="blockedHttpHeaders">

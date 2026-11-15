@@ -143,7 +143,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Configurator
                     // If we don't have a resource key then log an error.
                     if (string.IsNullOrWhiteSpace(resourceKey))
                     {
-                        serviceProvider.GetRequiredService<ILogger<Program>>().LogError(
+                        serviceProvider.GetRequiredService<ILogger<Program>>().LogWarning(
                             $"No resource key specified on the command line or the environment " +
                             $"variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees " +
                             $"cloud service is accessed using a 'ResourceKey'. For more " +
