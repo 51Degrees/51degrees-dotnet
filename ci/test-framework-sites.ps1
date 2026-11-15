@@ -64,7 +64,7 @@ if (-not (Test-Path $IisExpress)) {
 # example could read one from is removed for the sites and put back after.
 $saved = @{}
 foreach ($variable in Get-ChildItem env: |
-    Where-Object { $_.Name -match 'RESOURCE_KEY' }) {
+    Where-Object { $_.Name -like '*RESOURCE_KEY*' }) {
     $saved[$variable.Name] = $variable.Value
     Remove-Item "env:$($variable.Name)"
 }
