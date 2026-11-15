@@ -983,6 +983,66 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
+        /// A refused message is logged with the status code and the content
+        /// of the response, to help find why it was refused.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_LogErrors_StatusCodeAndContent()
+        {
+            const string refusal = "The usage data was refused.";
+            _httpHandler.SetupResponse(request =>
+                new HttpResponseMessage(
+                    System.Net.HttpStatusCode.InternalServerError)
+                {
+                    Content = new StringContent(refusal),
+                });
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            var data = MockFlowData.CreateFromEvidence(
+                new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                },
+                false);
+
+            _shareUsageElement.Process(data.Object);
+            WaitForSendDataTask();
+
+            var warning = _logger.WarningEntries.Single(
+                w => w.StartsWith("Failure sending usage data"));
+            StringAssert.Contains(warning, "500");
+            StringAssert.Contains(warning, refusal);
+        }
+
+        /// <summary>
+        /// The message is one Devices element holding a Device element for
+        /// each request shared.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Message_DevicesHoldsADevicePerEntry()
+        {
+            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            foreach (var ip in new[] { "1.2.3.4", "5.6.7.8" })
+            {
+                var data = MockFlowData.CreateFromEvidence(
+                    new Dictionary<string, object>()
+                    {
+                        { Core.Constants.EVIDENCE_CLIENTIP_KEY, ip },
+                    },
+                    false);
+                _shareUsageElement.Process(data.Object);
+            }
+            WaitForSendDataTask();
+
+            Assert.HasCount(1, _xmlContent);
+            var root = System.Xml.Linq.XDocument.Parse(_xmlContent[0]).Root;
+            Assert.AreEqual("Devices", root.Name.LocalName);
+            CollectionAssert.AreEqual(
+                new[] { "Device", "Device" },
+                root.Elements().Select(e => e.Name.LocalName).ToArray());
+        }
+
+        /// <summary>
         /// Test that the ShareUsageElement does not share usage if the evidence
         /// contains any of the configured key value pairs.
         /// </summary>
