@@ -205,8 +205,12 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             var engine = new Mock<IOnPremiseAspectEngine>();
             var file = new AspectEngineDataFile()
             {
-                Identifier = "memory",
                 Engine = engine.Object,
+                Configuration = new DataFileConfiguration()
+                {
+                    Identifier = "memory",
+                    MemoryOnly = true,
+                },
             };
             using var data = new MemoryStream(new byte[] { 1, 2, 3 });
 
