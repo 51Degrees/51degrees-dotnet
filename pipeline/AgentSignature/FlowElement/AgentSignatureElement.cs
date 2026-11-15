@@ -107,6 +107,14 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// <exception cref="ArgumentNullException">
         /// Thrown when the configuration is null.
         /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when a period in the configuration is negative or longer
+        /// than a year.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown when a registry address in the configuration is not HTTPS,
+        /// carries user information or is written as a private address.
+        /// </exception>
         public AgentSignatureElement(
             ILogger<AgentSignatureElement> logger,
             Func<IPipeline,
@@ -119,6 +127,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             {
                 throw new ArgumentNullException(nameof(configuration));
             }
+            configuration.Check(nameof(configuration));
             _configuration = configuration;
 
             _evidenceKeyFilter = new AgentSignatureEvidenceKeyFilter(

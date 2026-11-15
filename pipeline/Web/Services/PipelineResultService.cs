@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using System;
+using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using Microsoft.AspNetCore.Http;
@@ -71,6 +72,21 @@ namespace FiftyOne.Pipeline.Web.Services
         {
             if (context == null) { throw new ArgumentNullException(nameof(context)); }
 
+            var flowData = AddEvidence(context);
+            if (flowData != null)
+            {
+                ProcessFlowData(flowData);
+            }
+        }
+
+        /// <summary>
+        /// Creates the flow data for the request, keeps it in the
+        /// HttpContext and adds the evidence from the request, without
+        /// processing it. Null when the Pipeline is temporarily unavailable,
+        /// with the flow data still kept.
+        /// </summary>
+        internal IFlowData AddEvidence(HttpContext context)
+        {
             // Remove the existing flow data if there is one.
             // This will be from a previous request and the evidence may have 
             // changed so we need to update it.
@@ -90,17 +106,33 @@ namespace FiftyOne.Pipeline.Web.Services
             {
                 // Extract the required pieces of evidence from the request
                 _evidenceService.AddEvidenceFromRequest(flowData, context.Request);
+                return flowData;
+            }
+            catch (Exception ex) when (IsTemporarilyUnavailable(ex))
+            {
+                return null;
+            }
+        }
 
-                // Start processing the data
+        /// <summary>
+        /// Processes the flow data, letting the Pipeline being temporarily
+        /// unavailable pass as <see cref="Process(HttpContext)"/> does.
+        /// </summary>
+        internal static void ProcessFlowData(IFlowData flowData)
+        {
+            try
+            {
                 flowData.Process();
             }
-            catch (Exception ex) 
-            when (ex is PipelineTemporarilyUnavailableException
-            || (ex is AggregateException
-            && ex.InnerException is PipelineTemporarilyUnavailableException))
+            catch (Exception ex) when (IsTemporarilyUnavailable(ex))
             {
                 // nop -- just suppress thrown error
             }
         }
+
+        private static bool IsTemporarilyUnavailable(Exception ex) =>
+            ex is PipelineTemporarilyUnavailableException ||
+            (ex is AggregateException &&
+            ex.InnerException is PipelineTemporarilyUnavailableException);
     }
 }

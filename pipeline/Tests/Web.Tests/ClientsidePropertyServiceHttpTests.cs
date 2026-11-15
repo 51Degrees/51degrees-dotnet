@@ -198,8 +198,9 @@ namespace FiftyOne.Pipeline.Web.Tests
         /// <summary>
         /// A request whose If-None-Match matches gets its 304 while
         /// processing is failing, so a browser keeps the good response it
-        /// holds. The 304 carries the headers the failed 200 would, so
-        /// 'private, no-cache' and no ETag.
+        /// holds. The 304 carries the caching headers of a 200 whose
+        /// processing recorded no errors, so its cache keeps the ETag and
+        /// max-age.
         /// </summary>
         [DataTestMethod]
         [DataRow(true)]
@@ -213,20 +214,20 @@ namespace FiftyOne.Pipeline.Web.Tests
             var context = Serve(javaScript, "GET", eTag);
 
             Assert.AreEqual(304, context.Response.StatusCode);
-            Assert.AreEqual(NOT_CACHED, Header(context, "Cache-Control"));
-            Assert.IsFalse(context.Response.Headers.ContainsKey("ETag"));
+            Assert.AreEqual(CACHED, Header(context, "Cache-Control"));
+            Assert.AreEqual(eTag, Header(context, "ETag"));
             Assert.AreEqual("User-Agent", Header(context, "Vary"));
             Assert.AreEqual(string.Empty, Body(context));
         }
 
         /// <summary>
-        /// A builder that left no data makes the 304 not cached, as it makes
-        /// the 200 not cached.
+        /// A builder that left no data does not change the 304, which
+        /// carries the caching headers of a good 200.
         /// </summary>
         [DataTestMethod]
         [DataRow(true)]
         [DataRow(false)]
-        public void BuilderLeftNoData_MatchingIfNoneMatch_NotCached(
+        public void BuilderLeftNoData_MatchingIfNoneMatch_KeepsCaching(
             bool javaScript)
         {
             var eTag = Header(Serve(javaScript, "GET"), "ETag");
@@ -238,8 +239,8 @@ namespace FiftyOne.Pipeline.Web.Tests
             var context = Serve(javaScript, "GET", eTag);
 
             Assert.AreEqual(304, context.Response.StatusCode);
-            Assert.AreEqual(NOT_CACHED, Header(context, "Cache-Control"));
-            Assert.IsFalse(context.Response.Headers.ContainsKey("ETag"));
+            Assert.AreEqual(CACHED, Header(context, "Cache-Control"));
+            Assert.AreEqual(eTag, Header(context, "ETag"));
         }
 
         /// <summary>

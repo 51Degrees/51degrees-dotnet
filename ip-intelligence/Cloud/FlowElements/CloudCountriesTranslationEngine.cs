@@ -46,7 +46,7 @@ namespace FiftyOne.IpIntelligence.Cloud.FlowElements
     /// and exposes them through <see cref="ICountriesTranslationData"/>.
     /// Like <see cref="IpiCloudEngine"/>, its property list is driven by the
     /// cloud metadata, so a resource key that does not grant the translation
-    /// properties fails fast when the pipeline is built.
+    /// properties leaves it with no properties and nothing to read.
     /// </summary>
     public class CloudCountriesTranslationEngine
         : CloudAspectEngineBase<CloudCountriesTranslationData>

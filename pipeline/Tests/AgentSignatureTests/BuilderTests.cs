@@ -34,7 +34,9 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -1014,6 +1016,149 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
             catch (Exception exception)
             {
                 return exception;
+            }
+        }
+
+        /// <summary>
+        /// The client the element makes for itself follows no redirect, so
+        /// a fetch cannot be moved to an address the checks made before it
+        /// never saw. A local server answers the first request with a
+        /// redirect to a second address, and the request through the
+        /// element's client ends with that redirect, the second address
+        /// never asked for.
+        /// </summary>
+        [TestMethod]
+        public void TheClientTheElementMakesFollowsNoRedirect()
+        {
+            var element = new AgentSignatureElementBuilder(
+                NullLoggerFactory.Instance).Build();
+            try
+            {
+                var client = OwnedClient(element);
+                Assert.IsNotNull(
+                    client,
+                    "Expected the element to have made a client of its own.");
+                using (var server = new RedirectServer())
+                using (var response = client.GetAsync(server.Address)
+                    .GetAwaiter().GetResult())
+                {
+                    var status = response.StatusCode;
+                    var requests = server.Requests;
+                    Assert.AreEqual(
+                        HttpStatusCode.Found,
+                        status,
+                        "Expected the request to end with the redirect, " +
+                        "and it ended with " + (int)status + " after " +
+                        requests + " requests to the server.");
+                    Assert.AreEqual(
+                        1,
+                        requests,
+                        "Expected the server to be asked once, and the " +
+                        "redirect was followed.");
+                }
+            }
+            finally
+            {
+                element.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// A server on the loopback address that answers a request for
+        /// '/start' with a redirect to '/next', answers anything else with
+        /// 200, and counts the requests.
+        /// </summary>
+        private sealed class RedirectServer : IDisposable
+        {
+            private const int MaxHeadBytes = 8192;
+            private const int StopWaitMilliseconds = 5000;
+
+            private readonly TcpListener _listener =
+                new TcpListener(IPAddress.Loopback, 0);
+            private readonly CancellationTokenSource _stopping =
+                new CancellationTokenSource();
+            private readonly Task _serving;
+            private int _requests;
+
+            public RedirectServer()
+            {
+                _listener.Start();
+                var port = ((IPEndPoint)_listener.LocalEndpoint).Port;
+                Address = new Uri("http://127.0.0.1:" + port + "/start");
+                _serving = Task.Run(() => Serve(port));
+            }
+
+            /// <summary>
+            /// The address that answers with the redirect.
+            /// </summary>
+            public Uri Address { get; }
+
+            /// <summary>
+            /// The number of requests the server has read.
+            /// </summary>
+            public int Requests => Volatile.Read(ref _requests);
+
+            private void Serve(int port)
+            {
+                while (true)
+                {
+                    TcpClient connection;
+                    try
+                    {
+                        connection = _listener.AcceptTcpClient();
+                    }
+                    catch (Exception) when (_stopping.IsCancellationRequested)
+                    {
+                        // Stopping the listener ends a wait to accept with
+                        // an exception that depends on when it lands, so
+                        // any exception once stopping is the end. One
+                        // before that faults the task, and Dispose throws.
+                        return;
+                    }
+                    using (connection)
+                    using (var stream = connection.GetStream())
+                    {
+                        var requestLine = ReadRequestLine(stream);
+                        Interlocked.Increment(ref _requests);
+                        var answer = requestLine.Contains(" /start ")
+                            ? "HTTP/1.1 302 Found\r\nLocation: " +
+                                "http://127.0.0.1:" + port + "/next\r\n"
+                            : "HTTP/1.1 200 OK\r\n";
+                        var bytes = Encoding.ASCII.GetBytes(answer +
+                            "Content-Length: 0\r\nConnection: close\r\n\r\n");
+                        stream.Write(bytes, 0, bytes.Length);
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Reads the head of a request and returns its first line.
+            /// </summary>
+            private static string ReadRequestLine(NetworkStream stream)
+            {
+                var head = new StringBuilder();
+                var buffer = new byte[1];
+                while (head.Length < MaxHeadBytes &&
+                    stream.Read(buffer, 0, 1) == 1)
+                {
+                    head.Append((char)buffer[0]);
+                    if (head.Length >= 4 &&
+                        head.ToString(head.Length - 4, 4) == "\r\n\r\n")
+                    {
+                        break;
+                    }
+                }
+                var text = head.ToString();
+                var end = text.IndexOf("\r\n", StringComparison.Ordinal);
+                return end < 0 ? text : text.Substring(0, end);
+            }
+
+            public void Dispose()
+            {
+                _stopping.Cancel();
+                _listener.Stop();
+                _serving.Wait(StopWaitMilliseconds);
+                _stopping.Dispose();
             }
         }
 
