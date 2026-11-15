@@ -58,10 +58,10 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
         // response.
         private const int PayloadProperties = 200;
 
-        // The most minification may add to the median script. Every
-        // runner and configuration the builds use measured 6 to 12 ms,
-        // apart from macOS on Intel at 43 and 58 ms, so 500 ms is about
-        // nine times the slowest and only a gross slowdown reaches it.
+        // The most minification may add to the median script. The
+        // runners measured took 6 to 12 ms, apart from macOS on Intel at
+        // 43 and 58 ms, so 500 ms is about nine times the slowest and only
+        // a gross slowdown reaches it. Each build logs the time it took.
         private const double MaxAddedMilliseconds = 500;
 
         private delegate void GetValueCallback(
@@ -94,7 +94,8 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
             var added = minifiedMedian - plainMedian;
 
             var message =
-                $"Minification added {added:F3} ms to the median script " +
+                "Build log: Minify_AddedTimePerScript_WithinLimit, " +
+                $"minification added {added:F3} ms to the median script " +
                 $"({minifiedMedian:F3} ms minified, {plainMedian:F3} ms " +
                 $"not, over {MeasuredRenders} renders of each). The limit " +
                 $"is {MaxAddedMilliseconds} ms.";
