@@ -30,8 +30,10 @@ namespace FiftyOne.Caching
     /// </summary>
     public class LruPutCacheBuilder : ILruPutCacheBuilder
     {
-        private bool _updateExisting = false;
-        private int _concurrency = Environment.ProcessorCount;
+        private bool _updateExisting =
+            Constants.LRU_PUT_CACHE_DEFAULT_UPDATE_EXISTING;
+        private int _concurrency =
+            Constants.LRU_CACHE_DEFAULT_CONCURRENCY;
         private TimeSpan? _itemLifetime = null;
 
         /// <summary>
