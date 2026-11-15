@@ -602,7 +602,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 false);
             var built = typeof(ShareUsageElementTests).Assembly
                 .GetCustomAttributes<AssemblyMetadataAttribute>()
-                .Single(a => a.Key == "FiftyOnePipelineVersion")
+                .Single(a => a.Key == "FiftyOnePipelineCoreVersion")
                 .Value;
 
             // Act
@@ -1421,7 +1421,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
-        /// Test that the share all function causes all evidence to be shared.
+        /// Test that the share all function causes all evidence to be
+        /// shared, apart from cookies whose names do not start 51D_.
         /// </summary>
         [TestMethod]
         public void ShareUsageElement_ShareAll()
@@ -1437,6 +1438,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 { Core.Constants.EVIDENCE_HTTPHEADER_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "notblocked", "abc" },
                 { Core.Constants.EVIDENCE_QUERY_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "somevalue", "123" },
                 { Core.Constants.EVIDENCE_COOKIE_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "mycookie", "zyx" },
+                { Core.Constants.EVIDENCE_COOKIE_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "51D_mycookie", "wvu" },
                 { "someprefix" + Core.Constants.EVIDENCE_SEPERATOR + "anothervalue", "987" },
             };
             var data = MockFlowData.CreateFromEvidence(evidenceData, false);
@@ -1459,7 +1461,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             // Check that the expected values are populated.
             Assert.Contains("<header Name=\"notblocked\"><![CDATA[abc]]></header>", _xmlContent[0]);
             Assert.Contains("<query Name=\"somevalue\"><![CDATA[123]]></query>", _xmlContent[0]);
-            Assert.Contains("<cookie Name=\"mycookie\"><![CDATA[zyx]]></cookie>", _xmlContent[0]);
+            Assert.DoesNotContain("zyx", _xmlContent[0]);
+            Assert.Contains("<cookie Name=\"51D_mycookie\"><![CDATA[wvu]]></cookie>", _xmlContent[0]);
             Assert.Contains("<someprefix Name=\"anothervalue\"><![CDATA[987]]></someprefix>", _xmlContent[0]);
         }
 
@@ -1480,7 +1483,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         [TestMethod]
         [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, true)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, false, true)]
-        [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, true, true)]
+        [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, true, false)]
         [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, true)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, true, true)]
         [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, false, false)]

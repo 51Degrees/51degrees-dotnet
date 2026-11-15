@@ -235,6 +235,11 @@ namespace FiftyOne.Pipeline.AgentSignature.Keys
         {
             try
             {
+                if (IsSafeUrl(url) == false)
+                {
+                    LogRegistryFailure(url, "the address may not be fetched");
+                    return new List<string>();
+                }
                 using (var response = await SendAsync(url, "text/plain", token)
                     .ConfigureAwait(false))
                 {

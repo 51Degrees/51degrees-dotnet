@@ -62,6 +62,13 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
             // Read before anything starts, so a missing resource key stops
             // the demo with a message rather than serving broken pages.
             var settings = Settings.FromEnvironment();
+            if (settings == null)
+            {
+                // There is no resource key, so the message says where to
+                // create one and the demo ends without a server.
+                Console.WriteLine(Settings.MissingKeyMessage);
+                return Task.CompletedTask;
+            }
 
             // The content root is the build output, where wwwroot is copied,
             // so the pages are found whichever directory the demo is started

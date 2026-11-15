@@ -260,24 +260,9 @@ namespace FiftyOne.Pipeline.Web.Shared.Services
             bool matched = IfNoneMatchMatches(
                 context.Request.GetHeaderValue("If-None-Match"), eTag);
 
-            if (matched && IsGetOrHead(context.Request) == false)
+            if (matched)
             {
-                // A matching validator fails the precondition of any method
-                // other than GET or HEAD (RFC 9110 section 13.1.2).
-                context.Response.StatusCode = 412;
-                SetAllowOriginHeader(context);
-            }
-            else if (matched)
-            {
-                // The response hasn't changed so respond with a 304, which
-                // carries the caching headers the 200 would carry (RFC 9110
-                // section 15.4.5).
-                if (HasBuilderData(flowData, contentType) == false)
-                {
-                    hadFailures = true;
-                }
-                context.Response.StatusCode = 304;
-                SetCachingHeaders(context, eTag, !hadFailures);
+                WriteMatched(context, eTag);
             }
             else
             {
@@ -360,42 +345,68 @@ namespace FiftyOne.Pipeline.Web.Shared.Services
         }
 
         /// <summary>
-        /// True when the flow data holds the data of the builder whose output
-        /// the endpoint serves, so a 200 would not have to fall back.
+        /// Answers a request for the JavaScript or JSON whose If-None-Match
+        /// matches the ETag of the evidence in <paramref name="flowData"/>,
+        /// which has not been processed, because the web integration
+        /// specification says the endpoint "MUST NOT process a request whose
+        /// 'If-None-Match' header matches". Returns false, having written
+        /// nothing, when the request has no If-None-Match, it does not match,
+        /// or the Pipeline's evidence key filter cannot be read, and the
+        /// caller then processes the request.
         /// </summary>
-        private bool HasBuilderData(IFlowData flowData, ContentType contentType)
+        internal bool ServeNotModified(
+            IContextAdapter context,
+            IFlowData flowData)
         {
-            IFlowElement element = null;
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            if (flowData == null) throw new ArgumentNullException(nameof(flowData));
+
+            var ifNoneMatch = context.Request.GetHeaderValue("If-None-Match");
+            if (string.IsNullOrWhiteSpace(ifNoneMatch))
+            {
+                return false;
+            }
+            IEvidenceKeyFilter filter;
             try
             {
-                if (contentType == ContentType.JavaScript)
-                {
-                    var jsElement = flowData.Pipeline
-                        .GetElement<JavaScriptBuilderElement>();
-                    element = jsElement;
-                    if (jsElement != null)
-                    {
-                        flowData.GetFromElement(jsElement);
-                    }
-                }
-                else
-                {
-                    var jsonElement = flowData.Pipeline
-                        .GetElement<JsonBuilderElement>();
-                    element = jsonElement;
-                    if (jsonElement != null)
-                    {
-                        flowData.GetFromElement(jsonElement);
-                    }
-                }
-                return element != null;
+                filter = _pipeline.EvidenceKeyFilter;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger?.LogError(ex,
-                    "Failed to get data from {flowElementType}",
-                    element?.GetType().Name);
+                // Processing meets the same failure and reports it.
                 return false;
+            }
+            var eTag = GetETag(flowData, filter);
+            if (IfNoneMatchMatches(ifNoneMatch, eTag) == false)
+            {
+                return false;
+            }
+            context.Response.Clear();
+            context.Response.ClearHeaders();
+            WriteMatched(context, eTag);
+            return true;
+        }
+
+        /// <summary>
+        /// Answers a request whose If-None-Match matched. A GET or HEAD gets
+        /// a 304 with the caching headers a 200 carries when its processing
+        /// records no errors (RFC 9110 section 15.4.5), whether or not
+        /// processing is failing, so a browser holding a good response keeps
+        /// it with its ETag and max-age. With no ETag, as when "*" matched a
+        /// Pipeline whose evidence key filter could not be read, the 304 is
+        /// not cached. Any other method gets a 412 (RFC 9110 section 13.1.2).
+        /// </summary>
+        private void WriteMatched(IContextAdapter context, string eTag)
+        {
+            if (IsGetOrHead(context.Request))
+            {
+                context.Response.StatusCode = 304;
+                SetCachingHeaders(context, eTag, eTag != null);
+            }
+            else
+            {
+                context.Response.StatusCode = 412;
+                SetAllowOriginHeader(context);
             }
         }
 
