@@ -217,6 +217,37 @@ namespace FiftyOne.Did.Tests
             }
         }
 
+        /// <summary>
+        /// A character that is in neither alphabet and is not white space
+        /// is refused, wherever it is in the text. NormaliseBase64 refuses
+        /// only white space inside the text and a mix of the alphabets, so
+        /// the refusal comes from the readers.
+        /// </summary>
+        [TestMethod]
+        [DataRow("*")]
+        [DataRow(".")]
+        [DataRow("%")]
+        [DataRow("!")]
+        [DataRow("\u00e9")]
+        public void TryParse_CharacterOutsideTheAlphabet_InvalidBase64(
+            string character)
+        {
+            foreach (var text in Forms(StandardWithBothSpecials()))
+            {
+                var middle = text.Length / 2;
+                var damaged = text.Substring(0, middle) + character +
+                    text.Substring(middle + 1);
+                Assert.IsFalse(
+                    FodId.TryParse(damaged, out var fodId, out var status),
+                    $"Parsed {Show(damaged)}");
+                Assert.IsNull(fodId);
+                Assert.AreEqual(
+                    FodIdParseStatus.InvalidBase64, status, Show(damaged));
+                Assert.ThrowsExactly<FormatException>(
+                    () => FodId.FromBase64(damaged));
+            }
+        }
+
         [TestMethod]
         [DataRow(" ", 1)]
         [DataRow(" ", 2)]

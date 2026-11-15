@@ -21,6 +21,7 @@
  * ********************************************************************* */
 using FiftyOne.Did.Model;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Linq;
 using System;
 using static FiftyOne.Did.Tests.FodIdTestFactory;
 
@@ -118,6 +119,36 @@ namespace FiftyOne.Did.Tests
                 thrown.Message, $"version {version}");
             StringAssert.Contains(
                 thrown.Message, "UnsupportedPayloadVersion");
+        }
+
+        /// <summary>
+        /// The layout stays off the public surface. No public member of the
+        /// identifier gives an offset, a length or the payload version, so
+        /// application code has nothing to read the layout by hand with,
+        /// and the version belongs to the refusal alone.
+        /// </summary>
+        [TestMethod]
+        public void PublicSurface_HasNoOffsetLengthOrVersion()
+        {
+            var members = typeof(FodId).GetMembers(
+                    System.Reflection.BindingFlags.Public |
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.Static |
+                    System.Reflection.BindingFlags.DeclaredOnly)
+                .Select(m => m.Name)
+                .ToList();
+
+            Assert.IsTrue(members.Count > 0);
+            foreach (var word in new[] { "Offset", "Length", "Version" })
+            {
+                var found = members
+                    .Where(m => m.IndexOf(
+                        word, StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+                Assert.AreEqual(0, found.Count,
+                    $"Public members naming {word}: " +
+                    string.Join(", ", found));
+            }
         }
 
         /// <summary>
