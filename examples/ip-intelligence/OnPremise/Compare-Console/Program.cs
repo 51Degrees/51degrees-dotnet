@@ -450,17 +450,37 @@ public class Program
         Configuration configuration) 
         : BackgroundService
     {
+        /// <summary>
+        /// The exit code the process ends with when the run fails.
+        /// </summary>
+        private const int FailedExitCode = 1;
+
         protected override async Task ExecuteAsync(
             CancellationToken stoppingToken)
         {
-            await Example.Run(
-                configuration.DataFile,
-                configuration.CsvTruthFile,
-                configuration.Output,
-                configuration.LoggerFactory,
-                stoppingToken,
-                performanceProfile: configuration.PerformanceProfile);
-            hostApplicationLifetime.StopApplication();
+            try
+            {
+                await Example.Run(
+                    configuration.DataFile,
+                    configuration.CsvTruthFile,
+                    configuration.Output,
+                    configuration.LoggerFactory,
+                    stoppingToken,
+                    performanceProfile: configuration.PerformanceProfile);
+            }
+            catch (Exception ex)
+            {
+                // Report the failure, and end with a failure exit code so
+                // that a script or a test can tell.
+                configuration.LoggerFactory
+                    .CreateLogger<Worker>()
+                    .LogError(ex, "The comparison did not complete");
+                Environment.ExitCode = FailedExitCode;
+            }
+            finally
+            {
+                hostApplicationLifetime.StopApplication();
+            }
         }
     }
 
@@ -1247,5 +1267,14 @@ public class Program
 
         // Dispose the logger to ensure any messages get flushed
         configuration.LoggerFactory.Dispose();
+
+        Examples.ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
     }
+
+    /// <summary>
+    /// This file as a lower case slug, which tags the links in the
+    /// closing section.
+    /// </summary>
+    private const string ContentSlug =
+        "examples-ip-intelligence-onpremise-compare-console-program.cs";
 }

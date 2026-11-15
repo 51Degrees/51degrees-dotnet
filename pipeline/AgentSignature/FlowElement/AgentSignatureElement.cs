@@ -107,6 +107,14 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// <exception cref="ArgumentNullException">
         /// Thrown when the configuration is null.
         /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when a period in the configuration is negative or longer
+        /// than a year.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown when a registry address in the configuration is not HTTPS,
+        /// carries user information or is written as a private address.
+        /// </exception>
         public AgentSignatureElement(
             ILogger<AgentSignatureElement> logger,
             Func<IPipeline,
@@ -119,6 +127,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             {
                 throw new ArgumentNullException(nameof(configuration));
             }
+            configuration.Check(nameof(configuration));
             _configuration = configuration;
 
             _evidenceKeyFilter = new AgentSignatureEvidenceKeyFilter(
@@ -776,7 +785,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// <summary>
         /// Whether the signature covers something that ties it to the
         /// request it arrived on. The protocol draft has an agent cover
-        /// '&#64;authority' or '&#64;target-uri', and a signature covering neither
+        /// '\@authority' or '\@target-uri', and a signature covering neither
         /// would check out against a request sent to any other site, so
         /// one captured elsewhere could be replayed here.
         /// </summary>
@@ -1165,8 +1174,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// derived components are built from the accepted headers and from
         /// the request line, being the method, the path and the query
         /// string. Where an integration supplies no request line, a
-        /// signature covering '&#64;target-uri', '&#64;method', '&#64;path' or
-        /// '&#64;query' cannot be rebuilt and reads Unverified with the
+        /// signature covering '\@target-uri', '\@method', '\@path' or
+        /// '\@query' cannot be rebuilt and reads Unverified with the
         /// ComponentUnavailable reason.
         /// See the <see href="https://github.com/51Degrees/specifications/blob/4612778babd00c032a69ad41608e5c6fed38dc33/pipeline-specification/pipeline-elements/agent-signature-element.md#rebuilding-the-signature-base">Specification</see>
         /// </remarks>
@@ -1323,7 +1332,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             }
 
             /// <summary>
-            /// Build the '&#64;target-uri' component from the parts that make
+            /// Build the '\@target-uri' component from the parts that make
             /// it up. Every part has to be there, because a target address
             /// missing its path or its query is a different address and
             /// would produce a signature base the agent never signed.
@@ -1481,9 +1490,9 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// </summary>
         /// <remarks>
         /// The element accepts the three signature headers, the host and
-        /// the protocol, which '&#64;authority' and '&#64;scheme' are built
-        /// from, and the three request line values, which '&#64;method',
-        /// '&#64;path', '&#64;query' and '&#64;target-uri' are built from. A
+        /// the protocol, which '\@authority' and '\@scheme' are built
+        /// from, and the three request line values, which '\@method',
+        /// '\@path', '\@query' and '\@target-uri' are built from. A
         /// pipeline's accepted evidence decides its cache keys, the ETag and
         /// the Vary header, so only evidence that can change the result is
         /// accepted. Any other header a signature covers is read without
@@ -1520,8 +1529,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 Core.Constants.EVIDENCE_SEPERATOR;
 
             /// <summary>
-            /// The keys carrying the request line, which '&#64;method',
-            /// '&#64;path', '&#64;query' and '&#64;target-uri' are built from.
+            /// The keys carrying the request line, which '\@method',
+            /// '\@path', '\@query' and '\@target-uri' are built from.
             /// </summary>
             private static readonly string[] RequestLineKeys = new[]
             {
@@ -1585,11 +1594,11 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             /// or not that caller uses this element and whether or not it
             /// is entitled to. Leaving them out is not the answer either:
             /// a forwarded request would then arrive carrying no path and
-            /// no query, and a signature covering '&#64;path', '&#64;query' or
-            /// '&#64;target-uri' could not be rebuilt at all, which is the
+            /// no query, and a signature covering '\@path', '\@query' or
+            /// '\@target-uri' could not be rebuilt at all, which is the
             /// greater part of what this element is for on the cloud
             /// path. Narrowing what is sent is not open either, because
-            /// '&#64;query' is defined as the whole query string.
+            /// '\@query' is defined as the whole query string.
             /// </para>
             /// <para>
             /// Holding the cost to the callers who need it therefore

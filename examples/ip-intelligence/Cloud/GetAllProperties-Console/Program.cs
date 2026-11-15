@@ -179,6 +179,9 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.GetAllProperties
             {
                 new Example().Run(resourceKey, cloudEndPoint);
             }
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
 #if (DEBUG)
             // Only prompt when running interactively. When stdin is redirected
             // (e.g. tests, CI, piping), Console.ReadKey throws.
@@ -189,5 +192,12 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.GetAllProperties
             }
 #endif
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-getallproperties-console-program.cs";
     }
 }

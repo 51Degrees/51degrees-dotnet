@@ -222,6 +222,13 @@ namespace FiftyOne.DeviceDetection.Shared.Data
         private object _dataLock = new object();
         private object _getLock = new object();
 
+        /// <summary>
+        /// The lock held for each read of the native results, so that only
+        /// one thread at a time reads from them. A derived class holds it
+        /// for any read of the results it makes itself.
+        /// </summary>
+        protected object ResultsLock => _getLock;
+
         private bool _dictionaryPopulated = false;
 
         /// <summary>
@@ -376,7 +383,12 @@ namespace FiftyOne.DeviceDetection.Shared.Data
         IAspectPropertyValue<string> IProvidesValuesAsString.GetValueAsString(
             string propertyName)
         {
-            return GetValueAsString(propertyName);
+            // A read of the native results, so under the same lock as every
+            // other read of them.
+            lock (_getLock)
+            {
+                return GetValueAsString(propertyName);
+            }
         }
 
         #endregion
