@@ -160,7 +160,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
 
             if (string.IsNullOrEmpty(resourceKey))
             {
-                logger.LogError($"No resource key specified on the command line or in the " +
+                logger.LogWarning($"No resource key specified on the command line or in the " +
                     $"environment variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. " +
                     $"The 51Degrees cloud service is accessed using a 'ResourceKey'. " +
                     $"For more information " +
