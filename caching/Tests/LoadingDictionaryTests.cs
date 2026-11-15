@@ -45,10 +45,10 @@ namespace FiftyOne.Caching.Tests
 
         /// <summary>
         /// How long the unresponsive load tests wait for a get once its
-        /// token is cancelled. The get ends within milliseconds of the
-        /// cancel, so this is far above what a busy runner takes, and fails
-        /// only a get that never ends. The build log has the time each run
-        /// took.
+        /// token is cancelled. On the slowest runner measured, macOS on
+        /// Intel, the get ended within about two seconds of the cancel, so
+        /// this fails only a get that never ends. The build log has the
+        /// time each run took.
         /// </summary>
         private const int CANCELLED_GET_TIMEOUT_MS = 60000;
 
