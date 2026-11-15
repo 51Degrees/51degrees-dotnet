@@ -65,6 +65,13 @@ namespace FiftyOne.IpIntelligence.Examples
         public const string LICENSE_KEY_ENV_VAR = "IPINTELLIGENCELICENSEKEY_DOTNET";
 
         /// <summary>
+        /// Environment variable key for the licence key the data file update
+        /// example uses. <see cref="LICENSE_KEY_ENV_VAR"/> is read when it is
+        /// not set.
+        /// </summary>
+        public const string DATA_UPDATE_LICENSE_KEY_ENV_VAR = "_51DEGREES_LICENSE_KEY";
+
+        /// <summary>
         /// Environment variable key used to supply an explicit path to the
         /// IP Intelligence data file.
         /// </summary>
@@ -100,6 +107,29 @@ namespace FiftyOne.IpIntelligence.Examples
             LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
         };
 #pragma warning restore CS0618
+
+        /// <summary>
+        /// The free Device Detection data file, which the mixed examples
+        /// use by default. The data repository links it, and the examples
+        /// download it when it is missing.
+        /// </summary>
+        public const string LITE_HASH_DATA_FILE_NAME = "51Degrees-LiteV4.1.hash";
+
+        /// <summary>
+        /// Environment variable key used to supply an explicit path to the
+        /// Device Detection data file that the mixed examples use.
+        /// </summary>
+        public const string DD_PATH_ENV_VAR = "_51DEGREES_DD_PATH";
+
+        /// <summary>
+        /// The old names of <see cref="DD_PATH_ENV_VAR"/>, read in this
+        /// order only when that variable is not set.
+        /// </summary>
+        public static readonly string[] OLD_DD_PATH_ENV_VARS = new string[]
+        {
+            "51DEGREES_DD_PATH",
+            "DEVICEDETECTIONDATAFILE",
+        };
 
         /// <summary>
         /// Environment variable key for the evidence file to use for the tests.

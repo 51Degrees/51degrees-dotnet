@@ -133,6 +133,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         [DataRow("")]
         [DataRow(" 3")]
         [DataRow("-1")]
+        [DataRow("+5")]
         [DataRow("1.5")]
         [DataRow("\u0663")]
         [DataRow(1.5)]
@@ -145,6 +146,33 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             {
                 data.AddEvidence(Constants.EVIDENCE_SESSIONID, session);
                 data.AddEvidence(Constants.EVIDENCE_SEQUENCE, sequence);
+                data.Process();
+
+                AssertOutputs(data, session, 1);
+                Assert.IsEmpty(data.Errors ?? Enumerable.Empty<IFlowError>().ToList());
+            }
+        }
+
+        /// <summary>
+        /// A string with NUL characters after its digits is not made only
+        /// of the digits 0 to 9, so it counts as absent and the sequence is
+        /// 1. The NUL characters are added here, because a test name that
+        /// holds one cannot be written to every test results format.
+        /// </summary>
+        [TestMethod]
+        [DataRow("5", 1)]
+        [DataRow("5", 3)]
+        [DataRow("2147483646", 1)]
+        public void SequenceElement_DigitsThenNul_TreatedAsAbsent(
+            string digits, int nuls)
+        {
+            var session = Guid.NewGuid().ToString();
+            using (var data = _pipeline.CreateFlowData())
+            {
+                data.AddEvidence(Constants.EVIDENCE_SESSIONID, session);
+                data.AddEvidence(
+                    Constants.EVIDENCE_SEQUENCE,
+                    digits + new string('\0', nuls));
                 data.Process();
 
                 AssertOutputs(data, session, 1);

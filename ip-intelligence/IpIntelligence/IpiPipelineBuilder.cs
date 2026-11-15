@@ -101,7 +101,7 @@ namespace FiftyOne.IpIntelligence
         /// </summary>
         /// <param name="resourceKey">
         /// The resource key to use when querying the Cloud service. 
-        /// Obtain one from https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.ipintelligence-ipipipelinebuilder.cs&amp;utm_term=usecloud
+        /// Obtain one from https://51degrees.com/configure?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.ipintelligence-ipipipelinebuilder.cs&amp;utm_term=usecloud
         /// </param>
         /// <returns>
         /// A builder that can be used to configure and build a pipeline
@@ -119,7 +119,7 @@ namespace FiftyOne.IpIntelligence
         /// </summary>
         /// <param name="resourceKey">
         /// The resource key to use when querying the Cloud service. 
-        /// Obtain one from https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.ipintelligence-ipipipelinebuilder.cs&amp;utm_term=usecloud-2
+        /// Obtain one from https://51degrees.com/configure?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.ipintelligence-ipipipelinebuilder.cs&amp;utm_term=usecloud-2
         /// </param>
         /// <param name="endpoint">
         /// The 51Degrees Cloud URL.

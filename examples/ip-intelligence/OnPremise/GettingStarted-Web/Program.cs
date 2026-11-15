@@ -94,8 +94,10 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb
         {
             var overrides = new Dictionary<string, string>();
 
-            // Load the configuration file
+            // Load the configuration file from the current directory, which is
+            // where the web host reads it from.
             var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json")
                 .Build();
             // Bind the configuration to a pipeline options instance

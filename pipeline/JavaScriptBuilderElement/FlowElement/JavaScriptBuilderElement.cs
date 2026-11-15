@@ -366,10 +366,13 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
             _assembly = Assembly.GetExecutingAssembly();
             _renderSettings = new RenderSettings() { SkipHtmlEncoding = true };
 
+            // The template ends each line with LF. A checkout that turns
+            // LF into CRLF, as Git does on Windows by default, embeds CRLF,
+            // so the line endings are put back as the template has them.
             using (Stream stream = _assembly.GetManifestResourceStream(Constants.TEMPLATE))
             using (StreamReader streamReader = new StreamReader(stream, Encoding.UTF8))
             {
-                _template = streamReader.ReadToEnd();
+                _template = streamReader.ReadToEnd().Replace("\r\n", "\n");
             }
         }
 

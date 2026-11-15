@@ -66,7 +66,7 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
             TestContext context, 
             Func<T> create)
         {
-            var ddFile = Utils.GetFilePath(Constants.TAC_HASH_DATA_FILE_NAME).FullName;
+            var ddFile = Utils.GetPaidFilePath(Constants.TAC_HASH_DATA_FILE_NAME).FullName;
 
             _capturedLogs = new CapturingLoggerProvider();
             _loggerFactory = LoggerFactory.Create(b => b

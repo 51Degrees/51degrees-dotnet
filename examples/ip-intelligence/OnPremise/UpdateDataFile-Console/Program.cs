@@ -381,7 +381,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
             {
                 if (licenseKey == null)
                 {
-                    licenseKey = Environment.GetEnvironmentVariable(Constants.LICENSE_KEY_ENV_VAR);
+                    licenseKey = LicenseKeyFromEnvironment();
                 }
                 if (licenseKey == null)
                 {
@@ -431,7 +431,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
             }
         }
         
-        private const string KEY_SUBMISSION_ALT_PATH = $"as an environment variable named '{Constants.LICENSE_KEY_ENV_VAR}'";
+        private const string KEY_SUBMISSION_ALT_PATH = $"as an environment variable named '{Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR}'";
         private const string KEY_SUBMISSION_PATHS = "as the second command line argument to this program, or " + KEY_SUBMISSION_ALT_PATH;
 
         /// <summary>
@@ -486,6 +486,18 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
             return dataFile;
         }
 
+        /// <summary>
+        /// The licence key from the environment. It is the value of
+        /// '_51DEGREES_LICENSE_KEY' or, when that is not set, of the name this
+        /// example read before, which is reported as deprecated.
+        /// </summary>
+        public static string LicenseKeyFromEnvironment()
+        {
+            return Examples.ExampleUtils.FromEnvironment(
+                Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR,
+                Constants.LICENSE_KEY_ENV_VAR);
+        }
+
         public static int Main(string[] args)
         {
             Argument<string> dataFile = new(nameof(dataFile))
@@ -529,7 +541,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                 // Validate license key only if no custom data update URL is provided
                 if (string.IsNullOrWhiteSpace(licenseKeyValue))
                 {
-                    licenseKeyValue = Environment.GetEnvironmentVariable(Constants.LICENSE_KEY_ENV_VAR);
+                    licenseKeyValue = LicenseKeyFromEnvironment();
                 }
                 
                 if (string.IsNullOrWhiteSpace(licenseKeyValue) && string.IsNullOrWhiteSpace(dataUpdateUrlValue))
@@ -553,8 +565,23 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                 return 0;
             });
 
-            return rootCommand.Parse(args).Invoke();
+            // A failure, such as an exception or arguments that cannot be
+            // read, gives an exit code other than zero.
+            var exitCode = rootCommand.Parse(args).Invoke();
+            if (exitCode == 0)
+            {
+                Examples.ExampleUtils.WriteFindOutMore(
+                    Console.Out, ContentSlug);
+            }
+            return exitCode;
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-ip-intelligence-onpremise-updatedatafile-console-program.cs";
 
         public static void Initialize(
             string dataFile, string licenseKey, string? dataUpdateUrl, bool interactive)

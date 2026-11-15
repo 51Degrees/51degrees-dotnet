@@ -121,13 +121,26 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public string CloudEndpointVariable { get; }
 
         /// <summary>
+        /// What the demo writes when no resource key is set.
+        /// </summary>
+        public static string MissingKeyMessage =>
+            $"No resource key is set. Set the environment variable " +
+            $"'{RESOURCE_KEY_VARIABLE}' to a 51Degrees resource key " +
+            "that includes the 51Did properties. The name " +
+            $"'{CI_RESOURCE_KEY_ENV_VAR}' is read when it is not " +
+            "set. A resource key can be " +
+            "created at https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-settings.cs&utm_term=resource-key-required";
+
+        /// <summary>
         /// Reads both values from the environment.
         /// </summary>
+        /// <returns>
+        /// The settings, or null when no resource key is set.
+        /// </returns>
         /// <exception cref="InvalidOperationException">
-        /// No resource key is set, or the endpoint is not an absolute http
-        /// or https address.
+        /// The endpoint is not an absolute http or https address.
         /// </exception>
-        public static Settings FromEnvironment()
+        public static Settings? FromEnvironment()
         {
             var (keyVariable, key) = First(
                 RESOURCE_KEY_VARIABLE, CI_RESOURCE_KEY_ENV_VAR);
@@ -140,13 +153,7 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
             }
             if (key == null)
             {
-                throw new InvalidOperationException(
-                    $"No resource key is set. Set the environment variable " +
-                    $"'{RESOURCE_KEY_VARIABLE}' to a 51Degrees resource key " +
-                    "that includes the 51Did properties. The name " +
-                    $"'{CI_RESOURCE_KEY_ENV_VAR}' is read when it is not " +
-                    "set. A resource key can be " +
-                    "created at https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-settings.cs&utm_term=resource-key-required");
+                return null;
             }
 
             var (endpointVariable, endpoint) = First(CLOUD_ENDPOINT_VARIABLE);

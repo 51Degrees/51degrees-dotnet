@@ -25,11 +25,13 @@ the concepts and design of this API.
 
 Visual Studio 2022 or later is recommended. Although Visual Studio Code can be used for working with most of the projects.
 
-The Pipeline projects are written in C# and target .NET Standard 2.0.3
-The Web integration multi-targets the following:
-    - .NET Core 3.1
-    - .NET Core 8.0
-    - .NET Framework 4.6.2
+The Pipeline packages are written in C# and target .NET Standard 2.0 and .NET 10. `FiftyOne.Pipeline.Engines` and `FiftyOne.Pipeline.AgentSignature` also target .NET 8, and `FiftyOne.Did` targets .NET 8 and .NET 10 only.
+
+The Web integration targets the following:
+    - .NET 8 and .NET 10, in `FiftyOne.Pipeline.Web`
+    - .NET Framework 4.6.2, in `FiftyOne.Pipeline.Web.Framework`
+
+The tests run under .NET 8 and .NET 10.
 
 The [tested versions](https://51degrees.com/documentation/_product_summaries__tested_versions.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=dependencies) page shows the .NET versions that we currently test against. The software may run fine against other versions, but additional caution should be applied.
 
@@ -108,7 +110,7 @@ If you want examples that demonstrate how to use 51Degrees products such as devi
 | UsageSharing                              | Shows how to share usage with 51Degrees. This helps us to keep our products up to date and accurate. |
 | Did\CreatorContextWeb                     | A demo web server for the 51Did creator context flow, run the way production does, with the browser verifying and the server redeeming. See Examples\Did\README.md. |
 
-The CloudRequestEngine\GettingStarted example requires a resource key. It reads the `_51DEGREES_RESOURCE_KEY` environment variable. A resource key with the free properties used by the examples can be created at https://configure.51degrees.com/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=pipeline-examples.
+The CloudRequestEngine\GettingStarted example requires a resource key. It reads the `_51DEGREES_RESOURCE_KEY` environment variable. A resource key with the free properties used by the examples can be created at https://51degrees.com/configure/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=pipeline-examples.
 
 Every example that calls the 51Degrees cloud (CloudRequestEngine\GettingStarted and Did\CreatorContextWeb) reads the service to call from the `_51DEGREES_CLOUD_ENDPOINT` environment variable, which is the API base including the `/api/v4/` segment and defaults to `https://cloud.51degrees.com/api/v4/`. This is the same variable the `CloudRequestEngineBuilder` honours when no endpoint is set. A host other than `cloud.51degrees.com` would be used to (a) use an on premise web server, or (b) use a privately hosted version of the 51Degrees cloud for performance reasons. This is the private hosting option of the cloud service. Both run the same service, so the examples work unchanged against either. The CustomFlowElement\4. Cloud Engine tutorial calls the star sign example service built for that tutorial rather than the 51Degrees cloud, so its endpoint is fixed.
 

@@ -60,7 +60,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
                 string.IsNullOrWhiteSpace(_resourceKey),
                 $"Environment variable '{ExampleUtils.RESOURCE_KEY_ENV_VAR}' " +
                 $"is not set. Obtain a resource key at " +
-                $"https://configure.51degrees.com and export it to run this test.");
+                $"https://51degrees.com/configure and export it to run this test.");
         }
 
         private static readonly string RepoRootPath =

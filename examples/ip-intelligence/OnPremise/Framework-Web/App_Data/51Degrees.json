@@ -13,7 +13,7 @@
           "DataFileSystemWatcher": false,
           "DataUpdateOnStartUp": false,
           // Explicitly include just the properties used by the example.
-          "Properties": "RegisteredName"
+          "Properties": "RegisteredName,IpRangeStart,Country"
         }
       },
       {

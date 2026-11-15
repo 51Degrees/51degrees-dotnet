@@ -123,9 +123,17 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// </summary>
         protected List<string> BlockedHttpHeaders { get; private set; } = new List<string>();
         /// <summary>
-        /// A list of query string parameters to be shared.
+        /// The query string parameters to be shared besides those starting
+        /// 51D_, or null when every one is shared.
         /// </summary>
-        protected List<string> IncludedQueryStringParameters { get; private set; } = new List<string>();
+        protected List<string> IncludedQueryStringParameters =>
+            ShareAllQueryStringParameters ? null : _includedQueryStringParameters;
+        private readonly List<string> _includedQueryStringParameters = new List<string>();
+        /// <summary>
+        /// If true then every query string and HTTP form parameter is
+        /// shared, and the included parameters have no effect.
+        /// </summary>
+        protected bool ShareAllQueryStringParameters { get; private set; } = Constants.SHARE_USAGE_DEFAULT_SHARE_ALL_QUERY_STRING_PARAMETERS;
         /// <summary>
         /// A collection of evidence keys and values which, if present,
         /// cause the event to be ignored for the purposes of usage sharing.
@@ -212,10 +220,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// By default query string and HTTP form parameters are not shared 
-        /// unless prefixed with '51D_'.
-        /// This setting allows you to share these parameters with 51Degrees
-        /// if needed.
+        /// Every query string and HTTP form parameter is shared by default.
+        /// When <see cref="SetShareAllQueryStringParameters(bool)"/> turns
+        /// that off, only the parameters starting '51D_' and the ones named
+        /// here are shared.
         /// </summary>
         /// <param name="queryStringParameterNames">
         /// The (case insensitive) names of the query string parameters to include.
@@ -223,7 +231,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// <exception cref="ArgumentNullException">
         /// Thrown if the parameter is null
         /// </exception>
-        [DefaultValue("No sharing unless the query/form parameter starts with 51D_")]
+        [DefaultValue(Constants.SHARE_USAGE_DEFAULT_INCLUDED_QUERY_STRING_PARAMETERS)]
         [CodeConfigOnly]
         public ShareUsageBuilderBase<T> SetIncludedQueryStringParameters(List<string> queryStringParameterNames)
         {
@@ -234,16 +242,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 
             foreach (var name in queryStringParameterNames)
             {
-                IncludedQueryStringParameters.Add(name);
+                _includedQueryStringParameters.Add(name);
             }
             return this;
         }
 
         /// <summary>
-        /// By default query string and HTTP form parameters are not shared 
-        /// unless prefixed with '51D_'.
-        /// This setting allows you to share these parameters with 51Degrees
-        /// if needed.
+        /// Every query string and HTTP form parameter is shared by default.
+        /// When <see cref="SetShareAllQueryStringParameters(bool)"/> turns
+        /// that off, only the parameters starting '51D_' and the ones named
+        /// here are shared.
         /// </summary>
         /// <param name="queryStringParameterNames">
         /// A comma separated list of the (case insensitive) names of 
@@ -252,7 +260,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// <exception cref="ArgumentNullException">
         /// Thrown if the parameter is null
         /// </exception>
-        [DefaultValue("No sharing unless the query/form parameter starts with 51D_")]
+        [DefaultValue(Constants.SHARE_USAGE_DEFAULT_INCLUDED_QUERY_STRING_PARAMETERS)]
         public ShareUsageBuilderBase<T> SetIncludedQueryStringParameters(string queryStringParameterNames)
         {
             if (queryStringParameterNames == null)
@@ -265,25 +273,27 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// By default query string and HTTP form parameters are not shared 
-        /// unless prefixed with '51D_'.
-        /// This setting allows you to share these parameters with 51Degrees
-        /// if needed.
+        /// Every query string and HTTP form parameter is shared by default.
+        /// When <see cref="SetShareAllQueryStringParameters(bool)"/> turns
+        /// that off, only the parameters starting '51D_' and the ones named
+        /// here are shared.
         /// </summary>
         /// <param name="queryStringParameterName">
-        /// The (case insensitive) name of the query string parameter to 
+        /// The (case insensitive) name of the query string parameter to
         /// include.
         /// </param>
-        [DefaultValue("No sharing unless the query/form parameter starts with 51D_")]
+        [DefaultValue(Constants.SHARE_USAGE_DEFAULT_INCLUDED_QUERY_STRING_PARAMETERS)]
         public ShareUsageBuilderBase<T> SetIncludedQueryStringParameter(string queryStringParameterName)
         {
-            IncludedQueryStringParameters.Add(queryStringParameterName);
+            _includedQueryStringParameters.Add(queryStringParameterName);
             return this;
         }
 
         /// <summary>
-        /// Configure the usage sharing element to share all query string
-        /// and HTTP form parameters.
+        /// Configure whether the usage sharing element shares every query
+        /// string and HTTP form parameter, which it does by default. When
+        /// off, only the parameters starting '51D_' and the included ones
+        /// are shared.
         /// </summary>
         /// <param name="shareAll">
         /// If set to true then all query string parameters will be shared
@@ -291,24 +301,18 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// <returns>
         /// This builder instance
         /// </returns>
-        [DefaultValue(false)]
+        [DefaultValue(Constants.SHARE_USAGE_DEFAULT_SHARE_ALL_QUERY_STRING_PARAMETERS)]
         public ShareUsageBuilderBase<T> SetShareAllQueryStringParameters(bool shareAll)
         {
-            if (shareAll)
-            {
-                IncludedQueryStringParameters = null;
-            }
-            else if (IncludedQueryStringParameters == null)
-            {
-                IncludedQueryStringParameters = new List<string>();
-            }
+            ShareAllQueryStringParameters = shareAll;
             return this;
         }
 
         /// <summary>
         /// Configure the usage sharing element to share all evidence.
         /// This will override the blocked header and included query
-        /// string parameter settings.
+        /// string parameter settings. A cookie whose name does not start
+        /// '51D_' is still not shared.
         /// </summary>
         /// <param name="shareAll">
         /// If set to true then all evidence will be shared
@@ -324,9 +328,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// By default, all HTTP headers (excluding a few such as 'cookies')
-        /// are shared. Individual headers can be excluded from sharing by 
-        /// adding them to this list.
+        /// By default, every HTTP header but Cookie is shared. Individual
+        /// headers can be excluded from sharing by adding them to this
+        /// list.
         /// </summary>
         /// <param name="blockedHeaders">
         /// The (case insensitive) names of the headers to block.
@@ -339,9 +343,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// By default, all HTTP headers (excluding a few such as 'cookies')
-        /// are shared. Individual headers can be excluded from sharing by 
-        /// adding them to this list.
+        /// By default, every HTTP header but Cookie is shared. Individual
+        /// headers can be excluded from sharing by adding them to this
+        /// list.
         /// </summary>
         /// <param name="blockedHeader">
         /// The (case insensitive) name of the header to block.
