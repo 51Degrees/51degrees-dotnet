@@ -84,7 +84,7 @@ public class CloudRequestEngineDiscoveryResultsTests
         }
     }
 
-    private static CloudRequestEngine Build(
+    private static FlowElements.CloudRequestEngine Build(
         DiscoveryHandler handler,
         string resourceKey,
         string discoveryResults = null)
