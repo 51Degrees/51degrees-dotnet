@@ -700,8 +700,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                         outputValue = apv;
                     }
                 }
-                else
+                else if (propertyMetaData.Count > 0)
                 {
+                    // With no meta-data at all, as before discovery has
+                    // completed, every value has none, so it is not logged.
                     Logger.LogWarning($"No meta-data entry for property " +
                         $"'{property.Key}' in '{GetType().Name}'");
                 }
