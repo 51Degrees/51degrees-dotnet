@@ -135,6 +135,39 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
         }
 
         [TestMethod]
+        public void Performance_WithoutSettings()
+        {
+            var output = RunWithoutSettings(
+                Examples.OnPremise.Performance.Program.Main);
+            StringAssert.Contains(output, "This example used the free Lite data file",
+                "The example should say what the Enterprise data file adds.");
+            StringAssert.Contains(output, ContactUs,
+                "The example should link to the contact page.");
+        }
+
+        [TestMethod]
+        public void PerformanceMultiProperty_WithoutSettings()
+        {
+            var output = RunWithoutSettings(
+                Examples.OnPremise.PerformanceMultiProperty.Program.Main);
+            StringAssert.Contains(output, "This example used the free Lite data file",
+                "The example should say what the Enterprise data file adds.");
+            StringAssert.Contains(output, ContactUs,
+                "The example should link to the contact page.");
+        }
+
+        [TestMethod]
+        public void PerformanceSweep_WithoutSettings()
+        {
+            var output = RunWithoutSettings(
+                Examples.OnPremise.PerformanceSweep.Program.Main);
+            StringAssert.Contains(output, "This example used the free Lite data file",
+                "The example should say what the Enterprise data file adds.");
+            StringAssert.Contains(output, ContactUs,
+                "The example should link to the contact page.");
+        }
+
+        [TestMethod]
         public void MatchMetrics_WithoutSettings()
         {
             var output = RunWithoutSettings(
