@@ -29,6 +29,7 @@ using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
 
@@ -213,6 +214,23 @@ namespace FiftyOne.IpIntelligence.Shared.Data
         protected object ResultsLock => _getLock;
 
         private bool _dictionaryPopulated = false;
+
+        /// <summary>
+        /// The number of decimal places Latitude and Longitude are given to.
+        /// </summary>
+        private const int CoordinateDecimalPlaces = 3;
+
+        /// <summary>
+        /// The properties the data file stores as a declination or an
+        /// azimuth, whose numbers are given rounded to
+        /// <see cref="CoordinateDecimalPlaces"/> places.
+        /// </summary>
+        private static readonly HashSet<string> CoordinateProperties =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "Latitude",
+                "Longitude"
+            };
 
         /// <summary>
         /// A <see cref="ResultsManager"/> instance, which can be used
@@ -719,6 +737,7 @@ namespace FiftyOne.IpIntelligence.Shared.Data
                         {
                             obj = GetValues(key);
                         }
+                        obj = RoundCoordinates(key, obj);
 
                         try
                         {
@@ -738,6 +757,58 @@ namespace FiftyOne.IpIntelligence.Shared.Data
             return false;
         }
         #endregion
+
+        /// <summary>
+        /// The value with each number it holds rounded to
+        /// <see cref="CoordinateDecimalPlaces"/> places when the property is
+        /// a coordinate, and unchanged otherwise.
+        /// </summary>
+        private static object RoundCoordinates(string propertyName, object value)
+        {
+            if (CoordinateProperties.Contains(propertyName) == false)
+            {
+                return value;
+            }
+            switch (value)
+            {
+                case IAspectPropertyValue<double> number when number.HasValue:
+                    return new AspectPropertyValue<double>(Round(number.Value));
+                case IAspectPropertyValue<float> number when number.HasValue:
+                    return new AspectPropertyValue<float>(
+                        (float)Round(number.Value));
+                case IAspectPropertyValue<IReadOnlyList<IWeightedValue<double>>> list
+                    when list.HasValue:
+                    return new AspectPropertyValue<IReadOnlyList<IWeightedValue<double>>>(
+                        list.Value
+                        .Select(v => (IWeightedValue<double>)new WeightedValue<double>(
+                            v.RawWeighting, Round(v.Value)))
+                        .ToList());
+                case IAspectPropertyValue<IReadOnlyList<IWeightedValue<float>>> list
+                    when list.HasValue:
+                    return new AspectPropertyValue<IReadOnlyList<IWeightedValue<float>>>(
+                        list.Value
+                        .Select(v => (IWeightedValue<float>)new WeightedValue<float>(
+                            v.RawWeighting, (float)Round(v.Value)))
+                        .ToList());
+                default:
+                    return value;
+            }
+        }
+
+        /// <summary>
+        /// A number rounded to <see cref="CoordinateDecimalPlaces"/> places,
+        /// one half way between two places rounding away from zero. A number
+        /// that rounds to zero is given as zero with no sign, as 0.000 has
+        /// none.
+        /// </summary>
+        private static double Round(double value)
+        {
+            var rounded = Math.Round(
+                value,
+                CoordinateDecimalPlaces,
+                MidpointRounding.AwayFromZero);
+            return rounded == 0 ? 0 : rounded;
+        }
 
         private static void AppendPrettyTypeName(Type type, StringBuilder typeNameBuilder)
         {
