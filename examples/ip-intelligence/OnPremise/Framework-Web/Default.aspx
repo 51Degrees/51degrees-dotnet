@@ -66,6 +66,11 @@
                     // differently. Feel free to copy these helpers if they are useful though.
                 %>
                 <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Name:</td><td class="c-eg-table__cell"> <%= deviceData.TryGetValue(d => d.RegisteredName.GetHumanReadable()) %></td></tr>
+                <%-- Only the Enterprise data file has the range and location properties, and
+                    reading a property the data file lacks throws. So each is read only when
+                    the data file has it, and is otherwise shown as needing that file. --%>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">IP Range Start:</td><td class="c-eg-table__cell"> <%= FiftyOne.IpIntelligence.Examples.OnPremise.ExampleUtils.HasProperty(engine, "IpRangeStart") ? deviceData.TryGetValue(d => d.IpRangeStart.GetHumanReadable()) : FiftyOne.IpIntelligence.Examples.OnPremise.ExampleUtils.NEEDS_ENTERPRISE %></td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Country:</td><td class="c-eg-table__cell"> <%= FiftyOne.IpIntelligence.Examples.OnPremise.ExampleUtils.HasProperty(engine, "Country") ? deviceData.TryGetValue(d => d.Country.GetHumanReadable()) : FiftyOne.IpIntelligence.Examples.OnPremise.ExampleUtils.NEEDS_ENTERPRISE %></td></tr>
                 </tbody>
             </table>
 
@@ -117,7 +122,9 @@
             </div>
         </div>
 
-        <% if (engine.DataSourceTier == "Lite") { %>
+        <%-- Every IP Intelligence data file reports the same tier, so a free file is
+            known by the properties it lacks. --%>
+        <% if (FiftyOne.IpIntelligence.Examples.OnPremise.ExampleUtils.IsFreeDataFile(engine)) { %>
             <div class="c-eg-message">
               <p class="c-eg-message__text">Need more on-premise properties and features? <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx&amp;utm_term=on-premise-properties">Contact us</a> to explore the options.</p>
               <a class="b-btn c-eg-message__cta" href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx&amp;utm_term=on-premise-properties">Contact us</a>
