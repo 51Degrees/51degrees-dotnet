@@ -65,6 +65,17 @@
         </noscript>
 
         <div id="content">
+            <% if (Framework_Web.Global.ResourceKeyMissing) { %>
+            <h3 class="c-eg-page__heading">No resource key</h3>
+            <div class="c-eg-alert">
+                No resource key is set in App_Data/51Degrees.json or in the environment variable
+                '<%: ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR %>', so this site has not asked the 51Degrees cloud
+                service for any results. A free resource key can be created at
+                <a href="https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx&amp;utm_term=resource-key-required">https://51degrees.com/configure/Wkqxf3Bs</a> and populates the free properties. With a paid subscription, a key created at <a href="https://51degrees.com/configure/hYzn3TV3?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx&amp;utm_term=resource-key-required">https://51degrees.com/configure/hYzn3TV3</a> includes all the properties this example uses.
+                Set the environment variable to the key, or put the key in App_Data/51Degrees.json,
+                then start the site again.
+            </div>
+            <% } else { %>
             <h3 class="c-eg-page__heading">Detection results</h3>
             <p class="c-eg-page__lead">
                 The following values are determined by server-side device detection
@@ -234,6 +245,7 @@
                 client-side values below will appear in the evidence values used and server-side results
                 after the refresh.
             </p>
+            <% } %>
         </div>
 
         <div class="c-eg-message">

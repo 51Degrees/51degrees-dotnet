@@ -21,19 +21,43 @@
  * ********************************************************************* */
 
 using FiftyOne.DeviceDetection.Cloud.FlowElements;
+using FiftyOne.DeviceDetection.Examples;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using FiftyOne.Pipeline.JavaScriptBuilder.FlowElement;
 using FiftyOne.Pipeline.JsonBuilder.FlowElement;
 using System;
+using System.IO;
 using System.Web;
 
 namespace Framework_Web
 {
     public class Global : HttpApplication
     {
+        /// <summary>
+        /// What the options file holds in place of a resource key until one
+        /// is entered.
+        /// </summary>
+        private const string KeyPlaceholder = "!!ENTER_YOUR_RESOURCE_KEY_HERE!!";
+
+        /// <summary>
+        /// The options the site runs with when no resource key is set. They
+        /// leave out the cloud engines, so the site starts and the page says
+        /// how to get a key.
+        /// </summary>
+        private const string OptionsWithoutKey =
+            "{ \"PipelineOptions\": { \"Elements\": [] } }";
+
+        /// <summary>
+        /// True when neither the options file nor the environment holds a
+        /// resource key.
+        /// </summary>
+        public static bool ResourceKeyMissing { get; private set; }
+
         void Application_Start(object sender, EventArgs e)
         {
+            UseResourceKey(HttpContext.Current.Server.MapPath("~/App_Data"));
+
             // Make sure the assemblies that are needed by the pipeline are loaded into the
             // app domain.
             // This is needed in order from BuildFromConfiguration to be able to find the
@@ -43,6 +67,38 @@ namespace Framework_Web
             AppDomain.CurrentDomain.Load(typeof(JavaScriptBuilderElement).Assembly.GetName());
             AppDomain.CurrentDomain.Load(typeof(JsonBuilderElement).Assembly.GetName());
             AppDomain.CurrentDomain.Load(typeof(SequenceElementBuilder).Assembly.GetName());
+        }
+
+        /// <summary>
+        /// Uses the resource key in the options file when one has been
+        /// entered there, or else the one in the environment variable
+        /// named by <see cref="ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR"/>.
+        /// The integration reads its options from one folder, so for a key
+        /// from the environment, or no key at all, the options are written
+        /// to a folder of the site's own under the temporary folder and the
+        /// integration reads them from there.
+        /// </summary>
+        private static void UseResourceKey(string appData)
+        {
+            var options = File.ReadAllText(Path.Combine(appData, "51Degrees.json"));
+            if (options.Contains(KeyPlaceholder) == false)
+            {
+                return;
+            }
+            var key = ExampleUtils.GetResourceKeyFromEnv();
+            ResourceKeyMissing = string.IsNullOrWhiteSpace(key);
+            var folder = Path.Combine(
+                Path.GetTempPath(),
+                "51Degrees",
+                "DeviceDetection-Cloud-Framework-Web");
+            Directory.CreateDirectory(folder);
+            File.WriteAllText(
+                Path.Combine(folder, "51Degrees.json"),
+                ResourceKeyMissing ?
+                    OptionsWithoutKey :
+                    options.Replace(KeyPlaceholder, key));
+            FiftyOne.Pipeline.Web.Framework.Configuration.Extensions
+                .BaseDirectory = () => folder;
         }
     }
 }
