@@ -514,14 +514,6 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// True if the exception indicates that the cloud service received
-        /// the discovery request and definitively rejected it (4xx), so
-        /// retrying with the same configuration can never succeed.
-        /// Network failures, timeouts and 5xx responses are not definitive -
-        /// they can resolve themselves, so the caller should fall back to
-        /// retrying lazily rather than failing.
-        /// </summary>
-        /// <summary>
         /// The discovery results, being the accessible properties and the
         /// accepted Evidence keys, as JSON. They depend only on the keys and
         /// the endpoints, hold no key, and can be stored. Give them to
@@ -649,6 +641,14 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             { get; set; }
         }
 
+        /// <summary>
+        /// True if the exception indicates that the cloud service received
+        /// the discovery request and definitively rejected it (4xx), so
+        /// retrying with the same configuration can never succeed.
+        /// Network failures, timeouts and 5xx responses are not definitive -
+        /// they can resolve themselves, so the caller should fall back to
+        /// retrying lazily rather than failing.
+        /// </summary>
         private static bool IsDefinitiveConfigurationError(Exception ex)
         {
             return ex is CloudRequestException cloudEx &&
