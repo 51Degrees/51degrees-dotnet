@@ -83,7 +83,21 @@ namespace CombiningServices
             private static string latitude = "51.458048";
             private static string longitude = "-0.9822207999999999";
 
-            public void Run(string resourceKey, string cloudEndPoint = "") 
+            /// <summary>
+            /// Runs the example.
+            /// </summary>
+            /// <param name="resourceKey">The resource key to use.</param>
+            /// <param name="cloudEndPoint">
+            /// The cloud service's address, or empty for the default.
+            /// </param>
+            /// <param name="cloudRequestTimeoutSeconds">
+            /// The seconds a request to the cloud service may take, or null
+            /// for the default of 2 seconds. The tests give a longer one.
+            /// </param>
+            public void Run(
+                string resourceKey,
+                string cloudEndPoint = "",
+                int? cloudRequestTimeoutSeconds = null)
             {
                 Console.WriteLine($"Using resource key {resourceKey}");
 
@@ -94,6 +108,11 @@ namespace CombiningServices
                 if (string.IsNullOrWhiteSpace(cloudEndPoint) == false)
                 {
                     cloudRequestEngineBuilder.SetEndPoint(cloudEndPoint);
+                }
+                if (cloudRequestTimeoutSeconds.HasValue)
+                {
+                    cloudRequestEngineBuilder.SetTimeOutSeconds(
+                        cloudRequestTimeoutSeconds.Value);
                 }
 
                 var cloudRequestEngine = cloudRequestEngineBuilder
