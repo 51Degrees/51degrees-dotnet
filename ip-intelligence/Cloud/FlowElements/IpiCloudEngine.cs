@@ -123,11 +123,14 @@ namespace FiftyOne.IpIntelligence.Cloud.FlowElements
                     Converters = JSON_CONVERTERS,
                 });
 
+            var properties = PropertiesForResponse.ToList();
             var ip = CloudDataHelper.CreateAPVDictionary(
                 propertyValues,
-                Properties.ToList(),
+                properties,
                 CloudDataHelper.IpTypeConverter,
-                Logger,
+                // With no meta-data yet every value would be logged as
+                // having none, on every response.
+                properties.Count > 0 ? Logger : null,
                 GetType().Name);
             aspectData.PopulateFrom(ip);
         }

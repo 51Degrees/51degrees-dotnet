@@ -244,6 +244,27 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
+        /// The property meta-data to read a response with. While the request
+        /// engine's property list cannot be read, for example before its
+        /// discovery has completed, this is empty, and each value in the
+        /// response keeps the type it has there.
+        /// </summary>
+        protected IList<IAspectPropertyMetaData> PropertiesForResponse
+        {
+            get
+            {
+                try
+                {
+                    return Properties;
+                }
+                catch (PropertiesNotYetLoadedException)
+                {
+                    return Array.Empty<IAspectPropertyMetaData>();
+                }
+            }
+        }
+
+        /// <summary>
         /// Provide an implementation for the non-generic, 
         /// aspect-specific version of the meta-data property.
         /// </summary>
