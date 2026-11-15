@@ -133,6 +133,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         [DataRow("")]
         [DataRow(" 3")]
         [DataRow("-1")]
+        [DataRow("+5")]
         [DataRow("1.5")]
         [DataRow("\u0663")]
         [DataRow(1.5)]

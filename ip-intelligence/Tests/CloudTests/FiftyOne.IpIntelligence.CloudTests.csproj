@@ -11,9 +11,9 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
-		<FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonVersion)" />
-		<FiftyOneReference Include="FiftyOne.Pipeline.Engines.TestHelpers" ProjectPath="..\..\..\pipeline\Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" Version="$(FiftyOnePipelineVersion)" />
-		<FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\pipeline\Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
+		<FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonTestHelpersVersion)" />
+		<FiftyOneReference Include="FiftyOne.Pipeline.Engines.TestHelpers" ProjectPath="..\..\..\pipeline\Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" Version="$(FiftyOnePipelineEnginesTestHelpersVersion)" />
+		<FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\pipeline\Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineWebVersion)" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
 		<PackageReference Include="MSTest.TestAdapter" Version="4.0.2" />
 		<PackageReference Include="MSTest.TestFramework" Version="4.0.2" />
