@@ -58,36 +58,14 @@ public class ShareUsageAcceptsNoEvidenceTests
 
     private static readonly TimeSpan Wait = TimeSpan.FromSeconds(30);
 
-    /// <summary>
-    /// Keeps the XML of every message sent.
-    /// </summary>
-    private sealed class Capture : HttpMessageHandler
-    {
-        public ConcurrentQueue<string> Xml { get; } =
-            new ConcurrentQueue<string>();
-
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
-        {
-            var bytes = await request.Content.ReadAsByteArrayAsync(
-                cancellationToken);
-            using var gzip = new GZipStream(
-                new MemoryStream(bytes), CompressionMode.Decompress);
-            using var reader = new StreamReader(gzip);
-            Xml.Enqueue(await reader.ReadToEndAsync(cancellationToken));
-            return new HttpResponseMessage(HttpStatusCode.OK);
-        }
-    }
-
     private readonly LoggerFactory _loggerFactory = new LoggerFactory();
-    private Capture _capture;
+    private UsageMessageCapture _capture;
     private HttpClient _http;
 
     [TestInitialize]
     public void Init()
     {
-        _capture = new Capture();
+        _capture = new UsageMessageCapture();
         _http = new HttpClient(_capture);
     }
 

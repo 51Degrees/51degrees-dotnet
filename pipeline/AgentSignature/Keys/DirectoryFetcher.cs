@@ -235,6 +235,11 @@ namespace FiftyOne.Pipeline.AgentSignature.Keys
         {
             try
             {
+                if (IsSafeUrl(url) == false)
+                {
+                    LogRegistryFailure(url, "the address may not be fetched");
+                    return new List<string>();
+                }
                 using (var response = await SendAsync(url, "text/plain", token)
                     .ConfigureAwait(false))
                 {
@@ -832,7 +837,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Keys
 
         /// <summary>
         /// Resolves the covered components of the signature a key directory
-        /// response carries over itself. The '&#64;authority;req' component
+        /// response carries over itself. The '\@authority;req' component
         /// refers to the request this element sent, and the other components
         /// are response headers.
         /// </summary>

@@ -223,6 +223,15 @@ namespace FiftyOne.Pipeline.AgentSignature {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to The registry address '{0}' may not be fetched, because it is not HTTPS, carries user information or is written as a private address.
+        /// </summary>
+        internal static string ExceptionRegistryNotFetchable {
+            get {
+                return ResourceManager.GetString("ExceptionRegistryNotFetchable", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to The period must not be negative and must not be longer than {0}.
         /// </summary>
         internal static string ExceptionPeriodOutOfRange {

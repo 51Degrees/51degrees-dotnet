@@ -139,8 +139,8 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Metadata
 
             if (string.IsNullOrEmpty(resourceKey))
             {
-                logger.LogError($"No resource key specified in the configuration file " +
-                    $"'appsettings.json' or the environment variable " +
+                logger.LogWarning($"No resource key specified on the command line or in " +
+                    $"the environment variable " +
                     $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees cloud service is " +
                     $"accessed using a 'ResourceKey'. For more information see " +
                     $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required. " +

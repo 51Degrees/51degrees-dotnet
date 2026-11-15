@@ -894,6 +894,11 @@ public class Program
         Configuration configuration)
         : BackgroundService
     {
+        /// <summary>
+        /// The exit code the process ends with when the run fails.
+        /// </summary>
+        private const int FailedExitCode = 1;
+
         protected override async Task ExecuteAsync(
             CancellationToken stoppingToken)
         {
@@ -915,10 +920,12 @@ public class Program
             {
                 // The metrics have already been written by this point. Report
                 // the failure rather than leaving it unhandled, which would
-                // end the process without the summary below.
+                // end the process without the summary below, and end with a
+                // failure exit code so that a script or a test can tell.
                 configuration.LoggerFactory
                     .CreateLogger<Worker>()
                     .LogError(ex, "The metrics run did not complete");
+                Environment.ExitCode = FailedExitCode;
             }
             finally
             {

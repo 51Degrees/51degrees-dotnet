@@ -20,6 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using System;
 using System.Collections.Generic;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
@@ -37,6 +38,24 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// </summary>
         public EvidenceKeyFilterShareUsageTracker()
             : base()
+        { }
+
+        /// <summary>
+        /// Creates a filter that includes all evidence but the default
+        /// excluded items, for when all evidence is shared, and keys on the
+        /// asp.net session cookie when the session is tracked.
+        /// </summary>
+        /// <param name="includeSession">
+        /// If true then the asp.net session cookie is part of the key, so
+        /// the same evidence from two sessions is not a repeat.
+        /// </param>
+        /// <param name="aspSessionCookieName">
+        /// The name of the cookie that contains the asp.net session id.
+        /// </param>
+        public EvidenceKeyFilterShareUsageTracker(
+            bool includeSession,
+            string aspSessionCookieName)
+            : base(includeSession, aspSessionCookieName)
         { }
 
         /// <summary>
@@ -75,9 +94,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
             // from the tracker, regardless of the filter settings.
             // If these were included then all usage would always 
             // be shared as session id + sequence will always be unique.
-            if (key == Constants.EVIDENCE_SESSIONID)
+            // Evidence keys are matched whatever their case, so these
+            // two are as well.
+            if (string.Equals(key, Constants.EVIDENCE_SESSIONID,
+                    StringComparison.OrdinalIgnoreCase))
                 return false;
-            if (key == Constants.EVIDENCE_SEQUENCE)
+            if (string.Equals(key, Constants.EVIDENCE_SEQUENCE,
+                    StringComparison.OrdinalIgnoreCase))
                 return false;
             if (IsIncludedSessionCookie(key))
                 return true;

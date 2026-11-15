@@ -261,7 +261,7 @@ namespace FiftyOne.Pipeline.Core.FlowElements
             }
             else
             {
-                return _flowElements;
+                return _flowElements.AsReadOnly();
             }
         }
 
@@ -336,7 +336,9 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         {
             _logger = logger;
             _flowDataFactory = flowDataFactory;
-            _flowElements = flowElements;
+            // A copy, so a builder that goes on to add elements does not
+            // change a Pipeline it has built.
+            _flowElements = new List<IFlowElement>(flowElements);
             _autoDisposeElements = autoDisposeElements;
             _suppressProcessExceptions = suppressProcessExceptions;
 
