@@ -21,6 +21,7 @@
  * ********************************************************************* */
 using FiftyOne.Did.Model;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Linq;
 using System;
 using static FiftyOne.Did.Tests.FodIdTestFactory;
 
@@ -113,6 +114,86 @@ namespace FiftyOne.Did.Tests
             var thrown = Assert.ThrowsExactly<ArgumentException>(
                 () => new FodId(_factory.SignedOwidBase64(
                     WithVersion(CanonicalPayload(), version))));
+
+            StringAssert.Contains(
+                thrown.Message, $"version {version}");
+            StringAssert.Contains(
+                thrown.Message, "UnsupportedPayloadVersion");
+        }
+
+        /// <summary>
+        /// The layout stays off the public surface. No public member of the
+        /// identifier gives an offset, a length or the payload version, so
+        /// application code has nothing to read the layout by hand with,
+        /// and the version belongs to the refusal alone.
+        /// </summary>
+        [TestMethod]
+        public void PublicSurface_HasNoOffsetLengthOrVersion()
+        {
+            var members = typeof(FodId).GetMembers(
+                    System.Reflection.BindingFlags.Public |
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.Static |
+                    System.Reflection.BindingFlags.DeclaredOnly)
+                .Select(m => m.Name)
+                .ToList();
+
+            Assert.IsTrue(members.Count > 0);
+            foreach (var word in new[] { "Offset", "Length", "Version" })
+            {
+                var found = members
+                    .Where(m => m.IndexOf(
+                        word, StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+                Assert.AreEqual(0, found.Count,
+                    $"Public members naming {word}: " +
+                    string.Join(", ", found));
+            }
+        }
+
+        /// <summary>
+        /// A payload shorter than the version 0 header is still refused as
+        /// a version this package does not know when its flags byte names
+        /// one, because the header length is part of the layout the version
+        /// fixes. Refusing it as too short would judge it by the version 0
+        /// layout and would not name the version it found.
+        /// </summary>
+        [TestMethod]
+        [DataRow((byte)1, 1)]
+        [DataRow((byte)2, 2)]
+        [DataRow((byte)3, FodId.HeaderLength - 1)]
+        public void Version_NotZero_ShorterThanHeader_IsRefused(
+            byte version, int length)
+        {
+            var payload = new byte[length];
+            payload[FodId.FlagsOffset] = (byte)((version << 4) | 0b101);
+
+            Assert.IsFalse(FodId.TryParse(
+                _factory.SignedOwidBase64(payload),
+                out var fodId,
+                out var status));
+
+            Assert.AreEqual(
+                FodIdParseStatus.UnsupportedPayloadVersion, status);
+            Assert.IsNull(fodId);
+        }
+
+        /// <summary>
+        /// The throwing surface names the version a short payload claims,
+        /// as it does for a payload of full length.
+        /// </summary>
+        [TestMethod]
+        [DataRow((byte)1)]
+        [DataRow((byte)2)]
+        [DataRow((byte)3)]
+        public void Version_NotZero_ShorterThanHeader_MessageNamesTheVersion(
+            byte version)
+        {
+            var payload = new byte[2];
+            payload[FodId.FlagsOffset] = (byte)((version << 4) | 0b101);
+
+            var thrown = Assert.ThrowsExactly<ArgumentException>(
+                () => new FodId(_factory.SignedOwidBase64(payload)));
 
             StringAssert.Contains(
                 thrown.Message, $"version {version}");
