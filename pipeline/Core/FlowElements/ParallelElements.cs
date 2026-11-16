@@ -21,11 +21,13 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.Exceptions;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,6 +49,37 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// </summary>
         internal static readonly AsyncLocal<Running> Current =
             new AsyncLocal<Running>();
+
+        /// <summary>
+        /// Refuses a value for the Evidence of the Flow Data that the
+        /// running element of a group is processing, when that element adds
+        /// it, and records a configuration error against the element. Both
+        /// <see cref="FlowData.AddEvidence(string, object)"/> and a direct
+        /// write to <see cref="Evidence"/> call this.
+        /// </summary>
+        /// <param name="evidence">The Evidence being written.</param>
+        /// <param name="key">The key of the value being added.</param>
+        /// <returns>True when the value is refused.</returns>
+        internal static bool RefuseEvidence(IEvidence evidence, string key)
+        {
+            var running = Current.Value;
+            if (running == null ||
+                ReferenceEquals(running.Data.GetEvidence(), evidence) == false)
+            {
+                return false;
+            }
+            var suppress = running.Data.Pipeline?.SuppressProcessExceptions
+                ?? false;
+            running.Data.AddError(
+                new PipelineConfigurationException(string.Format(
+                    CultureInfo.InvariantCulture,
+                    Messages.ExceptionParallelGroupAddedEvidence,
+                    key)),
+                running.Element,
+                true,
+                suppress == false);
+            return true;
+        }
 
         /// <summary>
         /// An element of a group and the Flow Data it is processing.

@@ -631,27 +631,13 @@ namespace FiftyOne.Pipeline.Core.Data
         /// one of them runs, so a value an element of a group adds to this
         /// Flow Data is refused, with a configuration error recorded against
         /// the element. A value added to another Flow Data is not affected.
+        /// Checked here as well as in <see cref="Evidence"/> so that a
+        /// refused value is not logged as set.
         /// </summary>
         /// <param name="key">The key of the value being added.</param>
         /// <returns>True when the value is refused.</returns>
-        private bool RefusedInParallelGroup(string key)
-        {
-            var running = ParallelElements.Current.Value;
-            if (running == null || ReferenceEquals(running.Data, this) == false)
-            {
-                return false;
-            }
-            var suppress = Pipeline?.SuppressProcessExceptions ?? false;
-            AddError(
-                new PipelineConfigurationException(string.Format(
-                    CultureInfo.InvariantCulture,
-                    Messages.ExceptionParallelGroupAddedEvidence,
-                    key)),
-                running.Element,
-                true,
-                suppress == false);
-            return true;
-        }
+        private bool RefusedInParallelGroup(string key) =>
+            ParallelElements.RefuseEvidence(_evidence, key);
 
         /// <summary>
         /// Add the specified evidence to the FlowData
