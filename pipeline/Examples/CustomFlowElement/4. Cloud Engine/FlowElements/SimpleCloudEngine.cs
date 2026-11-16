@@ -69,9 +69,16 @@ namespace Examples.CloudEngine.FlowElements
             
             // Extract data from json to the aspectData instance.
             var dictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
+            // A response with no section for this engine leaves its data
+            // without values.
+            if (dictionary.TryGetValue(ElementDataKey, out var section) == false ||
+                section == null)
+            {
+                return;
+            }
             // Get the results for the star sign component.
             var starSign = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-            JsonConvert.PopulateObject(dictionary["starsign"].ToString(), starSign);
+            JsonConvert.PopulateObject(section.ToString(), starSign);
             // Now get the values from the star sign results.
             starSignData.StarSign = starSign["starsign"].ToString();
         }
