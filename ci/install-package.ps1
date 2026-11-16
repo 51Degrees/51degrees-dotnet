@@ -21,6 +21,8 @@ $PSNativeCommandUseErrorActionPreference = $true
 # The publish job installs too, before it pushes, and needs nothing built.
 if ($env:GITHUB_JOB -eq "Package") {
     Write-Host "Nothing to install before publishing"
+    # Temporary, for a dry run off main only: runs publish-package.ps1.
+    $global:PublishAnyBranch = $true
     return
 }
 $packages = @(Get-ChildItem "$pwd/package/*.nupkg" -ErrorAction SilentlyContinue)
