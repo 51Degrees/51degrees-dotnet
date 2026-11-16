@@ -516,6 +516,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             SharedHostAddress;
 
         /// <summary>
+        /// The time elapsed on a monotonic clock, so that a change to the
+        /// system clock cannot shorten or lengthen an interval the element
+        /// measures.
+        /// </summary>
+        internal virtual TimeSpan ClockNow => ShareUsageBackOff.Now;
+
+        /// <summary>
         /// The longest in milliseconds that a send waits for the address of
         /// this machine.
         /// </summary>
