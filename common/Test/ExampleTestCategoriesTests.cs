@@ -47,9 +47,19 @@ public class ExampleTestCategoriesTests
     public void NarrowedExampleTests_NameACategory()
     {
         var root = Repository.Root();
-        var without = Repository.TrackedFiles(root)
+        var files = Repository.TrackedFiles(root)
             .Where(f => f.StartsWith(NarrowedTests, StringComparison.Ordinal))
             .Where(f => f.EndsWith(".cs", StringComparison.Ordinal))
+            .ToList();
+
+        // A folder that has moved would otherwise leave nothing to read,
+        // and the test would pass with the narrowing unguarded.
+        Assert.AreNotEqual(0, files.Count,
+            "Git tracks no C# file under " + NarrowedTests + ", so the " +
+            "narrowed test assembly has moved. Point this test, and the " +
+            "narrowing in ci/run-integration-tests.ps1, at its new folder.");
+
+        var without = files
             .Where(f =>
             {
                 var text = File.ReadAllText(Path.Combine(root, f));
