@@ -28,11 +28,13 @@ using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Data;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -183,6 +185,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 new Lazy<Task<IDictionary<string, AgentCard>>>(
                     () => Task.Run(LoadCards));
             _createData = CreateElementData;
+            _createAbsent = CreateAbsent;
+            _absentData = p => _absentByPipeline.GetValue(p, _createAbsent);
             StartReachabilityCheck();
         }
 
@@ -302,6 +306,19 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             {
                 throw new ArgumentNullException(nameof(data));
             }
+            // Nearly every request has no signature at all, so answer that
+            // case before anything is parsed or allocated. The keys are
+            // built once, and the answer is one element data per pipeline,
+            // filled once with values that never change, so a request with
+            // no signature costs only the look ups and the flow data's
+            // holding of that answer.
+            var fromQuery = FindSource(data);
+            if (HasSignatureHeaders(data, fromQuery) == false)
+            {
+                data.GetOrAdd(ElementDataKeyTyped, _absentData);
+                return;
+            }
+
             var elementData = data.GetOrAdd(
                 ElementDataKeyTyped, _createData) as AgentSignatureData;
             if (elementData == null)
@@ -309,9 +326,6 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 return;
             }
 
-            // Nearly every request has no signature at all, so answer that
-            // case before anything is parsed or allocated.
-            //
             // Where the signature came from decides where everything else
             // comes from. A caller's own Pipeline forwards its evidence
             // with the prefix taken off, so a forwarded signature sits
@@ -322,22 +336,19 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             // no request line reports that a component was unavailable,
             // which says the check could not be made, rather than
             // reporting a mismatch, which would say the agent was lying.
-            var source = FindSource(data);
-            var hasSignature = TryGetBySource(
+            var source = fromQuery
+                ? Core.Constants.EVIDENCE_QUERY_PREFIX
+                : Core.Constants.EVIDENCE_HTTPHEADER_PREFIX;
+            TryGetBySource(
                 data,
                 source,
                 Constants.EVIDENCE_SIGNATURE_NAME,
                 out var signatureValue);
-            var hasInput = TryGetBySource(
+            TryGetBySource(
                 data,
                 source,
                 Constants.EVIDENCE_SIGNATURE_INPUT_NAME,
                 out var inputValue);
-            if (hasSignature == false && hasInput == false)
-            {
-                ApplyAbsent(elementData);
-                return;
-            }
 
             var outcome = Evaluate(data, source, signatureValue, inputValue);
             Apply(outcome, elementData);
@@ -356,8 +367,11 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// both would be a base no agent ever signed.
         /// </remarks>
         /// <param name="data">The flow data.</param>
-        /// <returns>The prefix to read this request from.</returns>
-        private string FindSource(IFlowData data)
+        /// <returns>
+        /// True to read this request from the query prefix, or false to
+        /// read it from the header prefix.
+        /// </returns>
+        private bool FindSource(IFlowData data)
         {
             // Without this, a visitor could put a signature, a host and a
             // path in the address bar of an ordinary page, have the web
@@ -376,16 +390,116 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                     data.TryGetEvidence<object>(
                         QuerySignatureInputKey, out _)))
             {
-                return Core.Constants.EVIDENCE_QUERY_PREFIX;
+                return true;
             }
-            return Core.Constants.EVIDENCE_HTTPHEADER_PREFIX;
+            return false;
         }
 
         /// <summary>
-        /// The two keys that say a request's evidence was forwarded,
-        /// built once rather than on every request, because this runs
+        /// Whether the prefix the signature would come from carries either
+        /// of the two signature headers, read with keys built once so that
+        /// the test allocates nothing.
+        /// </summary>
+        /// <param name="data">The flow data.</param>
+        /// <param name="fromQuery">
+        /// True to read the query prefix, false the header prefix.
+        /// </param>
+        /// <returns>True where either header is present.</returns>
+        private static bool HasSignatureHeaders(IFlowData data, bool fromQuery)
+        {
+            return HasValue(data, fromQuery
+                    ? QuerySignatureKey
+                    : HeaderSignatureKey) ||
+                HasValue(data, fromQuery
+                    ? QuerySignatureInputKey
+                    : HeaderSignatureInputKey);
+        }
+
+        private static bool HasValue(IFlowData data, string key)
+        {
+            return data.TryGetEvidence(key, out object raw) && raw != null;
+        }
+
+        /// <summary>
+        /// The answer to a request with no signature, filled once for each
+        /// pipeline the element is in and then handed to every such
+        /// request, so that nothing is made for it. The table holds the
+        /// pipeline weakly, so a pipeline that is gone takes its answer
+        /// with it.
+        /// </summary>
+        private readonly ConditionalWeakTable<IPipeline, AbsentData>
+            _absentByPipeline =
+                new ConditionalWeakTable<IPipeline, AbsentData>();
+
+        /// <summary>
+        /// The factory handed to the flow data's GetOrAdd for a request
+        /// with no signature, made once for the same reason as
+        /// <see cref="_createData"/>.
+        /// </summary>
+        private readonly Func<IPipeline, IAgentSignatureData> _absentData;
+
+        private readonly ConditionalWeakTable<IPipeline, AbsentData>
+            .CreateValueCallback _createAbsent;
+
+        private AbsentData CreateAbsent(IPipeline pipeline)
+        {
+            // The shared answer only returns the values it was filled
+            // with, so it has nothing of its own to log.
+            var absent = new AbsentData(
+                NullLogger<AgentSignatureData>.Instance,
+                pipeline);
+            ApplyAbsent(absent);
+            absent.Freeze();
+            return absent;
+        }
+
+        /// <summary>
+        /// The element data shared by every request with no signature.
+        /// Once filled it cannot be changed, because a change would reach
+        /// every other request that has no signature.
+        /// </summary>
+        private sealed class AbsentData : AgentSignatureData
+        {
+            private bool _frozen;
+
+            public AbsentData(
+                ILogger<AgentSignatureData> logger,
+                IPipeline pipeline)
+                : base(logger, pipeline)
+            { }
+
+            public void Freeze() => _frozen = true;
+
+            public override object this[string key]
+            {
+                get => base[key];
+                set
+                {
+                    if (_frozen)
+                    {
+                        throw new InvalidOperationException(
+                            Messages.ExceptionAbsentDataReadOnly);
+                    }
+                    base[key] = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The keys of the two signature headers under each prefix, built
+        /// once rather than on every request, because they are read
         /// whether or not a request carries a signature at all.
         /// </summary>
+        private static readonly string HeaderSignatureKey =
+            Core.Constants.EVIDENCE_HTTPHEADER_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR +
+            Constants.EVIDENCE_SIGNATURE_NAME;
+
+        private static readonly string HeaderSignatureInputKey =
+            Core.Constants.EVIDENCE_HTTPHEADER_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR +
+            Constants.EVIDENCE_SIGNATURE_INPUT_NAME;
+
         private static readonly string QuerySignatureKey =
             Core.Constants.EVIDENCE_QUERY_PREFIX +
             Core.Constants.EVIDENCE_SEPERATOR +
