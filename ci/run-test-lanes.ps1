@@ -47,6 +47,13 @@ $ExclusivePattern = '^FiftyOne\.(Caching\.Tests|Pipeline\.Engines\.Tests|Pipelin
 $PortsLane = 'Example\.Tests\.Web|IpIntelligence\.Example\.Tests\.Cloud|GettingStartedAPI\.Tests'
 $MemoryLane = '^FiftyOne\.IpIntelligence\.Example\.Tests\.OnPremise\.dll$'
 
+# The assembly and the framework folder it was built for, as the log file
+# names them, so one line names one build of one test project.
+function Get-AssemblyLabel($Path) {
+    [IO.Path]::GetFileNameWithoutExtension($Path) + " " +
+        [IO.Path]::GetFileName([IO.Path]::GetDirectoryName($Path))
+}
+
 $RepoPath = [IO.Path]::Combine($pwd, $RepoName)
 $ResultPath = [IO.Path]::Combine($RepoPath, "test-results", $OutputFolder, $Name)
 $LogPath = [IO.Path]::Combine($RepoPath, "test-results", "logs", $OutputFolder, $Name)
@@ -98,13 +105,6 @@ foreach ($lane in $lanes.Keys) {
     }
 }
 Write-Host "The pool runs $poolSize at once"
-
-# The assembly and the framework folder it was built for, as the log file
-# names them, so one line names one build of one test project.
-function Get-AssemblyLabel($Path) {
-    [IO.Path]::GetFileNameWithoutExtension($Path) + " " +
-        [IO.Path]::GetFileName([IO.Path]::GetDirectoryName($Path))
-}
 
 # Runs one assembly and returns its name, exit code, time and log file. On
 # macOS a test host killed within a second of starting is retried, as the
