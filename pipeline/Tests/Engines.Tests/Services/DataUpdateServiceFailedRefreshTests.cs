@@ -231,6 +231,88 @@ public class DataUpdateServiceFailedRefreshTests
     }
 
     /// <summary>
+    /// The watcher reports a file that is no longer there, which .NET gives
+    /// the write time 1 January 1601. A file that is not there is not newer
+    /// than the current one, so the check is reported as not needed at once
+    /// and the engine is not refreshed, rather than waiting to open it.
+    /// </summary>
+    [TestMethod]
+    public void Watcher_FileNotThere_ReportsNotNeededAtOnce()
+    {
+        var path = Path.Combine(_directory, "data.dat");
+        File.WriteAllText(path, GoodData);
+        var fileWrapper = new Mock<IFileWrapper>();
+        fileWrapper.Setup(w => w.GetLastWriteTimeUtc(It.IsAny<string>()))
+            .Returns(DateTime.FromFileTimeUtc(0));
+        fileWrapper.Setup(w => w.OpenRead(It.IsAny<string>()))
+            .Throws(new FileNotFoundException("Not there.", path));
+        var fileSystem = new Mock<IFileSystem>();
+        fileSystem.Setup(f => f.File).Returns(fileWrapper.Object);
+        var service = new DataUpdateService(
+            new CapturingLogger(), new HttpClient(), fileSystem.Object, NoTimer);
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        var file = WatchedFile(engine, path);
+        var reports = Collect(service);
+
+        try
+        {
+            service.RegisterDataFile(file);
+
+            Replace(path, NewData);
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED),
+                "A file that is not there was not reported as not needed.");
+            engine.Verify(
+                e => e.RefreshData(It.IsAny<string>()), Times.Never());
+        }
+        finally
+        {
+            file.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The watcher reports a newer file that is gone by the time the service
+    /// opens it. There is nothing to apply, so the check is reported as not
+    /// needed at once and the engine is not refreshed, where a file that is
+    /// there but cannot be opened yet is waited for.
+    /// </summary>
+    [TestMethod]
+    public void Watcher_FileGoneBeforeItOpens_ReportsNotNeededAtOnce()
+    {
+        var path = Path.Combine(_directory, "data.dat");
+        File.WriteAllText(path, GoodData);
+        var fileWrapper = new Mock<IFileWrapper>();
+        fileWrapper.Setup(w => w.GetLastWriteTimeUtc(It.IsAny<string>()))
+            .Returns((string p) => File.GetLastWriteTimeUtc(p));
+        fileWrapper.Setup(w => w.OpenRead(It.IsAny<string>()))
+            .Throws(new FileNotFoundException("Gone.", path));
+        var fileSystem = new Mock<IFileSystem>();
+        fileSystem.Setup(f => f.File).Returns(fileWrapper.Object);
+        var service = new DataUpdateService(
+            new CapturingLogger(), new HttpClient(), fileSystem.Object, NoTimer);
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        var file = WatchedFile(engine, path);
+        var reports = Collect(service);
+
+        try
+        {
+            service.RegisterDataFile(file);
+
+            Replace(path, NewData);
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED),
+                "A file gone before it opened was not reported as not needed.");
+            engine.Verify(
+                e => e.RefreshData(It.IsAny<string>()), Times.Never());
+        }
+        finally
+        {
+            file.Dispose();
+        }
+    }
+
+    /// <summary>
     /// An exception from a <see cref="DataUpdateService.CheckForUpdateComplete"/>
     /// handler is logged, and the watcher keeps watching.
     /// </summary>
