@@ -184,6 +184,15 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 // the cast never wraps.
                 case ulong ul when ul <= int.MaxValue: number = (long)ul; break;
                 case ulong _: return false;
+                // nint and nuint are the native sized integer types,
+                // held as IntPtr and UIntPtr. A nuint above the largest
+                // int counts as absent before the cast, so the cast
+                // never wraps.
+                case IntPtr ni: number = ni.ToInt64(); break;
+                case UIntPtr nu when nu.ToUInt64() <= int.MaxValue:
+                    number = (long)nu.ToUInt64();
+                    break;
+                case UIntPtr _: return false;
                 case string text:
                     // int.TryParse with NumberStyles.None still accepts
                     // trailing NUL characters, so the digits are checked

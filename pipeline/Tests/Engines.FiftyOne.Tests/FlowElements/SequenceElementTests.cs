@@ -235,6 +235,45 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         public void SequenceElement_EveryIntegerType_Counts(
             object sequence, int expected)
         {
+            AssertSequenceCounts(sequence, expected);
+        }
+
+        /// <summary>
+        /// A sequence held in nint or nuint, the native sized integer
+        /// types, counts as one held in the other integer types. Neither
+        /// type can be a data row argument, so the cases are written out,
+        /// and the two that need 64 bits run only where a native integer
+        /// holds them.
+        /// </summary>
+        [TestMethod]
+        public void SequenceElement_NativeSizedIntegerType_Counts()
+        {
+            AssertSequenceCounts((IntPtr)3, 4);
+            AssertSequenceCounts((UIntPtr)3u, 4);
+            AssertSequenceCounts((IntPtr)2147483646, int.MaxValue);
+            AssertSequenceCounts((UIntPtr)2147483646u, int.MaxValue);
+            AssertSequenceCounts((IntPtr)2147483647, 1);
+            AssertSequenceCounts((UIntPtr)2147483647u, 1);
+            AssertSequenceCounts((IntPtr)(-1), 1);
+            AssertSequenceCounts((IntPtr)0, 1);
+            AssertSequenceCounts((UIntPtr)0u, 1);
+            if (IntPtr.Size == 8)
+            {
+                // Read from a variable, because a constant above the
+                // range of an int cannot be cast to a native integer.
+                long signed = long.MaxValue;
+                ulong unsigned = ulong.MaxValue;
+                AssertSequenceCounts((IntPtr)signed, 1);
+                AssertSequenceCounts((UIntPtr)unsigned, 1);
+            }
+        }
+
+        /// <summary>
+        /// Processes the sequence as evidence and checks the evidence and
+        /// the element data hold the sequence expected, with no error.
+        /// </summary>
+        private void AssertSequenceCounts(object sequence, int expected)
+        {
             var session = Guid.NewGuid().ToString();
             using (var data = _pipeline.CreateFlowData())
             {
