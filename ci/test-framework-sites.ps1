@@ -18,20 +18,24 @@ $NoKey = @(
     "51degrees.com/configure/",
     "Find out more")
 # Each page's Find out more section carries a contact us link tagged for an
-# example. The message about what a paid data file adds is shown only with a
-# free data file, which this run cannot count on, because the build gives the
-# examples the paid files, so it is not expected here.
+# example, and each on-premise page says what a paid data file adds when the
+# file it loaded is a free one, which is the file this run gives it.
 $FindOutMore = @(
     "Find out more",
     "51degrees.com/contact-us?utm_source=code&amp;utm_medium=example")
+# The free data file each on-premise site looks for by name in the folders
+# above its own.
+$FreeFiles = @("51Degrees-LiteV4.1.hash", "51Degrees-LiteV41.ipi")
 $Sites = @(
     @{
         Path = "examples/device-detection/OnPremise/Framework-Web"
-        Expect = @("Detection results") + $FindOutMore
+        Expect = @("Detection results", "The paid data file adds") + $FindOutMore
     },
     @{
         Path = "examples/ip-intelligence/OnPremise/Framework-Web"
-        Expect = @("Detection results") + $FindOutMore
+        Expect = @(
+            "Detection results",
+            "Need more on-premise properties and features?") + $FindOutMore
     },
     @{
         Path = "examples/device-detection/Cloud/Framework-Web"
@@ -67,11 +71,29 @@ if (-not (Test-Path $IisExpress)) {
     exit 1
 }
 
-# No settings means no resource key either, so every variable a cloud
-# example could read one from is removed for the sites and put back after.
+# Each on-premise site looks for its free data file by name, so the run says
+# which file is missing rather than failing inside a site.
+foreach ($file in $FreeFiles) {
+    $found = Get-ChildItem -Path $RepoName -Recurse -File -Filter $file `
+        -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $found) {
+        Write-Host ("::error::$file is not under $RepoName, so the " +
+            "on-premise sites cannot run on the free data files")
+        exit 1
+    }
+    Write-Host "Build log: $file is at $($found.FullName)"
+}
+
+# No settings means no resource key and no data file path, so every variable
+# a cloud site could read a key from, and every variable an on-premise site
+# could read a data file path from, is taken out for the sites and put back
+# after. Each on-premise site then finds the free data file beside the
+# repository, as it does from a fresh clone, and says what a paid file adds.
+$WithoutSettings = @('*RESOURCE_KEY*', '*DD_PATH*', '*IPI_PATH*', '*DATAFILE*')
 $saved = @{}
-foreach ($variable in Get-ChildItem env: |
-    Where-Object { $_.Name -like '*RESOURCE_KEY*' }) {
+foreach ($variable in Get-ChildItem env: | Where-Object {
+        $name = $_.Name
+        @($WithoutSettings | Where-Object { $name -like $_ }).Count -gt 0 }) {
     $saved[$variable.Name] = $variable.Value
     Remove-Item "env:$($variable.Name)"
 }
