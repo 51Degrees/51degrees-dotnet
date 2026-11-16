@@ -138,8 +138,11 @@ function Write-Result($Result, $Lane) {
 }
 
 foreach ($assembly in $exclusive) {
-    Write-Host ("Starting $(Get-AssemblyLabel $assembly) at " +
-        "$([DateTime]::UtcNow.ToString('HH:mm:ss')) UTC")
+    # The time is read the same way whatever the runner's culture, because
+    # a culture of its own would write a different separator.
+    $started = [DateTime]::UtcNow.ToString(
+        'HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)
+    Write-Host "Starting $(Get-AssemblyLabel $assembly) at $started UTC"
     $result = & $runOne $assembly $Configuration $ResultPath $LogPath $BlameHangTimeout $testFilters[$assembly]
     $results += $result
     Write-Result $result "exclusive"
