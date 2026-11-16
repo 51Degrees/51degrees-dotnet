@@ -71,7 +71,7 @@
                 No resource key is set in App_Data/51Degrees.json or in the environment variable
                 '<%: ExampleUtils.RESOURCE_KEY_ENV_VAR %>', so this site has not asked the 51Degrees cloud
                 service for any results. A free resource key can be created at
-                <a href="https://51degrees.com/configure/1QWJwHxl?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx&amp;utm_term=resource-key-required">https://51degrees.com/configure/1QWJwHxl</a> and populates the properties this example uses.
+                <a href="https://51degrees.com/configure/1QWJwHxl?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx&amp;utm_term=resource-key-required">51degrees.com/configure/1QWJwHxl</a> and populates the properties this example uses.
                 Set the environment variable to the key, or put the key in App_Data/51Degrees.json,
                 then start the site again.
             </div>

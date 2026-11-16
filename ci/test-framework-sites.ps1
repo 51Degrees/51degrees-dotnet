@@ -15,7 +15,7 @@ $UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 $NoKey = @(
     "_51DEGREES_RESOURCE_KEY",
-    "https://51degrees.com/configure/",
+    "51degrees.com/configure/",
     "Find out more")
 # Each page's Find out more section carries a contact us link tagged for an
 # example. The message about what a paid data file adds is shown only with a
