@@ -1178,7 +1178,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             }
             // Check that the expected values are populated.
             Assert.Contains(@"iPhone\x0018", _xmlContent[0]);
-            Assert.Contains("<BadSchema>true</BadSchema>", _xmlContent[0]);
+            Assert.AreEqual("true", (string)EvidenceEntry(
+                _xmlContent[0], "header", "user-agent").Attribute("escaped"));
+            Assert.DoesNotContain("BadSchema", _xmlContent[0]);
 
         }
 
@@ -1250,7 +1252,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
 
             Assert.Contains("a\U0001F600\\x0001b", xml);
             Assert.Contains("kept", xml);
-            Assert.Contains("<BadSchema>true</BadSchema>", xml);
+            Assert.AreEqual("true", (string)EvidenceEntry(
+                xml, "query", "51D_Emoji").Attribute("escaped"));
         }
 
         /// <summary>
@@ -1267,7 +1270,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
 
             Assert.Contains(@"a\xfffeb\xffffc", xml);
             Assert.Contains("kept", xml);
-            Assert.Contains("<BadSchema>true</BadSchema>", xml);
+            Assert.AreEqual("true", (string)EvidenceEntry(
+                xml, "query", "51D_Fffe").Attribute("escaped"));
         }
 
         /// <summary>
@@ -1284,7 +1288,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
 
             Assert.Contains(@"a\xd83db", xml);
             Assert.Contains("kept", xml);
-            Assert.Contains("<BadSchema>true</BadSchema>", xml);
+            Assert.AreEqual("true", (string)EvidenceEntry(
+                xml, "query", "51D_Lone").Attribute("escaped"));
         }
 
         /// <summary>
@@ -1994,7 +1999,7 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
             CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
 
             string longValue = new string('a', Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH + 100);
-            string expectedValue = "[TRUNCATED BY USAGE SHARING] " +
+            string expectedValue =
                 new string('a', Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH);
             Dictionary<string, object> evidenceData = new Dictionary<string, object>()
             {
@@ -2019,7 +2024,7 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
                 while (xr.Read()) { }
             }
             // Check that the value was truncated and marked as such.
-            Assert.Contains($"<header Name=\"user-agent\"><![CDATA[{expectedValue}]]></header>", _xmlContent[0]);
+            Assert.Contains($"<header Name=\"user-agent\" truncated=\"true\"><![CDATA[{expectedValue}]]></header>", _xmlContent[0]);
             Assert.DoesNotContain(longValue, _xmlContent[0]);
         }
 

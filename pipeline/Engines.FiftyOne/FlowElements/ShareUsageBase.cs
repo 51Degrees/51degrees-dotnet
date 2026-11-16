@@ -101,6 +101,15 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             /// </summary>
             public Dictionary<string, Dictionary<string, string>> EvidenceData { get; private set; } =
                 new Dictionary<string, Dictionary<string, string>>();
+            /// <summary>
+            /// The evidence entries whose values were cut to the maximum
+            /// length, keyed as <see cref="EvidenceData"/> is: the first
+            /// part of the evidence key, then the set of the rest of the
+            /// keys under it that were cut. Each is written with the
+            /// attribute truncated="true".
+            /// </summary>
+            public Dictionary<string, HashSet<string>> TruncatedEvidence { get; private set; } =
+                new Dictionary<string, HashSet<string>>();
         }
 
         /// <summary>
@@ -1201,14 +1210,25 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                             field = entry.Key.Substring(firstSeperator + 1);
                         }
 
-                        // Get the evidence value.
-                        string evidenceValue = entry.Value.ToString();
-                        // If the value is longer than the permitted length 
-                        // then truncate it.
-                        if (evidenceValue.Length > Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH)
+                        // Get the evidence value, cut to the permitted
+                        // length if it is longer. This is the value as it
+                        // was supplied, before any character is escaped
+                        // when it is written, so escapes do not count.
+                        string evidenceValue = Truncate(
+                            entry.Value.ToString(),
+                            Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH,
+                            out var truncated);
+                        if (truncated)
                         {
-                            evidenceValue = "[TRUNCATED BY USAGE SHARING] " +
-                                evidenceValue.Remove(Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH);
+                            if (data.TruncatedEvidence.TryGetValue(
+                                category, out var truncatedFields) == false)
+                            {
+                                truncatedFields = new HashSet<string>(
+                                    StringComparer.Ordinal);
+                                data.TruncatedEvidence.Add(
+                                    category, truncatedFields);
+                            }
+                            truncatedFields.Add(field);
                         }
 
                         // Add the evidence to the dictionary.
@@ -1394,10 +1414,6 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 throw new ArgumentNullException(nameof(data));
             }
 
-            // Used to record whether the evidence within a flow data contains invalid XML
-            // characters such as control characters.
-            var flagBadSchema = false;
-
             // The SessionID used to track a series of requests
             writer.WriteElementString("SessionId", data.SessionId);
             // The sequence number of the request in a series of requests.
@@ -1412,15 +1428,29 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             writer.WriteRaw(GetStaticXml());
 
             // Write all other evidence data that has been included.
+            // Each changed entry says how it was changed in attributes of
+            // its own element: escaped="true" where a character XML does not
+            // allow was replaced, and truncated="true" where the value was
+            // cut to the maximum length.
             foreach (var category in data.EvidenceData)
             {
+                data.TruncatedEvidence.TryGetValue(
+                    category.Key, out var truncatedFields);
                 foreach (var entry in category.Value)
                 {
+                    var escaped = false;
+                    var truncated = truncatedFields != null &&
+                        truncatedFields.Contains(entry.Key);
                     if (category.Key.Length > 0)
                     {
+                        var name = EncodeInvalidXMLChars(
+                            entry.Key, ref escaped);
+                        var value = EncodeInvalidXMLChars(
+                            entry.Value, ref escaped);
                         writer.WriteStartElement(category.Key);
-                        writer.WriteAttributeString("Name", EncodeInvalidXMLChars(entry.Key, ref flagBadSchema));
-                        writer.WriteCData(EncodeInvalidXMLChars(entry.Value, ref flagBadSchema));
+                        writer.WriteAttributeString("Name", name);
+                        WriteChangeAttributes(writer, escaped, truncated);
+                        writer.WriteCData(value);
                         writer.WriteEndElement();
                     }
                     else
@@ -1434,18 +1464,76 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                             entry.Key.Substring(
                                 Core.Constants.EVIDENCE_SEPERATOR.Length) :
                             entry.Key;
-                        writer.WriteElementString(
-                            EncodeInvalidXMLChars(name, ref flagBadSchema),
-                            EncodeInvalidXMLChars(
-                                entry.Value, ref flagBadSchema));
+                        name = EncodeInvalidXMLChars(name, ref escaped);
+                        var value = EncodeInvalidXMLChars(
+                            entry.Value, ref escaped);
+                        writer.WriteStartElement(name);
+                        WriteChangeAttributes(writer, escaped, truncated);
+                        writer.WriteString(value);
+                        writer.WriteEndElement();
                     }
                 }
             }
-            // If any written value contained invalid characters, add the 'BadSchema' element.
-            if (flagBadSchema)
+        }
+
+        /// <summary>
+        /// Write the attributes that say how an evidence entry's value was
+        /// changed before it was written.
+        /// </summary>
+        private static void WriteChangeAttributes(
+            XmlWriter writer,
+            bool escaped,
+            bool truncated)
+        {
+            if (escaped)
             {
-                writer.WriteElementString("BadSchema", "true");
+                writer.WriteAttributeString("escaped", "true");
             }
+            if (truncated)
+            {
+                writer.WriteAttributeString("truncated", "true");
+            }
+        }
+
+        /// <summary>
+        /// Cut a value to a number of Unicode code points, never dividing a
+        /// character that UTF-16 stores as a surrogate pair.
+        /// </summary>
+        /// <param name="value">The value as it was supplied.</param>
+        /// <param name="maximum">
+        /// The most code points the value may hold.
+        /// </param>
+        /// <param name="truncated">
+        /// Set to true where the value was longer and has been cut.
+        /// </param>
+        /// <returns>The value, cut where it was longer.</returns>
+        internal static string Truncate(
+            string value,
+            int maximum,
+            out bool truncated)
+        {
+            truncated = false;
+            // A string holds at least as many units as code points, so one
+            // no longer than the maximum in units is within it.
+            if (value.Length <= maximum)
+            {
+                return value;
+            }
+            var count = 0;
+            var i = 0;
+            while (i < value.Length)
+            {
+                if (count == maximum)
+                {
+                    truncated = true;
+                    return value.Substring(0, i);
+                }
+                i += char.IsHighSurrogate(value[i]) &&
+                    i + 1 < value.Length &&
+                    char.IsLowSurrogate(value[i + 1]) ? 2 : 1;
+                count++;
+            }
+            return value;
         }
 
         /// <summary>
@@ -1533,8 +1621,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// The text to encode
         /// </param>
         /// <param name="flagBadSchema">
-        /// A flag storing whether this usage message inculdes any invalid characters 
-        /// that we have had to encod.
+        /// Set to true where the text included any invalid characters that
+        /// have had to be encoded, so the entry is written with the
+        /// attribute escaped="true".
         /// </param>
         /// <returns>
         /// The encoded version of <paramref name="text"/>
