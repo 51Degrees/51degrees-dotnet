@@ -77,9 +77,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         };
 
         /// <summary>
-        /// Query string parameters will not be shared by default.
-        /// Any query string parameters to be shared must be added to this
-        /// collection.
+        /// The query string parameters shared besides those starting 51D_,
+        /// in lower case. Null shares every parameter, which is what the
+        /// builder passes by default.
         /// </summary>
         private HashSet<string> _includedQueryStringParams = new HashSet<string>();
 
