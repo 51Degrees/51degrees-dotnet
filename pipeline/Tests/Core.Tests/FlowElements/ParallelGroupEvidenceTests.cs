@@ -175,6 +175,58 @@ public class ParallelGroupEvidenceTests
     }
 
     /// <summary>
+    /// The Evidence the Flow Data gives out is refused the same way when an
+    /// element of a group writes to it directly, through its indexer,
+    /// PopulateFrom or PopulateFromDictionary.
+    /// </summary>
+    [TestMethod]
+    [DataRow("indexer")]
+    [DataRow("PopulateFrom")]
+    [DataRow("PopulateFromDictionary")]
+    public void ElementOfGroup_WritesTheEvidenceDirectly_Refused(string route)
+    {
+        var seen = new ConcurrentDictionary<string, string>();
+        var adder = Element("adder", data =>
+        {
+            var evidence = data.GetEvidence();
+            var values = new Dictionary<string, object>
+            {
+                { "query.added", "1" },
+            };
+            switch (route)
+            {
+                case "indexer":
+                    evidence["query.added"] = "1";
+                    break;
+                case "PopulateFrom":
+                    evidence.PopulateFrom(values);
+                    break;
+                default:
+#pragma warning disable CS0618 // The deprecated form is still public.
+                    evidence.PopulateFromDictionary(values);
+#pragma warning restore CS0618
+                    break;
+            }
+        });
+        using var pipeline = new PipelineBuilder(NullLoggerFactory.Instance)
+            .AddFlowElementsParallel(adder.Object, Reader("other", seen).Object)
+            .AddFlowElement(Reader("after", seen).Object)
+            .SetSuppressProcessExceptions(true)
+            .Build();
+        using var data = Supplied(pipeline);
+
+        data.Process();
+
+        Assert.AreEqual("absent", seen["after query.added"]);
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                ("adder", Refused("query.added"), typeof(PipelineConfigurationException)),
+            },
+            Errors(data));
+    }
+
+    /// <summary>
     /// With errors not suppressed, the refused value fails processing with
     /// the configuration error once every element has run.
     /// </summary>
