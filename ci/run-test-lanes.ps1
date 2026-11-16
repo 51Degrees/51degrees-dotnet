@@ -84,11 +84,27 @@ foreach ($assembly in $assemblies) {
     else { $lanes.pool += $assembly.FullName }
 }
 $poolSize = [Math]::Max(1, [Environment]::ProcessorCount - 1)
+# An assembly's output is printed when it finishes, so a job killed at its
+# time limit says nothing about the assembly it was running. Every assembly
+# is named here, and each exclusive one again as it starts.
 Write-Host "Exclusive: $($exclusive.Count) assemblies, one at a time first"
+foreach ($assembly in $exclusive) {
+    Write-Host "  exclusive: $(Get-AssemblyLabel $assembly)"
+}
 foreach ($lane in $lanes.Keys) {
     Write-Host "Lane '$lane': $($lanes[$lane].Count) assemblies"
+    foreach ($assembly in $lanes[$lane]) {
+        Write-Host "  $($lane): $(Get-AssemblyLabel $assembly)"
+    }
 }
 Write-Host "The pool runs $poolSize at once"
+
+# The assembly and the framework folder it was built for, as the log file
+# names them, so one line names one build of one test project.
+function Get-AssemblyLabel($Path) {
+    [IO.Path]::GetFileNameWithoutExtension($Path) + " " +
+        [IO.Path]::GetFileName([IO.Path]::GetDirectoryName($Path))
+}
 
 # Runs one assembly and returns its name, exit code, time and log file. On
 # macOS a test host killed within a second of starting is retried, as the
@@ -122,6 +138,8 @@ function Write-Result($Result, $Lane) {
 }
 
 foreach ($assembly in $exclusive) {
+    Write-Host ("Starting $(Get-AssemblyLabel $assembly) at " +
+        "$([DateTime]::UtcNow.ToString('HH:mm:ss')) UTC")
     $result = & $runOne $assembly $Configuration $ResultPath $LogPath $BlameHangTimeout $testFilters[$assembly]
     $results += $result
     Write-Result $result "exclusive"
