@@ -1,0 +1,96 @@
+name: DD timing
+
+# Throwaway. Times the Device Detection performance example built from main
+# and from the release head on one runner, taking turns. Delete this branch
+# when the figures are recorded.
+
+on:
+  push:
+    branches:
+      - 'tmp/dotnet-dd-timing'
+
+jobs:
+  Measure:
+    name: DD timing Ubuntu_x64_Release
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout Common
+        uses: actions/checkout@v4
+        with:
+          repository: 51Degrees/common-ci
+          path: common
+
+      - name: Checkout m, main
+        uses: actions/checkout@v4
+        with:
+          ref: 8b3220b3a935da70429fe260e0dfaf180d2f5ad6
+          submodules: recursive
+          path: m
+
+      - name: Checkout r, the release head
+        uses: actions/checkout@v4
+        with:
+          ref: 4c2af8d1693adf323a5ff5ef7450a02f177f3208
+          submodules: recursive
+          path: r
+
+      - name: Fetch the data file and the evidence
+        shell: pwsh
+        working-directory: common
+        run: |
+          ./steps/fetch-assets.ps1 -Assets 'TAC-HashV41.hash', '20000 Evidence Records.yml' `
+            -DeviceDetection '${{ secrets.DEVICE_DETECTION_KEY }}' `
+            -DeviceDetectionUrl '${{ secrets.DEVICE_DETECTION_URL }}'
+          Get-ChildItem assets | Select-Object Name, Length
+          nproc
+          free -g
+
+      - name: Write the strong name key
+        shell: pwsh
+        env:
+          SNK: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
+        run: |
+          foreach ($arm in 'm', 'r') {
+            [IO.File]::WriteAllBytes("$env:GITHUB_WORKSPACE/$arm/51Degrees.snk", [Convert]::FromBase64String($env:SNK))
+          }
+
+      - name: Build both
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          dotnet --info | Select-Object -First 12
+          foreach ($arm in 'm', 'r') {
+            Push-Location $arm
+            "$arm $(git log -1 --format='%H') cxx $(git -C cxx log -1 --format='%H')"
+            $project = 'examples/device-detection/OnPremise/Performance-Console'
+            dotnet build $project -c Release -p:Platform=x64 -p:OutDir=output -p:BuiltOnCI=true -m:1 -p:FiftyOneReferences=Project
+            Pop-Location
+          }
+
+      - name: Time in turns
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tac = "$env:GITHUB_WORKSPACE/common/assets/TAC-HashV41.hash"
+          $evidence = "$env:GITHUB_WORKSPACE/common/assets/20000 Evidence Records.yml"
+          $rounds = 9
+          $res = @{ m = @(); r = @() }
+          for ($i = 1; $i -le $rounds; $i++) {
+            $order = if ($i % 2) { @('m', 'r') } else { @('r', 'm') }
+            foreach ($arm in $order) {
+              Push-Location "$arm/examples/device-detection/OnPremise/Performance-Console/output"
+              Remove-Item summary.json -ErrorAction SilentlyContinue
+              dotnet FiftyOne.DeviceDetection.Examples.OnPremise.Performance.dll -d $tac -u $evidence -j summary.json *> "$env:GITHUB_WORKSPACE/log-$arm-$i.txt"
+              if ($LASTEXITCODE) { Get-Content "$env:GITHUB_WORKSPACE/log-$arm-$i.txt" | Select-Object -Last 30; throw "$arm round $i failed" }
+              $v = [double](Get-Content summary.json | ConvertFrom-Json).MaxPerformance.DetectionsPerSecond
+              Pop-Location
+              $res[$arm] += $v
+              "round $i $arm $([math]::Round($v))"
+            }
+          }
+          foreach ($arm in 'm', 'r') {
+            $s = @($res[$arm] | Sort-Object)
+            "$arm median $([math]::Round($s[[int][math]::Floor($s.Count / 2)])) min $([math]::Round($s[0])) max $([math]::Round($s[-1]))"
+          }
