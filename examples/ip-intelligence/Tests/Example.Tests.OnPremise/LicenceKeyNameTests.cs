@@ -34,6 +34,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.OnPremise;
 /// </summary>
 [TestClass]
 [DoNotParallelize]
+[TestCategory(TestCategories.Unit)]
 public class LicenceKeyNameTests
 {
     private const string Name = "_51DEGREES_LICENSE_KEY";
