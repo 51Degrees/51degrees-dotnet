@@ -78,14 +78,18 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
                 .SetAutoDisposeElements(true)
                 .Build();
 
-            _validTac = _tacEngine.DataSet.PropertyIndexes
-                .FirstOrDefault(i => i.MetaData.Name.Equals(
-                    "TAC", StringComparison.OrdinalIgnoreCase))
-                ?.ValueData.Keys.FirstOrDefault();
-            _validNativeModel = _nativeEngine.DataSet.PropertyIndexes
-                .FirstOrDefault(i => i.MetaData.Name.Equals(
-                    "NativeModel", StringComparison.OrdinalIgnoreCase))
-                ?.ValueData.Keys.FirstOrDefault();
+            // The engines keep no index of their own, so a value the data
+            // file holds is read from the Hash engine's property values.
+            _validTac = hashEngine.Properties
+                .Single(p => p.Name == "TAC")
+                .Values
+                .Select(v => v.Name)
+                .FirstOrDefault(v => v.Length == 8 && v.All(char.IsDigit));
+            _validNativeModel = hashEngine.Properties
+                .Single(p => p.Name == "NativeModel")
+                .Values
+                .Select(v => v.Name)
+                .FirstOrDefault(v => v.Length > 1);
         }
 
         [ClassCleanup]
