@@ -2,8 +2,6 @@
   <!-- The settings shared by the whole repository come first. -->
   <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" />
   <PropertyGroup>
-    <!-- The family version from the root file, unless the build passes one. -->
-    <Version Condition="'$(Version)' == ''">$(FiftyOneGeoLocationVersion)</Version>
     <AssemblyVersion>4.5.0.0</AssemblyVersion>
 
     <SignAssembly>true</SignAssembly>

@@ -265,6 +265,11 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                         // For automatic updates to work you will also need to provide a license key.
                         // Contact us for a license key at https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=run
                         .UseOnPremise(dataFile, licenseKey, true)
+                        // Usage sharing is off because the evidence in this
+                        // console example is not from real requests. A
+                        // production deployment should leave it on, as what
+                        // it shares improves the quality of the service.
+                        .SetShareUsage(false)
                         // Enable update on startup, the auto update system
                         // will be used to check for an update before the
                         // device detection engine is created. This will block
@@ -442,6 +447,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             if (string.IsNullOrWhiteSpace(licenseKey))
             {
                 ExplainLicenseKey(dataFile, Console.Out);
+                UpdateProgrammatically(dataFile, Console.Out);
                 ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
                 return;
             }
@@ -489,6 +495,85 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                 "line argument, or in the environment variable " +
                 $"'{Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR}'. Contact us for a key and a copy " +
                 $"at {ContactUs}");
+        }
+
+        /// <summary>
+        /// A programmatic update, which the application asks for itself. With
+        /// no licence key there is nothing to download, so the update uses a
+        /// new data file put where the engine reads its data. The engine
+        /// reads a copy of the data file, so the file it was given is not
+        /// changed.
+        /// </summary>
+        private static void UpdateProgrammatically(
+            string dataFile, TextWriter output)
+        {
+            dataFile = dataFile ??
+                ExampleUtils.FindDataFile(Constants.LITE_HASH_DATA_FILE_NAME);
+            if (dataFile == null || File.Exists(dataFile) == false)
+            {
+                return;
+            }
+            var location = Path.Combine(
+                Path.GetTempPath(),
+                $"51Degrees-UpdateDataFile-{Guid.NewGuid():N}.hash");
+            File.Copy(dataFile, location);
+            try
+            {
+                using (var loggerFactory = new LoggerFactory())
+                using (var httpClient = new HttpClient())
+                {
+                    var dataUpdateService = new DataUpdateService(
+                        loggerFactory.CreateLogger<DataUpdateService>(),
+                        httpClient);
+                    // Automatic updates and the file system watcher are off,
+                    // so only the application's own call updates the engine.
+                    // The engine works from a temporary copy of the file, so
+                    // a new file can be put at the location while it runs.
+                    using (var engine = new DeviceDetectionHashEngineBuilder(
+                            loggerFactory, dataUpdateService)
+                        .SetPerformanceProfile(PerformanceProfiles.LowMemory)
+                        .SetAutoUpdate(false)
+                        .SetDataFileSystemWatcher(false)
+                        .SetDataUpdateOnStartup(false)
+                        .Build(location, true))
+                    {
+                        output.WriteLine();
+                        output.WriteLine("A programmatic update needs no " +
+                            "licence key when the application has a new data " +
+                            "file itself. The engine reads its data from " +
+                            $"'{location}'.");
+
+                        // A new data file arrives at the location. Here it is
+                        // the same file again, written now.
+                        File.Copy(dataFile, location, true);
+                        File.SetLastWriteTimeUtc(location, DateTime.UtcNow);
+
+                        // The application asks for the update. With no
+                        // download configured, the data update service
+                        // refreshes the engine from the file at the location.
+                        var status = dataUpdateService.CheckForUpdate(engine);
+                        if (status == AutoUpdateStatus.AUTO_UPDATE_SUCCESS)
+                        {
+                            output.WriteLine("A new file was put there, and " +
+                                "CheckForUpdate refreshed the engine from it, " +
+                                $"with the status {status}.");
+                        }
+                        else
+                        {
+                            output.WriteLine("A new file was put there, but " +
+                                $"CheckForUpdate gave the status {status} and " +
+                                "did not refresh the engine. A refresh from a " +
+                                "file needs the engine to read a temporary copy " +
+                                "of the data, the file system watcher to be off " +
+                                "and the new file to be newer than that copy.");
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                File.Delete(location);
+            }
         }
 
         public static void Initialize(

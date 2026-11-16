@@ -110,17 +110,27 @@ namespace FiftyOne.IpIntelligence.Cloud.FlowElements
             if (aspectData == null) { throw new ArgumentNullException(nameof(aspectData)); }
 
             var dictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
-            var propertyValues = JsonConvert.DeserializeObject<Dictionary<string, object>>(dictionary["ip"].ToString(),
+            // A response with no section for this engine leaves its data
+            // without values.
+            if (dictionary.TryGetValue("ip", out var section) == false ||
+                section == null)
+            {
+                return;
+            }
+            var propertyValues = JsonConvert.DeserializeObject<Dictionary<string, object>>(section.ToString(),
                 new JsonSerializerSettings()
                 {
                     Converters = JSON_CONVERTERS,
                 });
 
+            var properties = PropertiesForResponse.ToList();
             var ip = CloudDataHelper.CreateAPVDictionary(
                 propertyValues,
-                Properties.ToList(),
+                properties,
                 CloudDataHelper.IpTypeConverter,
-                Logger,
+                // With no meta-data yet every value would be logged as
+                // having none, on every response.
+                properties.Count > 0 ? Logger : null,
                 GetType().Name);
             aspectData.PopulateFrom(ip);
         }

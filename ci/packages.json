@@ -1,68 +1,572 @@
 [
   {
-    "Name": "common",
-    "Path": "common",
-    "ExtraPaths": ["Directory.Build.targets"],
-    "DependsOn": [],
-    "Publish": true,
-    "Property": "FiftyOneCommonVersion",
-    "Solutions": ["common/FiftyOne.Common.sln"]
-  },
-  {
-    "Name": "caching",
-    "Path": "caching",
-    "ExtraPaths": ["Directory.Build.targets"],
-    "DependsOn": [],
-    "Publish": true,
-    "Property": "FiftyOneCachingVersion",
-    "Solutions": ["caching/FiftyOne.Caching.sln"]
-  },
-  {
-    "Name": "pipeline",
-    "Path": "pipeline",
-    "ExtraPaths": ["Directory.Build.targets"],
-    "DependsOn": ["common", "caching"],
-    "Publish": true,
-    "Ignore": ["**/performance-tests/**"],
-    "Property": "FiftyOnePipelineVersion",
-    "Solutions": [
-      "pipeline/FiftyOne.Pipeline.sln",
-      "pipeline/FiftyOne.Pipeline.Elements.sln",
-      "pipeline/FiftyOne.CloudRequestEngine.sln"
+    "Name": "FiftyOne.Common",
+    "Path": "common/Common",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "common/Directory.Build.props"
     ],
-    "Framework": ["pipeline/FiftyOne.Pipeline.Web.sln"]
+    "DependsOn": [],
+    "Publish": true,
+    "Family": "common",
+    "Project": "common/Common/FiftyOne.Common.csproj",
+    "Property": "FiftyOneCommonVersion"
   },
   {
-    "Name": "device-detection",
-    "Path": "device-detection",
-    "ExtraPaths": ["cxx", "Directory.Build.targets"],
-    "DependsOn": ["pipeline"],
+    "Name": "FiftyOne.Caching",
+    "Path": "caching/Caching",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "caching/Directory.Build.props"
+    ],
+    "DependsOn": [],
     "Publish": true,
-    "Ignore": ["**/performance-tests/**"],
-    "Property": "FiftyOneDeviceDetectionVersion",
-    "Solutions": ["device-detection/FiftyOne.DeviceDetection.Core.slnf"],
-    "Framework": ["device-detection/FiftyOne.DeviceDetection.sln"],
-    "Platform": true
+    "Family": "caching",
+    "Project": "caching/Caching/FiftyOne.Caching.csproj",
+    "Property": "FiftyOneCachingVersion"
   },
   {
-    "Name": "ip-intelligence",
-    "Path": "ip-intelligence",
-    "ExtraPaths": ["cxx", "Directory.Build.targets"],
-    "DependsOn": ["pipeline"],
+    "Name": "FiftyOne.Did",
+    "Path": "pipeline/Did",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images",
+      "pipeline/owid-dotnet"
+    ],
+    "DependsOn": [],
     "Publish": true,
-    "Ignore": ["**/performance-tests/**"],
-    "Property": "FiftyOneIpIntelligenceVersion",
-    "Solutions": ["ip-intelligence/FiftyOne.IpIntelligence.sln"],
-    "Platform": true,
-    "NotOn": ["x86"]
+    "Family": "pipeline",
+    "Project": "pipeline/Did/FiftyOne.Did.csproj",
+    "Property": "FiftyOneDidVersion"
   },
   {
-    "Name": "location",
-    "Path": "location",
-    "ExtraPaths": ["Directory.Build.targets"],
-    "DependsOn": ["pipeline"],
+    "Name": "FiftyOne.Pipeline.Core",
+    "Path": "pipeline/Core",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [],
     "Publish": true,
-    "Property": "FiftyOneGeoLocationVersion",
-    "Solutions": ["location/FiftyOne.GeoLocation.sln"]
+    "Family": "pipeline",
+    "Project": "pipeline/Core/FiftyOne.Pipeline.Core.csproj",
+    "Property": "FiftyOnePipelineCoreVersion"
+  },
+  {
+    "Name": "FiftyOne.Common.TestHelpers",
+    "Path": "common/TestHelpers",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "common/Directory.Build.props"
+    ],
+    "DependsOn": [
+      "FiftyOne.Common"
+    ],
+    "Publish": true,
+    "Family": "common",
+    "Project": "common/TestHelpers/FiftyOne.Common.TestHelpers.csproj",
+    "Property": "FiftyOneCommonTestHelpersVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.Engines",
+    "Path": "pipeline/Engines",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Caching",
+      "FiftyOne.Common",
+      "FiftyOne.Pipeline.Core"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/Engines/FiftyOne.Pipeline.Engines.csproj",
+    "Property": "FiftyOnePipelineEnginesVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.AgentSignature",
+    "Path": "pipeline/AgentSignature",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/AgentSignature/FiftyOne.Pipeline.AgentSignature.csproj",
+    "Property": "FiftyOnePipelineAgentSignatureVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.CloudRequestEngine",
+    "Path": "pipeline/CloudRequestEngine",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/CloudRequestEngine/FiftyOne.Pipeline.CloudRequestEngine.csproj",
+    "Property": "FiftyOnePipelineCloudRequestEngineVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.DerivedProperty",
+    "Path": "pipeline/DerivedProperty",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/DerivedProperty/FiftyOne.Pipeline.DerivedProperty.csproj",
+    "Property": "FiftyOnePipelineDerivedPropertyVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.Engines.FiftyOne",
+    "Path": "pipeline/Engines.FiftyOne",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/Engines.FiftyOne/FiftyOne.Pipeline.Engines.FiftyOne.csproj",
+    "Property": "FiftyOnePipelineEnginesFiftyOneVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.Engines.TestHelpers",
+    "Path": "pipeline/Engines.TestHelpers",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/Engines.TestHelpers/FiftyOne.Pipeline.Engines.TestHelpers.csproj",
+    "Property": "FiftyOnePipelineEnginesTestHelpersVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.Examples.Shared",
+    "Path": "pipeline/Examples.Shared",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Core",
+      "FiftyOne.Pipeline.Engines"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/Examples.Shared/FiftyOne.Pipeline.Examples.Shared.csproj",
+    "Property": "FiftyOnePipelineExamplesSharedVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.Translation",
+    "Path": "pipeline/Translation",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/Translation/FiftyOne.Pipeline.Translation.csproj",
+    "Property": "FiftyOnePipelineTranslationVersion"
+  },
+  {
+    "Name": "FiftyOne.Did.Core",
+    "Path": "pipeline/Did.Core",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines",
+      "FiftyOne.Pipeline.Engines.FiftyOne"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/Did.Core/FiftyOne.Did.Core.csproj",
+    "Property": "FiftyOneDidCoreVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.JsonBuilder",
+    "Path": "pipeline/JsonBuilderElement",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines.FiftyOne"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/JsonBuilderElement/FiftyOne.Pipeline.JsonBuilder.csproj",
+    "Property": "FiftyOnePipelineJsonBuilderVersion"
+  },
+  {
+    "Name": "FiftyOne.DeviceDetection.Shared",
+    "Path": "device-detection/Shared",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "device-detection/Directory.Build.props",
+      "device-detection/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines.FiftyOne"
+    ],
+    "Publish": true,
+    "Family": "device-detection",
+    "Project": "device-detection/Shared/FiftyOne.DeviceDetection.Shared.csproj",
+    "Property": "FiftyOneDeviceDetectionSharedVersion"
+  },
+  {
+    "Name": "FiftyOne.IpIntelligence.Shared",
+    "Path": "ip-intelligence/Shared",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "ip-intelligence/Directory.Build.props",
+      "ip-intelligence/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines.FiftyOne"
+    ],
+    "Publish": true,
+    "Family": "ip-intelligence",
+    "Project": "ip-intelligence/Shared/FiftyOne.IpIntelligence.Shared.csproj",
+    "Property": "FiftyOneIpIntelligenceSharedVersion"
+  },
+  {
+    "Name": "FiftyOne.Geolocation.Core",
+    "Path": "location/GeoLocation/Core",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "location/Directory.Build.props",
+      "location/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines.FiftyOne"
+    ],
+    "Publish": true,
+    "Family": "location",
+    "Project": "location/GeoLocation/Core/FiftyOne.GeoLocation.Core.csproj",
+    "Property": "FiftyOneGeolocationCoreVersion"
+  },
+  {
+    "Name": "FiftyOne.Did.Cloud",
+    "Path": "pipeline/Did.Cloud",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Did.Core",
+      "FiftyOne.Pipeline.CloudRequestEngine",
+      "FiftyOne.Pipeline.Engines.FiftyOne"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/Did.Cloud/FiftyOne.Did.Cloud.csproj",
+    "Property": "FiftyOneDidCloudVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.JavaScriptBuilder",
+    "Path": "pipeline/JavaScriptBuilderElement",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images",
+      "pipeline/vendor"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Engines",
+      "FiftyOne.Pipeline.JsonBuilder"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/JavaScriptBuilderElement/FiftyOne.Pipeline.JavaScriptBuilder.csproj",
+    "Property": "FiftyOnePipelineJavaScriptBuilderVersion"
+  },
+  {
+    "Name": "FiftyOne.DeviceDetection.Cloud",
+    "Path": "device-detection/Cloud",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "device-detection/Directory.Build.props",
+      "device-detection/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.DeviceDetection.Shared",
+      "FiftyOne.Pipeline.CloudRequestEngine"
+    ],
+    "Publish": true,
+    "Family": "device-detection",
+    "Project": "device-detection/Cloud/FiftyOne.DeviceDetection.Cloud.csproj",
+    "Property": "FiftyOneDeviceDetectionCloudVersion"
+  },
+  {
+    "Name": "FiftyOne.DeviceDetection.Hash.Engine.OnPremise",
+    "Path": "device-detection/Hash.Engine.OnPremise",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "device-detection/Directory.Build.props",
+      "device-detection/Images",
+      "cxx",
+      "device-detection/.editorconfig"
+    ],
+    "DependsOn": [
+      "FiftyOne.DeviceDetection.Shared"
+    ],
+    "Publish": true,
+    "Family": "device-detection",
+    "Project": "device-detection/Hash.Engine.OnPremise/FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj",
+    "Property": "FiftyOneDeviceDetectionHashEngineOnPremiseVersion"
+  },
+  {
+    "Name": "FiftyOne.IpIntelligence.Engine.OnPremise",
+    "Path": "ip-intelligence/Engine.OnPremise",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "ip-intelligence/Directory.Build.props",
+      "ip-intelligence/Images",
+      "cxx"
+    ],
+    "DependsOn": [
+      "FiftyOne.IpIntelligence.Shared"
+    ],
+    "Publish": true,
+    "Family": "ip-intelligence",
+    "Project": "ip-intelligence/Engine.OnPremise/FiftyOne.IpIntelligence.Engine.OnPremise.csproj",
+    "Property": "FiftyOneIpIntelligenceEngineOnPremiseVersion"
+  },
+  {
+    "Name": "FiftyOne.IpIntelligence.Translation",
+    "Path": "ip-intelligence/Translation",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "ip-intelligence/Directory.Build.props",
+      "ip-intelligence/Images",
+      "cxx"
+    ],
+    "DependsOn": [
+      "FiftyOne.IpIntelligence.Shared",
+      "FiftyOne.Pipeline.Translation"
+    ],
+    "Publish": true,
+    "Family": "ip-intelligence",
+    "Project": "ip-intelligence/Translation/FiftyOne.IpIntelligence.Translation.csproj",
+    "Property": "FiftyOneIpIntelligenceTranslationVersion"
+  },
+  {
+    "Name": "FiftyOne.Geolocation.Cloud",
+    "Path": "location/GeoLocation/Cloud",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "location/Directory.Build.props",
+      "location/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Geolocation.Core",
+      "FiftyOne.Pipeline.CloudRequestEngine"
+    ],
+    "Publish": true,
+    "Family": "location",
+    "Project": "location/GeoLocation/Cloud/FiftyOne.GeoLocation.Cloud.csproj",
+    "Property": "FiftyOneGeolocationCloudVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.Web.Shared",
+    "Path": "pipeline/Web.Shared",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Core",
+      "FiftyOne.Pipeline.Engines",
+      "FiftyOne.Pipeline.JavaScriptBuilder"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Project": "pipeline/Web.Shared/FiftyOne.Pipeline.Web.Shared.csproj",
+    "Property": "FiftyOnePipelineWebSharedVersion"
+  },
+  {
+    "Name": "FiftyOne.DeviceDetection",
+    "Path": "device-detection/DeviceDetection",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "device-detection/Directory.Build.props",
+      "device-detection/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.DeviceDetection.Cloud",
+      "FiftyOne.DeviceDetection.Hash.Engine.OnPremise"
+    ],
+    "Publish": true,
+    "Family": "device-detection",
+    "Project": "device-detection/DeviceDetection/FiftyOne.DeviceDetection.csproj",
+    "Property": "FiftyOneDeviceDetectionVersion"
+  },
+  {
+    "Name": "FiftyOne.DeviceDetection.PropertyKeyed",
+    "Path": "device-detection/PropertyKeyed",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "device-detection/Directory.Build.props",
+      "device-detection/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.DeviceDetection.Hash.Engine.OnPremise",
+      "FiftyOne.Pipeline.Engines.FiftyOne"
+    ],
+    "Publish": true,
+    "Family": "device-detection",
+    "Project": "device-detection/PropertyKeyed/FiftyOne.DeviceDetection.PropertyKeyed.csproj",
+    "Property": "FiftyOneDeviceDetectionPropertyKeyedVersion"
+  },
+  {
+    "Name": "FiftyOne.IpIntelligence.Cloud",
+    "Path": "ip-intelligence/Cloud",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "ip-intelligence/Directory.Build.props",
+      "ip-intelligence/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.IpIntelligence.Shared",
+      "FiftyOne.IpIntelligence.Translation",
+      "FiftyOne.Pipeline.CloudRequestEngine"
+    ],
+    "Publish": true,
+    "Family": "ip-intelligence",
+    "Project": "ip-intelligence/Cloud/FiftyOne.IpIntelligence.Cloud.csproj",
+    "Property": "FiftyOneIpIntelligenceCloudVersion"
+  },
+  {
+    "Name": "FiftyOne.Geolocation",
+    "Path": "location/GeoLocation/GeoLocation",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "location/Directory.Build.props",
+      "location/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.Geolocation.Cloud"
+    ],
+    "Publish": true,
+    "Family": "location",
+    "Project": "location/GeoLocation/GeoLocation/FiftyOne.GeoLocation.csproj",
+    "Property": "FiftyOneGeolocationVersion"
+  },
+  {
+    "Name": "FiftyOne.Pipeline.Web",
+    "Path": "pipeline/Web",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "pipeline/Directory.Build.props",
+      "pipeline/Images",
+      "pipeline/Web.Framework",
+      "pipeline/FiftyOne.Pipeline.Web.nuspec"
+    ],
+    "DependsOn": [
+      "FiftyOne.Pipeline.Core",
+      "FiftyOne.Pipeline.Engines",
+      "FiftyOne.Pipeline.Engines.FiftyOne",
+      "FiftyOne.Pipeline.JavaScriptBuilder",
+      "FiftyOne.Pipeline.JsonBuilder",
+      "FiftyOne.Pipeline.Web.Shared"
+    ],
+    "Publish": true,
+    "Family": "pipeline",
+    "Nuspec": "pipeline/FiftyOne.Pipeline.Web.nuspec",
+    "Projects": [
+      "pipeline/Web/FiftyOne.Pipeline.Web.csproj",
+      "pipeline/Web.Framework/FiftyOne.Pipeline.Web.Framework.csproj"
+    ],
+    "Property": "FiftyOnePipelineWebVersion",
+    "Solution": "pipeline/FiftyOne.Pipeline.Web.sln"
+  },
+  {
+    "Name": "FiftyOne.DeviceDetection.RobotsTxt",
+    "Path": "device-detection/RobotsTxt",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "device-detection/Directory.Build.props",
+      "device-detection/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.DeviceDetection.PropertyKeyed",
+      "FiftyOne.Pipeline.Engines.FiftyOne"
+    ],
+    "Publish": true,
+    "Family": "device-detection",
+    "Project": "device-detection/RobotsTxt/FiftyOne.DeviceDetection.RobotsTxt.csproj",
+    "Property": "FiftyOneDeviceDetectionRobotsTxtVersion"
+  },
+  {
+    "Name": "FiftyOne.IpIntelligence",
+    "Path": "ip-intelligence/IpIntelligence",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "ip-intelligence/Directory.Build.props",
+      "ip-intelligence/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.IpIntelligence.Cloud",
+      "FiftyOne.IpIntelligence.Engine.OnPremise"
+    ],
+    "Publish": true,
+    "Family": "ip-intelligence",
+    "Project": "ip-intelligence/IpIntelligence/FiftyOne.IpIntelligence.csproj",
+    "Property": "FiftyOneIpIntelligenceVersion"
+  },
+  {
+    "Name": "FiftyOne.DeviceDetection.RobotsTxt.Cloud",
+    "Path": "device-detection/RobotsTxt.Cloud",
+    "ExtraPaths": [
+      "Directory.Build.targets",
+      "device-detection/Directory.Build.props",
+      "device-detection/Images"
+    ],
+    "DependsOn": [
+      "FiftyOne.DeviceDetection.RobotsTxt",
+      "FiftyOne.Pipeline.CloudRequestEngine"
+    ],
+    "Publish": true,
+    "Family": "device-detection",
+    "Project": "device-detection/RobotsTxt.Cloud/FiftyOne.DeviceDetection.RobotsTxt.Cloud.csproj",
+    "Property": "FiftyOneDeviceDetectionRobotsTxtCloudVersion"
   }
 ]

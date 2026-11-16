@@ -76,8 +76,10 @@ using System.Web.UI;
 /// at [this link](https://51degrees.com/configure/hYzn3TV3?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx.cs&amp;utm_term=header) with a paid subscription also
 /// includes the paid properties used by this example.
 /// See our [documentation](/documentation/4.5/_services__configurator.html) 
-/// for more detail on resource keys and the configurator site. Once created, the key will 
-/// need to be copied into the configuration file:
+/// for more detail on resource keys and the configurator site. Once created, set the key in
+/// the '_51DEGREES_RESOURCE_KEY' environment variable before the site starts, or copy it
+/// into the configuration file in place of '!!ENTER_YOUR_RESOURCE_KEY_HERE!!'. With neither,
+/// the page says how to get a key rather than showing results. The configuration file:
 /// 
 /// @include Cloud/Framework-Web/App_Data/51Degrees.json
 /// 

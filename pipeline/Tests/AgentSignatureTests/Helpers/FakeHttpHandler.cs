@@ -127,6 +127,11 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests.Helpers
             new ConcurrentBag<string>();
         private readonly ManualResetEventSlim _gate =
             new ManualResetEventSlim(true);
+        private readonly ManualResetEventSlim _callerGate =
+            new ManualResetEventSlim(true);
+        private readonly ConcurrentDictionary<string, bool> _holdCaller =
+            new ConcurrentDictionary<string, bool>(
+                StringComparer.OrdinalIgnoreCase);
         private int _callCount;
 
         /// <summary>
@@ -263,11 +268,25 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests.Helpers
         }
 
         /// <summary>
+        /// Hold requests for the address on the thread that sends them,
+        /// before the handler returns, until <see cref="Release"/> is
+        /// called. A network stack whose start blocks its caller, for
+        /// example while it resolves a name, does the same.
+        /// </summary>
+        /// <param name="url">The address whose requests are held.</param>
+        public void HoldOnCallingThread(string url)
+        {
+            _holdCaller[url] = true;
+            _callerGate.Reset();
+        }
+
+        /// <summary>
         /// Let the held requests finish.
         /// </summary>
         public void Release()
         {
             _gate.Set();
+            _callerGate.Set();
         }
 
         /// <inheritdoc/>
@@ -278,6 +297,10 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests.Helpers
             Interlocked.Increment(ref _callCount);
             var url = request.RequestUri.AbsoluteUri;
             _requested.Add(url);
+            if (_holdCaller.ContainsKey(url))
+            {
+                _callerGate.Wait(cancellationToken);
+            }
             if (request.Headers.TryGetValues("Accept", out var accept))
             {
                 LastAcceptHeader = string.Join(", ", accept);
@@ -343,6 +366,8 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests.Helpers
             {
                 _gate.Set();
                 _gate.Dispose();
+                _callerGate.Set();
+                _callerGate.Dispose();
             }
             base.Dispose(disposing);
         }

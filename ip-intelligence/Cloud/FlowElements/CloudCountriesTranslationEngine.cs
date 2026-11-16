@@ -117,15 +117,29 @@ namespace FiftyOne.IpIntelligence.Cloud.FlowElements
             if (aspectData == null) { throw new ArgumentNullException(nameof(aspectData)); }
 
             var dictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
+            // A response with no section for this engine leaves its data
+            // without values.
+            if (dictionary.TryGetValue(Constants.CountryNamesTranslatedKey, out var section) == false ||
+                section == null)
+            {
+                return;
+            }
             var propertyValues = JsonConvert.DeserializeObject<Dictionary<string, object>>(
-                dictionary[Constants.CountryNamesTranslatedKey].ToString(),
+                section.ToString(),
                 new JsonSerializerSettings()
                 {
                     Converters = JSON_CONVERTERS,
                 });
 
+            var properties = PropertiesForResponse.ToList();
+            // With no meta-data yet every value would be logged as having
+            // none, on every response.
             var translated = CloudDataHelper.CreateAPVDictionary(
-                propertyValues, Properties.ToList(), null, Logger, GetType().Name);
+                propertyValues,
+                properties,
+                null,
+                properties.Count > 0 ? Logger : null,
+                GetType().Name);
             aspectData.PopulateFrom(translated);
         }
 

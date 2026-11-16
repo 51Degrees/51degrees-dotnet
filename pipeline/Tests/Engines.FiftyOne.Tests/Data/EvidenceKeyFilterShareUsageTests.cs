@@ -231,7 +231,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
         }
 
         /// <summary>
-        /// A cookie that does not start 51D_ is not shared unless all
+        /// A cookie that does not start 51D_ is never shared, even when all
         /// evidence is, whatever the session setting, so the ASP.NET
         /// session cookie is not shared by the filter that decides what is
         /// sent.
@@ -256,7 +256,29 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
 
             var shareAll = new EvidenceKeyFilterShareUsage();
 
-            Assert.IsTrue(shareAll.Include("cookie.asp.net_sessionid"));
+            Assert.IsFalse(shareAll.Include("cookie.asp.net_sessionid"));
+            Assert.IsFalse(shareAll.Include("COOKIE.other"));
+            Assert.IsTrue(shareAll.Include("cookie.51d_screenpixelswidth"));
+        }
+
+        /// <summary>
+        /// When all evidence is shared the tracker's filter still keys on
+        /// the session cookie when the session is tracked, and on no other
+        /// cookie but the 51D_ ones.
+        /// </summary>
+        [TestMethod]
+        public void Tracker_ShareAll_TheSessionCookieIsKeyedOnlyWhenSessionIsTracked()
+        {
+            var tracked = new EvidenceKeyFilterShareUsageTracker(
+                true, "asp.net_sessionid");
+            var untracked = new EvidenceKeyFilterShareUsageTracker(
+                false, "asp.net_sessionid");
+
+            Assert.IsTrue(tracked.Include("cookie.ASP.NET_SessionId"));
+            Assert.IsFalse(tracked.Include("cookie.other"));
+            Assert.IsTrue(tracked.Include("cookie.51d_screenpixelswidth"));
+            Assert.IsTrue(tracked.Include("query.utm_campaign"));
+            Assert.IsFalse(untracked.Include("cookie.asp.net_sessionid"));
         }
 
         /// <summary>
@@ -283,6 +305,29 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
             Assert.IsTrue(tracked.Include("cookie.ASP.NET_SessionId"));
             Assert.IsFalse(tracked.Include("cookie.other"));
             Assert.IsFalse(untracked.Include("cookie.asp.net_sessionid"));
+        }
+
+        /// <summary>
+        /// A query string parameter is shared only when its name starts with
+        /// 51D_ or is on the allow list, unless all Evidence is shared.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_QueryOutsideTheAllowListIsNotShared()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>() { "allowed" },
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("query.other"));
+            Assert.IsTrue(filter.Include("query.allowed"));
+            Assert.IsTrue(filter.Include("QUERY.Allowed"));
+            Assert.IsTrue(filter.Include("query.51D_ScreenPixelsWidth"));
+
+            var shareAll = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsTrue(shareAll.Include("query.other"));
         }
 
         /// <summary>

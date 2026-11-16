@@ -602,7 +602,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 false);
             var built = typeof(ShareUsageElementTests).Assembly
                 .GetCustomAttributes<AssemblyMetadataAttribute>()
-                .Single(a => a.Key == "FiftyOnePipelineVersion")
+                .Single(a => a.Key == "FiftyOnePipelineCoreVersion")
                 .Value;
 
             // Act
@@ -980,6 +980,66 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             Assert.AreEqual(1, _logger.WarningEntries.Count());
             Assert.StartsWith("Failure sending usage data", _logger.WarningEntries.First());
             Console.WriteLine(_logger.WarningEntries.First());
+        }
+
+        /// <summary>
+        /// A refused message is logged with the status code and the content
+        /// of the response, to help find why it was refused.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_LogErrors_StatusCodeAndContent()
+        {
+            const string refusal = "The usage data was refused.";
+            _httpHandler.SetupResponse(request =>
+                new HttpResponseMessage(
+                    System.Net.HttpStatusCode.InternalServerError)
+                {
+                    Content = new StringContent(refusal),
+                });
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            var data = MockFlowData.CreateFromEvidence(
+                new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                },
+                false);
+
+            _shareUsageElement.Process(data.Object);
+            WaitForSendDataTask();
+
+            var warning = _logger.WarningEntries.Single(
+                w => w.StartsWith("Failure sending usage data"));
+            StringAssert.Contains(warning, "500");
+            StringAssert.Contains(warning, refusal);
+        }
+
+        /// <summary>
+        /// The message is one Devices element holding a Device element for
+        /// each request shared.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Message_DevicesHoldsADevicePerEntry()
+        {
+            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            foreach (var ip in new[] { "1.2.3.4", "5.6.7.8" })
+            {
+                var data = MockFlowData.CreateFromEvidence(
+                    new Dictionary<string, object>()
+                    {
+                        { Core.Constants.EVIDENCE_CLIENTIP_KEY, ip },
+                    },
+                    false);
+                _shareUsageElement.Process(data.Object);
+            }
+            WaitForSendDataTask();
+
+            Assert.HasCount(1, _xmlContent);
+            var root = System.Xml.Linq.XDocument.Parse(_xmlContent[0]).Root;
+            Assert.AreEqual("Devices", root.Name.LocalName);
+            CollectionAssert.AreEqual(
+                new[] { "Device", "Device" },
+                root.Elements().Select(e => e.Name.LocalName).ToArray());
         }
 
         /// <summary>
@@ -1421,7 +1481,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
-        /// Test that the share all function causes all evidence to be shared.
+        /// Test that the share all function causes all evidence to be
+        /// shared, apart from cookies whose names do not start 51D_.
         /// </summary>
         [TestMethod]
         public void ShareUsageElement_ShareAll()
@@ -1437,6 +1498,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 { Core.Constants.EVIDENCE_HTTPHEADER_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "notblocked", "abc" },
                 { Core.Constants.EVIDENCE_QUERY_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "somevalue", "123" },
                 { Core.Constants.EVIDENCE_COOKIE_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "mycookie", "zyx" },
+                { Core.Constants.EVIDENCE_COOKIE_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "51D_mycookie", "wvu" },
                 { "someprefix" + Core.Constants.EVIDENCE_SEPERATOR + "anothervalue", "987" },
             };
             var data = MockFlowData.CreateFromEvidence(evidenceData, false);
@@ -1459,7 +1521,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             // Check that the expected values are populated.
             Assert.Contains("<header Name=\"notblocked\"><![CDATA[abc]]></header>", _xmlContent[0]);
             Assert.Contains("<query Name=\"somevalue\"><![CDATA[123]]></query>", _xmlContent[0]);
-            Assert.Contains("<cookie Name=\"mycookie\"><![CDATA[zyx]]></cookie>", _xmlContent[0]);
+            Assert.DoesNotContain("zyx", _xmlContent[0]);
+            Assert.Contains("<cookie Name=\"51D_mycookie\"><![CDATA[wvu]]></cookie>", _xmlContent[0]);
             Assert.Contains("<someprefix Name=\"anothervalue\"><![CDATA[987]]></someprefix>", _xmlContent[0]);
         }
 
@@ -1480,7 +1543,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         [TestMethod]
         [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, true)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, false, true)]
-        [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, true, true)]
+        [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, true, false)]
         [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, true)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, true, true)]
         [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, false, false)]

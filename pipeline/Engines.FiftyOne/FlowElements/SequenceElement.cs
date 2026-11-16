@@ -162,9 +162,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Gets the sequence from a whole number or a string made only of
-        /// the digits 0 to 9. The value must be at least 1 and must be one
-        /// that can have 1 added without leaving the range of an int.
+        /// Gets the sequence from a value held in any of the C# integer
+        /// types or a string made only of the digits 0 to 9. The value must
+        /// be at least 1 and must be one that can have 1 added without
+        /// leaving the range of an int.
         /// </summary>
         private static bool TryGetSequence(object value, out int sequence)
         {
@@ -177,6 +178,21 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 case short sh: number = sh; break;
                 case byte by: number = by; break;
                 case uint ui: number = ui; break;
+                case sbyte sb: number = sb; break;
+                case ushort us: number = us; break;
+                // A ulong above the largest int counts as absent here, so
+                // the cast never wraps.
+                case ulong ul when ul <= int.MaxValue: number = (long)ul; break;
+                case ulong _: return false;
+                // nint and nuint are the native sized integer types,
+                // held as IntPtr and UIntPtr. A nuint above the largest
+                // int counts as absent before the cast, so the cast
+                // never wraps.
+                case IntPtr ni: number = ni.ToInt64(); break;
+                case UIntPtr nu when nu.ToUInt64() <= int.MaxValue:
+                    number = (long)nu.ToUInt64();
+                    break;
+                case UIntPtr _: return false;
                 case string text:
                     // int.TryParse with NumberStyles.None still accepts
                     // trailing NUL characters, so the digits are checked

@@ -1038,10 +1038,14 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             }
             else
             {
-                // Create evidence filters what will allow all 
-                // evidence to be shared
+                // Create evidence filters what will allow all evidence to
+                // be shared. No cookie but the 51D_ ones is shared, so the
+                // tracker is told the session cookie, as it is when only
+                // some evidence is shared.
                 _sharedEvidenceFilter = new EvidenceKeyFilterShareUsage();
-                trackerEvidenceFiler = new EvidenceKeyFilterShareUsageTracker();
+                trackerEvidenceFiler = new EvidenceKeyFilterShareUsageTracker(
+                    trackSession,
+                    aspSessionCookieName);
             }
 
             _ignoreDataEvidenceFilter = ignoreDataEvidenceFilter;
