@@ -386,7 +386,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 Logger.LogWarning($"Aspect properties could not be " +
                     $"loaded for {GetType().Name} - '{ElementDataKey}', " +
                     $"because the resource key includes no properties " +
-                    $"for it. The engine gives no values.");
+                    $"for it. The engine gives no values. A resource key " +
+                    $"that includes them is created on the configuration " +
+                    $"page, " +
+                    "https://51degrees.com/configure?utm_source=code&utm_medium=comment&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline.cloudrequestengine-cloudaspectenginebase.cs&utm_term=missing-product");
                 _productMissing = true;
                 _aspectProperties = new List<IAspectPropertyMetaData>();
                 return;
