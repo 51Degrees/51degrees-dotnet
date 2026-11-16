@@ -302,15 +302,10 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             {
                 throw new ArgumentNullException(nameof(data));
             }
-            var elementData = data.GetOrAdd(
-                ElementDataKeyTyped, _createData) as AgentSignatureData;
-            if (elementData == null)
-            {
-                return;
-            }
-
-            // Nearly every request has no signature at all, so answer that
-            // case before anything is parsed or allocated.
+            // Nearly every request has no signature at all, so test for the
+            // two signature headers before anything is parsed or allocated,
+            // the element data included, and look them up with keys built
+            // once rather than on every request.
             //
             // Where the signature came from decides where everything else
             // comes from. A caller's own Pipeline forwards its evidence
@@ -323,16 +318,26 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             // which says the check could not be made, rather than
             // reporting a mismatch, which would say the agent was lying.
             var source = FindSource(data);
-            var hasSignature = TryGetBySource(
+            var fromQuery = source == Core.Constants.EVIDENCE_QUERY_PREFIX;
+            var hasSignature = TryGetByKey(
                 data,
-                source,
-                Constants.EVIDENCE_SIGNATURE_NAME,
+                fromQuery ?
+                    QuerySignatureKey :
+                    Constants.EVIDENCE_SIGNATURE_KEY,
                 out var signatureValue);
-            var hasInput = TryGetBySource(
+            var hasInput = TryGetByKey(
                 data,
-                source,
-                Constants.EVIDENCE_SIGNATURE_INPUT_NAME,
+                fromQuery ?
+                    QuerySignatureInputKey :
+                    Constants.EVIDENCE_SIGNATURE_INPUT_KEY,
                 out var inputValue);
+
+            var elementData = data.GetOrAdd(
+                ElementDataKeyTyped, _createData) as AgentSignatureData;
+            if (elementData == null)
+            {
+                return;
+            }
             if (hasSignature == false && hasInput == false)
             {
                 ApplyAbsent(elementData);
@@ -410,10 +415,26 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             string name,
             out string value)
         {
+            return TryGetByKey(
+                data,
+                source + Core.Constants.EVIDENCE_SEPERATOR + name,
+                out value);
+        }
+
+        /// <summary>
+        /// Read a value by its complete key.
+        /// </summary>
+        /// <param name="data">The flow data.</param>
+        /// <param name="key">The complete key, prefix included.</param>
+        /// <param name="value">The value found.</param>
+        /// <returns>True where the evidence carried the key.</returns>
+        private static bool TryGetByKey(
+            IFlowData data,
+            string key,
+            out string value)
+        {
             value = null;
-            if (data.TryGetEvidence(
-                    source + Core.Constants.EVIDENCE_SEPERATOR + name,
-                    out object raw) &&
+            if (data.TryGetEvidence(key, out object raw) &&
                 raw != null)
             {
                 value = raw.ToString();
