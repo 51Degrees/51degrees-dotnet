@@ -205,6 +205,28 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         private string _staticXml = null;
         private object _staticXmlLock = new object();
 
+        /// <summary>
+        /// How long after the invariant values were last written to a
+        /// record they are written again.
+        /// </summary>
+        private static readonly TimeSpan InvariantValuesInterval =
+            TimeSpan.FromHours(1);
+
+        /// <summary>
+        /// The identifier created when the element is built, written to
+        /// every record as ProcessId so that a record that leaves out the
+        /// invariant values is tied to them. It is never stored, so a
+        /// process that starts again, or another element, has a new one.
+        /// </summary>
+        private readonly string _processId = Guid.NewGuid().ToString("D");
+
+        /// <summary>
+        /// When, on <see cref="ClockNow"/>, the invariant values were last
+        /// written to a record, or null before they have been.
+        /// </summary>
+        private TimeSpan? _invariantValuesWrittenAt = null;
+        private readonly object _invariantValuesLock = new object();
+
 
         private List<string> _flowElements = null;
 
@@ -1538,6 +1560,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             // characters such as control characters.
             var flagBadSchema = false;
 
+            // The identifier of this element, the same in every record
+            writer.WriteElementString("ProcessId", _processId);
             // The SessionID used to track a series of requests
             writer.WriteElementString("SessionId", data.SessionId);
             // The sequence number of the request in a series of requests.
@@ -1549,7 +1573,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 CultureInfo.InvariantCulture));
             // The client IP of the request
             writer.WriteElementString("ClientIP", data.ClientIP);
-            writer.WriteRaw(GetStaticXml());
+            // The values that do not change while the element lives, in the
+            // first record and then once an hour
+            if (InvariantValuesDue())
+            {
+                writer.WriteRaw(GetStaticXml());
+            }
 
             // Write all other evidence data that has been included.
             foreach (var category in data.EvidenceData)
@@ -1589,12 +1618,37 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Get the part of the xml message that will be the same for every usage 
+        /// True when the record being written is to carry the invariant
+        /// values, being the first record the element writes and the first
+        /// it writes once an hour or more has passed since it last wrote
+        /// them, and records that they are written now. The hour runs from
+        /// when they were written, whether or not the record arrives.
+        /// </summary>
+        private bool InvariantValuesDue()
+        {
+            lock (_invariantValuesLock)
+            {
+                var now = ClockNow;
+                if (_invariantValuesWrittenAt.HasValue &&
+                    now - _invariantValuesWrittenAt.Value <
+                        InvariantValuesInterval)
+                {
+                    return false;
+                }
+                _invariantValuesWrittenAt = now;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Get the part of the xml message that will be the same for every usage
         /// sharing event on this machine.
         /// This is written once to a string in memory and then re-used for
         /// future messages. Until the lookup of the machine's address has
-        /// finished it is written again for each message, so that ServerIP
-        /// carries the address once the lookup has it.
+        /// finished it is written again each time it is used, so that
+        /// ServerIP carries the address once the lookup has it. It holds the
+        /// invariant values, which only the records that
+        /// <see cref="InvariantValuesDue"/> chooses carry.
         /// </summary>
         /// <returns></returns>
         private string GetStaticXml()

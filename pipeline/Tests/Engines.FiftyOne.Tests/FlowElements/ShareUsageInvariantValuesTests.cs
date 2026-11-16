@@ -330,6 +330,12 @@ public class ShareUsageInvariantValuesTests
 
         internal override HostAddressLookup HostAddressSource => FixedAddress;
 
+        /// <summary>
+        /// Long enough for the lookup, which runs on the thread pool, to
+        /// finish on a busy machine, so the first record has the address.
+        /// </summary>
+        internal override int HostAddressWaitMilliseconds => 30000;
+
         public void Enqueue(string clientIp) =>
             EvidenceCollection.Add(new ShareUsageData()
             {
