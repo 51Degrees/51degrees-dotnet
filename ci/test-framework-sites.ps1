@@ -17,14 +17,21 @@ $NoKey = @(
     "_51DEGREES_RESOURCE_KEY",
     "https://51degrees.com/configure/",
     "Find out more")
+# Each page's Find out more section carries a contact us link tagged for an
+# example. The message about what a paid data file adds is shown only with a
+# free data file, which this run cannot count on, because the build gives the
+# examples the paid files, so it is not expected here.
+$FindOutMore = @(
+    "Find out more",
+    "51degrees.com/contact-us?utm_source=code&amp;utm_medium=example")
 $Sites = @(
     @{
         Path = "examples/device-detection/OnPremise/Framework-Web"
-        Expect = @("Detection results", "The paid data file adds", "Find out more")
+        Expect = @("Detection results") + $FindOutMore
     },
     @{
         Path = "examples/ip-intelligence/OnPremise/Framework-Web"
-        Expect = @("needs the Enterprise data file", "Find out more")
+        Expect = @("Detection results") + $FindOutMore
     },
     @{
         Path = "examples/device-detection/Cloud/Framework-Web"
