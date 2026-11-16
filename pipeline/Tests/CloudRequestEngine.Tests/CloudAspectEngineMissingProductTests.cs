@@ -317,7 +317,7 @@ public class CloudAspectEngineMissingProductTests
 
     /// <summary>
     /// The warning for a missing product says where a resource key that
-    /// includes it is created, as the message it replaced did.
+    /// includes it is created.
     /// </summary>
     [TestMethod]
     public void MissingProduct_LogSaysWhereToCreateAKey()
