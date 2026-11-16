@@ -90,7 +90,7 @@ namespace FiftyOne.Caching
         /// <param name="cacheSize">The number of items to store in the cache</param>
         /// <param name="loader">Loader used to fetch items not in the cache</param>
         internal LruLoadingCache(int cacheSize, IValueLoader<K, V> loader)
-            : this(cacheSize, loader, Environment.ProcessorCount)
+            : this(cacheSize, loader, Constants.LRU_CACHE_DEFAULT_CONCURRENCY)
         {
         }
 
