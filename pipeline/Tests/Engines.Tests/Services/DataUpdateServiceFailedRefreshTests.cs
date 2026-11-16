@@ -273,12 +273,16 @@ public class DataUpdateServiceFailedRefreshTests
 
     /// <summary>
     /// The watcher reports a newer file that is gone by the time the service
-    /// opens it. There is nothing to apply, so the check is reported as not
-    /// needed at once and the engine is not refreshed, where a file that is
-    /// there but cannot be opened yet is waited for.
+    /// opens it, with the file or its folder gone. There is nothing to
+    /// apply, so the check is reported as not needed at once and the engine
+    /// is not refreshed, where a file that is there but cannot be opened yet
+    /// is waited for.
     /// </summary>
     [TestMethod]
-    public void Watcher_FileGoneBeforeItOpens_ReportsNotNeededAtOnce()
+    [DataRow(typeof(FileNotFoundException))]
+    [DataRow(typeof(DirectoryNotFoundException))]
+    public void Watcher_FileGoneBeforeItOpens_ReportsNotNeededAtOnce(
+        Type gone)
     {
         var path = Path.Combine(_directory, "data.dat");
         File.WriteAllText(path, GoodData);
@@ -286,7 +290,7 @@ public class DataUpdateServiceFailedRefreshTests
         fileWrapper.Setup(w => w.GetLastWriteTimeUtc(It.IsAny<string>()))
             .Returns((string p) => File.GetLastWriteTimeUtc(p));
         fileWrapper.Setup(w => w.OpenRead(It.IsAny<string>()))
-            .Throws(new FileNotFoundException("Gone.", path));
+            .Throws((Exception)Activator.CreateInstance(gone, "Gone."));
         var fileSystem = new Mock<IFileSystem>();
         fileSystem.Setup(f => f.File).Returns(fileWrapper.Object);
         var service = new DataUpdateService(
