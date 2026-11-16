@@ -1,4 +1,4 @@
-name: Yearly Copyright Update
+name: Monthly Copyright Update
 
 on:
   workflow_dispatch:
