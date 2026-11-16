@@ -316,6 +316,26 @@ public class CloudAspectEngineMissingProductTests
     }
 
     /// <summary>
+    /// The warning for a missing product says where a resource key that
+    /// includes it is created.
+    /// </summary>
+    [TestMethod]
+    public void MissingProduct_LogSaysWhereToCreateAKey()
+    {
+        var loggerFactory = new TestLoggerFactory();
+        using var pipeline = Build(
+            loggerFactory,
+            Missing("other product only"),
+            OtherProductResponse,
+            out _);
+
+        var warning = Logged(
+            loggerFactory, LogLevel.Warning, MissingProductLogText).Single();
+        Assert.Contains("https://51degrees.com/configure?", warning,
+            "the log links to where a resource key is created");
+    }
+
+    /// <summary>
     /// The request for the property list fails while the Pipeline is
     /// built, so the engine has no property list then. The first response
     /// makes it read the list, which shows the product is missing, so it

@@ -415,8 +415,8 @@ public class DoxyfileInputTests
             problems,
             "These doc comments hold a numeric character reference, which " +
             "the published page shows as typed. Write the character, and " +
-            "where Doxygen would read it as a command, give it an alias in " +
-            "the Doxyfile.");
+            "where Doxygen would read it as a command, such as an at-sign, " +
+            "escape it with a backslash, as in '\\@authority'.");
     }
 
     [TestMethod]
