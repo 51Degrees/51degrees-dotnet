@@ -389,10 +389,11 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         /// <summary>
         /// A registry read whose start blocks the thread that made it does
         /// not hold up another request, because the read is not started
-        /// inside a lock. The other request ends inside its wait budget,
-        /// Verified and with no card, while the first read is still
-        /// blocked. The fetch time limit is longer than the hang guard, so
-        /// the blocked read is not cancelled before the guard is reached.
+        /// inside a lock. The other request ends just after its wait
+        /// budget and well inside the hang guard, Verified and with no
+        /// card, while the first read is still blocked. The fetch time
+        /// limit is longer than the hang guard, so the blocked read is not
+        /// cancelled before the guard is reached.
         /// </summary>
         [TestMethod]
         public void RegistryReadBlockingItsCallerDoesNotHoldUpAnotherRequest()
