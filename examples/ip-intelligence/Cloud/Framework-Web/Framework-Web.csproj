@@ -114,6 +114,10 @@
       <Project>{92baf1e2-9a11-1eb1-0983-21dc7d2938bd}</Project>
       <Name>FiftyOne.IpIntelligence.Examples.Cloud</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\Examples\FiftyOne.IpIntelligence.Examples.csproj">
+      <Project>{6e062311-b25d-42f3-978f-6868ced67942}</Project>
+      <Name>FiftyOne.IpIntelligence.Examples</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

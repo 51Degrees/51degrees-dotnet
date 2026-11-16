@@ -67,5 +67,15 @@ if ($BuildMethod -eq "msbuild" -and -not $TestFilter) {
         -BuildMethod "msbuild" `
         -BlameHangTimeout "20m" `
         -Filter $OldStyle
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    # The .NET Framework example sites are hosted with IIS Express and asked
+    # for their pages with no settings. The x86 job is left out, as it is
+    # when ci/build-project.ps1 compiles their pages.
+    if ($Arch -eq "x64") {
+        & "$PSScriptRoot/test-framework-sites.ps1" -RepoName $RepoName
+    }
 }
 exit $LASTEXITCODE

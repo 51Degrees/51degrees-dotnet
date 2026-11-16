@@ -175,8 +175,13 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 configuration.WaitBudget,
                 configuration.FetchTimeout,
                 configuration.Concurrency);
+            // The read is queued on the thread pool. Lazy runs this inside
+            // its lock, and starting a network request can block, so the
+            // read starts on another thread and no request waits on the
+            // lock for it.
             _cardsByKeyUrl =
-                new Lazy<Task<IDictionary<string, AgentCard>>>(LoadCards);
+                new Lazy<Task<IDictionary<string, AgentCard>>>(
+                    () => Task.Run(LoadCards));
             _createData = CreateElementData;
             StartReachabilityCheck();
         }

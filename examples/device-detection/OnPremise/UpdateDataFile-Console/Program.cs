@@ -265,6 +265,11 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                         // For automatic updates to work you will also need to provide a license key.
                         // Contact us for a license key at https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-onpremise-updatedatafile-console-program.cs&utm_term=run
                         .UseOnPremise(dataFile, licenseKey, true)
+                        // Usage sharing is off because the evidence in this
+                        // console example is not from real requests. A
+                        // production deployment should leave it on, as what
+                        // it shares improves the quality of the service.
+                        .SetShareUsage(false)
                         // Enable update on startup, the auto update system
                         // will be used to check for an update before the
                         // device detection engine is created. This will block
