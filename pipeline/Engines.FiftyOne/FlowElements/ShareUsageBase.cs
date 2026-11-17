@@ -225,6 +225,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// written to a record, or null before they have been.
         /// </summary>
         private TimeSpan? _invariantValuesWrittenAt = null;
+
+        /// <summary>
+        /// True when the invariant values were last written with an empty
+        /// ServerIP, because the address of this machine was not yet known.
+        /// </summary>
+        private bool _invariantValuesWrittenWithoutServerIP = false;
         private readonly object _invariantValuesLock = new object();
 
 
@@ -1574,10 +1580,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             // The client IP of the request
             writer.WriteElementString("ClientIP", data.ClientIP);
             // The values that do not change while the element lives, in the
-            // first record and then once an hour
-            if (InvariantValuesDue())
+            // first record, once an hour, and once the address of this
+            // machine is known when they were written without it
+            var invariantValues = InvariantValuesToWrite();
+            if (invariantValues != null)
             {
-                writer.WriteRaw(GetStaticXml());
+                writer.WriteRaw(invariantValues);
             }
 
             // Write all other evidence data that has been included.
@@ -1618,25 +1626,37 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// True when the record being written is to carry the invariant
-        /// values, being the first record the element writes and the first
-        /// it writes once an hour or more has passed since it last wrote
-        /// them, and records that they are written now. The hour runs from
-        /// when they were written, whether or not the record arrives.
+        /// The invariant values for the record being written, or null when
+        /// it is to leave them out. They are written to the first record
+        /// the element writes, to the first it writes once an hour or more
+        /// has passed since it last wrote them, and, when they were last
+        /// written without the address of this machine, to the first it
+        /// writes once the address is known. The hour runs from when they
+        /// were written, whether or not the record arrives.
         /// </summary>
-        private bool InvariantValuesDue()
+        private string InvariantValuesToWrite()
         {
             lock (_invariantValuesLock)
             {
                 var now = ClockNow;
-                if (_invariantValuesWrittenAt.HasValue &&
-                    now - _invariantValuesWrittenAt.Value <
-                        InvariantValuesInterval)
+                var hourUp = _invariantValuesWrittenAt.HasValue == false ||
+                    now - _invariantValuesWrittenAt.Value >=
+                        InvariantValuesInterval;
+                if (hourUp == false &&
+                    _invariantValuesWrittenWithoutServerIP == false)
                 {
-                    return false;
+                    return null;
+                }
+                // Read once, so the record carries the address that decided
+                // whether it is written.
+                var serverIP = HostAddress;
+                if (hourUp == false && serverIP.Length == 0)
+                {
+                    return null;
                 }
                 _invariantValuesWrittenAt = now;
-                return true;
+                _invariantValuesWrittenWithoutServerIP = serverIP.Length == 0;
+                return GetStaticXml(serverIP);
             }
         }
 
@@ -1644,14 +1664,18 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// Get the part of the xml message that will be the same for every usage
         /// sharing event on this machine.
         /// This is written once to a string in memory and then re-used for
-        /// future messages. Until the lookup of the machine's address has
-        /// finished it is written again each time it is used, so that
-        /// ServerIP carries the address once the lookup has it. It holds the
-        /// invariant values, which only the records that
-        /// <see cref="InvariantValuesDue"/> chooses carry.
+        /// future messages. While the address of this machine is not known
+        /// it is written again each time it is used, so that ServerIP
+        /// carries the address once it is known. It holds the invariant
+        /// values, which only the records that
+        /// <see cref="InvariantValuesToWrite"/> chooses carry.
         /// </summary>
+        /// <param name="serverIP">
+        /// The address of this machine, or an empty string while it is not
+        /// known.
+        /// </param>
         /// <returns></returns>
-        private string GetStaticXml()
+        private string GetStaticXml(string serverIP)
         {
             if (_staticXml == null)
             {
@@ -1685,12 +1709,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                             // The software language version
                             writer.WriteElementString("LanguageVersion", _languageVersion);
                             // The IP of this server
-                            writer.WriteElementString("ServerIP", HostAddress);
+                            writer.WriteElementString("ServerIP", serverIP);
                             // The OS name and version
                             writer.WriteElementString("Platform", _osVersion);
                         }
 
-                        if (_hostAddress == null)
+                        if (serverIP.Length == 0)
                         {
                             return result.ToString();
                         }
