@@ -31,13 +31,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements;
 
 /// <summary>
 /// The values that do not change while the element lives are written to its
-/// first record and again once an hour after that, and every record carries
-/// the identifier the element created when it was built.
+/// first record, again once an hour after that, and again once a value that
+/// was not yet known is known, and every record carries the identifier the
+/// element created when it was built.
 /// The specification is pipeline-specification/pipeline-elements/
 /// usage-sharing-element.md in the specifications repository at 07e1fced,
 /// and the line numbers below are of that file at that commit.
@@ -72,6 +74,18 @@ public class ShareUsageInvariantValuesTests
         RegexOptions.IgnoreCase);
 
     private static readonly TimeSpan Hour = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// An empty ServerIP, as written while the address is not known.
+    /// </summary>
+    private static readonly Regex EmptyServerIP =
+        new Regex("<ServerIP\\s*/>|<ServerIP></ServerIP>");
+
+    /// <summary>
+    /// The longest a lookup the test holds back blocks if the test never
+    /// lets it finish.
+    /// </summary>
+    private static readonly TimeSpan LookupLimit = TimeSpan.FromSeconds(30);
 
     private readonly LoggerFactory _loggerFactory = new LoggerFactory();
 
@@ -149,6 +163,60 @@ public class ShareUsageInvariantValuesTests
         AssertCarriesInvariantValues(anotherHourOn[0]);
         AssertCarriesInvariantValues(hoursOn[0]);
         AssertLeavesOutInvariantValues(hoursOn[1]);
+    }
+
+    /// <summary>
+    /// Lines 152 to 155 of the same file at 44d815f8, the head of
+    /// specifications#189: "When one of them is not yet known as the first
+    /// record is written, for example a server address still being looked
+    /// up, the element MUST write all of them again to the first record it
+    /// writes once that value is known." The lookup of the machine's address
+    /// is the test's and finishes only when the test lets it, so the first
+    /// record is written without the address. After the record that carries
+    /// it, the values are left out until an hour has passed since then.
+    /// </summary>
+    [TestMethod]
+    public void ServerIPNotYetKnownInTheFirstRecord_TheInvariantValuesAreWrittenAgain_OnceItIsKnown()
+    {
+        using var release = new ManualResetEventSlim(false);
+        var lookup = new HostAddressLookup(() =>
+        {
+            release.Wait(LookupLimit);
+            return "192.0.2.1";
+        });
+        using var test = new ElementUnderTest(_loggerFactory, lookup, 10);
+        var start = test.Clock;
+
+        var first = test.Send("10.5.0.1", "10.5.0.2");
+        test.Clock = start + TimeSpan.FromMinutes(1);
+        var stillLookingUp = test.Send("10.5.0.3");
+        release.Set();
+        Assert.IsTrue(
+            lookup.TryGet((int)LookupLimit.TotalMilliseconds, out _),
+            "The lookup did not finish once it was let go.");
+        var knownAt = start + TimeSpan.FromMinutes(2);
+        test.Clock = knownAt;
+        var known = test.Send("10.5.0.4", "10.5.0.5");
+        test.Clock = start + Hour;
+        var anHourAfterTheFirst = test.Send("10.5.0.6");
+        test.Clock = knownAt + Hour - TimeSpan.FromSeconds(1);
+        var justUnderAnHourAfterKnown = test.Send("10.5.0.7");
+        test.Clock = knownAt + Hour;
+        var anHourAfterKnown = test.Send("10.5.0.8");
+
+        AssertCarriesInvariantValues(first[0]);
+        StringAssert.Matches(first[0], EmptyServerIP,
+            "The first record was written after the lookup finished.");
+        AssertLeavesOutInvariantValues(first[1]);
+        AssertLeavesOutInvariantValues(stillLookingUp[0]);
+        AssertCarriesInvariantValues(known[0]);
+        StringAssert.Contains(known[0], "<ServerIP>192.0.2.1</ServerIP>");
+        AssertLeavesOutInvariantValues(known[1]);
+        AssertLeavesOutInvariantValues(anHourAfterTheFirst[0]);
+        AssertLeavesOutInvariantValues(justUnderAnHourAfterKnown[0]);
+        AssertCarriesInvariantValues(anHourAfterKnown[0]);
+        StringAssert.Contains(anHourAfterKnown[0],
+            "<ServerIP>192.0.2.1</ServerIP>");
     }
 
     /// <summary>
@@ -260,11 +328,26 @@ public class ShareUsageInvariantValuesTests
         private readonly IPipeline _pipeline;
         private readonly ClockElement _element;
 
-        public ElementUnderTest(ILoggerFactory loggerFactory)
+        /// <param name="loggerFactory">
+        /// Makes the loggers.
+        /// </param>
+        /// <param name="hostAddress">
+        /// The lookup of the machine's address, or null for one that gives
+        /// 192.0.2.1.
+        /// </param>
+        /// <param name="hostAddressWaitMilliseconds">
+        /// The longest the first record waits for the lookup, or null to
+        /// wait long enough for one that is not held back.
+        /// </param>
+        public ElementUnderTest(
+            ILoggerFactory loggerFactory,
+            HostAddressLookup hostAddress = null,
+            int? hostAddressWaitMilliseconds = null)
         {
             _http = new HttpClient(_capture);
             _element = new ClockElement(
-                loggerFactory.CreateLogger<ShareUsageElement>(), _http);
+                loggerFactory.CreateLogger<ShareUsageElement>(), _http,
+                hostAddress, hostAddressWaitMilliseconds);
             _pipeline = new PipelineBuilder(loggerFactory)
                 .AddFlowElement(new SequenceElementBuilder(loggerFactory).Build())
                 .AddFlowElement(_element)
@@ -315,26 +398,40 @@ public class ShareUsageInvariantValuesTests
         private static readonly HostAddressLookup FixedAddress =
             new HostAddressLookup(() => "192.0.2.1");
 
-        public ClockElement(ILogger<ShareUsageBase> logger, HttpClient http)
+        /// <summary>
+        /// Long enough for a lookup that is not held back, which runs on the
+        /// thread pool, to finish on a busy machine, so the first record has
+        /// the address.
+        /// </summary>
+        private const int FixedAddressWaitMilliseconds = 30000;
+
+        private readonly HostAddressLookup _hostAddress;
+        private readonly int _hostAddressWaitMilliseconds;
+
+        public ClockElement(
+            ILogger<ShareUsageBase> logger,
+            HttpClient http,
+            HostAddressLookup hostAddress,
+            int? hostAddressWaitMilliseconds)
             : base(logger, http, 1, 100, 1000, 100, 100, 1, false,
                   "http://51Degrees.com/test", new List<string>(),
                   new List<string>(), new List<KeyValuePair<string, string>>(),
                   Engines.Constants.DEFAULT_ASP_COOKIE_NAME,
                   new Mock<ITracker>().Object, false)
         {
+            _hostAddress = hostAddress ?? FixedAddress;
+            _hostAddressWaitMilliseconds = hostAddressWaitMilliseconds ??
+                FixedAddressWaitMilliseconds;
         }
 
         public TimeSpan Time { get; set; } = TimeSpan.FromDays(3);
 
         internal override TimeSpan ClockNow => Time;
 
-        internal override HostAddressLookup HostAddressSource => FixedAddress;
+        internal override HostAddressLookup HostAddressSource => _hostAddress;
 
-        /// <summary>
-        /// Long enough for the lookup, which runs on the thread pool, to
-        /// finish on a busy machine, so the first record has the address.
-        /// </summary>
-        internal override int HostAddressWaitMilliseconds => 30000;
+        internal override int HostAddressWaitMilliseconds =>
+            _hostAddressWaitMilliseconds;
 
         public void Enqueue(string clientIp) =>
             EvidenceCollection.Add(new ShareUsageData()
