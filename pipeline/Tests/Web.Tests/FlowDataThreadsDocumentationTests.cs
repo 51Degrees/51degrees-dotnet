@@ -55,6 +55,23 @@ public class FlowDataThreadsDocumentationTests
         @"GetFlowData\(|CreateFlowData\(|PipelineCapabilities|" +
         @"Request\.Browser");
 
+    // A source that adds the web integration's middleware is a web
+    // example, whether or not it names ASP.NET in a using directive.
+    private static readonly Regex UsesTheMiddleware = new Regex(
+        @"UseFiftyOne\(");
+
+    // The general statement the Flow Data's own documentation makes.
+    private const string NotSafe =
+        "a flow data is not safe to use from several threads at once";
+
+    private const string CallerLocks =
+        "the caller is responsible for any locking";
+
+    private static readonly string[] FlowDataDocuments =
+    {
+        "pipeline/Core/Data/IFlowData.cs",
+    };
+
     private static readonly string[] Documents =
     {
         "pipeline/README.md",
@@ -73,6 +90,7 @@ public class FlowDataThreadsDocumentationTests
         "examples/device-detection/Cloud/Framework-Web/Default.aspx.cs",
         "examples/device-detection/Cloud/GettingStarted-Web/Controllers/" +
             "HomeController.cs",
+        "examples/device-detection/Cloud/pmp-web/Program.cs",
         "examples/device-detection/Legacy Web/UACH-manual/Controllers/" +
             "HomeController.cs",
         "examples/device-detection/OnPremise/GettingStarted-Web/" +
@@ -104,6 +122,28 @@ public class FlowDataThreadsDocumentationTests
             "These do not say that a Flow Data cannot be used by two " +
             "threads at once, with values, not the Flow Data, handed to " +
             "other threads: " + string.Join(", ", missing));
+    }
+
+    [TestMethod]
+    public void TheFlowDataDocumentationSaysTheCallerLocks()
+    {
+        var root = Root();
+        var missing = FlowDataDocuments
+            .Where(d =>
+            {
+                var text = Normalized(Path.Combine(root, d));
+                return text.Contains(NotSafe) == false ||
+                    text.Contains(CallerLocks) == false ||
+                    SaysIt(Path.Combine(root, d)) == false;
+            })
+            .ToList();
+        Assert.AreEqual(
+            0,
+            missing.Count,
+            "These do not say that a Flow Data is not safe to use from " +
+            "several threads at once, that the caller is responsible for " +
+            "any locking, and that a Flow Data cannot be used by two " +
+            "threads at once: " + string.Join(", ", missing));
     }
 
     [TestMethod]
@@ -147,7 +187,8 @@ public class FlowDataThreadsDocumentationTests
 
     /// <summary>
     /// Every C# or ASP.NET page source in an examples folder that uses
-    /// ASP.NET and gets, creates or reads through a Flow Data.
+    /// ASP.NET and gets, creates or reads through a Flow Data, or that adds
+    /// the web integration's middleware.
     /// </summary>
     private static List<string> WebExamples(string root)
     {
@@ -161,7 +202,8 @@ public class FlowDataThreadsDocumentationTests
                 continue;
             }
             var text = File.ReadAllText(file);
-            if (WebMarker.IsMatch(text) && FlowDataAccess.IsMatch(text))
+            if ((WebMarker.IsMatch(text) && FlowDataAccess.IsMatch(text)) ||
+                UsesTheMiddleware.IsMatch(text))
             {
                 examples.Add(relative);
             }
@@ -203,7 +245,7 @@ public class FlowDataThreadsDocumentationTests
 
     private static bool SaysIt(string path)
     {
-        var text = Normalised(path);
+        var text = Normalized(path);
         return text.Contains(Statement) && text.Contains(HandOff);
     }
 
@@ -212,7 +254,7 @@ public class FlowDataThreadsDocumentationTests
     /// collapsed and in lower case, so a sentence wrapped over lines
     /// matches.
     /// </summary>
-    private static string Normalised(string path)
+    private static string Normalized(string path)
     {
         var text = LineLeaders.Replace(File.ReadAllText(path), " ");
         return Regex.Replace(text, @"\s+", " ").ToLowerInvariant();
