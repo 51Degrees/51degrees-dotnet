@@ -1152,6 +1152,11 @@ namespace FiftyOne.Pipeline.Core.Data
         /// <summary>
         /// Get the element data for this instance as a dictionary.
         /// </summary>
+        /// <remarks>
+        /// Once processing has finished the dictionary given is read only.
+        /// One taken before then is a live view, which still takes an add
+        /// afterwards, so take it again once processing has finished.
+        /// </remarks>
         /// <returns>
         /// A dictionary containing the element data.
         /// </returns>
