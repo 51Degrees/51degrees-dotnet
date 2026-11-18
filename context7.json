@@ -20,6 +20,11 @@
     "pipeline/DerivedProperty/Scripts",
     "*Tests*",
     "*.TestHelpers",
+    "performance-tests",
+    "Legacy Web",
+    "wwwroot/lib",
+    "pipeline/vendor",
+    "pipeline/Examples/ExampleFrameworkWebsite/Scripts",
     "archive",
     "archived",
     "old",
@@ -31,5 +36,18 @@
     "benchmark",
     "benchmarks",
     "benches"
+  ],
+  "excludeFiles": [
+    "CHANGELOG.md",
+    "changelog.md",
+    "CHANGELOG.mdx",
+    "changelog.mdx",
+    "LICENSE.md",
+    "license.md",
+    "CODE_OF_CONDUCT.md",
+    "code_of_conduct.md",
+    "NEWS.md",
+    "51D.md",
+    "testpage.html"
   ]
 }
