@@ -334,7 +334,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// <summary>
         /// Decides which of the evidence found is shared.
         /// </summary>
-        private IEvidenceKeyFilter _sharedEvidenceFilter;
+        private EvidenceKeyFilterShareUsage _sharedEvidenceFilter;
+
+        /// <summary>
+        /// Decides which of the evidence found makes a request new to the
+        /// default tracker.
+        /// </summary>
+        private EvidenceKeyFilterShareUsage _trackerEvidenceFilter;
 
         private List<KeyValuePair<string, string>> _ignoreDataEvidenceFilter;
 
@@ -484,9 +490,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// not send to 51Degrees.
         /// </param>
         /// <param name="includedQueryStringParameters">
-        /// A list of the names of query string parameters that share 
-        /// usage should send to 51Degrees.
-        /// If this value is null, all query string parameters are shared.
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
         /// </param>
         /// <param name="ignoreDataEvidenceFilter"></param>
         /// <param name="aspSessionCookieName">
@@ -571,9 +577,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// not send to 51Degrees.
         /// </param>
         /// <param name="includedQueryStringParameters">
-        /// A list of the names of query string parameters that share 
-        /// usage should send to 51Degrees.
-        /// If this value is null, all query string parameters are shared.
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
         /// </param>
         /// <param name="ignoreDataEvidenceFilter"></param>
         /// <param name="aspSessionCookieName">
@@ -663,9 +669,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// not send to 51Degrees.
         /// </param>
         /// <param name="includedQueryStringParameters">
-        /// A list of the names of query string parameters that share 
-        /// usage should send to 51Degrees.
-        /// If this value is null, all query string parameters are shared.
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
         /// </param>
         /// <param name="ignoreDataEvidenceFilter"></param>
         /// <param name="aspSessionCookieName">
@@ -775,9 +781,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// not send to 51Degrees.
         /// </param>
         /// <param name="includedQueryStringParameters">
-        /// A list of the names of query string parameters that share
-        /// usage should send to 51Degrees.
-        /// If this value is null, all query string parameters are shared.
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
         /// </param>
         /// <param name="ignoreDataEvidenceFilter"></param>
         /// <param name="aspSessionCookieName">
@@ -881,26 +887,20 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 .GetCustomAttribute<AssemblyFileVersionAttribute>().Version;
             _coreVersion = PackageVersion(typeof(IPipeline).Assembly);
 
-            IEvidenceKeyFilter trackerEvidenceFiler = null;
-
             if (shareAllEvidence == false)
             {
                 // Create evidence filters for the configured evidence
-                // sharing settings.
-                if (includedQueryStringParameters != null)
-                {
-                    includedQueryStringParameters.Add(Constants.EVIDENCE_SESSIONID_SUFFIX);
-                    includedQueryStringParameters.Add(Constants.EVIDENCE_SEQUENCE_SUFIX);
-                }
-
+                // sharing settings. The included query string parameters
+                // have no effect, as the filters share a parameter only
+                // when its name starts 51D_ or the Pipeline uses it.
                 _sharedEvidenceFilter = new EvidenceKeyFilterShareUsage(
                     blockedHttpHeaders, includedQueryStringParameters, false,
                     aspSessionCookieName);
 
-                 trackerEvidenceFiler = new EvidenceKeyFilterShareUsageTracker(
-                     blockedHttpHeaders, 
-                     includedQueryStringParameters, 
-                     trackSession, 
+                 _trackerEvidenceFilter = new EvidenceKeyFilterShareUsageTracker(
+                     blockedHttpHeaders,
+                     includedQueryStringParameters,
+                     trackSession,
                      aspSessionCookieName);
             }
             else
@@ -910,7 +910,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 // tracker is told the session cookie, as it is when only
                 // some evidence is shared.
                 _sharedEvidenceFilter = new EvidenceKeyFilterShareUsage();
-                trackerEvidenceFiler = new EvidenceKeyFilterShareUsageTracker(
+                _trackerEvidenceFilter = new EvidenceKeyFilterShareUsageTracker(
                     trackSession,
                     aspSessionCookieName);
             }
@@ -927,7 +927,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                     Size = 1000
                 },
                 _interval,
-               trackerEvidenceFiler);
+               _trackerEvidenceFilter);
             }
 
             _properties = new List<IElementPropertyMetaData>();
@@ -944,6 +944,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 throw new PipelineException(Messages.ExceptionShareUsageSinglePipeline);
             }
             base.AddPipeline(pipeline);
+            // The Pipeline's Flow Elements decide which parameters are
+            // shared and which make a request new to the tracker.
+            _sharedEvidenceFilter.UsePipeline(pipeline);
+            _trackerEvidenceFilter.UsePipeline(pipeline);
         }
 
         /// <summary>

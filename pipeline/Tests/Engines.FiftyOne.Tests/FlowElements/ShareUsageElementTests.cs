@@ -1520,16 +1520,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             }
             // Check that the expected values are populated.
             Assert.Contains("<header Name=\"notblocked\"><![CDATA[abc]]></header>", _xmlContent[0]);
-            Assert.Contains("<query Name=\"somevalue\"><![CDATA[123]]></query>", _xmlContent[0]);
+            Assert.DoesNotContain("<query Name=\"somevalue\">", _xmlContent[0]);
             Assert.DoesNotContain("zyx", _xmlContent[0]);
             Assert.Contains("<cookie Name=\"51D_mycookie\"><![CDATA[wvu]]></cookie>", _xmlContent[0]);
             Assert.Contains("<someprefix Name=\"anothervalue\"><![CDATA[987]]></someprefix>", _xmlContent[0]);
         }
 
         /// <summary>
-        /// Test that passing a null value for the 
-        /// 'included query string parameters' value will
-        /// result in all query. evidence being shared.
+        /// Test that a null value for the 'included query string
+        /// parameters', which has no effect, leaves a query parameter
+        /// that no Flow Element in the Pipeline uses unshared.
         /// </summary>
         /// <param name="prefix">
         /// The prefix for the evidence.
@@ -1541,10 +1541,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// True if the header values are expected to be present in the share usage content otherwise false.
         /// </param>
         [TestMethod]
-        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, true)]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, false)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, false, true)]
         [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, true, false)]
-        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, true)]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, false)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, true, true)]
         [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, false, false)]
         public void ShareUsageElement_NullQueryWhitelist(string prefix, bool shareAll, bool expected)
@@ -1594,9 +1594,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// True if the header values are expected to be present in the share usage content otherwise false.
         /// </param>
         [TestMethod]
-        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, true)]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, false)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, false, true)]
-        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, true)]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, false)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, true, true)]
         public void ShareUsageElement_MissingUserAgent(string prefix, bool shareAll, bool expected)
         {
