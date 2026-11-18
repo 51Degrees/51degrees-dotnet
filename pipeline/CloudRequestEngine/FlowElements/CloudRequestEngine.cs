@@ -714,7 +714,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             // The response is a lazy property whose task is the request.
             // The request is started here, before Process returns, and
             // every reader waits on this one task.
-            var response = SendDataRequestAsync(requestMessage);
+            // A result is cached only once its response has arrived, and
+            // only if it may be, so the task decides and puts it.
+            var cachePut = CacheWhenReady(data, aspectData);
+            var response = SendDataRequestAsync(requestMessage, cachePut);
             TrackRequest(response);
             aspectData.SetResponseTask(response);
         }
@@ -723,50 +726,63 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// Send the data request and validate the response. The request
         /// is sent before the first wait, so it has started when this
         /// returns. Failures count towards the recovery period as they do
-        /// for every other request.
+        /// for every other request. The result is put into the results
+        /// cache, through <paramref name="cachePut"/>, before any reader
+        /// gets the response.
         /// </summary>
         private async Task<string> SendDataRequestAsync(
-            HttpRequestMessage request)
+            HttpRequestMessage request,
+            Action<bool> cachePut)
         {
-            using (request)
-            using (var requestScope = _failHandler.MakeAttemptScope())
+            try
             {
-                try
+                using (request)
+                using (var requestScope = _failHandler.MakeAttemptScope())
                 {
-                    AddOriginHeader(request);
-                    HttpResponseMessage response;
                     try
                     {
-                        response = await _httpClient.SendAsync(request)
-                            .ConfigureAwait(false);
+                        AddOriginHeader(request);
+                        HttpResponseMessage response;
+                        try
+                        {
+                            response = await _httpClient.SendAsync(request)
+                                .ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        when (!(ex is CloudRequestException))
+                        {
+                            throw new CloudRequestException(
+                                Messages.ExceptionCloudResponseFailure,
+                                new AggregateException(ex));
+                        }
+                        using (response)
+                        {
+                            var json = ProcessResponse(
+                                response, checkForErrorMessages: true);
+                            if (HasRequestedProperties)
+                            {
+                                ReportPropertiesNotCovered(json);
+                            }
+                            cachePut?.Invoke(HoldsValueForOneRequest(json) == false);
+                            return json;
+                        }
                     }
                     catch (Exception ex)
-                    when (!(ex is CloudRequestException))
+                    when (!(ex is CloudRequestEngineTemporarilyUnavailableException))
                     {
-                        throw new CloudRequestException(
-                            Messages.ExceptionCloudResponseFailure,
-                            new AggregateException(ex));
-                    }
-                    using (response)
-                    {
-                        var json = ProcessResponse(
-                            response, checkForErrorMessages: true);
-                        if (HasRequestedProperties)
+                        if (CountsTowardsRecovery(ex))
                         {
-                            ReportPropertiesNotCovered(json);
+                            requestScope.RecordFailure(ex);
                         }
-                        return json;
+                        throw;
                     }
                 }
-                catch (Exception ex)
-                when (!(ex is CloudRequestEngineTemporarilyUnavailableException))
-                {
-                    if (CountsTowardsRecovery(ex))
-                    {
-                        requestScope.RecordFailure(ex);
-                    }
-                    throw;
-                }
+            }
+            finally
+            {
+                // A result not put by now, as for a failed request, is
+                // never cached.
+                cachePut?.Invoke(false);
             }
         }
 
@@ -1060,31 +1076,34 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// A response with a top-level fodid member, in any letter case,
         /// holds a 51Did that the cloud service created for the one request,
         /// so it is never stored in the results cache or served from it.
-        /// Every other response is cached. This runs as soon as processing
-        /// returns, so a response that has not arrived is allowed into the
-        /// cache here, and <see cref="CanServeFromCache"/> decides once it
-        /// has arrived. A failed request is never cached or served.
+        /// Every other response is cached. A response that has not arrived
+        /// is not cached here. The request's task puts it in the cache once
+        /// it arrives, if it may be. A failed request is never cached or
+        /// served.
         /// </summary>
         protected override bool CanCache(CloudRequestData aspectData)
         {
             var response = aspectData?.ResponseTask;
-            if (response != null)
+            if (response != null &&
+                response.Status != TaskStatus.RanToCompletion)
             {
-                if (response.IsCompleted == false)
-                {
-                    return true;
-                }
-                if (response.Status != TaskStatus.RanToCompletion)
-                {
-                    return false;
-                }
+                return false;
             }
-            var json = aspectData?.JsonResponseIfSet;
+            return HoldsValueForOneRequest(aspectData?.JsonResponseIfSet)
+                == false;
+        }
+
+        /// <summary>
+        /// True when the response has a top-level fodid member, in any
+        /// letter case, which holds a 51Did created for the one request.
+        /// </summary>
+        private static bool HoldsValueForOneRequest(string json)
+        {
             if (string.IsNullOrEmpty(json) ||
                 json.IndexOf(
                     "fodid", StringComparison.OrdinalIgnoreCase) < 0)
             {
-                return true;
+                return false;
             }
             try
             {
@@ -1092,11 +1111,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     string.Equals(
                         p.Name,
                         "fodid",
-                        StringComparison.OrdinalIgnoreCase)) == false;
+                        StringComparison.OrdinalIgnoreCase));
             }
             catch (JsonReaderException)
             {
-                return true;
+                return false;
             }
         }
 
@@ -1326,27 +1345,28 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// A cached response is served only once it has arrived, so that a
-        /// response with a 51Did, or a failed request, is never served to
-        /// another request. The wait is a read of the lazy property.
+        /// Waits for requests still running, for no longer than the request
+        /// timeout, before the results cache and the rest are freed, so
+        /// that no request uses them after the engine is disposed.
         /// </summary>
-        protected override bool CanServeFromCache(
-            CloudRequestData aspectData)
+        protected override void ManagedResourcesCleanup()
         {
-            var response = aspectData?.ResponseTask;
-            if (response != null)
-            {
-                ((IAsyncResult)response).AsyncWaitHandle.WaitOne();
-            }
-            return CanCache(aspectData);
+            WaitForRunningRequests();
+            base.ManagedResourcesCleanup();
         }
 
         /// <summary>
-        /// Cleanup any unmanaged resources. Waits for requests still
-        /// running, for no longer than the request timeout, so that none
-        /// uses the HTTP client after the engine is disposed.
+        /// Cleanup any unmanaged resources.
         /// </summary>
         protected override void UnmanagedResourcesCleanup()
+        {
+        }
+
+        /// <summary>
+        /// Wait for requests still running, for no longer than the request
+        /// timeout.
+        /// </summary>
+        private void WaitForRunningRequests()
         {
             var running = _runningRequests.Keys.ToArray();
             if (running.Length > 0)

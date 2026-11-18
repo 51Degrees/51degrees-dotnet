@@ -172,12 +172,30 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Data
             return base.TryGetValue(key, out value);
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// The values, with the JSON response once it has arrived. This
+        /// waits for the request. A failed request leaves the response
+        /// out rather than throwing, so that an element reading every
+        /// value, such as the JSON builder, does not record the failure a
+        /// second time. <see cref="JsonResponse"/> throws the failure.
+        /// </summary>
         public override IReadOnlyDictionary<string, object> AsDictionary()
         {
             var values = base.AsDictionary();
             var response = Volatile.Read(ref _response);
             if (response == null)
+            {
+                return values;
+            }
+            string json;
+            try
+            {
+                json = WaitForResponse(response);
+            }
+#pragma warning disable CA1031 // Do not catch general exception types
+            // Only the request's own failure is caught.
+            catch (Exception) when (response.IsFaulted || response.IsCanceled)
+#pragma warning restore CA1031 // Do not catch general exception types
             {
                 return values;
             }
@@ -187,7 +205,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Data
             {
                 result[entry.Key] = entry.Value;
             }
-            result[JSON_RESPONSE_KEY] = WaitForResponse(response);
+            result[JSON_RESPONSE_KEY] = json;
             return result;
         }
     }

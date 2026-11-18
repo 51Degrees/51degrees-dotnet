@@ -28,6 +28,7 @@ using FiftyOne.Pipeline.Engines.Configuration;
 using FiftyOne.Pipeline.Engines.Data;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -59,6 +60,17 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         /// </summary>
         private IFlowCache _cache;
         private bool _cacheHitOrMiss;
+
+        /// <summary>
+        /// For each result whose lazy property is still running, by the
+        /// key of its Evidence, a task that finishes once the result has
+        /// been put in the results cache or refused. A request with the
+        /// same Evidence waits for it and looks in the cache again, rather
+        /// than start the work again. This is not a cache. An entry leaves
+        /// as soon as its task finishes.
+        /// </summary>
+        private readonly ConcurrentDictionary<DataKey, Task> _pending =
+            new ConcurrentDictionary<DataKey, Task>();
 
         /// <summary>
         /// <see cref="FlowElementBase{T, TMeta}.CreateElementData"/> as the
@@ -238,9 +250,8 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         /// from it. A result that holds a value created for the one request
         /// that asked for it must not be, because a later request with the
         /// same Evidence would receive that value. The default is true.
-        /// It runs as soon as processing returns, so where the result has
-        /// a lazy property whose task is still running, an override can
-        /// allow it now and decide in <see cref="CanServeFromCache(T)"/>.
+        /// It runs as soon as processing returns, and must not wait. A
+        /// result whose lazy property is still running is not cached then.
         /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
         /// </summary>
         /// <param name="aspectData">
@@ -250,21 +261,6 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         protected virtual bool CanCache(T aspectData)
         {
             return true;
-        }
-
-        /// <summary>
-        /// Whether a result found in the results cache may be served to
-        /// this request. The default is <see cref="CanCache(T)"/>. An
-        /// override may wait for a lazy property of the result, because
-        /// the result was made for an earlier request.
-        /// </summary>
-        /// <param name="aspectData">
-        /// A result found in the cache.
-        /// </param>
-        /// <returns>True if the result may be served.</returns>
-        protected virtual bool CanServeFromCache(T aspectData)
-        {
-            return CanCache(aspectData);
         }
 
         /// <summary>
@@ -281,6 +277,94 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                     _cache.Put(data, result);
                 }
             }
+        }
+
+        /// <summary>
+        /// Prepare to put a result into the results cache once its lazy
+        /// property's task has finished, for an engine whose
+        /// <see cref="CanCache(T)"/> refuses the result while the task
+        /// runs. The Evidence the cache key needs is copied now, on the
+        /// thread that processes the Flow Data, so the put never reads the
+        /// Flow Data. The task calls the returned action once, before it
+        /// finishes, with true to put the result or false not to. Later
+        /// calls do nothing. Until then, a request with the same Evidence
+        /// waits for the action and then looks in the cache again.
+        /// </summary>
+        /// <param name="data">The Flow Data being processed.</param>
+        /// <param name="aspectData">The result to put.</param>
+        /// <returns>
+        /// The action, or null when the engine has no results cache.
+        /// </returns>
+        internal Action<bool> CacheWhenReady(IFlowData data, T aspectData)
+        {
+            var cache = _cache;
+            if (cache == null || data?.Pipeline == null)
+            {
+                return null;
+            }
+            var key = data.Pipeline.CreateFlowData();
+            foreach (var entry in data.GetEvidence().AsDictionary())
+            {
+                key.AddEvidence(entry.Key, entry.Value);
+            }
+            var pendingKey = data.GenerateKey(EvidenceKeyFilter);
+            var finished = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var pending = new KeyValuePair<DataKey, Task>(
+                pendingKey, finished.Task);
+            _pending[pendingKey] = finished.Task;
+            var done = 0;
+            return put =>
+            {
+                if (Interlocked.Exchange(ref done, 1) != 0)
+                {
+                    return;
+                }
+                try
+                {
+                    if (put)
+                    {
+                        cache.Put(key, aspectData);
+                    }
+                }
+#pragma warning disable CA1031 // Do not catch general exception types
+                // A result that cannot be cached is still the reader's.
+                catch (Exception ex)
+#pragma warning restore CA1031 // Do not catch general exception types
+                {
+                    Logger.LogWarning(ex,
+                        $"Engine '{GetType().Name}' could not cache a result.");
+                }
+                finally
+                {
+                    // After the put, so that a request that no longer
+                    // finds the entry here finds the result in the cache.
+                    ((ICollection<KeyValuePair<DataKey, Task>>)_pending)
+                        .Remove(pending);
+                    finished.TrySetResult(true);
+                    key.Dispose();
+                }
+            };
+        }
+
+        /// <summary>
+        /// Look in the results cache for a result that may be served.
+        /// </summary>
+        private T FromCache(IFlowData data)
+        {
+            T cacheResult = default(T);
+            try
+            {
+                cacheResult = (T)_cache[data];
+            }
+            catch (InvalidCastException) { }
+            // A result that must not be served from the cache is
+            // processed again.
+            if (cacheResult != null && CanCache(cacheResult) == false)
+            {
+                cacheResult = default(T);
+            }
+            return cacheResult;
         }
 
         /// <summary>
@@ -301,17 +385,18 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
             // is already in there.
             if (_cache != null)
             {
-                try
+                cacheResult = FromCache(data);
+                // A request with the same Evidence whose lazy property is
+                // still running decides soon whether its result is cached,
+                // so wait for that rather than start the work again.
+                if (cacheResult == null &&
+                    _pending.IsEmpty == false &&
+                    _pending.TryGetValue(
+                        data.GenerateKey(EvidenceKeyFilter),
+                        out var pending))
                 {
-                    cacheResult = (T)_cache[data];
-                }
-                catch (InvalidCastException) { }
-                // A result that must not be served from the cache is
-                // processed again.
-                if (cacheResult != null &&
-                    CanServeFromCache(cacheResult) == false)
-                {
-                    cacheResult = default(T);
+                    pending.Wait();
+                    cacheResult = FromCache(data);
                 }
             }
             // If we don't have a result from the cache then 
