@@ -565,14 +565,24 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 // failure is visible to diagnostics (FlowData.Errors).
                 // The underlying error is already reported by the
                 // CloudRequestEngine itself, so we do not re-log here.
-                data.AddError(
-                    new PipelineException(string.Format(
-                        CultureInfo.InvariantCulture,
-                        Messages.ExceptionCloudResponseNotProcessed,
-                        GetType().Name)),
-                    this,
-                    shouldThrow: false,
-                    shouldLog: false);
+                try
+                {
+                    data.AddError(
+                        new PipelineException(string.Format(
+                            CultureInfo.InvariantCulture,
+                            Messages.ExceptionCloudResponseNotProcessed,
+                            GetType().Name)),
+                        this,
+                        shouldThrow: false,
+                        shouldLog: false);
+                }
+                catch (PipelineException)
+                {
+                    // With lazy loading this can run after the Flow Data
+                    // has finished processing, when it refuses the error.
+                    // The aspect data is marked above, so the reader still
+                    // learns that the cloud request failed.
+                }
             }
         }
 
