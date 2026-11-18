@@ -20,6 +20,15 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" />
     <ProjectReference Include="..\..\Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" />
+    <!-- For the check that every Flow Element fails a write once it has
+         finished. -->
+    <ProjectReference Include="..\..\AgentSignature\FiftyOne.Pipeline.AgentSignature.csproj" />
+    <ProjectReference Include="..\..\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" />
+    <ProjectReference Include="..\..\DerivedProperty\FiftyOne.Pipeline.DerivedProperty.csproj" />
+    <ProjectReference Include="..\..\Did.Cloud\FiftyOne.Did.Cloud.csproj" />
+    <ProjectReference Include="..\..\JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj" />
+    <ProjectReference Include="..\..\JsonBuilderElement\FiftyOne.Pipeline.JsonBuilder.csproj" />
+    <ProjectReference Include="..\..\Translation\FiftyOne.Pipeline.Translation.csproj" />
   </ItemGroup>
 
   <ItemGroup>
