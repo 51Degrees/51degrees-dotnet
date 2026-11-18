@@ -84,8 +84,9 @@ namespace FiftyOne.Pipeline.Core.Data
         }
 
         /// <summary>
-        /// The number of parallel groups running on this instance. While it
-        /// is above zero, members add errors and warnings under
+        /// The number of parallel groups, and of the deprecated lazy loading
+        /// option's background tasks, running on this instance. While it is
+        /// above zero, errors and warnings are added under
         /// <see cref="_errorsLock"/>. At any other time nothing is locked.
         /// </summary>
         private int _groupsRunning;
@@ -412,6 +413,26 @@ namespace FiftyOne.Pipeline.Core.Data
         /// has stopped.
         /// </summary>
         internal void GroupFinished()
+        {
+            Interlocked.Decrement(ref _groupsRunning);
+        }
+
+        /// <summary>
+        /// Called before the deprecated lazy loading option starts an
+        /// engine's processing in a background task. That task can add
+        /// errors while the Pipeline goes on, so until
+        /// <see cref="BackgroundTaskFinished"/> errors and warnings are
+        /// added under a lock.
+        /// </summary>
+        internal void BackgroundTaskStarted()
+        {
+            Interlocked.Increment(ref _groupsRunning);
+        }
+
+        /// <summary>
+        /// Called by the background task once its processing has ended.
+        /// </summary>
+        internal void BackgroundTaskFinished()
         {
             Interlocked.Decrement(ref _groupsRunning);
         }

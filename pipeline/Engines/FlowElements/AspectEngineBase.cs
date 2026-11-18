@@ -316,11 +316,22 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                     // Whether the result is cached is decided in the
                     // task, once processing has finished, so that Process
                     // still returns at once.
+                    // The task can add errors while the Pipeline goes on,
+                    // so the Flow Data adds them under a lock until it ends.
                     var aspectDataInternal = Internal(aspectData);
+                    var flowData = data as FlowData;
+                    flowData?.BackgroundTaskStarted();
                     var task = Task.Run(() =>
                     {
-                        ProcessEngine(data, aspectData);
-                        AddToCache(data);
+                        try
+                        {
+                            ProcessEngine(data, aspectData);
+                            AddToCache(data);
+                        }
+                        finally
+                        {
+                            flowData?.BackgroundTaskFinished();
+                        }
                     });
                     aspectDataInternal.AddProcessTask(task);
                 }
