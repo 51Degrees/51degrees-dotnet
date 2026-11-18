@@ -403,6 +403,8 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// They are always added to <see cref="IFlowData.Errors"/>.
         /// Errors that an element records itself by calling AddError on the
         /// flow data are not affected by this setting.
+        /// Once this returns or throws, the Flow Data has finished
+        /// processing and is read only.
         /// </remarks>
         public void Process(IFlowData data)
         {
@@ -419,6 +421,24 @@ namespace FiftyOne.Pipeline.Core.FlowElements
                 throw new ObjectDisposedException(nameof(Pipeline),
                     Messages.ExceptionPipelineDisposed);
             }
+            try
+            {
+                ProcessElements(data);
+            }
+            finally
+            {
+                // Processing has finished, so the Flow Data is read only.
+                (data as FlowData)?.MarkFinished();
+            }
+        }
+
+        /// <summary>
+        /// Run each Flow Element in turn, and throw if an error that should
+        /// throw was recorded.
+        /// </summary>
+        /// <param name="data">The Flow Data to process.</param>
+        private void ProcessElements(IFlowData data)
+        {
             var log = _logger.IsEnabled(LogLevel.Debug);
             if (log)
             {
