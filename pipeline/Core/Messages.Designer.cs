@@ -70,15 +70,6 @@ namespace FiftyOne.Pipeline.Core {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to An element of a parallel group tried to add the evidence '{0}', which was refused, because the other elements of the group read the evidence at the same time. Add the element on its own, before the elements that read the value..
-        /// </summary>
-        internal static string ExceptionParallelGroupAddedEvidence {
-            get {
-                return ResourceManager.GetString("ExceptionParallelGroupAddedEvidence", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to The pipeline has been disposed, so this flow data can no longer be processed. Create the flow data from a pipeline that is still in use..
         /// </summary>
         internal static string ExceptionPipelineDisposed {
