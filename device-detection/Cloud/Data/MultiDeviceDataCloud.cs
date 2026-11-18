@@ -115,6 +115,7 @@ namespace FiftyOne.DeviceDetection.Cloud.Data
         /// </param>
         public void AddProfile(IDeviceData profile)
         {
+            CheckWrite(DEVICE_LIST_KEY);
             GetDeviceList().Add(profile);
         }
 

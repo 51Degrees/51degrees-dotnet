@@ -82,15 +82,32 @@ namespace FiftyOne.Pipeline.Core.Data
             }
             set
             {
-                if (_finished && Volatile.Read(ref _writers) == 0)
-                {
-                    throw new Exceptions.PipelineException(
-                        $"Element Data '{GetType().Name}' cannot be " +
-                        $"written once the Flow Element that provides it " +
-                        $"has finished. The value for '{key}' was not " +
-                        $"written.");
-                }
+                CheckWrite(key);
                 base[key] = value;
+            }
+        }
+
+        /// <summary>
+        /// Check that this instance can be written now. A derived class
+        /// calls this before a write that does not go through the indexer,
+        /// such as adding to a list it holds.
+        /// </summary>
+        /// <param name="key">
+        /// The name of the value about to be written, for the message.
+        /// </param>
+        /// <exception cref="Exceptions.PipelineException">
+        /// Thrown once a Flow Element that writes this instance has
+        /// finished, and no Flow Element that shares it is writing it.
+        /// </exception>
+        protected void CheckWrite(string key)
+        {
+            if (_finished && Volatile.Read(ref _writers) == 0)
+            {
+                throw new Exceptions.PipelineException(
+                    $"Element Data '{GetType().Name}' cannot be " +
+                    $"written once the Flow Element that provides it " +
+                    $"has finished. The value for '{key}' was not " +
+                    $"written.");
             }
         }
 

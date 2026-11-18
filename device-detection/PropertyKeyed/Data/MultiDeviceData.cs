@@ -102,6 +102,7 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Data
         /// <inheritdoc/>
         public void AddProfileId(uint profileId)
         {
+            CheckWrite(ProfilesKey);
             _profileIds.Add(profileId);
             // Invalidate cache when new profile is added
             _cachedProfiles = null;
@@ -113,6 +114,7 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Data
         /// <param name="profile">The device data to add.</param>
         public void AddProfile(IDeviceData profile)
         {
+            CheckWrite(ProfilesKey);
             var list = this[ProfilesKey] as List<IDeviceData>;
             list?.Add(profile);
         }
