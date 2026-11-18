@@ -59,4 +59,29 @@ public class UsageSharingLastTests
         Assert.IsInstanceOfType<ShareUsageElement>(
             pipeline.FlowElements.Last());
     }
+
+    /// <summary>
+    /// An element the caller adds after turning usage sharing on still goes
+    /// before usage sharing, which the builder adds when it builds.
+    /// </summary>
+    [TestMethod]
+    public void OnPremise_ElementAddedAfterShareUsage_UsageSharingIsLast()
+    {
+        var datafile = Utils.GetFilePath(Constants.LITE_HASH_DATA_FILE_NAME);
+        var updateService = new Mock<IDataUpdateService>();
+        var loggerFactory = new NullLoggerFactory();
+
+        using var pipeline = new DeviceDetectionPipelineBuilder(
+                loggerFactory, null, updateService.Object)
+            .UseOnPremise(datafile.FullName, null, false)
+            .SetAutoUpdate(false)
+            .SetDataFileSystemWatcher(false)
+            .SetShareUsage(true)
+            .AddFlowElement(new SequenceElementBuilder(loggerFactory).Build())
+            .Build();
+
+        Assert.HasCount(3, pipeline.FlowElements);
+        Assert.IsInstanceOfType<ShareUsageElement>(
+            pipeline.FlowElements.Last());
+    }
 }
