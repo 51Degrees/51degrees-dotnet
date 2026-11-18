@@ -84,11 +84,19 @@ namespace FiftyOne.Pipeline.Core.Data
         private ILogger<FlowData> _logger;
 
         /// <summary>
-        /// The errors that have occurred during processing
+        /// A read only view of <see cref="_errors"/>, made once when
+        /// processing ends. Null if no error was recorded.
+        /// </summary>
+        private IList<IFlowError> _finishedErrors;
+
+        /// <summary>
+        /// The errors that have occurred during processing. Null if there
+        /// are none. Read only once processing has finished, when adding
+        /// to it throws a <see cref="NotSupportedException"/>.
         /// </summary>
         public IList<IFlowError> Errors
         {
-            get { return _errors; }
+            get { return _finished ? _finishedErrors : _errors; }
         }
 
         /// <summary>
@@ -653,9 +661,27 @@ namespace FiftyOne.Pipeline.Core.Data
             }
             finally
             {
-                _finished = true;
-                _evidence?.MarkFinished();
+                MarkFinished();
             }
+        }
+
+        /// <summary>
+        /// Called when processing ends, normally or with an exception,
+        /// after which this instance is read only.
+        /// </summary>
+        internal void MarkFinished()
+        {
+            if (_finished)
+            {
+                return;
+            }
+            // Made before the flag is set, so a reader that sees the flag
+            // sees the view too.
+            _finishedErrors = _errors == null
+                ? null
+                : new ReadOnlyCollection<IFlowError>(_errors);
+            _finished = true;
+            _evidence?.MarkFinished();
         }
 
         /// <summary>
