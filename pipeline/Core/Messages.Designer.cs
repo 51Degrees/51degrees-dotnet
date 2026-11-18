@@ -133,6 +133,15 @@ namespace FiftyOne.Pipeline.Core {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The usage sharing element must be the last Flow Element in the Pipeline and outside any parallel group, so that it shares the evidence every other Flow Element adds. Add it after every other Flow Element, on its own..
+        /// </summary>
+        internal static string ExceptionUsageSharingNotLast {
+            get {
+                return ResourceManager.GetString("ExceptionUsageSharingNotLast", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Problem with pipeline configuration, failed to create pipeline.
         /// </summary>
         internal static string MessagePipelineCreationFailed {

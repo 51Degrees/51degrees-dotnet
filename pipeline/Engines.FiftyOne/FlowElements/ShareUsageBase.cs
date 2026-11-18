@@ -49,14 +49,17 @@ using System.Xml;
 namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 {
     /// <summary>
-    /// Abstract base class for ShareUsage elements. 
+    /// Abstract base class for ShareUsage elements. A Pipeline holds one as
+    /// its last Flow Element, outside any parallel group, and a builder
+    /// refuses it anywhere else.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/usage-sharing-element.md">Specification</see>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", 
         "CA1054:Uri parameters should not be strings", 
         Justification = "We do not wish to make this breaking change at this time.")]
     public abstract class ShareUsageBase : 
-        FlowElementBase<IElementData, IElementPropertyMetaData>
+        FlowElementBase<IElementData, IElementPropertyMetaData>,
+        IUsageSharingElement
     {
         /// <summary>
         /// The HttpClient to use when sending the data.
@@ -173,7 +176,20 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// </summary>
         protected int TakeTimeout { get; }
 
-        private Random _rng = new Random();
+        /// <summary>
+        /// A generator for each thread, because Random is not safe for
+        /// several threads and a lock would sit on every request.
+        /// </summary>
+        [ThreadStatic]
+        private static Random _threadRandom;
+
+        /// <summary>
+        /// This thread's generator, seeded from a new GUID so that threads
+        /// started at the same moment do not draw the same numbers.
+        /// </summary>
+        private static Random ThreadRandom =>
+            _threadRandom ??
+            (_threadRandom = new Random(Guid.NewGuid().GetHashCode()));
 
         /// <summary>
         /// The tracker to use to determine if a <see cref="FlowData"/>
@@ -1085,7 +1101,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 return;
             }
 
-            if (_rng.NextDouble() > _sharePercentage)
+            if (ThreadRandom.NextDouble() > _sharePercentage)
             {
                 return;
             }
