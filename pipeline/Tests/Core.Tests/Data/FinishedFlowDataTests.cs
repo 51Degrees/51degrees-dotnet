@@ -103,6 +103,10 @@ public class FinishedFlowDataTests
         Assert.ThrowsExactly<PipelineException>(
             () => data.AddError(new InvalidOperationException("after"), null),
             "Adding an error");
+        Assert.ThrowsExactly<NotSupportedException>(
+            () => data.Errors.Add(new FlowError(
+                new InvalidOperationException("after"), null)),
+            "Adding an error through the list of errors");
         Assert.ThrowsExactly<PipelineException>(
             () => data.AddWarning("after", null),
             "Adding a warning");
@@ -154,5 +158,42 @@ public class FinishedFlowDataTests
         Assert.Throws<Exception>(() => data.Process());
 
         AssertReadOnly(data);
+    }
+
+    /// <summary>
+    /// A Flow Data processed by calling the public Process method of the
+    /// Pipeline class is finished too once that returns.
+    /// </summary>
+    [TestMethod]
+    public void FlowDataProcessedByThePipeline_RefusesWrites()
+    {
+        var writer = Writer(false);
+        using var pipeline = new PipelineBuilder(NullLoggerFactory.Instance)
+            .AddFlowElement(writer.Object)
+            .Build();
+        using var data = pipeline.CreateFlowData();
+
+        ((Core.FlowElements.Pipeline)pipeline).Process(data);
+
+        Assert.ThrowsExactly<PipelineException>(
+            () => data.AddEvidence("query.after", "value"),
+            "Adding Evidence");
+        Assert.ThrowsExactly<PipelineException>(
+            () => data.GetEvidence()["query.after"] = "value",
+            "Writing the Evidence directly");
+        Assert.ThrowsExactly<PipelineException>(
+            () => data.GetOrAdd("other", p => new TestElementData(p)),
+            "Adding Element Data");
+        Assert.ThrowsExactly<PipelineException>(
+            () => data.AddError(new InvalidOperationException("after"), null),
+            "Adding an error");
+        Assert.ThrowsExactly<NotSupportedException>(
+            () => data.Errors.Add(new FlowError(
+                new InvalidOperationException("after"), null)),
+            "Adding an error through the list of errors");
+        Assert.ThrowsExactly<PipelineException>(
+            () => data.AddWarning("after", null),
+            "Adding a warning");
+        Assert.HasCount(1, data.Errors);
     }
 }
