@@ -210,8 +210,8 @@ namespace FiftyOne.Pipeline.Engines.Data
         }
 
         /// <summary>
-        /// Add a process task to the lazy loading tasks for this
-        /// data instance.
+        /// Add a process task to this data instance. Lazy loading is
+        /// deprecated and has no effect, so no engine calls this.
         /// The property accessors will only complete once all such
         /// tasks have completed.
         /// </summary>
@@ -274,18 +274,6 @@ namespace FiftyOne.Pipeline.Engines.Data
         /// </exception>
         /// <exception cref="PropertyMissingException">
         /// Thrown if there is no entry matching the specified key.
-        /// </exception>
-        /// <exception cref="OperationCanceledException">
-        /// Thrown if lazy loading is enabled and the cancellation token
-        /// has been used to cancel processing before it was completed.
-        /// </exception>
-        /// <exception cref="TimeoutException">
-        /// Thrown if lazy loading is enabled and processing did not
-        /// complete before the configured timeout expired. 
-        /// </exception>
-        /// <exception cref="AggregateException">
-        /// Thrown if lazy loading is enabled and multiple errors occurred 
-        /// during processing.
         /// </exception>
         protected override T GetAs<T>(string key)
         {
@@ -372,18 +360,6 @@ namespace FiftyOne.Pipeline.Engines.Data
         }
 
         /// <inheritdoc/>
-        /// <exception cref="OperationCanceledException">
-        /// Thrown if lazy loading is enabled and the cancellation token
-        /// has been used to cancel processing before it was completed.
-        /// </exception>
-        /// <exception cref="TimeoutException">
-        /// Thrown if lazy loading is enabled and processing did not
-        /// complete before the configured timeout expired. 
-        /// </exception>
-        /// <exception cref="AggregateException">
-        /// Thrown if lazy loading is enabled and multiple errors occurred 
-        /// during processing.
-        /// </exception>
         public override IReadOnlyDictionary<string, object> AsDictionary()
         {
             WaitForLazyLoad();
@@ -437,9 +413,9 @@ namespace FiftyOne.Pipeline.Engines.Data
         }
 
         /// <summary>
-        /// If lazy loading is configured then wait for engines to finish
-        /// processing (or timeouts to be exceeded or cancellation tokens 
-        /// to be triggered) before returning.
+        /// Wait for any process tasks to finish. Lazy loading is
+        /// deprecated and has no effect, so no engine adds a process task
+        /// and this does not wait.
         /// </summary>
         /// <param name="key">
         /// The key of the parameter that is being accessed if any.
@@ -447,18 +423,6 @@ namespace FiftyOne.Pipeline.Engines.Data
         /// <returns>
         /// True if lazy loading is enabled, false if not.
         /// </returns>
-        /// <exception cref="OperationCanceledException">
-        /// Thrown if lazy loading is enabled and the cancellation token
-        /// has been used to cancel processing before it was completed.
-        /// </exception>
-        /// <exception cref="TimeoutException">
-        /// Thrown if lazy loading is enabled and processing did not
-        /// complete before the configured timeout expired. 
-        /// </exception>
-        /// <exception cref="AggregateException">
-        /// Thrown if lazy loading is enabled and multiple errors occurred 
-        /// during processing.
-        /// </exception>
         private bool WaitForLazyLoad(string key = null)
         {
             var lazyLoadEngines = Engines.Where(e => e != null &&

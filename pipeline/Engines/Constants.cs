@@ -60,7 +60,9 @@ namespace FiftyOne.Pipeline.Engines
         /// <summary>
         /// The default timeout in seconds for a lazily loaded value, which
         /// the pre-packaged pipeline builders use when lazy loading is
-        /// turned on without a timeout.
+        /// turned on without a timeout. Lazy loading is deprecated and has
+        /// no effect. Long-running work belongs in a lazy property of the
+        /// engine's own data.
         /// </summary>
         public const int LAZY_LOADING_DEFAULT_TIMEOUT_SECONDS = 5;
 
@@ -72,7 +74,8 @@ namespace FiftyOne.Pipeline.Engines
 
         /// <summary>
         /// Whether the pre-packaged pipeline builders turn on lazy loading
-        /// when no method asks for it.
+        /// when no method asks for it. Lazy loading is deprecated and has
+        /// no effect.
         /// </summary>
         public const bool LAZY_LOADING_DEFAULT_ENABLED = false;
 
@@ -162,7 +165,9 @@ namespace FiftyOne.Pipeline.Engines
         public const string DATA_FILE_DEFAULT_UPDATE_OVERRIDE_URL = null;
 
         /// <summary>
-        /// Default timeout value when accessing a property from an engine with lazy loading enabled. 
+        /// Default timeout value when accessing a property from an engine
+        /// with lazy loading enabled. Lazy loading is deprecated and has no
+        /// effect, so no property read waits for this timeout.
         /// </summary>
         public const int LAZY_LOADING_DEFAULT_TIMEOUT_MS = 1000;
 

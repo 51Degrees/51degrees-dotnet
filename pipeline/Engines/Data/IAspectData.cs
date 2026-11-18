@@ -42,10 +42,10 @@ namespace FiftyOne.Pipeline.Engines.Data
         IReadOnlyList<IAspectEngine> Engines { get; }
 
         /// <summary>
-        /// If the engine is configured for lazy loading, this property 
-        /// returns a task that will complete once the engine has finished
-        /// processing.
-        /// Otherwise, it will be null.
+        /// A task that completes once the engine has finished processing.
+        /// Lazy loading is deprecated and has no effect, so an engine has
+        /// always finished processing when its Process call returns, and
+        /// this task has completed.
         /// </summary>
         Task ProcessTask { get; }
 

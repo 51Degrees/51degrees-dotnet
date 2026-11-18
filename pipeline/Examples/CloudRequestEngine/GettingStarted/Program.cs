@@ -22,11 +22,9 @@
 
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.FlowElements;
-using FiftyOne.Pipeline.Engines.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Net.Http;
-using System.Threading;
 
 namespace GettingStarted
 {
@@ -52,10 +50,6 @@ namespace GettingStarted
                 return;
             }
 
-            var ct = new CancellationToken();
-
-            var cfg = new LazyLoadingConfiguration(10000, ct);
-
             var engine = new CloudRequestEngineBuilder(_loggerFactory, _httpClient)
                 // The cloud service to call, read from _51DEGREES_CLOUD_ENDPOINT
                 // and defaulting to https://cloud.51degrees.com/api/v4/.
@@ -71,7 +65,6 @@ namespace GettingStarted
                 // It is read from the _51DEGREES_RESOURCE_KEY environment
                 // variable.
                 .SetResourceKey(resourceKey)
-                .SetLazyLoading(cfg)
                 .Build();
 
 

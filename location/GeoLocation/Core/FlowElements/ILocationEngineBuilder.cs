@@ -48,7 +48,10 @@ namespace FiftyOne.GeoLocation.Core.FlowElements
 #pragma warning restore CA1054 // Uri parameters should not be strings
 
         /// <summary>
-        /// Set the lazy loading configuration for the engine.
+        /// Deprecated, has no effect. Lazy loading is deprecated and the
+        /// engine always processes on the thread that processes the Flow
+        /// Data. Long-running work belongs in a lazy property of the
+        /// engine's own data. Kept so that existing code still builds.
         /// </summary>
         /// <param name="lazyLoadingConfig">
         /// The lazy loading configuration to use.
