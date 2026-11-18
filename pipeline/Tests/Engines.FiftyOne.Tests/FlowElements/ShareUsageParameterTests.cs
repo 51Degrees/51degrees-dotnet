@@ -37,7 +37,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements;
 /// 51D_ or a Flow Element in the Pipeline accepts it, whatever the
 /// configuration. Both arrive as 'query.' keys, in the evidence or in the
 /// web request. The options that named parameters to share have no effect.
-/// See the draft <see href="https://github.com/51Degrees/specifications/blob/5a837a117aacc3bccf79817b01896b410f2c0444/pipeline-specification/pipeline-elements/usage-sharing-element.md#shared-evidence">Specification</see>
+/// See the <see href="https://github.com/51Degrees/specifications/blob/d79bbe3b2aef86273570742f6b660f29bfe72816/pipeline-specification/pipeline-elements/usage-sharing-element.md#shared-evidence">Specification</see>
 /// </summary>
 [TestClass]
 public class ShareUsageParameterTests
