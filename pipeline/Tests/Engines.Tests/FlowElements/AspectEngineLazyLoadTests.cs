@@ -80,10 +80,9 @@ namespace FiftyOne.Pipeline.Engines.Tests.FlowElements
         }
 
         /// <summary>
-        /// Check that lazy loading works as expected:
-        /// 1. The process method returns immediately.
-        /// 2. Getting the value from the engine data will cause the 
-        /// process to wait until processing has finished.
+        /// Check that the deprecated lazy loading option has no effect:
+        /// the process method returns once processing has finished, and
+        /// the value is there to read.
         /// </summary>
         [TestMethod]
         public void AspectEngineLazyLoad_Process()
@@ -115,9 +114,9 @@ namespace FiftyOne.Pipeline.Engines.Tests.FlowElements
 
             // Process the data.
             _engine.Process(data);
-            // Check that the task is not complete when process returns.
-            bool processReturnedBeforeTaskComplete = 
-                engineData.ProcessTask.IsCompleted == false;
+            // Check that the task is complete when process returns.
+            bool processReturnedAfterTaskComplete =
+                engineData.ProcessTask.IsCompleted == true;
 
             // Assert
             Assert.AreEqual(2, engineData.ValueTwo);
@@ -125,13 +124,14 @@ namespace FiftyOne.Pipeline.Engines.Tests.FlowElements
             // the property value will wait until it is complete)
             bool valueReturnedAfterTaskComplete =
                 engineData.ProcessTask.IsCompleted == true;
-            Assert.IsTrue(processReturnedBeforeTaskComplete);
+            Assert.IsTrue(processReturnedAfterTaskComplete);
             Assert.IsTrue(valueReturnedAfterTaskComplete);
         }
 
         /// <summary>
-        /// Check that accessing a lazy loaded property that
-        /// takes longer than the timeout works as expected.
+        /// Check that with the deprecated lazy loading option, which has no
+        /// effect, a property whose processing
+        /// takes longer than the timeout is read with no timeout.
         /// </summary>
         [TestMethod]
         public void AspectEngineLazyLoad_PropertyTimeout()
@@ -163,17 +163,14 @@ namespace FiftyOne.Pipeline.Engines.Tests.FlowElements
 
             // Process the data
             _engine.Process(data);
-            // Attempt to get the value. This should cause the timeout
-            // to be triggered.
-            Assert.ThrowsExactly<TimeoutException>(() =>
-            {
-                var result = engineData.ValueTwo;
-            });
+            // Lazy loading has no effect, so processing has finished and
+            // the value is read with no timeout.
+            Assert.AreEqual(2, engineData.ValueTwo);
         }
 
         /// <summary>
         /// Check that a lazy loaded property that takes longer than the
-        /// timeout raises a TimeoutException when the lazy loading
+        /// timeout is read with no timeout when the lazy loading
         /// configuration has no cancellation token.
         /// </summary>
         [TestMethod]
@@ -211,18 +208,16 @@ namespace FiftyOne.Pipeline.Engines.Tests.FlowElements
 
             // Process the data
             engine.Process(data);
-            // Attempt to get the value. This should cause the timeout to be
-            // triggered, and not fail on the absent cancellation token.
-            Assert.ThrowsExactly<TimeoutException>(() =>
-            {
-                var result = engineData.ValueTwo;
-            });
+            // Lazy loading has no effect, so processing has finished and
+            // the value is read with no timeout, and not fail on the absent
+            // cancellation token.
+            Assert.AreEqual(2, engineData.ValueTwo);
         }
 
         /// <summary>
-        /// Check that activating the cancellation token while
-        /// waiting for processing for a lazy loaded property to
-        /// complete will function as expected.
+        /// Check that cancelling the token once Process has returned
+        /// leaves the value readable, because lazy loading has no effect
+        /// and processing has finished.
         /// </summary>
         [TestMethod]
         public void AspectEngineLazyLoad_ProcessCancelled()
@@ -268,25 +263,23 @@ namespace FiftyOne.Pipeline.Engines.Tests.FlowElements
                 {
                     Task.Delay(_timeoutMS / 10);
                     _cancellationTokenSource.Cancel();
-                });
+                }).Wait();
             }
             else
             {
                 _cancellationTokenSource.Cancel();
             }
 
-            // Attempt to get the value.
-            Assert.ThrowsExactly<OperationCanceledException>(() =>
-            {
-                var result = engineData.ValueTwo;
-            });
+            // Lazy loading has no effect, so processing finished before
+            // the token was cancelled, and the value is read.
+            Assert.AreEqual(2, engineData.ValueTwo);
             // This assert can help work out what is happening if the test fails.
             Assert.IsTrue(_cancellationTokenSource.IsCancellationRequested);
         }
 
         /// <summary>
         /// Check that throwing an exception from the engine's process method
-        /// will be properly passed up through the lazy loading method.
+        /// comes from processing, because lazy loading has no effect.
         /// </summary>
         [TestMethod]
         public void AspectEngineLazyLoad_ProcessErrored()
@@ -316,29 +309,17 @@ namespace FiftyOne.Pipeline.Engines.Tests.FlowElements
                 });
             var data = mockData.Object;
 
-            // Process the data
-            _engine.Process(data);
-
-
-            // Attempt to get the value.
-            try
-            {
-                var result = engineData.ValueOne;
-            }
-            catch (Exception e)
-            {
-                Assert.IsTrue(e is Exception);
-                Assert.IsNotNull(e.InnerException);
-                Assert.AreEqual(
-                    $"One or more errors occurred. ({exceptionMessage})",
-                    e.InnerException.Message);
-            }
+            // Process the data. Lazy loading has no effect, so the
+            // engine's exception comes from processing.
+            var e = Assert.ThrowsExactly<Exception>(
+                () => _engine.Process(data));
+            Assert.AreEqual(exceptionMessage, e.Message);
         }
 
         /// <summary>
         /// Check that throwing an exception from more than one engine's
-        /// process method will be properly passed up through the lazy loading
-        /// method and result in an AggregateException.
+        /// process method comes from each engine's processing, because
+        /// lazy loading has no effect.
         /// </summary>
         [TestMethod]
         public void AspectEngineLazyLoad_ProcessMultipleErrored()
@@ -376,27 +357,14 @@ namespace FiftyOne.Pipeline.Engines.Tests.FlowElements
                 });
             var data = mockData.Object;
 
-            // Process the data twice
-            _engine.Process(data);
-            engine2.Process(data);
-
-            // Attempt to get the value.
-            try
-            {
-                var result = engineData.ValueOne;
-            }
-            catch (Exception e)
-            {
-                Assert.IsTrue(e is AggregateException);
-                Assert.IsNotNull(((AggregateException)e).InnerExceptions);
-                Assert.HasCount(2, ((AggregateException)e).InnerExceptions);
-                Assert.AreEqual(
-                    $"One or more errors occurred. ({exceptionMessage})",
-                    ((AggregateException)e).InnerExceptions[0].Message);
-                Assert.AreEqual(
-                    $"One or more errors occurred. ({exceptionMessage})",
-                    ((AggregateException)e).InnerExceptions[1].Message);
-            }
+            // Process the data twice. Lazy loading has no effect, so each
+            // engine's exception comes from its own processing.
+            var first = Assert.ThrowsExactly<Exception>(
+                () => _engine.Process(data));
+            var second = Assert.ThrowsExactly<Exception>(
+                () => engine2.Process(data));
+            Assert.AreEqual(exceptionMessage, first.Message);
+            Assert.AreEqual(exceptionMessage, second.Message);
         }
 
 
@@ -406,13 +374,13 @@ namespace FiftyOne.Pipeline.Engines.Tests.FlowElements
         /// enabled works as expected.
         /// <list type="number">
         /// <item>
-        /// The call to <c>flowData.Process()</c> should complete well before
-        /// the configured 'process cost' of the dummy engine.
+        /// Lazy loading is deprecated and has no effect, so the call to
+        /// <c>flowData.Process()</c> takes the configured 'process cost'
+        /// of the dummy engine.
         /// </item>
         /// <item>
-        /// As 'ValueOne' is populated before the dummy engine starts waiting
-        /// to simulate an expensive operation, it's value should be 
-        /// accessible almost immediately.
+        /// Processing has finished, so 'ValueOne' is accessible almost
+        /// immediately after Process returns.
         /// </item>
         /// <item>
         /// As 'ValueTwo' is populated after the dummy engine has
@@ -456,9 +424,10 @@ namespace FiftyOne.Pipeline.Engines.Tests.FlowElements
                 try
                 {
                     logsEvents.Add(() => Trace.WriteLine($"Process complete in {processTimeMs} ms"));
-                    Assert.IsLessThan(processCostMs,
-processTimeMs, $"Process time should have been less than " +
-                        $"{processCostMs} ms but it took {processTimeMs} ms.");
+                    Assert.IsGreaterThanOrEqualTo(processCostMs / 2,
+processTimeMs, $"Process should have waited for processing, at " +
+                        $"least {processCostMs / 2} ms, but it took " +
+                        $"{processTimeMs} ms.");
 
                     // Assert
                     var data = flowData.Get<EmptyEngineData>();
@@ -491,9 +460,9 @@ processCostMs,
                     processStartedTimeMs, $"{nameof(processStartedTimeMs)} is not within {nameof(processCostMs)}: {processStartedTimeMs} vs {processCostMs}");
 
                 Assert.IsLessThan(processCostMs,
-valueOneTimeMs, $"Accessing value one should have taken less than " +
-                    $"{processCostMs} ms from the time the Process method" +
-                    $"was called but it took {valueOneTimeMs} ms.");   
+valueOneTimeMs - processTimeMs, $"Accessing value one should have taken less than " +
+                    $"{processCostMs} ms from the time the Process method " +
+                    $"returned but it took {valueOneTimeMs - processTimeMs} ms.");
 
                 // Note - this should really take at least 'processCostMs'
                 // but the accuracy of the timer seems to cause issues

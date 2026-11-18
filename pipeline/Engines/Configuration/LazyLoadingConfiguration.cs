@@ -26,7 +26,10 @@ using System.Threading;
 namespace FiftyOne.Pipeline.Engines.Configuration
 {
     /// <summary>
-    /// Used to store configuration values relating to lazy loading
+    /// Used to store configuration values relating to lazy loading.
+    /// Lazy loading is deprecated and has no effect. Every engine
+    /// processes on the thread that processes the Flow Data. This class
+    /// is kept so that existing code and configuration still build.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/advanced-features/lazy-loading.md">Specification</see>
     /// </summary>
     public class LazyLoadingConfiguration

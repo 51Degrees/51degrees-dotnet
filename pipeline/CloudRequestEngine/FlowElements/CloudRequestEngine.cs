@@ -32,6 +32,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -657,7 +658,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// Send evidence to the cloud and get back a JSON result.
+        /// Build the request from the Evidence and start it. The JSON
+        /// response is a lazy property of the data, whose task is the
+        /// request, so this returns without waiting for the response.
         /// </summary>
         /// <param name="data"></param>
         /// <param name="aspectData"></param>
@@ -688,32 +691,99 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
             aspectData.ProcessStarted = true;
 
-
-            string jsonResult = string.Empty;
             ThrowIfStillRecovering();
 
-            using (var content = GetContent(data))
-            using (var requestMessage =
-                new HttpRequestMessage(HttpMethod.Post, _endpointsAndKeys.DataEndpoint))
+            // The request is built from the Evidence here, on the thread
+            // that processes the Flow Data. The task holds only the
+            // request, and never reads the Flow Data.
+            var content = GetContent(data);
+#pragma warning disable CA2000 // Dispose objects before losing scope
+            // The task disposes the request, and the content with it.
+            var requestMessage = new HttpRequestMessage(
+                HttpMethod.Post, _endpointsAndKeys.DataEndpoint)
             {
-                if (Logger?.IsEnabled(LogLevel.Debug) == true)
+                Content = content
+            };
+#pragma warning restore CA2000 // Dispose objects before losing scope
+            if (Logger?.IsEnabled(LogLevel.Debug) == true)
+            {
+                Logger?.LogDebug($"Sending request to cloud service at " +
+                    $"'{_endpointsAndKeys.DataEndpoint}'. Content: {content}");
+            }
+
+            // The response is a lazy property whose task is the request.
+            // The request is started here, before Process returns, and
+            // every reader waits on this one task.
+            var response = SendDataRequestAsync(requestMessage);
+            TrackRequest(response);
+            aspectData.SetResponseTask(response);
+        }
+
+        /// <summary>
+        /// Send the data request and validate the response. The request
+        /// is sent before the first wait, so it has started when this
+        /// returns. Failures count towards the recovery period as they do
+        /// for every other request.
+        /// </summary>
+        private async Task<string> SendDataRequestAsync(
+            HttpRequestMessage request)
+        {
+            using (request)
+            using (var requestScope = _failHandler.MakeAttemptScope())
+            {
+                try
                 {
-                    Logger?.LogDebug($"Sending request to cloud service at " +
-                        $"'{_endpointsAndKeys.DataEndpoint}'. Content: {content}");
+                    AddOriginHeader(request);
+                    HttpResponseMessage response;
+                    try
+                    {
+                        response = await _httpClient.SendAsync(request)
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    when (!(ex is CloudRequestException))
+                    {
+                        throw new CloudRequestException(
+                            Messages.ExceptionCloudResponseFailure,
+                            new AggregateException(ex));
+                    }
+                    using (response)
+                    {
+                        var json = ProcessResponse(
+                            response, checkForErrorMessages: true);
+                        if (HasRequestedProperties)
+                        {
+                            ReportPropertiesNotCovered(json);
+                        }
+                        return json;
+                    }
                 }
-
-                requestMessage.Content = content;
-                jsonResult = AmendSendAndProcess(
-                    requestMessage,
-                    checkForErrorMessages: true);
+                catch (Exception ex)
+                when (!(ex is CloudRequestEngineTemporarilyUnavailableException))
+                {
+                    if (CountsTowardsRecovery(ex))
+                    {
+                        requestScope.RecordFailure(ex);
+                    }
+                    throw;
+                }
             }
+        }
 
-            if (HasRequestedProperties)
-            {
-                ReportPropertiesNotCovered(jsonResult);
-            }
+        /// <summary>
+        /// Requests still running, so that disposal waits for them.
+        /// </summary>
+        private readonly ConcurrentDictionary<Task, bool> _runningRequests =
+            new ConcurrentDictionary<Task, bool>();
 
-            aspectData.JsonResponse = jsonResult;
+        private void TrackRequest(Task request)
+        {
+            _runningRequests.TryAdd(request, true);
+            request.ContinueWith(
+                t => _runningRequests.TryRemove(t, out _),
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
 
         /// <summary>
@@ -990,12 +1060,25 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// A response with a top-level fodid member, in any letter case,
         /// holds a 51Did that the cloud service created for the one request,
         /// so it is never stored in the results cache or served from it.
-        /// Every other response is cached. The response is read without
-        /// waiting, because under lazy loading this runs inside the
-        /// processing task.
+        /// Every other response is cached. This runs as soon as processing
+        /// returns, so a response that has not arrived is allowed into the
+        /// cache here, and <see cref="CanServeFromCache"/> decides once it
+        /// has arrived. A failed request is never cached or served.
         /// </summary>
         protected override bool CanCache(CloudRequestData aspectData)
         {
+            var response = aspectData?.ResponseTask;
+            if (response != null)
+            {
+                if (response.IsCompleted == false)
+                {
+                    return true;
+                }
+                if (response.Status != TaskStatus.RanToCompletion)
+                {
+                    return false;
+                }
+            }
             var json = aspectData?.JsonResponseIfSet;
             if (string.IsNullOrEmpty(json) ||
                 json.IndexOf(
@@ -1243,10 +1326,40 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// Cleanup any unmanaged resources
+        /// A cached response is served only once it has arrived, so that a
+        /// response with a 51Did, or a failed request, is never served to
+        /// another request. The wait is a read of the lazy property.
+        /// </summary>
+        protected override bool CanServeFromCache(
+            CloudRequestData aspectData)
+        {
+            var response = aspectData?.ResponseTask;
+            if (response != null)
+            {
+                ((IAsyncResult)response).AsyncWaitHandle.WaitOne();
+            }
+            return CanCache(aspectData);
+        }
+
+        /// <summary>
+        /// Cleanup any unmanaged resources. Waits for requests still
+        /// running, for no longer than the request timeout, so that none
+        /// uses the HTTP client after the engine is disposed.
         /// </summary>
         protected override void UnmanagedResourcesCleanup()
         {
+            var running = _runningRequests.Keys.ToArray();
+            if (running.Length > 0)
+            {
+                try
+                {
+                    Task.WaitAll(running, _httpClient.Timeout);
+                }
+                catch (AggregateException)
+                {
+                    // A failed request has already reached its readers.
+                }
+            }
         }
 
         /// <summary>
@@ -1376,6 +1489,15 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             HttpRequestMessage request)
         {
             ThrowIfStillRecovering();
+            AddOriginHeader(request);
+            return SendRequestAsync(request);
+        }
+
+        /// <summary>
+        /// Add the configured Origin header, if there is one, to a request.
+        /// </summary>
+        private void AddOriginHeader(HttpRequestMessage request)
+        {
             if (string.IsNullOrEmpty(_endpointsAndKeys.CloudRequestOrigin) == false &&
                 (request.Headers.Contains(Constants.ORIGIN_HEADER_NAME) == false ||
                 request.Headers.GetValues(Constants.ORIGIN_HEADER_NAME).Contains(
@@ -1383,7 +1505,6 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             {
                 request.Headers.Add(Constants.ORIGIN_HEADER_NAME, _endpointsAndKeys.CloudRequestOrigin);
             }
-            return SendRequestAsync(request);
         }
 
         /// <summary>

@@ -526,7 +526,25 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     $"to produce results until this is corrected.");
             }
 
-            var json = requestData?.JsonResponse;
+            // Reading the response waits for the request. A failed request
+            // met here, while the Flow Data is processed, is recorded once
+            // as the Cloud Request Engine's error, not this engine's.
+            string json = null;
+            try
+            {
+                json = requestData?.JsonResponse;
+            }
+#pragma warning disable CA1031 // Do not catch general exception types
+            // Any failure of the request is the request engine's error.
+            catch (Exception ex)
+#pragma warning restore CA1031 // Do not catch general exception types
+            {
+                if (requestData.ClaimFailureRecord())
+                {
+                    data.AddError(ex, RequestEngine.GetInstance(), true,
+                        data.Pipeline?.SuppressProcessExceptions != true);
+                }
+            }
 
             // If the JSON is empty or null then do not Process the CloudAspectEngine.
             // Empty or null JSON indicates that an error has occurred in the 

@@ -74,7 +74,9 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         }
 
         /// <summary>
-        /// Enable lazy loading of results.
+        /// Deprecated, has no effect. Lazy loading is deprecated and every
+        /// engine processes on the thread that processes the Flow Data.
+        /// Kept so that existing code still builds.
         /// Uses a default timeout of 5 seconds.
         /// </summary>
         /// <returns>
@@ -87,7 +89,9 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         }
 
         /// <summary>
-        /// Enable lazy loading of results.
+        /// Deprecated, has no effect. Lazy loading is deprecated and every
+        /// engine processes on the thread that processes the Flow Data.
+        /// Kept so that existing code still builds.
         /// </summary>
         /// <param name="timeoutMilliseconds">
         /// The timeout in milliseconds to use when attempting to access
@@ -104,7 +108,9 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         }
 
         /// <summary>
-        /// Enable lazy loading of results.
+        /// Deprecated, has no effect. Lazy loading is deprecated and every
+        /// engine processes on the thread that processes the Flow Data.
+        /// Kept so that existing code still builds.
         /// </summary>
         /// <param name="timeout">
         /// The timeout to use when attempting to access lazy-loaded values.
@@ -121,7 +127,9 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         }
 
         /// <summary>
-        /// Enable lazy loading of results.
+        /// Deprecated, has no effect. Lazy loading is deprecated and every
+        /// engine processes on the thread that processes the Flow Data.
+        /// Kept so that existing code still builds.
         /// Uses a default timeout of 5 seconds.
         /// </summary>
         /// <param name="cancellationToken">
@@ -139,7 +147,9 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         }
 
         /// <summary>
-        /// Enable lazy loading of results.
+        /// Deprecated, has no effect. Lazy loading is deprecated and every
+        /// engine processes on the thread that processes the Flow Data.
+        /// Kept so that existing code still builds.
         /// </summary>
         /// <param name="timeout">
         /// The timeout to use when attempting to access lazy-loaded values.

@@ -651,7 +651,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
 
             var text = new System.Text.StringBuilder();
             using (var pipeline = new PipelineBuilder(loggerFactory)
-                .AddFlowElement(engine).Build())
+                .AddFlowElement(engine)
+                .AddFlowElement(new CloudResponseReader()).Build())
             {
                 var data = pipeline.CreateFlowData();
                 data.AddEvidence("query.User-Agent", "iPhone");
@@ -929,7 +930,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
 
             try
             {
-                using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build();
+                using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).AddFlowElement(new CloudResponseReader()).Build();
                 var data = pipeline.CreateFlowData();
                 data.AddEvidence("query.User-Agent", userAgent);
 
@@ -1029,7 +1030,7 @@ cloudEx.Message, "Exception message did not contain the expected text.");
 
             try
             {
-                using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build();
+                using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).AddFlowElement(new CloudResponseReader()).Build();
                 var data = pipeline.CreateFlowData();
                 data.AddEvidence("query.User-Agent", userAgent);
 
@@ -1083,7 +1084,7 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                 .SetResourceKey(resourceKey)
                 .Build();
 
-            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).AddFlowElement(new CloudResponseReader()).Build();
             var data = pipeline.CreateFlowData();
             data.AddEvidence("query.User-Agent", userAgent);
 
@@ -1149,7 +1150,7 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                 .SetResourceKey(resourceKey)
                 .Build();
 
-            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).AddFlowElement(new CloudResponseReader()).Build();
             var defaultResponses = new string[]
             {
                     _jsonResponse,
@@ -1214,7 +1215,7 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                 .SetFailuresToEnterRecovery(1)
                 .Build();
 
-            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).AddFlowElement(new CloudResponseReader()).Build();
             var defaultResponses = new string[]
             {
                     _jsonResponse,
@@ -1335,7 +1336,8 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                 .SetFailuresToEnterRecovery(1)
                 .Build();
             using var pipeline = new PipelineBuilder(_loggerFactory)
-                .AddFlowElement(engine).Build();
+                .AddFlowElement(engine)
+                .AddFlowElement(new CloudResponseReader()).Build();
             var goodResponse = _jsonResponse;
 
             _jsonResponse = body;
@@ -1380,7 +1382,7 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                 .SetFailuresToEnterRecovery(1)
                 .Build();
 
-            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).AddFlowElement(new CloudResponseReader()).Build();
             var defaultResponses = new string[]
             {
                     _jsonResponse,
@@ -1451,7 +1453,7 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                 .SetFailuresToEnterRecovery(1)
                 .Build();
 
-            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).AddFlowElement(new CloudResponseReader()).Build();
             var defaultResponses = new string[]
             {
                     _jsonResponse,
@@ -1560,7 +1562,8 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                 .Build();
 
             using var pipeline = new PipelineBuilder(_loggerFactory)
-                .AddFlowElement(engine).Build();
+                .AddFlowElement(engine)
+                .AddFlowElement(new CloudResponseReader()).Build();
 
             void Process()
             {
@@ -2418,7 +2421,7 @@ cloudEx.Message, "Exception message did not contain the expected text.");
 
             try
             {
-                using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).Build();
+                using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).AddFlowElement(new CloudResponseReader()).Build();
                 var data = pipeline.CreateFlowData();
                 data.AddEvidence("query.User-Agent", userAgent);
                 data.Process();
@@ -2454,14 +2457,16 @@ cloudEx.Message, "Exception message did not contain the expected text.");
                 .Build();
 
 
-            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).SetSuppressProcessExceptions(true).Build();
+            using var pipeline = new PipelineBuilder(_loggerFactory).AddFlowElement(engine).AddFlowElement(new CloudResponseReader()).SetSuppressProcessExceptions(true).Build();
             var data = pipeline.CreateFlowData();
             data.AddEvidence("query.User-Agent", userAgent);
             data.Process();
 
             Assert.IsNotNull(data.Errors);
-            Assert.HasCount(1, data.Errors);
-            var error = data.Errors[0];
+            var engineErrors = data.Errors
+                .Where(e => e.FlowElement == engine).ToList();
+            Assert.HasCount(1, engineErrors);
+            var error = engineErrors[0];
             Assert.IsInstanceOfType<FlowElements.CloudRequestEngine>(error.FlowElement);
             var exception = error.ExceptionData;
 
@@ -2778,14 +2783,22 @@ cloudEx.Message, "Exception message did not contain the expected text.");
             else 
             { 
                // Prepare the expected response of the mocked http call
-               setup.ReturnsAsync(() =>
+               // The answer comes on another thread, as a real client's
+               // does, so an answer held back does not hold the caller.
+               setup.Returns(() =>
                 {
-                    _jsonResponseGate?.Wait(JsonResponseGateMs);
-                    return new HttpResponseMessage()
+                    var gate = _jsonResponseGate;
+                    var status = _jsonResponseStatus;
+                    var json = _jsonResponse;
+                    return Task.Run(() =>
                     {
-                        StatusCode = _jsonResponseStatus,
-                        Content = new StringContent(_jsonResponse),
-                    };
+                        gate?.Wait(JsonResponseGateMs);
+                        return new HttpResponseMessage()
+                        {
+                            StatusCode = status,
+                            Content = new StringContent(json),
+                        };
+                    });
                 })
                .Verifiable();
             }

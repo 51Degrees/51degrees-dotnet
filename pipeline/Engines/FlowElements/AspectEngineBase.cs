@@ -87,7 +87,11 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         public abstract string DataSourceTier { get; }
 
         /// <summary>
-        /// The lazy loading configuration to use.
+        /// The lazy loading configuration to use. Lazy loading is
+        /// deprecated and has no effect. The engine always processes on
+        /// the thread that processes the Flow Data. Long-running work
+        /// belongs in a lazy property of the engine's own data, whose
+        /// readers all wait on one task.
         /// </summary>
         public LazyLoadingConfiguration LazyLoadingConfiguration { get; private set; }
 
@@ -178,7 +182,10 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         }
 
         /// <summary>
-        /// Configure lazy loading of results.
+        /// Deprecated, has no effect. Lazy loading is deprecated and the
+        /// engine always processes on the thread that processes the Flow
+        /// Data. Long-running work belongs in a lazy property of the
+        /// engine's own data. Kept so that existing code still builds.
         /// </summary>
         /// <param name="configuration">
         /// The configuration to use.
@@ -231,10 +238,9 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         /// from it. A result that holds a value created for the one request
         /// that asked for it must not be, because a later request with the
         /// same Evidence would receive that value. The default is true.
-        /// With lazy loading this runs inside the processing task, so an
-        /// override must read the result without waiting for lazy loading,
-        /// for example with <c>TryGet</c>, or it waits for the task it runs
-        /// in.
+        /// It runs as soon as processing returns, so where the result has
+        /// a lazy property whose task is still running, an override can
+        /// allow it now and decide in <see cref="CanServeFromCache(T)"/>.
         /// See the <see href="https://github.com/51Degrees/specifications/blob/287d773def38f75d3dbb8ea544de197124d45462/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
         /// </summary>
         /// <param name="aspectData">
@@ -244,6 +250,21 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         protected virtual bool CanCache(T aspectData)
         {
             return true;
+        }
+
+        /// <summary>
+        /// Whether a result found in the results cache may be served to
+        /// this request. The default is <see cref="CanCache(T)"/>. An
+        /// override may wait for a lazy property of the result, because
+        /// the result was made for an earlier request.
+        /// </summary>
+        /// <param name="aspectData">
+        /// A result found in the cache.
+        /// </param>
+        /// <returns>True if the result may be served.</returns>
+        protected virtual bool CanServeFromCache(T aspectData)
+        {
+            return CanCache(aspectData);
         }
 
         /// <summary>
@@ -287,7 +308,8 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                 catch (InvalidCastException) { }
                 // A result that must not be served from the cache is
                 // processed again.
-                if (cacheResult != null && CanCache(cacheResult) == false)
+                if (cacheResult != null &&
+                    CanServeFromCache(cacheResult) == false)
                 {
                     cacheResult = default(T);
                 }
@@ -306,30 +328,12 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                     Internal(aspectData).AddEngine(this);
                 }
 
-                // Start the engine processing
-                if (LazyLoadingConfiguration != null)
-                {
-                    // If lazy loading is configured then create a task
-                    // to do the processing and assign the task to the
-                    // aspect data property. The data is checked first, so
-                    // no task starts for data that cannot hold one.
-                    // Whether the result is cached is decided in the
-                    // task, once processing has finished, so that Process
-                    // still returns at once.
-                    var aspectDataInternal = Internal(aspectData);
-                    var task = Task.Run(() =>
-                    {
-                        ProcessEngine(data, aspectData);
-                        AddToCache(data);
-                    });
-                    aspectDataInternal.AddProcessTask(task);
-                }
-                else
-                {
-                    // If not lazy loading, just start processing.
-                    ProcessEngine(data, aspectData);
-                    AddToCache(data);
-                }
+                // The deprecated lazy loading option has no effect. The
+                // engine always processes on the calling thread. Work
+                // that takes long belongs in a lazy property of the
+                // engine's own data.
+                ProcessEngine(data, aspectData);
+                AddToCache(data);
             }
             else
             {

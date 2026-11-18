@@ -97,24 +97,21 @@ public class AspectEngineInternalDataTests
     }
 
     /// <summary>
-    /// Lazy loading needs the data to hold the process task, so data that
-    /// cannot fails naming its type rather than going on without it.
+    /// Lazy loading is deprecated and has no effect, so data that lists
+    /// the engine needs no process task, and is processed as it is with
+    /// no lazy loading.
     /// </summary>
     [TestMethod]
     public void AspectEngine_LazyLoadingPlainData_FailsNamingTheType()
     {
-        IAspectData data = null;
         Engine engine = null;
-        engine = new Engine(p => data = PlainData(engine));
+        engine = new Engine(p => PlainData(engine));
         engine.SetLazyLoading(new LazyLoadingConfiguration(1000));
         using var flowData = FlowDataFor(engine);
 
-        var ex = Assert.ThrowsExactly<PipelineException>(() =>
-            engine.Process(flowData));
+        engine.Process(flowData);
 
-        StringAssert.Contains(ex.Message, data.GetType().FullName);
-        Assert.AreEqual(0, engine.Processed,
-            "No processing should start for data that cannot hold it.");
+        Assert.AreEqual(1, engine.Processed);
     }
 
     /// <summary>

@@ -25,6 +25,10 @@ using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FlowElements;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.CloudRequestEngine.Data
 {
@@ -32,26 +36,71 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Data
     /// The <see cref="IElementData"/> class for 
     /// <see cref="FlowElements.CloudRequestEngine"/>.
     /// </summary>
+    /// <remarks>
+    /// The JSON response is a lazy property. The engine starts the HTTP
+    /// request while it processes and returns without waiting. Every
+    /// reader of the response waits for that one request, and every reader
+    /// gets its result or its failure. The request is sent once.
+    /// </remarks>
     public class CloudRequestData : AspectDataBase
     {
         private const string JSON_RESPONSE_KEY = "json-response";
         private const string PROCESS_STARTED_KEY = "process-started";
 
         /// <summary>
-        /// The raw JSON response returned by the 51Degrees cloud service. 
+        /// The task that sends the request and gives the response, or
+        /// null when the response was set directly.
         /// </summary>
+        private Task<string> _response;
+
+        /// <summary>
+        /// Set to 1 by the first reader that records a failed request in
+        /// the Flow Data's errors.
+        /// </summary>
+        private int _failureRecorded;
+
+        /// <summary>
+        /// The raw JSON response returned by the 51Degrees cloud service.
+        /// Reading it waits for the request to finish.
+        /// </summary>
+        /// <exception cref="CloudRequestException">
+        /// Thrown, to every reader, if the request failed.
+        /// </exception>
         public string JsonResponse
         {
             get { return base[JSON_RESPONSE_KEY]?.ToString(); }
-            set { base[JSON_RESPONSE_KEY] = value; }
+            set
+            {
+                Volatile.Write(ref _response, null);
+                base[JSON_RESPONSE_KEY] = value;
+            }
         }
 
         /// <summary>
-        /// The raw JSON response if processing has set it, or null. Unlike
-        /// <see cref="JsonResponse"/>, this never waits for lazy loading.
+        /// The raw JSON response if it has arrived, or null. Unlike
+        /// <see cref="JsonResponse"/>, this never waits.
         /// </summary>
-        internal string JsonResponseIfSet =>
-            TryGet(JSON_RESPONSE_KEY, out var value) ? value?.ToString() : null;
+        internal string JsonResponseIfSet
+        {
+            get
+            {
+                var response = Volatile.Read(ref _response);
+                if (response != null)
+                {
+                    return response.Status == TaskStatus.RanToCompletion
+                        ? response.Result
+                        : null;
+                }
+                return base.TryGetValue(JSON_RESPONSE_KEY, out object value)
+                    ? value?.ToString()
+                    : null;
+            }
+        }
+
+        /// <summary>
+        /// The task that gives the response, or null.
+        /// </summary>
+        internal Task<string> ResponseTask => Volatile.Read(ref _response);
 
         /// <summary>
         /// Flag to confirm that the CloudRequestEngine has started processing.
@@ -79,6 +128,67 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Data
             IPipeline pipeline,
             IAspectEngine engine) : base(logger, pipeline, engine)
         {
+        }
+
+        /// <summary>
+        /// Set the task that gives the response. Called by the engine
+        /// while it processes.
+        /// </summary>
+        internal void SetResponseTask(Task<string> response)
+        {
+            Volatile.Write(ref _response, response);
+        }
+
+        /// <summary>
+        /// True for the first caller only, so that a failed request is
+        /// recorded once in the Flow Data's errors.
+        /// </summary>
+        internal bool ClaimFailureRecord()
+        {
+            return Interlocked.Exchange(ref _failureRecorded, 1) == 0;
+        }
+
+        /// <summary>
+        /// Wait for the response and return it.
+        /// </summary>
+        private static string WaitForResponse(Task<string> response)
+        {
+            // GetResult throws the request's own exception, the same
+            // instance to every reader.
+            return response.GetAwaiter().GetResult();
+        }
+
+        /// <inheritdoc/>
+        protected override bool TryGetValue<T>(string key, out T value)
+        {
+            var response = Volatile.Read(ref _response);
+            if (response != null &&
+                string.Equals(key, JSON_RESPONSE_KEY,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                value = (T)(object)WaitForResponse(response);
+                return true;
+            }
+            return base.TryGetValue(key, out value);
+        }
+
+        /// <inheritdoc/>
+        public override IReadOnlyDictionary<string, object> AsDictionary()
+        {
+            var values = base.AsDictionary();
+            var response = Volatile.Read(ref _response);
+            if (response == null)
+            {
+                return values;
+            }
+            var result = new Dictionary<string, object>(
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in values)
+            {
+                result[entry.Key] = entry.Value;
+            }
+            result[JSON_RESPONSE_KEY] = WaitForResponse(response);
+            return result;
         }
     }
 }

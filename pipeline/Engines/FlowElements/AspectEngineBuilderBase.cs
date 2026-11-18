@@ -56,7 +56,10 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         private bool _cacheHitOrMiss = Constants.CACHE_DEFAULT_HIT_OR_MISS_ENABLED;
 
         /// <summary>
-        /// Configure lazy loading of results.
+        /// Deprecated, has no effect. Lazy loading is deprecated and the
+        /// engine always processes on the thread that processes the Flow
+        /// Data. Long-running work belongs in a lazy property of the
+        /// engine's own data. Kept so that existing code still builds.
         /// </summary>
         /// <param name="lazyLoadingConfig">
         /// The configuration to use.
@@ -72,7 +75,10 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         }
 
         /// <summary>
-        /// Configure lazy loading of results.
+        /// Deprecated, has no effect. Lazy loading is deprecated and the
+        /// engine always processes on the thread that processes the Flow
+        /// Data. Long-running work belongs in a lazy property of the
+        /// engine's own data. Kept so that existing code still builds.
         /// </summary>
         /// <param name="timeoutMs">
         /// The timeout length in milliseconds.

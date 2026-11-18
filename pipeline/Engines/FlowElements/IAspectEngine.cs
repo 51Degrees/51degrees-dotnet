@@ -66,7 +66,10 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         string DataSourceTier { get; }
 
         /// <summary>
-        /// Configure lazy loading of results.
+        /// Deprecated, has no effect. Lazy loading is deprecated and the
+        /// engine always processes on the thread that processes the Flow
+        /// Data. Long-running work belongs in a lazy property of the
+        /// engine's own data. Kept so that existing code still builds.
         /// </summary>
         /// <param name="configuration">
         /// The configuration to use.
