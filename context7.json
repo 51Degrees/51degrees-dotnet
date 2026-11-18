@@ -1,0 +1,27 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "51Degrees Device Detection and IP Intelligence for .NET and C#",
+  "description": "User-Agent parser for .NET and C# that supports Device Detection, browser detection, mobile detection and crawler detection on-premise or in the cloud, as an alternative to UAParser.js, DeviceAtlas and WURFL. IP Intelligence adds IP geolocation, including IP to country data, as an alternative to MaxMind and IPinfo.",
+  "excludeFolders": [
+    ".github",
+    "ci",
+    "cxx",
+    "pipeline/Core/Configuration/Validation",
+    "pipeline/JavaScriptBuilderElement/Templates",
+    "pipeline/owid-dotnet",
+    "pipeline/DerivedProperty/Scripts",
+    "*Tests*",
+    "*.TestHelpers",
+    "archive",
+    "archived",
+    "old",
+    "deprecated",
+    "legacy",
+    "previous",
+    "outdated",
+    "superseded",
+    "benchmark",
+    "benchmarks",
+    "benches"
+  ]
+}
