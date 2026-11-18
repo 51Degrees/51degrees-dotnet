@@ -114,6 +114,16 @@ The CloudRequestEngine\GettingStarted example requires a resource key. It reads 
 
 Every example that calls the 51Degrees cloud (CloudRequestEngine\GettingStarted and Did\CreatorContextWeb) reads the service to call from the `_51DEGREES_CLOUD_ENDPOINT` environment variable, which is the API base including the `/api/v4/` segment and defaults to `https://cloud.51degrees.com/api/v4/`. This is the same variable the `CloudRequestEngineBuilder` honours when no endpoint is set. A host other than `cloud.51degrees.com` would be used to (a) use an on premise web server, or (b) use a privately hosted version of the 51Degrees cloud for performance reasons. This is the private hosting option of the cloud service. Both run the same service, so the examples work unchanged against either. The CustomFlowElement\4. Cloud Engine tutorial calls the star sign example service built for that tutorial rather than the 51Degrees cloud, so its endpoint is fixed.
 
+## Writing Element Data
+
+Element Data is written only by the Flow Element that provides it, or the
+Flow Elements that share it, and only while they process. Once that Flow
+Element has finished, a write to its Element Data throws a
+`PipelineException`. To change a value after processing, keep it in a
+variable of your own. A custom Flow Element whose work writes Element Data
+after `ProcessInternal` returns, or writes another Flow Element's Element
+Data, runs that work through `WriteSharedData`.
+
 ## Cancelling processing
 
 Pass a `CancellationToken` to `CreateFlowData` to stop processing when the token

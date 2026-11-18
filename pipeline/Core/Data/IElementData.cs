@@ -30,8 +30,13 @@ namespace FiftyOne.Pipeline.Core.Data
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/conceptual-overview.md#element-data">Specification</see>
     /// </summary>
     /// <remarks>
-    /// An instance is written only by the Flow Element that creates it,
-    /// while that Flow Element processes. It is not intended to be written
+    /// An instance is written only by the Flow Element that provides it, or
+    /// the Flow Elements that share it, and only while they process. Once a
+    /// Flow Element that writes it has finished, a write fails with a
+    /// <see cref="Exceptions.PipelineException"/>, until a Flow Element
+    /// that shares the instance starts to process it again. Values an
+    /// instance keeps once it has read them are not writes. It is not
+    /// intended to be written
     /// from several threads at once, nor read while it is being written.
     /// Once the Flow Element has finished, the instance is safe to read from
     /// several threads at once, as the Flow Elements of a parallel group do.

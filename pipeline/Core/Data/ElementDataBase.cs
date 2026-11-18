@@ -42,7 +42,11 @@ namespace FiftyOne.Pipeline.Core.Data
     /// Element that shares the instance starts to process it again. Values
     /// a derived class keeps once it has read them, such as values read from
     /// native results, are not writes, and are kept with
-    /// <see cref="KeepValues"/>. It is not intended to be written
+    /// <see cref="KeepValues"/>. A derived class that writes in another way,
+    /// such as adding to a list it holds, calls <see cref="CheckWrite"/>
+    /// first. The check is a field read, never a lock, and is not tied to
+    /// a thread, so while a writer holds the instance open a write from any
+    /// thread succeeds. It is not intended to be written
     /// from several threads at once, nor read while it is being written,
     /// and its dictionary is not safe for either. Once the Flow Element has
     /// finished, the instance is safe to read from several threads at once.
