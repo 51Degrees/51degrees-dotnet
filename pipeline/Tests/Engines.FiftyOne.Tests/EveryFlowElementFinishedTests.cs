@@ -243,7 +243,7 @@ public class EveryFlowElementFinishedTests
             using var pipeline = elements
                 .Aggregate(
                     new PipelineBuilder(NullLoggerFactory.Instance)
-                        .SetSuppressProcessException(true),
+                        .SetSuppressProcessExceptions(true),
                     (b, e) => b.AddFlowElement(e))
                 .Build();
             using var data = pipeline.CreateFlowData();

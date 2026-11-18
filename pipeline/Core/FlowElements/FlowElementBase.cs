@@ -260,7 +260,9 @@ namespace FiftyOne.Pipeline.Core.FlowElements
                 // Element Data this Flow Element shares with one that has
                 // already processed is opened for writing again, and is
                 // closed once this Flow Element has finished, even if it
-                // throws.
+                // throws. Two Flow Elements that share a key are never in
+                // one parallel group, because the first to finish would
+                // close the instance under the other.
                 var shared = FindElementData(data);
                 shared?.StartWriting();
                 try

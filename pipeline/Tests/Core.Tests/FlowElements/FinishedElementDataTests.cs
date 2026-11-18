@@ -104,7 +104,7 @@ public class FinishedElementDataTests
     private static IPipeline Build(params IFlowElement[] elements)
     {
         var builder = new PipelineBuilder(NullLoggerFactory.Instance)
-            .SetSuppressProcessException(true);
+            .SetSuppressProcessExceptions(true);
         foreach (var element in elements)
         {
             builder.AddFlowElement(element);

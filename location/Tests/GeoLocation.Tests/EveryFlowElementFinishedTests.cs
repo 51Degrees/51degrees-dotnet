@@ -67,7 +67,7 @@ public class EveryFlowElementFinishedTests
         {
             var engine = build();
             using var pipeline = new PipelineBuilder(NullLoggerFactory.Instance)
-                .SetSuppressProcessException(true)
+                .SetSuppressProcessExceptions(true)
                 .AddFlowElement(new StubRequestEngine(engine.ElementDataKey))
                 .AddFlowElement(engine)
                 .Build();
