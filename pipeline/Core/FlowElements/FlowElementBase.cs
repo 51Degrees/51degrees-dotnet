@@ -257,7 +257,24 @@ namespace FiftyOne.Pipeline.Core.FlowElements
                     $"'{GetType().Name}' started processing.");
                     sw = Stopwatch.StartNew();
                 }
-                ProcessInternal(data);
+                // Element Data this Flow Element shares with one that has
+                // already processed is opened for writing again, and is
+                // closed once this Flow Element has finished, even if it
+                // throws.
+                var shared = FindElementData(data);
+                shared?.StartWriting();
+                try
+                {
+                    ProcessInternal(data);
+                }
+                finally
+                {
+                    shared?.FinishWriting(true);
+                    if (shared == null)
+                    {
+                        FindElementData(data)?.FinishWriting(false);
+                    }
+                }
                 if (log)
                 {
                     Logger.LogDebug($"FlowElement " +
@@ -276,6 +293,56 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// and carries the output data to the user.
         /// </param>
         protected abstract void ProcessInternal(IFlowData data);
+
+        /// <summary>
+        /// The Element Data this Flow Element writes in the Flow Data, if
+        /// it is there yet and records when its writers finish.
+        /// </summary>
+        private ElementDataBase FindElementData(IFlowData data)
+        {
+            return WritesElementData ?
+                (data as FlowData)?.FindElementData(ElementDataKey) :
+                null;
+        }
+
+        /// <summary>
+        /// False for a Flow Element with no Element Data of its own, such
+        /// as a parallel group, whose key cannot be read.
+        /// </summary>
+        internal virtual bool WritesElementData => true;
+
+        /// <summary>
+        /// Run work that writes Element Data that this Flow Element shares
+        /// and has not opened itself, such as processing started in a task
+        /// that runs after <see cref="ProcessInternal(IFlowData)"/> has
+        /// returned, or another Flow Element's Element Data that this one
+        /// replaces values in. The Element Data is open for writing while
+        /// the work runs, and closed once it has finished, even if it
+        /// throws.
+        /// </summary>
+        /// <param name="elementData">
+        /// The Element Data the work writes.
+        /// </param>
+        /// <param name="work">
+        /// The work to run.
+        /// </param>
+        protected static void WriteSharedData(IElementData elementData, Action work)
+        {
+            if (work == null)
+            {
+                throw new ArgumentNullException(nameof(work));
+            }
+            var data = elementData as ElementDataBase;
+            data?.StartWriting();
+            try
+            {
+                work();
+            }
+            finally
+            {
+                data?.FinishWriting(true);
+            }
+        }
 
         /// <summary>
         /// Called when this element is added to a pipeline.

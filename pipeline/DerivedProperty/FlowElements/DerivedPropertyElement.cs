@@ -163,9 +163,43 @@ namespace FiftyOne.Pipeline.DerivedProperty.FlowElements
             var derived = data.GetOrAdd(
                 ElementDataKeyTyped,
                 CreateElementData);
-            for (var i = 0; i < _compiled.Length; i++)
+            // A script that replaces a value in another Flow Element's
+            // Element Data shares that instance, so it is open for writing
+            // while this element processes.
+            var targets = new List<IElementData>();
+            foreach (var script in _compiled)
             {
-                _compiled[i].Process(data, derived);
+                if (script.TargetKey != null &&
+                    data.TryGetValue(script.TargetKey, out var target) &&
+                    target != null &&
+                    targets.Contains(target) == false)
+                {
+                    targets.Add(target);
+                }
+            }
+            WriteShared(targets, 0, () =>
+            {
+                for (var i = 0; i < _compiled.Length; i++)
+                {
+                    _compiled[i].Process(data, derived);
+                }
+            });
+        }
+
+        private static void WriteShared(
+            List<IElementData> targets,
+            int index,
+            Action work)
+        {
+            if (index == targets.Count)
+            {
+                work();
+            }
+            else
+            {
+                WriteSharedData(
+                    targets[index],
+                    () => WriteShared(targets, index + 1, work));
             }
         }
 

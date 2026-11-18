@@ -90,6 +90,13 @@ namespace FiftyOne.Pipeline.DerivedProperty.Data
         // the script creates a property of its own.
         private readonly ITypedKey<IElementData> _targetKey;
 
+        /// <summary>
+        /// The key of the other Flow Element's Element Data this script
+        /// replaces a value in, or null if it writes the derived property
+        /// element's own data.
+        /// </summary>
+        internal ITypedKey<IElementData> TargetKey => _targetKey;
+
         private readonly Func<object, IAspectPropertyValue> _valueFactory;
         private readonly Func<string, IAspectPropertyValue> _noValueFactory;
 

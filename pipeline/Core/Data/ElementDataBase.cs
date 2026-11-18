@@ -24,6 +24,7 @@ using FiftyOne.Pipeline.Core.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace FiftyOne.Pipeline.Core.Data
 {
@@ -33,8 +34,15 @@ namespace FiftyOne.Pipeline.Core.Data
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/conceptual-overview.md#element-data">Specification</see>
     /// </summary>
     /// <remarks>
-    /// An instance is written only by the Flow Element that creates it,
-    /// while that Flow Element processes. It is not intended to be written
+    /// An instance is written only by the Flow Element that provides it, or
+    /// the Flow Elements that share it, and only while they process. Once a
+    /// Flow Element that writes it has finished, a write through the indexer
+    /// or <see cref="DataBase.PopulateFrom"/>, or a setter built on them,
+    /// throws a <see cref="Exceptions.PipelineException"/>, until a Flow
+    /// Element that shares the instance starts to process it again. Values
+    /// a derived class keeps once it has read them, such as values read from
+    /// native results, are not writes, and are kept with
+    /// <see cref="KeepValues"/>. It is not intended to be written
     /// from several threads at once, nor read while it is being written,
     /// and its dictionary is not safe for either. Once the Flow Element has
     /// finished, the instance is safe to read from several threads at once.
@@ -44,6 +52,99 @@ namespace FiftyOne.Pipeline.Core.Data
     /// </remarks>
     public abstract class ElementDataBase : DataBase, IElementData
     {
+        // Flow Elements processing this instance now. A field read, never
+        // a lock.
+        private int _writers;
+
+        // Set once a Flow Element that writes this instance has finished.
+        private volatile bool _finished;
+
+        /// <summary>
+        /// Get or set a data value. Setting fails once a Flow Element that
+        /// writes this instance has finished, as the remarks on
+        /// <see cref="ElementDataBase"/> describe.
+        /// </summary>
+        /// <param name="key">
+        /// The name of the property
+        /// </param>
+        /// <returns>
+        /// The property value
+        /// </returns>
+        /// <exception cref="Exceptions.PipelineException">
+        /// Thrown when setting a value once a Flow Element that writes this
+        /// instance has finished.
+        /// </exception>
+        public override object this[string key]
+        {
+            get
+            {
+                return base[key];
+            }
+            set
+            {
+                if (_finished && Volatile.Read(ref _writers) == 0)
+                {
+                    throw new Exceptions.PipelineException(
+                        $"Element Data '{GetType().Name}' cannot be " +
+                        $"written once the Flow Element that provides it " +
+                        $"has finished. The value for '{key}' was not " +
+                        $"written.");
+                }
+                base[key] = value;
+            }
+        }
+
+        /// <summary>
+        /// Keep values that this instance has read, such as values read from
+        /// native results, so that they are not read again. These are not
+        /// writes, so they are kept whether or not the Flow Element that
+        /// provides this instance has finished.
+        /// </summary>
+        /// <param name="values">
+        /// The values to keep.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if the supplied values are null
+        /// </exception>
+        protected void KeepValues(
+            IEnumerable<KeyValuePair<string, object>> values)
+        {
+            if (values == null)
+            {
+                throw new ArgumentNullException(nameof(values));
+            }
+            foreach (var value in values)
+            {
+                base[value.Key] = value.Value;
+            }
+        }
+
+        /// <summary>
+        /// Record that a Flow Element that writes this instance has started
+        /// to process it, which opens it for writing again.
+        /// </summary>
+        internal void StartWriting()
+        {
+            Interlocked.Increment(ref _writers);
+        }
+
+        /// <summary>
+        /// Record that a Flow Element that writes this instance has
+        /// finished.
+        /// </summary>
+        /// <param name="started">
+        /// True if <see cref="StartWriting"/> was called for this Flow
+        /// Element.
+        /// </param>
+        internal void FinishWriting(bool started)
+        {
+            _finished = true;
+            if (started)
+            {
+                Interlocked.Decrement(ref _writers);
+            }
+        }
+
         /// <summary>
         /// The <see cref="IPipeline"/> instance this element data will
         /// be associated with.

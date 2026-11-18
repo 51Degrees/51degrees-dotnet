@@ -582,7 +582,8 @@ namespace FiftyOne.IpIntelligence.Shared.Data
                                     $"type {property.Type.Name}");
                             }
                         };
-                        PopulateFrom(dict);
+                        // Values kept once read, not writes.
+                        KeepValues(dict);
                         _dictionaryPopulated = true;
                     }
                 }

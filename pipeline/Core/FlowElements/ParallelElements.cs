@@ -135,6 +135,8 @@ namespace FiftyOne.Pipeline.Core.FlowElements
 
         public override bool IsConcurrent => true;
 
+        internal override bool WritesElementData => false;
+
         /// <summary>
         /// Get a filter that will only include the evidence keys that can 
         /// be used by at least one <see cref="IFlowElement"/> within 

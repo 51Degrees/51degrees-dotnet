@@ -701,6 +701,22 @@ namespace FiftyOne.Pipeline.Core.Data
             return _data.AsStringKeyDictionary()[elementDataKey] as IElementData;
         }
 
+        /// <summary>
+        /// The Element Data stored under the key, if there is any yet and
+        /// it records when its writers finish. Used while processing, so it
+        /// does not need the Flow Data to have been processed.
+        /// </summary>
+        internal ElementDataBase FindElementData(string elementDataKey)
+        {
+            if (elementDataKey != null &&
+                _data.AsStringKeyDictionary().TryGetValue(
+                    elementDataKey, out var value))
+            {
+                return value as ElementDataBase;
+            }
+            return null;
+        }
+
         /// <inheritdoc/>
         public bool TryGet(string elementDataKey, out IElementData elementData)
         {

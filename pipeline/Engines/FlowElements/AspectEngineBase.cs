@@ -317,11 +317,13 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                     // task, once processing has finished, so that Process
                     // still returns at once.
                     var aspectDataInternal = Internal(aspectData);
-                    var task = Task.Run(() =>
+                    // The task is this engine's processing, so the aspect
+                    // data is open for writing while it runs.
+                    var task = Task.Run(() => WriteSharedData(aspectData, () =>
                     {
                         ProcessEngine(data, aspectData);
                         AddToCache(data);
-                    });
+                    }));
                     aspectDataInternal.AddProcessTask(task);
                 }
                 else
