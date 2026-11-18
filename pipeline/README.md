@@ -138,9 +138,15 @@ any locking.
 This controller, based on the NetCore example, hands values to another task.
 
 ```csharp
+// _statistics is a service of the application's own, which the controller
+// is given in its constructor.
 public IActionResult Index()
 {
-    var math = _flow.GetFlowData().Get(MathElement.math);
+    var math = _flow.GetFlowData()?.Get(MathElement.math);
+    if (math == null)
+    {
+        return View();
+    }
     // Read on the request's thread, into variables of its own.
     var operation = math.Operation;
     var result = math.Result;
