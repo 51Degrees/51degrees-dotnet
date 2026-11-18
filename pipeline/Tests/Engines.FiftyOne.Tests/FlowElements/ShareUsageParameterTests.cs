@@ -251,4 +251,61 @@ public class ShareUsageParameterTests
             "Requests that differ only in a parameter that is not " +
             "shared should be shared once.");
     }
+
+    /// <summary>
+    /// Shares one request carrying a session id and a sequence, through a
+    /// Pipeline with or without the Sequence Element, and returns the
+    /// message.
+    /// </summary>
+    private string ShareSession(bool withSequenceElement)
+    {
+        var shareUsage = NewShareUsage("Default");
+        var builder = new PipelineBuilder(_loggerFactory);
+        if (withSequenceElement)
+        {
+            builder.AddFlowElement(
+                new SequenceElementBuilder(_loggerFactory).Build());
+        }
+        using var pipeline = builder
+            .AddFlowElement(new AcceptingElement(_loggerFactory, UsedKey))
+            .AddFlowElement(shareUsage)
+            .Build();
+        using (var data = pipeline.CreateFlowData())
+        {
+            data.AddEvidence("query.session-id", "session-value");
+            data.AddEvidence("query.sequence", "7");
+            data.AddEvidence("header.x-test", "header-value");
+            data.Process();
+        }
+        Assert.IsTrue(shareUsage.SendDataTask.Wait(Wait),
+            "The usage sharing message was not sent.");
+        return string.Concat(_capture.Xml);
+    }
+
+    /// <summary>
+    /// With no Sequence Element no Flow Element uses the session id or the
+    /// sequence, so neither is written to the record.
+    /// </summary>
+    [TestMethod]
+    public void SessionIdAndSequence_NoSequenceElement_NeitherWritten()
+    {
+        var xml = ShareSession(false);
+
+        Assert.DoesNotContain("session-value", xml);
+        Assert.DoesNotContain("<Sequence>7</Sequence>", xml);
+        Assert.Contains("header-value", xml);
+    }
+
+    /// <summary>
+    /// The Sequence Element uses the session id and the sequence, so both
+    /// are written to the record, the sequence as the element moved it on.
+    /// </summary>
+    [TestMethod]
+    public void SessionIdAndSequence_WithSequenceElement_BothWritten()
+    {
+        var xml = ShareSession(true);
+
+        Assert.Contains("<SessionId>session-value</SessionId>", xml);
+        Assert.Contains("<Sequence>8</Sequence>", xml);
+    }
 }
