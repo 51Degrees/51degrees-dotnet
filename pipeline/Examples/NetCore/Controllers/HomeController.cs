@@ -37,6 +37,9 @@ namespace Example_Website.Controllers
 
         public IActionResult Index()
         {
+            // A Flow Data cannot be used by two threads at once. Work handed to
+            // another thread or task gets the values it needs, read here on the
+            // request's thread, not the Flow Data.
             var math = _flow.GetFlowData()?.Get(MathElement.math);
             if (math != null)
             {

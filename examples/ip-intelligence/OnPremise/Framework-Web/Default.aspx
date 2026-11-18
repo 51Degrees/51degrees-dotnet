@@ -54,6 +54,9 @@
                 <%
                     // Put the flow data and device data instances into local variables so we don't
                     // have to keep grabbing them.
+                    // A Flow Data cannot be used by two threads at once. Work handed to
+                    // another thread or task gets the values it needs, read here on the
+                    // request's thread, not the Flow Data.
                     var flowData = ((PipelineCapabilities)Request.Browser).FlowData;
                     var deviceData = flowData.Get<IIpIntelligenceData>();
                     // Get the engine that is used to perform IP intelligence.

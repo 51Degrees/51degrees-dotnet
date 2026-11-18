@@ -41,6 +41,9 @@ namespace Examples.ClientSideEvidence.MVC.Controllers
         public IActionResult Index()
         {
             // Get the flow data for this request.
+            // A Flow Data cannot be used by two threads at once. Work handed to
+            // another thread or task gets the values it needs, read here on the
+            // request's thread, not the Flow Data.
             var flowData = _flowDataProvider.GetFlowData();
 
             // Set the message to be displayed in the view. The JavaScript is

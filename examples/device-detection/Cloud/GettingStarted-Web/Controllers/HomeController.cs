@@ -50,6 +50,9 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb.Controllers
                 ExampleUtils.CheckDataFile(_provider.GetFlowData().Pipeline, _logger);
                 _checkedDataFile = true;
             }
+            // A Flow Data cannot be used by two threads at once. Work handed to
+            // another thread or task gets the values it needs, read here on the
+            // request's thread, not the Flow Data.
             // Use the provider to get the flow data. This contains the results of device
             // detection that has been performed by the pipeline.
             return View(new IndexModel(_provider.GetFlowData(), Response.Headers));

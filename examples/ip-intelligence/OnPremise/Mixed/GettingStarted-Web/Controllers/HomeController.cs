@@ -77,6 +77,9 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedWeb.Con
                 _checkedDataFile = true;
             }
 
+            // A Flow Data cannot be used by two threads at once. Work handed to
+            // another thread or task gets the values it needs, read here on the
+            // request's thread, not the Flow Data.
             // Get the flow data from the provider. This contains detection results
             // based on the evidence from the current request (User-Agent, client hints, etc.)
             // The 51Degrees middleware automatically adds query parameters with "query." prefix

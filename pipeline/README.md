@@ -114,6 +114,43 @@ The CloudRequestEngine\GettingStarted example requires a resource key. It reads 
 
 Every example that calls the 51Degrees cloud (CloudRequestEngine\GettingStarted and Did\CreatorContextWeb) reads the service to call from the `_51DEGREES_CLOUD_ENDPOINT` environment variable, which is the API base including the `/api/v4/` segment and defaults to `https://cloud.51degrees.com/api/v4/`. This is the same variable the `CloudRequestEngineBuilder` honours when no endpoint is set. A host other than `cloud.51degrees.com` would be used to (a) use an on premise web server, or (b) use a privately hosted version of the 51Degrees cloud for performance reasons. This is the private hosting option of the cloud service. Both run the same service, so the examples work unchanged against either. The CustomFlowElement\4. Cloud Engine tutorial calls the star sign example service built for that tutorial rather than the 51Degrees cloud, so its endpoint is fixed.
 
+## Web integration
+
+`FiftyOne.Pipeline.Web` provides `FiftyOneMiddleware` for ASP.NET Core, and
+`FiftyOne.Pipeline.Web.Framework` provides `PipelineModule` for ASP.NET on
+.NET Framework. Each creates one Flow Data for each request, processes it,
+and disposes of it when the request ends. Application code reads it through
+`IFlowDataProvider` in ASP.NET Core, or through `PipelineCapabilities` from
+`Request.Browser` on .NET Framework.
+
+### Flow Data and threads
+
+A Flow Data cannot be used by two threads at once. A controller handles each
+request one step at a time, so reading the Flow Data there is safe. An
+application that hands work from a request to another thread or task reads
+the values that work needs from the Flow Data on the request's thread, into
+its own variables, and passes those values, not the Flow Data. The Flow Data
+is disposed of when the request ends, so work that outlives the request must
+not keep it either. A Flow Data is not safe to use from several threads at
+once, and an application that shares one across threads is responsible for
+any locking.
+
+This controller, based on the NetCore example, hands values to another task.
+
+```csharp
+public IActionResult Index()
+{
+    var math = _flow.GetFlowData().Get(MathElement.math);
+    // Read on the request's thread, into variables of its own.
+    var operation = math.Operation;
+    var result = math.Result;
+    // Hand the values, not the Flow Data, to the other task.
+    _ = Task.Run(() => _statistics.Count(operation, result));
+    ViewData["Message"] = $"{operation} = {result}";
+    return View();
+}
+```
+
 ## Cancelling processing
 
 Pass a `CancellationToken` to `CreateFlowData` to stop processing when the token

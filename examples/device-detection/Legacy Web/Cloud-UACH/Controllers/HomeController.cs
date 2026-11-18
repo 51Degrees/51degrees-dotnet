@@ -36,6 +36,9 @@ namespace Cloud_Client_Hints_NetCore_31.Controllers
 
         public IActionResult Index()
         {
+            // A Flow Data cannot be used by two threads at once. Work handed to
+            // another thread or task gets the values it needs, read here on the
+            // request's thread, not the Flow Data.
             return View(_flow.GetFlowData());
         }
     }

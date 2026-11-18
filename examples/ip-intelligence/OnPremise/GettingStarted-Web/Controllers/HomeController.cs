@@ -54,6 +54,9 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb.Controlle
                 _checkedDataFile = true;
             }
 
+            // A Flow Data cannot be used by two threads at once. Work handed to
+            // another thread or task gets the values it needs, read here on the
+            // request's thread, not the Flow Data.
             // Get the flow data from the provider. This contains IP Intelligence results
             // based on the evidence from the current request, including both query.client-ip 
             // and server.client-ip evidence automatically added by the middleware.

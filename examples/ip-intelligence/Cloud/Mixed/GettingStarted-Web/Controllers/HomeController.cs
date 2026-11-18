@@ -56,6 +56,9 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.Cloud.GettingStartedWeb.Control
             // Get the flow data from the provider. This contains detection results
             // based on the evidence from the current request (User-Agent, client hints, etc.)
             // The 51Degrees middleware automatically adds query parameters with "query." prefix
+            // A Flow Data cannot be used by two threads at once. Work handed to
+            // another thread or task gets the values it needs, read here on the
+            // request's thread, not the Flow Data.
             var flowData = _provider.GetFlowData();
             
             // Create the model to pass to the view

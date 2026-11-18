@@ -71,6 +71,10 @@ using FiftyOne.IpIntelligence.Translation.FlowElements;
 /// var ipiData = flowData.Get<IIpIntelligenceData>();
 /// var hardwareVendor = ipiData.HardwareVendor;
 /// ```
+/// 
+/// A Flow Data cannot be used by two threads at once. Read the values that
+/// work on another thread or task needs from the Flow Data on the
+/// request's thread, and hand it those values, not the Flow Data.
 ///
 /// ## Configuration
 /// @include OnPremise/GettingStarted-Web/appsettings.json
