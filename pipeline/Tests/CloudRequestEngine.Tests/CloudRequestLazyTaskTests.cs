@@ -23,6 +23,8 @@
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines.Caching;
+using FiftyOne.Pipeline.Engines.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -77,6 +79,13 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
 
             public int DataRequests => Volatile.Read(ref _dataRequests);
 
+            private int _running;
+
+            /// <summary>
+            /// Data requests that have not been answered yet.
+            /// </summary>
+            public int Running => Volatile.Read(ref _running);
+
             protected override async Task<HttpResponseMessage> SendAsync(
                 HttpRequestMessage request,
                 CancellationToken cancellationToken)
@@ -98,10 +107,18 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                         "'Category': 'Device'}]}}}");
                 }
                 Interlocked.Increment(ref _dataRequests);
-                var json = Json;
-                var status = Status;
-                await Task.Run(() => Gate.Wait(GateMs));
-                return Answer(status, json);
+                Interlocked.Increment(ref _running);
+                try
+                {
+                    var json = Json;
+                    var status = Status;
+                    await Task.Run(() => Gate.Wait(GateMs));
+                    return Answer(status, json);
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref _running);
+                }
             }
 
             private static HttpResponseMessage Answer(
@@ -118,6 +135,88 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                 Gate.Dispose();
                 base.Dispose(disposing);
             }
+        }
+
+        /// <summary>
+        /// A results cache that counts the results put in it, and notes
+        /// how many data requests were still running when it was
+        /// disposed.
+        /// </summary>
+        private sealed class RecordingCache : DefaultFlowCache
+        {
+            private readonly GatedHandler _handler;
+
+            private int _puts;
+
+            private int _putsAfterDispose;
+
+            private volatile bool _disposed;
+
+            public RecordingCache(GatedHandler handler)
+                : base(new CacheConfiguration() { Size = 10 })
+            {
+                _handler = handler;
+            }
+
+            public int Puts => Volatile.Read(ref _puts);
+
+            public int PutsAfterDispose =>
+                Volatile.Read(ref _putsAfterDispose);
+
+            public int RunningAtDispose { get; private set; } = -1;
+
+            public override void Put(IFlowData data, IElementData value)
+            {
+                Interlocked.Increment(ref _puts);
+                if (_disposed)
+                {
+                    Interlocked.Increment(ref _putsAfterDispose);
+                    return;
+                }
+                base.Put(data, value);
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (_disposed == false)
+                {
+                    RunningAtDispose = _handler.Running;
+                    _disposed = true;
+                }
+                base.Dispose(disposing);
+            }
+        }
+
+        /// <summary>
+        /// A Flow Element that reads every value in the Flow Data through
+        /// GetWhere while it processes, as the JSON builder does.
+        /// </summary>
+        private sealed class GetWhereReader
+            : FlowElementBase<IElementData, IElementPropertyMetaData>
+        {
+            public int Values { get; private set; } = -1;
+
+            public GetWhereReader()
+                : base(NullLogger<GetWhereReader>.Instance)
+            {
+            }
+
+            public override string ElementDataKey => "getwhere";
+
+            public override IEvidenceKeyFilter EvidenceKeyFilter { get; } =
+                new EvidenceKeyFilterWhitelist(new List<string>());
+
+            public override IList<IElementPropertyMetaData> Properties
+            { get; } = new List<IElementPropertyMetaData>();
+
+            protected override void ProcessInternal(IFlowData data)
+            {
+                Values = data.GetWhere(p => true).Count();
+            }
+
+            protected override void ManagedResourcesCleanup() { }
+
+            protected override void UnmanagedResourcesCleanup() { }
         }
 
         private static CloudRequestEngineBuilder Builder(
@@ -279,6 +378,162 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
             Assert.AreSame(
                 engineErrors[0].ExceptionData, thrown.InnerExceptions[0]);
             Assert.AreEqual(1, handler.DataRequests);
+        }
+
+        /// <summary>
+        /// A later element that reads every value through GetWhere, as the
+        /// JSON builder does, does not meet the failed request a second
+        /// time. The failure is recorded once, as the Cloud Request
+        /// Engine's error, and the later element processes.
+        /// </summary>
+        [TestMethod]
+        public void FailedRequest_ReadThroughGetWhere_RecordedOnce()
+        {
+            using var handler = new GatedHandler()
+            {
+                Json = FailedResponse,
+                Status = HttpStatusCode.BadRequest,
+            };
+            using var engine = Builder(handler).Build();
+            using var device = new CloudResponseReader("device");
+            using var reader = new GetWhereReader();
+            using var pipeline = new PipelineBuilder(
+                NullLoggerFactory.Instance)
+                .AddFlowElement(engine)
+                .AddFlowElement(device)
+                .AddFlowElement(reader)
+                .Build();
+            using var data = pipeline.CreateFlowData();
+            data.AddEvidence("query.User-Agent", "iPhone");
+
+            var thrown = Assert.ThrowsExactly<AggregateException>(
+                () => data.Process());
+
+            Assert.HasCount(1, thrown.InnerExceptions);
+            var throwing = data.Errors.Where(e => e.ShouldThrow).ToList();
+            Assert.HasCount(1, throwing);
+            Assert.AreSame(engine, throwing[0].FlowElement);
+            Assert.IsFalse(data.Errors.Any(e => e.FlowElement == reader),
+                "The later element must not record the failure again.");
+            Assert.AreNotEqual(-1, reader.Values,
+                "The later element must finish processing.");
+            Assert.ThrowsExactly<CloudRequestException>(
+                () => data.GetFromElement(engine).JsonResponse);
+            Assert.AreEqual(1, handler.DataRequests);
+        }
+
+        /// <summary>
+        /// A result goes into the results cache only once its response
+        /// has arrived, and not while the request is still running.
+        /// </summary>
+        [TestMethod]
+        public void Cache_ResultStoredOnlyOnceTheResponseArrives()
+        {
+            using var handler = new GatedHandler();
+            var cache = new RecordingCache(handler);
+            using var engine = Builder(handler).Build();
+            engine.SetCache(cache);
+            using var pipeline = new PipelineBuilder(
+                NullLoggerFactory.Instance)
+                .AddFlowElement(engine).Build();
+            using var data = pipeline.CreateFlowData();
+            data.AddEvidence("query.User-Agent", "iPhone");
+            handler.Gate.Reset();
+            try
+            {
+                data.Process();
+                Assert.AreEqual(0, cache.Puts,
+                    "A result must not be cached before its response.");
+            }
+            finally
+            {
+                handler.Gate.Set();
+            }
+
+            StringAssert.Contains(
+                data.GetFromElement(engine).JsonResponse, "value");
+            Assert.AreEqual(1, cache.Puts);
+        }
+
+        /// <summary>
+        /// A response that holds a 51Did, and a failed request, are never
+        /// stored in the results cache. See caching.md in the
+        /// specification, values created for one request.
+        /// </summary>
+        [TestMethod]
+        [DataRow("{'device':{'value':'1'},'fodid':'one'}",
+            HttpStatusCode.OK)]
+        [DataRow("{'device':{'value':'1'},'FoDid':'one'}",
+            HttpStatusCode.OK)]
+        [DataRow(FailedResponse, HttpStatusCode.BadRequest)]
+        public void Cache_ResponseForOneRequestOrFailure_NeverStored(
+            string json, HttpStatusCode status)
+        {
+            using var handler = new GatedHandler()
+            {
+                Json = json,
+                Status = status,
+            };
+            var cache = new RecordingCache(handler);
+            using var engine = Builder(handler).Build();
+            engine.SetCache(cache);
+            using var pipeline = new PipelineBuilder(
+                NullLoggerFactory.Instance)
+                .AddFlowElement(engine).Build();
+            using var data = pipeline.CreateFlowData();
+            data.AddEvidence("query.User-Agent", "iPhone");
+
+            data.Process();
+            try
+            {
+                _ = data.GetFromElement(engine).JsonResponse;
+            }
+            catch (CloudRequestException)
+            {
+                // The failed request reaches the reader.
+            }
+
+            Assert.AreEqual(0, cache.Puts);
+        }
+
+        /// <summary>
+        /// Disposing the engine waits for a request still running before
+        /// it frees the results cache that the request's result goes into.
+        /// See resource-cleanup.md in the specification.
+        /// </summary>
+        [TestMethod]
+        public void Dispose_WaitsForTheRequestBeforeFreeingTheCache()
+        {
+            using var handler = new GatedHandler();
+            var cache = new RecordingCache(handler);
+            var engine = Builder(handler).Build();
+            engine.SetCache(cache);
+            using var pipeline = new PipelineBuilder(
+                NullLoggerFactory.Instance)
+                .AddFlowElement(engine).Build();
+            using var data = pipeline.CreateFlowData();
+            data.AddEvidence("query.User-Agent", "iPhone");
+            handler.Gate.Reset();
+            Task disposing;
+            try
+            {
+                data.Process();
+                disposing = Task.Run(() => engine.Dispose());
+                Assert.IsFalse(disposing.Wait(500),
+                    "Dispose must wait for the running request.");
+            }
+            finally
+            {
+                handler.Gate.Set();
+            }
+
+            Assert.IsTrue(disposing.Wait(GateMs),
+                "Dispose must return once the request has finished.");
+            Assert.AreEqual(0, cache.RunningAtDispose,
+                "The cache must be freed only after the request finished.");
+            Assert.AreEqual(0, cache.PutsAfterDispose);
+            StringAssert.Contains(
+                data.GetFromElement(engine).JsonResponse, "value");
         }
     }
 }
