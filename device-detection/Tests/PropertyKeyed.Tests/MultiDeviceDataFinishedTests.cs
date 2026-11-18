@@ -23,6 +23,7 @@
 using FiftyOne.DeviceDetection.PropertyKeyed.Data;
 using FiftyOne.DeviceDetection.Shared;
 using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FiftyOne.Data;
@@ -172,5 +173,30 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
                 ((IAspectPropertyValue)profiles[1][ProfileIdName]).Value);
             Assert.IsTrue(profiles[0].IsMobile.Value);
         }
+
+        /// <summary>
+        /// Adding a profile ID or a profile once the engine has finished is
+        /// a write, so it fails like any other.
+        /// </summary>
+        [TestMethod]
+        public void AddingProfiles_AfterProcessing_Fails()
+        {
+            using var dataSet = DataSet();
+            using var pipeline = new PipelineBuilder(
+                    NullLoggerFactory.Instance)
+                .AddFlowElement(new Keyed(dataSet, 42))
+                .Build();
+            using var data = pipeline.CreateFlowData();
+            data.Process();
+            var keyed = (MultiDeviceData)data.Get<IMultiDeviceData>();
+            var profile = keyed.Profiles[0];
+
+            Assert.ThrowsExactly<PipelineException>(
+                () => keyed.AddProfileId(43));
+            Assert.ThrowsExactly<PipelineException>(
+                () => keyed.AddProfile(profile));
+            Assert.HasCount(1, keyed.Profiles);
+        }
     }
 }
+
