@@ -1400,6 +1400,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         {
             // Arrange
             CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            // The Pipeline holds the Sequence Element, so it uses the
+            // session id and sequence, and they are shared.
+            _pipeline.Setup(p => p.EvidenceKeyFilter)
+                .Returns(_sequenceElement.EvidenceKeyFilter);
 
             Dictionary<string, object> evidenceData = new Dictionary<string, object>()
             {
@@ -1444,6 +1448,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         {
             // Arrange
             CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            // The Pipeline holds the Sequence Element, so it uses the
+            // session id and sequence, and they are shared.
+            _pipeline.Setup(p => p.EvidenceKeyFilter)
+                .Returns(_sequenceElement.EvidenceKeyFilter);
 
             Dictionary<string, object> evidenceData = new Dictionary<string, object>()
             {

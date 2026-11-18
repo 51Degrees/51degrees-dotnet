@@ -1172,15 +1172,21 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 else if (entry.Key.Equals(Constants.EVIDENCE_SESSIONID,
                     StringComparison.OrdinalIgnoreCase))
                 {
-                    // The SessionID is dealt with separately.
-                    data.SessionId = entry.Value.ToString();
+                    // The SessionID has its own field, filled only when
+                    // shared, being when the Sequence Element uses it.
+                    if (_sharedEvidenceFilter.Include(entry.Key))
+                    {
+                        data.SessionId = entry.Value.ToString();
+                    }
                 }
                 else if (entry.Key.Equals(Constants.EVIDENCE_SEQUENCE,
                     StringComparison.OrdinalIgnoreCase))
                 {
-                    // The Sequence is dealt with separately.
+                    // The Sequence has its own field, filled only when
+                    // shared, being when the Sequence Element uses it.
                     var sequence = 0;
-                    if (int.TryParse(entry.Value.ToString(), out sequence))
+                    if (_sharedEvidenceFilter.Include(entry.Key) &&
+                        int.TryParse(entry.Value.ToString(), out sequence))
                     {
                         data.Sequence = sequence;
                     }
