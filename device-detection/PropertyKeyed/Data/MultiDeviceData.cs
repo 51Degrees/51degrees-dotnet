@@ -20,6 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.DeviceDetection.PropertyKeyed.FlowElements;
 using FiftyOne.DeviceDetection.PropertyKeyed.Services;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Data;
@@ -162,11 +163,17 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Data
                     // never gets written into the per-profile data dict.
                     // Stamp it here so consumers can correlate the profile
                     // entry with the rest of the value collection it owns.
-                    deviceData[DataSetService.PROFILE_ID_PROPERTY_NAME] =
-                        new AspectPropertyValue<string>(
-                            profileId.ToString(
-                                System.Globalization.CultureInfo
-                                    .InvariantCulture));
+                    // Profiles is the engine's lazy property, so this is
+                    // the engine's own processing, and the device data is
+                    // open for writing while it runs.
+                    var id = new AspectPropertyValue<string>(
+                        profileId.ToString(
+                            System.Globalization.CultureInfo
+                                .InvariantCulture));
+                    PropertyKeyedDeviceBaseEngine.WriteProfile(
+                        deviceData,
+                        () => deviceData[
+                            DataSetService.PROFILE_ID_PROPERTY_NAME] = id);
 
                     result.Add(deviceData);
 

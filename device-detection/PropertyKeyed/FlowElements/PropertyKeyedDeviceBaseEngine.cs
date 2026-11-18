@@ -192,6 +192,21 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.FlowElements
                 : base.GetProfileIds(propertyIndex, value);
         }
 
+        /// <summary>
+        /// Run work that writes a profile's device data while
+        /// <see cref="MultiDeviceData.Profiles"/> resolves it. Profiles is
+        /// this engine's lazy property, resolved when first read, so the
+        /// work is this engine's processing. The device data is open for
+        /// writing while the work runs, even though the Hash engine has
+        /// finished with it.
+        /// </summary>
+        /// <param name="profile">The profile's device data.</param>
+        /// <param name="work">The work that writes it.</param>
+        internal static void WriteProfile(IElementData profile, Action work)
+        {
+            WriteSharedData(profile, work);
+        }
+
         /// <inheritdoc/>
         protected override void ProcessProfileMatch(
             IFlowData data,
