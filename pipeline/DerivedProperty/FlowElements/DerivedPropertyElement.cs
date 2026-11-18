@@ -25,6 +25,7 @@ using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.DerivedProperty.Data;
 using FiftyOne.Pipeline.Engines.Data;
+using FiftyOne.Pipeline.Engines.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -547,6 +548,7 @@ namespace FiftyOne.Pipeline.DerivedProperty.FlowElements
                 // Where the owning element sits is deliberately not judged,
                 // for the reason given on AnyElementSupplies above.
                 IElementPropertyMetaData target = null;
+                IFlowElement owner = null;
                 for (var i = 0; i < elements.Count; i++)
                 {
                     var element = elements[i];
@@ -564,8 +566,29 @@ namespace FiftyOne.Pipeline.DerivedProperty.FlowElements
                     target = Supplied(element, script.Output.Name);
                     if (target != null)
                     {
+                        owner = element;
                         break;
                     }
+                }
+
+                // A cached result is shared by every request that gets it,
+                // so replacing a value in it would change it under them.
+                // An engine whose Element Data another Flow Element writes
+                // must not have a cache.
+                if (owner is IResultsCacheState cached && cached.HasCache)
+                {
+                    faults.Add(string.Format(
+                        CultureInfo.InvariantCulture,
+                        "The script '{0}' replaces the value of the " +
+                        "property '{1}' in the element data '{2}', and " +
+                        "the element that produces it has a results " +
+                        "cache, whose results every request that gets " +
+                        "them shares. Either remove the cache from that " +
+                        "element, or change Output.Name to '{1}' so that " +
+                        "the script creates a property of its own.",
+                        script.Name,
+                        script.Output.Name,
+                        script.Output.ElementDataKey));
                 }
 
                 if (target == null)

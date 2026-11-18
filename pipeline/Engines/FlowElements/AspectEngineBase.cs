@@ -49,7 +49,8 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
     /// about the properties it populates.
     /// </typeparam>
     public abstract class AspectEngineBase<T, TMeta> : 
-        FlowElementBase<T, TMeta>, IAspectEngine<T, TMeta>
+        FlowElementBase<T, TMeta>, IAspectEngine<T, TMeta>,
+        IResultsCacheState
         where T : IAspectData
         where TMeta : IAspectPropertyMetaData
     {
@@ -164,6 +165,9 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _cache.FlowElement = this;
         }
+
+        /// <inheritdoc/>
+        bool IResultsCacheState.HasCache => _cache != null;
 
         /// <summary>
         /// Set the engine to flag when a cache hit occurs by setting a field 
