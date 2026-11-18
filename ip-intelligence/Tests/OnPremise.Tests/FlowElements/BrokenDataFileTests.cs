@@ -28,7 +28,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -97,23 +96,19 @@ public class BrokenDataFileTests
             loggerFactory.CreateLogger<DataUpdateService>(),
             new HttpClient());
         var reports = new BlockingCollection<AutoUpdateStatus>();
-        // Every status, so a failure says what the service did report.
-        var seen = new ConcurrentQueue<string>();
-        var clock = Stopwatch.StartNew();
-        service.CheckForUpdateComplete += (sender, e) =>
-        {
-            seen.Enqueue($"{e.Status} at {clock.ElapsedMilliseconds} ms");
-            reports.Add(e.Status);
-        };
+        service.CheckForUpdateComplete += (sender, e) => reports.Add(e.Status);
         var builder = new IpiOnPremiseEngineBuilder(loggerFactory, service);
         builder.SetPerformanceProfile(profile);
         builder.SetTempDirPath(Directory.CreateDirectory(
             Path.Combine(directory, "temp")).FullName);
-        // The watcher runs on its own setting, with automatic updates off and
-        // no licence key.
         builder.SetDataFileSystemWatcher(true);
         builder.SetDataUpdateOnStartup(false);
-        builder.SetAutoUpdate(false);
+        // Automatic updates must be on for the watcher. The polling timer
+        // is left for a day so the test never downloads anything.
+        builder.SetAutoUpdate(true);
+        builder.SetDataUpdateLicenseKey("not-used");
+        builder.SetUpdatePollingInterval(TimeSpan.FromDays(1));
+        builder.SetUpdateRandomisationMax(TimeSpan.Zero);
 
         var engine = builder.Build(master, true);
         // Disposing the pipeline also disposes the engine.
@@ -125,22 +120,18 @@ public class BrokenDataFileTests
             var before = Lookup(pipeline, engine);
 
             WriteHeader(master, broken);
-            var brokenAt = clock.ElapsedMilliseconds;
             Assert.IsTrue(
                 WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED),
-                "The update service did not report the failed refresh. " +
-                Reported(seen, brokenAt, -1));
+                "The update service did not report the failed refresh.");
             Assert.AreEqual(
                 before,
                 Lookup(pipeline, engine),
                 "The engine does not answer from the data it had.");
 
             WriteHeader(master, later);
-            var laterAt = clock.ElapsedMilliseconds;
             Assert.IsTrue(
                 WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
-                "The update service did not apply the later good file. " +
-                Reported(seen, brokenAt, laterAt));
+                "The update service did not apply the later good file.");
             Assert.AreEqual(year + 1, dataFile.DataPublishedDateTime.Year);
             Assert.AreEqual(before, Lookup(pipeline, engine));
         }
@@ -209,17 +200,6 @@ public class BrokenDataFileTests
             }
         }
     }
-
-    // What the service reported, and when each file was written, for a
-    // failure message.
-    private static string Reported(
-        ConcurrentQueue<string> seen,
-        long brokenAt,
-        long laterAt) =>
-        $"The broken file was written at {brokenAt} ms" +
-        (laterAt < 0 ? "" : $" and the later file at {laterAt} ms") +
-        ". The service reported " +
-        (seen.IsEmpty ? "nothing" : string.Join(", ", seen)) + ".";
 
     // Takes reports until one has the status, ignoring the others that the
     // watcher raises for the same change.
