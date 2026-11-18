@@ -128,6 +128,14 @@ namespace FiftyOne.Pipeline.Core.Data
         }
 
         /// <summary>
+        /// Remove every value, so that a pooled instance starts with none.
+        /// </summary>
+        internal void ClearValues()
+        {
+            _data.Clear();
+        }
+
+        /// <summary>
         /// Use the values in the specified enumerable to populate
         /// this data instance.
         /// </summary>

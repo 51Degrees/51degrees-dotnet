@@ -41,6 +41,13 @@ namespace FiftyOne.Pipeline.Core.Data
     /// The FlowData class contains the data that is used within a pipeline.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/conceptual-overview.md#flow-data">Specification</see>
     /// </summary>
+    /// <remarks>
+    /// Disposing a Flow Data returns the Element Data it holds that can be
+    /// pooled to the pools of the Flow Elements that created it. Keeping a
+    /// reference to Element Data after the Flow Data that holds it is
+    /// disposed is not supported, because a pool may give the instance to
+    /// another request.
+    /// </remarks>
     public class FlowData : IFlowData
     {
         /// <summary>
@@ -1202,6 +1209,9 @@ namespace FiftyOne.Pipeline.Core.Data
                         {
                             ((IDisposable)elementData).Dispose();
                         }
+                        // Pooled Element Data goes back to its pool, so a
+                        // reference kept after this is not supported.
+                        (elementData as ElementDataBase)?.ReturnToPool();
                     }
                     // Unregister from the external token (if any) before
                     // disposing the source it would call back into.

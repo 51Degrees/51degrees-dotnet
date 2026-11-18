@@ -158,6 +158,30 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Data
             return response.GetAwaiter().GetResult();
         }
 
+        /// <summary>
+        /// Wait for the request before the instance goes back to its pool.
+        /// </summary>
+        protected override void WaitForLazyTasks()
+        {
+            var response = Volatile.Read(ref _response);
+            if (response != null)
+            {
+                ((IAsyncResult)response).AsyncWaitHandle.WaitOne();
+            }
+            base.WaitForLazyTasks();
+        }
+
+        /// <summary>
+        /// Clear the request and the failure record, as well as the values,
+        /// before the instance goes back to its pool.
+        /// </summary>
+        protected override void ResetForPool()
+        {
+            Volatile.Write(ref _response, null);
+            Interlocked.Exchange(ref _failureRecorded, 0);
+            base.ResetForPool();
+        }
+
         /// <inheritdoc/>
         protected override bool TryGetValue<T>(string key, out T value)
         {

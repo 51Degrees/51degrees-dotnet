@@ -274,6 +274,9 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                 var result = data.GetFromElement(this);
                 if (CanCache(result))
                 {
+                    // The cache shares the instance with other requests,
+                    // so it never goes back to a pool.
+                    (result as ElementDataBase)?.KeepOutOfPool();
                     _cache.Put(data, result);
                 }
             }

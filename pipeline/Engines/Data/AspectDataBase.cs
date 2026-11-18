@@ -186,6 +186,42 @@ namespace FiftyOne.Pipeline.Engines.Data
             MissingPropertyService = missingPropertyService;
         }
 
+        /// <summary>
+        /// Wait for the process tasks before the instance goes back to its
+        /// pool.
+        /// </summary>
+        protected override void WaitForLazyTasks()
+        {
+            try
+            {
+                ProcessTask.Wait();
+            }
+            catch (AggregateException)
+            {
+                // A failure has already reached the readers.
+            }
+        }
+
+        /// <summary>
+        /// Reset the state this class holds besides its values, keeping
+        /// the engine that created the instance, before it goes back to
+        /// its pool.
+        /// </summary>
+        protected override void ResetForPool()
+        {
+            lock (_processTasks)
+            {
+                _processTasks.Clear();
+            }
+            lock (Engines)
+            {
+                _engines.RemoveRange(1, _engines.Count - 1);
+            }
+            _cacheHit = false;
+            _cloudRequestFailed = false;
+            base.ResetForPool();
+        }
+
         void IAspectDataInternal.AddEngine(IAspectEngine engine)
         {
             lock (Engines)

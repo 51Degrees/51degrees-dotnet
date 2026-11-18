@@ -24,6 +24,7 @@ using FiftyOne.Pipeline.Core.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace FiftyOne.Pipeline.Core.Data
 {
@@ -41,9 +42,90 @@ namespace FiftyOne.Pipeline.Core.Data
     /// A derived class whose reads change something it holds, such as
     /// native results, holds a lock for each read so that this stays true.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/thread-safety.md#element-data">thread safety specification</see>.
+    /// <para>
+    /// An instance that opts in with <see cref="IsPoolable"/> goes back to
+    /// its Flow Element's pool when the Flow Data that holds it is
+    /// disposed, and another request is then given it. Keeping a reference
+    /// to Element Data after the Flow Data that holds it is disposed is
+    /// not supported, because a pool may give the instance to another
+    /// request. Copy the values needed before disposing the Flow Data. An
+    /// instance held by a results cache never goes back to a pool.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/resource-cleanup.md#reusing-element-data">resource cleanup specification</see>.
+    /// </para>
     /// </remarks>
     public abstract class ElementDataBase : DataBase, IElementData
     {
+        /// <summary>
+        /// The pool this instance goes back to when its Flow Data is
+        /// disposed, or null when it does not go back to one.
+        /// </summary>
+        private ElementDataPool _pool;
+
+        /// <summary>
+        /// True if this instance may be given to another request once the
+        /// Flow Data that holds it is disposed. The default is false. An
+        /// implementation whose only state is its values, or that resets
+        /// the rest in <see cref="ResetForPool"/>, returns true. An
+        /// instance that implements <see cref="IDisposable"/> is never
+        /// pooled.
+        /// </summary>
+        protected virtual bool IsPoolable => false;
+
+        /// <summary>
+        /// Called before the instance goes back to its pool, once any lazy
+        /// task on it has finished. Removes every value, so the next
+        /// request starts with none. An override resets any other state
+        /// and calls this.
+        /// </summary>
+        protected virtual void ResetForPool()
+        {
+            ClearValues();
+        }
+
+        /// <summary>
+        /// Wait for any lazy task that writes this instance. Called before
+        /// the instance goes back to its pool. The default does nothing.
+        /// </summary>
+        protected virtual void WaitForLazyTasks()
+        {
+        }
+
+        /// <summary>
+        /// Give this instance a pool to go back to, if it can be pooled.
+        /// </summary>
+        internal void UsePool(ElementDataPool pool)
+        {
+            if (IsPoolable && (this is IDisposable) == false)
+            {
+                Volatile.Write(ref _pool, pool);
+            }
+        }
+
+        /// <summary>
+        /// Keep this instance out of any pool, as when a results cache
+        /// holds it and shares it with other requests.
+        /// </summary>
+        internal void KeepOutOfPool()
+        {
+            Volatile.Write(ref _pool, null);
+        }
+
+        /// <summary>
+        /// Return this instance to its pool, once. Called when the Flow
+        /// Data that holds it is disposed.
+        /// </summary>
+        internal void ReturnToPool()
+        {
+            var pool = Interlocked.Exchange(ref _pool, null);
+            if (pool == null)
+            {
+                return;
+            }
+            WaitForLazyTasks();
+            ResetForPool();
+            pool.Return(this);
+        }
+
         /// <summary>
         /// The <see cref="IPipeline"/> instance this element data will
         /// be associated with.

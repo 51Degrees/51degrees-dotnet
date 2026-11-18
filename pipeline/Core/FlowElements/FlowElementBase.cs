@@ -290,18 +290,37 @@ namespace FiftyOne.Pipeline.Core.FlowElements
 
         /// <summary>
         /// Method used to create element data instances that are populated
-        /// by this flow element
+        /// by this flow element. An instance that can be pooled is taken
+        /// from this element's pool when there is one, and goes back to it
+        /// when the Flow Data that holds it is disposed.
         /// </summary>
         /// <returns></returns>
         protected virtual T CreateElementData(IPipeline pipeline)
         {
+            if (_elementDataPool.TryTake(out var pooled))
+            {
+                pooled.Pipeline = pipeline;
+                pooled.UsePool(_elementDataPool);
+                return (T)(IElementData)pooled;
+            }
             if(_elementDataFactory == null)
             {
                 Logger.LogError($"Need to specify an elementDataFactory " +
                     $"in constructor for '{GetType().Name}'.");
             }
-            return _elementDataFactory(pipeline, this);
+            var created = _elementDataFactory(pipeline, this);
+            if (created is ElementDataBase poolable)
+            {
+                poolable.UsePool(_elementDataPool);
+            }
+            return created;
         }
+
+        /// <summary>
+        /// The Element Data instances this element gives to later requests.
+        /// </summary>
+        private readonly ElementDataPool _elementDataPool =
+            new ElementDataPool();
 
         #region IDisposable Support
         /// <summary>
