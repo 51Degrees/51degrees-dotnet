@@ -25,6 +25,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.Core.Data
 {
@@ -75,7 +76,7 @@ namespace FiftyOne.Pipeline.Core.Data
         /// Called before the instance goes back to its pool, once any lazy
         /// task on it has finished. Removes every value, so the next
         /// request starts with none. An override resets any other state
-        /// and calls this.
+        /// and calls this. If it throws, the instance does not go back.
         /// </summary>
         protected virtual void ResetForPool()
         {
@@ -83,11 +84,15 @@ namespace FiftyOne.Pipeline.Core.Data
         }
 
         /// <summary>
-        /// Wait for any lazy task that writes this instance. Called before
-        /// the instance goes back to its pool. The default does nothing.
+        /// The lazy task that writes this instance, or null when there is
+        /// none. The instance goes back to its pool only once the task has
+        /// finished. Disposing the Flow Data does not wait for it. The
+        /// default is null.
         /// </summary>
-        protected virtual void WaitForLazyTasks()
+        /// <returns>The task, or null.</returns>
+        protected virtual Task GetLazyTask()
         {
+            return null;
         }
 
         /// <summary>
@@ -112,7 +117,9 @@ namespace FiftyOne.Pipeline.Core.Data
 
         /// <summary>
         /// Return this instance to its pool, once. Called when the Flow
-        /// Data that holds it is disposed.
+        /// Data that holds it is disposed. An instance whose lazy task is
+        /// still running goes back when the task finishes, so disposal
+        /// does not wait for it.
         /// </summary>
         internal void ReturnToPool()
         {
@@ -121,8 +128,44 @@ namespace FiftyOne.Pipeline.Core.Data
             {
                 return;
             }
-            WaitForLazyTasks();
-            ResetForPool();
+            var lazyTask = GetLazyTask();
+            if (lazyTask == null || lazyTask.IsCompleted)
+            {
+                Recycle(pool);
+                return;
+            }
+            lazyTask.ContinueWith(
+                t =>
+                {
+                    // The task's failure has reached its readers.
+                    _ = t.Exception;
+                    Recycle(pool);
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+
+        /// <summary>
+        /// Reset this instance and put it in the pool. An instance that
+        /// fails to reset is left for the garbage collector.
+        /// </summary>
+        private void Recycle(ElementDataPool pool)
+        {
+            try
+            {
+                ResetForPool();
+            }
+#pragma warning disable CA1031 // Do not catch general exception types
+            // An instance in an unknown state must not be reused.
+            catch (Exception)
+#pragma warning restore CA1031 // Do not catch general exception types
+            {
+                return;
+            }
+            // A pooled instance does not keep the Pipeline alive. It is set
+            // again when the instance is next taken.
+            Pipeline = null;
             pool.Return(this);
         }
 

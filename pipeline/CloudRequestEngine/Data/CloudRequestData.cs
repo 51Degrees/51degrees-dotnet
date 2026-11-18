@@ -159,16 +159,27 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Data
         }
 
         /// <summary>
-        /// Wait for the request before the instance goes back to its pool.
+        /// The instance holds nothing besides its values, the request and
+        /// the failure record, which <see cref="ResetForPool"/> clears.
         /// </summary>
-        protected override void WaitForLazyTasks()
+        protected override bool IsPoolable => true;
+
+        /// <summary>
+        /// The request, which finishes before the instance goes back to
+        /// its pool.
+        /// </summary>
+        /// <returns>The task, or null.</returns>
+        protected override Task GetLazyTask()
         {
             var response = Volatile.Read(ref _response);
-            if (response != null)
+            var process = base.GetLazyTask();
+            if (response == null)
             {
-                ((IAsyncResult)response).AsyncWaitHandle.WaitOne();
+                return process;
             }
-            base.WaitForLazyTasks();
+            return process == null || process.IsCompleted
+                ? response
+                : Task.WhenAll(response, process);
         }
 
         /// <summary>

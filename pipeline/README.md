@@ -139,6 +139,25 @@ processing stops automatically when the client disconnects.
 An element with long-running work can check `flowData.GetStopToken()` itself
 to stop sooner; elements that don't are simply skipped once the token is cancelled.
 
+## Element Data after disposal
+
+Element Data can be reused through an object pool. Once a Flow Data is
+disposed, the Element Data it held may be given to another request. Keeping a
+reference to Element Data after the Flow Data that holds it is disposed is not
+supported, and is not checked when the Element Data is read. Copy the values
+you need before disposing the Flow Data.
+
+```csharp
+string json;
+using (var flowData = pipeline.CreateFlowData())
+{
+    flowData.AddEvidence("query.User-Agent", userAgent);
+    flowData.Process();
+    // Copy the value while the Flow Data is still in use.
+    json = flowData.Get<CloudRequestData>().JsonResponse;
+}
+```
+
 ## Tracing
 
 The pipeline emits an OpenTelemetry-compatible tracing span for every flow

@@ -31,6 +31,12 @@ namespace FiftyOne.Pipeline.Core.Data
     /// The IFlowData represents the data that is used within a pipeline.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/conceptual-overview.md#flow-data">Specification</see>
     /// </summary>
+    /// <remarks>
+    /// Keeping a reference to Element Data after the Flow Data that
+    /// holds it is disposed is not supported, because a pool may give
+    /// the instance to another request. Copy the values needed before
+    /// disposing the Flow Data.
+    /// </remarks>
     public interface IFlowData : IDisposable
     {
         /// <summary>

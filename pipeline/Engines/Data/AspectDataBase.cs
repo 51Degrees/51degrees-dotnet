@@ -187,19 +187,13 @@ namespace FiftyOne.Pipeline.Engines.Data
         }
 
         /// <summary>
-        /// Wait for the process tasks before the instance goes back to its
-        /// pool.
+        /// The process tasks, which finish before the instance goes back
+        /// to its pool.
         /// </summary>
-        protected override void WaitForLazyTasks()
+        /// <returns>The task.</returns>
+        protected override Task GetLazyTask()
         {
-            try
-            {
-                ProcessTask.Wait();
-            }
-            catch (AggregateException)
-            {
-                // A failure has already reached the readers.
-            }
+            return ProcessTask;
         }
 
         /// <summary>

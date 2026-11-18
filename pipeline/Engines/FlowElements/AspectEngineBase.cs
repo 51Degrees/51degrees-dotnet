@@ -305,6 +305,10 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
             {
                 return null;
             }
+            // The cache may share the instance with other requests, so it
+            // never goes back to a pool. This is decided now, before the
+            // Flow Data can be disposed.
+            (aspectData as ElementDataBase)?.KeepOutOfPool();
             var key = data.Pipeline.CreateFlowData();
             foreach (var entry in data.GetEvidence().AsDictionary())
             {

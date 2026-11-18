@@ -1210,8 +1210,20 @@ namespace FiftyOne.Pipeline.Core.Data
                             ((IDisposable)elementData).Dispose();
                         }
                         // Pooled Element Data goes back to its pool, so a
-                        // reference kept after this is not supported.
-                        (elementData as ElementDataBase)?.ReturnToPool();
+                        // reference kept after this is not supported. A
+                        // failure here does not stop the rest of the
+                        // disposal.
+                        try
+                        {
+                            (elementData as ElementDataBase)?.ReturnToPool();
+                        }
+#pragma warning disable CA1031 // Do not catch general exception types
+                        catch (Exception ex)
+#pragma warning restore CA1031 // Do not catch general exception types
+                        {
+                            _logger.LogWarning(ex,
+                                "Element Data could not go back to its pool.");
+                        }
                     }
                     // Unregister from the external token (if any) before
                     // disposing the source it would call back into.

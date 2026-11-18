@@ -36,6 +36,12 @@ namespace FiftyOne.Pipeline.Core.Data
     /// Once the Flow Element has finished, the instance is safe to read from
     /// several threads at once, as the Flow Elements of a parallel group do.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/thread-safety.md#element-data">thread safety specification</see>.
+    /// <para>
+    /// Keeping a reference to Element Data after the Flow Data that
+    /// holds it is disposed is not supported, because a pool may give
+    /// the instance to another request. Copy the values needed before
+    /// disposing the Flow Data.
+    /// </para>
     /// </remarks>
     public interface IElementData : IData
     {
