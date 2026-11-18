@@ -79,6 +79,15 @@ namespace FiftyOne.Pipeline.Core {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to This Flow Data has finished processing, so it is read only. Add Evidence before processing, and Element Data, errors and warnings only while a Flow Element processes..
+        /// </summary>
+        internal static string ExceptionFlowDataFinished {
+            get {
+                return ResourceManager.GetString("ExceptionFlowDataFinished", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to FlowData has already been processed.
         /// </summary>
         internal static string ExceptionFlowDataAlreadyProcessed {

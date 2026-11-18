@@ -26,6 +26,7 @@ using FiftyOne.Pipeline.Core.TypedMap;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -62,6 +63,13 @@ namespace FiftyOne.Pipeline.Core.Data
         /// True if this instance has been processed
         /// </summary>
         private bool _processed = false;
+
+        /// <summary>
+        /// Set when processing ends, normally or with an exception. From
+        /// then on this instance is read only, apart from lazy properties.
+        /// A write tests it, and nothing waits on it.
+        /// </summary>
+        private volatile bool _finished;
 
         /// <summary>
         /// A copy of the evidence taken when processing started, which
@@ -365,6 +373,7 @@ namespace FiftyOne.Pipeline.Core.Data
         /// </param>
         public void AddError(Exception ex, IFlowElement flowElement, bool shouldThrow, bool shouldLog)
         {
+            CheckNotFinished();
             var error = new FlowError(ex, flowElement, shouldThrow);
             // Members of a parallel group add errors from several threads,
             // so they take the lock while the group runs, and only then.
@@ -463,6 +472,7 @@ namespace FiftyOne.Pipeline.Core.Data
             {
                 throw new ArgumentNullException(nameof(message));
             }
+            CheckNotFinished();
             var warning = new FlowWarning(message, flowElement);
             // Members of a parallel group take the lock while the group
             // runs, and only then.
@@ -637,7 +647,29 @@ namespace FiftyOne.Pipeline.Core.Data
                 supplied[entry.Key] = entry.Value;
             }
             _suppliedEvidence = supplied;
-            PipelineInternal.Process(this);
+            try
+            {
+                PipelineInternal.Process(this);
+            }
+            finally
+            {
+                _finished = true;
+                _evidence?.MarkFinished();
+            }
+        }
+
+        /// <summary>
+        /// Fail a write once processing has finished.
+        /// </summary>
+        /// <exception cref="PipelineException">
+        /// Thrown if processing has finished.
+        /// </exception>
+        private void CheckNotFinished()
+        {
+            if (_finished)
+            {
+                throw new PipelineException(Messages.ExceptionFlowDataFinished);
+            }
         }
 
         /// <summary>
@@ -662,6 +694,7 @@ namespace FiftyOne.Pipeline.Core.Data
             {
                 throw new ArgumentNullException(nameof(value));
             }
+            CheckNotFinished();
 
             if (_logger.IsEnabled(LogLevel.Debug))
             {
@@ -687,6 +720,7 @@ namespace FiftyOne.Pipeline.Core.Data
             {
                 throw new ArgumentNullException(nameof(evidence));
             }
+            CheckNotFinished();
 
             var log = _logger.IsEnabled(LogLevel.Debug);
             foreach (var entry in evidence)
@@ -1021,6 +1055,7 @@ namespace FiftyOne.Pipeline.Core.Data
                 // compare and swap, so a member of a parallel group never
                 // waits for another. Flow Elements that share a key are
                 // never in the same group, so the add does not race.
+                CheckNotFinished();
                 _data.TryAdd(elementDataKey, dataFactory(Pipeline), out data);
             }
             try
@@ -1069,6 +1104,7 @@ namespace FiftyOne.Pipeline.Core.Data
             if (_data.TryGetValue(key, out data) == false)
             {
                 // No lock, as above.
+                CheckNotFinished();
                 data = dataFactory(Pipeline);
                 if (_data.TryAdd(key.Name, data, out var held) == false)
                 {
@@ -1095,7 +1131,11 @@ namespace FiftyOne.Pipeline.Core.Data
         /// </returns>
         public IDictionary<string, object> ElementDataAsDictionary()
         {
-            return _data.AsStringKeyDictionary();
+            // Read only once processing has finished.
+            return _finished
+                ? new ReadOnlyDictionary<string, object>(
+                    _data.AsStringKeyDictionary())
+                : _data.AsStringKeyDictionary();
         }
 
         /// <summary>

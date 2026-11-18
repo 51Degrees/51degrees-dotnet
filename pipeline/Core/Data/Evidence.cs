@@ -20,6 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.Pipeline.Core.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace FiftyOne.Pipeline.Core.Data
@@ -40,6 +41,45 @@ namespace FiftyOne.Pipeline.Core.Data
         public Evidence(ILogger<Evidence> logger)
             : base(logger)
         {
+        }
+
+        /// <summary>
+        /// Set by the Flow Data that holds this Evidence when its
+        /// processing ends. A write tests it, and nothing waits on it.
+        /// </summary>
+        private volatile bool _finished;
+
+        /// <summary>
+        /// Called by the Flow Data when its processing ends, after which
+        /// this Evidence is read only.
+        /// </summary>
+        internal void MarkFinished()
+        {
+            _finished = true;
+        }
+
+        /// <summary>
+        /// Get or set a value. Setting a value once the Flow Data that holds
+        /// this Evidence has finished processing fails.
+        /// <see cref="DataBase.PopulateFrom"/> sets each value through here.
+        /// </summary>
+        /// <param name="key">The key of the value.</param>
+        /// <returns>The value.</returns>
+        /// <exception cref="PipelineException">
+        /// Thrown when setting a value after processing has finished.
+        /// </exception>
+        public override object this[string key]
+        {
+            get => base[key];
+            set
+            {
+                if (_finished)
+                {
+                    throw new PipelineException(
+                        Messages.ExceptionFlowDataFinished);
+                }
+                base[key] = value;
+            }
         }
     }
 }

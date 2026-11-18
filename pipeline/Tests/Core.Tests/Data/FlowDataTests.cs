@@ -370,12 +370,12 @@ namespace FiftyOne.Pipeline.Core.Tests.Data
         [TestMethod]
         public void FlowData_AddDataString_GetDataString()
         {
-            _flowData.Process();
             string key = "key";
             var data = _flowData.GetOrAdd(
                 key,
                 (p) => new TestElementData(p));
 
+            _flowData.Process();
             var result = _flowData.Get(key);
 
             Assert.AreSame(data, result);
@@ -388,13 +388,13 @@ namespace FiftyOne.Pipeline.Core.Tests.Data
         [TestMethod]
         public void FlowData_AddDataString_GetDataTypedKey()
         {
-            _flowData.Process();
             string key = "key";
             var typedKey = new TypedKey<TestElementData>(key);
             var data = _flowData.GetOrAdd(
                 key,
                 (p) => new TestElementData(p));
 
+            _flowData.Process();
             var result = _flowData.Get(typedKey);
 
             Assert.AreSame(data, result);
@@ -407,12 +407,11 @@ namespace FiftyOne.Pipeline.Core.Tests.Data
         [TestMethod]
         public void FlowData_AddDataString_GetDataElement()
         {
-            _flowData.Process();
-
             var element = new TestElement();
             var data = _flowData.GetOrAdd(
                 element.ElementDataKey,
                 (p) => new TestElementData(p));
+            _flowData.Process();
             var result = _flowData.GetFromElement(element);
 
             Assert.AreSame(data, result);
@@ -425,13 +424,13 @@ namespace FiftyOne.Pipeline.Core.Tests.Data
         [TestMethod]
         public void FlowData_AddDataTypedKey_GetDataString()
         {
-            _flowData.Process();
             string key = "key";
             var typedKey = new TypedKey<TestElementData>(key);
             TestElementData data = _flowData.GetOrAdd(
                 typedKey,
                 (p) => new TestElementData(p));
 
+            _flowData.Process();
             var result = _flowData.Get(key);
 
             Assert.AreSame(data, result);
@@ -444,13 +443,13 @@ namespace FiftyOne.Pipeline.Core.Tests.Data
         [TestMethod]
         public void FlowData_AddDataTypedKey_GetDataTypedKey()
         {
-            _flowData.Process();
             string key = "key";
             var typedKey = new TypedKey<TestElementData>(key);
             TestElementData data = _flowData.GetOrAdd(
                 typedKey,
                 (p) => new TestElementData(p));
 
+            _flowData.Process();
             var result = _flowData.Get(typedKey);
 
             Assert.AreSame(data, result);
@@ -463,13 +462,13 @@ namespace FiftyOne.Pipeline.Core.Tests.Data
         [TestMethod]
         public void FlowData_AddDataTypedKey_GetDataElement()
         {
-            _flowData.Process();
             var element = new TestElement();
             var typedKey = new TypedKey<TestElementData>(element.ElementDataKey);
             TestElementData data = _flowData.GetOrAdd(
                 typedKey,
                 (p) => new TestElementData(p));
 
+            _flowData.Process();
             var result = _flowData.GetFromElement(element);
 
             Assert.AreSame(data, result);
@@ -498,12 +497,12 @@ namespace FiftyOne.Pipeline.Core.Tests.Data
         [TestMethod]
         public void FlowData_GetDataAsEnumerable()
         {
-            _flowData.Process();
             string key = "key";
             TestElementData data = _flowData.GetOrAdd(
                 key,
                 (p) => new TestElementData(p));
 
+            _flowData.Process();
             var result = _flowData.ElementDataAsEnumerable();
 
             var count = 0;
@@ -522,12 +521,12 @@ namespace FiftyOne.Pipeline.Core.Tests.Data
         [TestMethod]
         public void FlowData_UpdateDataAsDictionary()
         {
-            _flowData.Process();
             string key = "key";
             TestElementData data = new TestElementData(_pipeline.Object);
             var dataAsDict = _flowData.ElementDataAsDictionary();
 
             dataAsDict.Add(key, data);
+            _flowData.Process();
             var result = _flowData.Get(key);
 
             Assert.AreSame(data, result);
@@ -1037,14 +1036,13 @@ namespace FiftyOne.Pipeline.Core.Tests.Data
         [TestMethod]
         public void FlowData_Close()
         {
-            _flowData.Process();
-
             var data = new Mock<IDisposableData>();
 
             _flowData.GetOrAdd(
                 "test",
                 (p) => { return data.Object; });
 
+            _flowData.Process();
             DisposeFlowData();
 
             data.Verify(d => d.Dispose(), Times.Once);
@@ -1059,14 +1057,13 @@ namespace FiftyOne.Pipeline.Core.Tests.Data
         [TestMethod]
         public void FlowData_CloseNotDisposable()
         {
-            _flowData.Process();
-
             var data = new Mock<IElementData>();
 
             _flowData.GetOrAdd(
                 "test",
                 (p) => { return data.Object; });
 
+            _flowData.Process();
             DisposeFlowData();
         }
 
