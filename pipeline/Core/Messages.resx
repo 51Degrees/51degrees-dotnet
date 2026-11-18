@@ -129,6 +129,9 @@
   <data name="ExceptionFlowDataNotYetProcessed" xml:space="preserve">
     <value>This instance has not yet been processed</value>
   </data>
+  <data name="ExceptionKeyAlreadyPresent" xml:space="preserve">
+    <value>An entry for '{0}' is already present.</value>
+  </data>
   <data name="ExceptionKeyNameNull" xml:space="preserve">
     <value>Key name cannot be null</value>
   </data>

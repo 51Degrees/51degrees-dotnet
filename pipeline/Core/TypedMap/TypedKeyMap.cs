@@ -24,6 +24,7 @@ using FiftyOne.Pipeline.Core.Exceptions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 
 namespace FiftyOne.Pipeline.Core.TypedMap
@@ -478,7 +479,10 @@ namespace FiftyOne.Pipeline.Core.TypedMap
                 if (_map.TryAdd(key, value, out _) == false)
                 {
                     throw new ArgumentException(
-                        $"An entry for '{key}' is already present.",
+                        string.Format(
+                            CultureInfo.InvariantCulture,
+                            Messages.ExceptionKeyAlreadyPresent,
+                            key),
                         nameof(key));
                 }
             }

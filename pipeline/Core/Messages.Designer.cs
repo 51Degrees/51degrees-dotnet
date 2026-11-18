@@ -97,6 +97,15 @@ namespace FiftyOne.Pipeline.Core {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to An entry for &apos;{0}&apos; is already present..
+        /// </summary>
+        internal static string ExceptionKeyAlreadyPresent {
+            get {
+                return ResourceManager.GetString("ExceptionKeyAlreadyPresent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Key name cannot be null.
         /// </summary>
         internal static string ExceptionKeyNameNull {
