@@ -20,6 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.Pipeline.Core.FlowElements;
 using Microsoft.Extensions.Logging;
 
 namespace FiftyOne.Pipeline.Core.Data
@@ -40,6 +41,29 @@ namespace FiftyOne.Pipeline.Core.Data
         public Evidence(ILogger<Evidence> logger)
             : base(logger)
         {
+        }
+
+        /// <summary>
+        /// Get or set a value. A value that an element of a parallel group
+        /// sets on the Evidence of the Flow Data it is processing is
+        /// refused, with a configuration error recorded against the
+        /// element, because the other elements of the group read the
+        /// Evidence at the same time. <see cref="DataBase.PopulateFrom"/>
+        /// sets each value through here.
+        /// </summary>
+        /// <param name="key">The key of the value.</param>
+        /// <returns>The value.</returns>
+        public override object this[string key]
+        {
+            get => base[key];
+            set
+            {
+                if (ParallelElements.RefuseEvidence(this, key))
+                {
+                    return;
+                }
+                base[key] = value;
+            }
         }
     }
 }

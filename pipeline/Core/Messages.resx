@@ -120,6 +120,9 @@
   <data name="ExceptionCannotFindProperty" xml:space="preserve">
     <value>Could not find property '{0}'.</value>
   </data>
+  <data name="ExceptionParallelGroupAddedEvidence" xml:space="preserve">
+    <value>An element of a parallel group tried to add the evidence '{0}', which was refused, because the other elements of the group read the evidence at the same time. Add the element on its own, before the elements that read the value.</value>
+  </data>
   <data name="ExceptionPipelineDisposed" xml:space="preserve">
     <value>The pipeline has been disposed, so this flow data can no longer be processed. Create the flow data from a pipeline that is still in use.</value>
   </data>

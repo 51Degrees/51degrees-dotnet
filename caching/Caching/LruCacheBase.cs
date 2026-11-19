@@ -560,7 +560,7 @@ namespace FiftyOne.Caching
         /// The number of items to store in the cache
         /// </param>
         internal LruCacheBase(int cacheSize)
-            : this(cacheSize, Environment.ProcessorCount) { }
+            : this(cacheSize, Constants.LRU_CACHE_DEFAULT_CONCURRENCY) { }
 
         /// <summary>
         /// Constructs a new instance of the cache.

@@ -177,7 +177,7 @@ public static class ExampleUtils
     /// </summary>
     public const string PRICING_MESSAGE =
         "Some properties used by this example are not available " +
-        "with a free resource key. See https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=pricing_message " +
+        "with a free resource key. See https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=pricing-message " +
         "to get a paid subscription with more properties.";
 
     /// <summary>

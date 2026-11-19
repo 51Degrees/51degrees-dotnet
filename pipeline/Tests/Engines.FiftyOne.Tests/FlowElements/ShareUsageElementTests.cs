@@ -192,6 +192,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             internal override int DisposeTimeoutMilliseconds =>
                 _disposeTimeoutMilliseconds;
 
+            /// <summary>
+            /// The element's clock when the test sets it.
+            /// </summary>
+            public TimeSpan? Clock { get; set; }
+
+            internal override TimeSpan ClockNow => Clock ?? base.ClockNow;
+
             public void Enqueue(string clientIp) =>
                 EvidenceCollection.Add(new ShareUsageData() { ClientIP = clientIp });
 
@@ -291,7 +298,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// A message built before the lookup of the machine's address has
         /// finished has an empty ServerIP, and a message built after it has
         /// finished carries the address, so the empty value is not kept for
-        /// the life of the element.
+        /// the life of the element. ServerIP is one of the invariant values,
+        /// which the specification at 07e1fced writes "again to the first
+        /// record the element writes once an hour or more has passed since
+        /// it last wrote them" and "MUST NOT" write "to any other record"
+        /// (usage-sharing-element.md lines 151 to 153), so the later
+        /// message is built an hour on, by the element's clock.
         /// </summary>
         [TestMethod]
         public void ShareUsageElement_HostAddressLookupFinishesLater_LaterMessageCarriesIt()
@@ -300,9 +312,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             {
                 var element = new SlowHostAddressElement(
                     _logger, _httpClient, _tracker.Object, release, 10);
+                element.Clock = TimeSpan.Zero;
                 element.AddPipeline(_pipeline.Object);
                 element.Enqueue("10.3.0.3");
                 element.SendAsync().Wait();
+                element.Clock = TimeSpan.FromHours(1);
 
                 release.Set();
                 Assert.IsTrue(

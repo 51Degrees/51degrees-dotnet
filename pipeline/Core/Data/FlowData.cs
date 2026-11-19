@@ -26,6 +26,7 @@ using FiftyOne.Pipeline.Core.TypedMap;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -92,7 +93,7 @@ namespace FiftyOne.Pipeline.Core.Data
         /// <summary>
         /// Lock to use when adding errors.
         /// </summary>
-        private object _errorsLock;
+        private readonly object _errorsLock = new object();
 
         /// <summary>
         /// Messages for the caller that did not stop the request being
@@ -369,11 +370,12 @@ namespace FiftyOne.Pipeline.Core.Data
         /// </param>
         public void AddError(Exception ex, IFlowElement flowElement, bool shouldThrow, bool shouldLog)
         {
-            if (_errors == null) { _errors = new List<IFlowError>(); }
-            if (_errorsLock == null) { _errorsLock = new object(); }
             var error = new FlowError(ex, flowElement, shouldThrow);
+            // The elements of a parallel group add errors from several
+            // threads, so the list is created under the lock.
             lock (_errorsLock)
             {
+                if (_errors == null) { _errors = new List<IFlowError>(); }
                 _errors.Add(error);
             }
 
@@ -610,6 +612,10 @@ namespace FiftyOne.Pipeline.Core.Data
             {
                 throw new ArgumentNullException(nameof(value));
             }
+            if (RefusedInParallelGroup(key))
+            {
+                return this;
+            }
 
             if (_logger.IsEnabled(LogLevel.Debug))
             {
@@ -619,6 +625,19 @@ namespace FiftyOne.Pipeline.Core.Data
             _evidence[key] = value;
             return this;
         }
+
+        /// <summary>
+        /// The other elements of a parallel group read the Evidence while
+        /// one of them runs, so a value an element of a group adds to this
+        /// Flow Data is refused, with a configuration error recorded against
+        /// the element. A value added to another Flow Data is not affected.
+        /// Checked here as well as in <see cref="Evidence"/> so that a
+        /// refused value is not logged as set.
+        /// </summary>
+        /// <param name="key">The key of the value being added.</param>
+        /// <returns>True when the value is refused.</returns>
+        private bool RefusedInParallelGroup(string key) =>
+            ParallelElements.RefuseEvidence(_evidence, key);
 
         /// <summary>
         /// Add the specified evidence to the FlowData
@@ -639,6 +658,10 @@ namespace FiftyOne.Pipeline.Core.Data
             var log = _logger.IsEnabled(LogLevel.Debug);
             foreach (var entry in evidence)
             {
+                if (RefusedInParallelGroup(entry.Key))
+                {
+                    continue;
+                }
                 if (log)
                 {
                     _logger.LogDebug($"FlowData '{GetHashCode()}' set evidence " +
