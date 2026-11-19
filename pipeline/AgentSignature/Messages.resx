@@ -85,9 +85,6 @@
   <data name="LogDirectoryFetchFailed" xml:space="preserve">
     <value>The key directory at '{0}' could not be read because {1}. The request reports the Unverified status, which is not evidence against the agent.</value>
   </data>
-  <data name="ExceptionAbsentDataReadOnly" xml:space="preserve">
-    <value>The agent signature data for a request with no signature is shared by every such request, so it cannot be changed.</value>
-  </data>
   <data name="LogReachabilityGood" xml:space="preserve">
     <value>Agent signature verification reached the key directory at '{0}' at start up, so this deployment can fetch the keys agents publish.</value>
   </data>

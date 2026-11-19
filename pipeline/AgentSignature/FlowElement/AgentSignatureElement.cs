@@ -28,13 +28,11 @@ using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Data;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -185,8 +183,6 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 new Lazy<Task<IDictionary<string, AgentCard>>>(
                     () => Task.Run(LoadCards));
             _createData = CreateElementData;
-            _createAbsent = CreateAbsent;
-            _absentData = p => _absentByPipeline.GetValue(p, _createAbsent);
             StartReachabilityCheck();
         }
 
@@ -306,23 +302,22 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             {
                 throw new ArgumentNullException(nameof(data));
             }
-            // Nearly every request has no signature at all, so answer that
-            // case before anything is parsed or allocated. The keys are
-            // built once, and the answer is one element data per pipeline,
-            // filled once with values that never change, so a request with
-            // no signature costs only the look ups and the flow data's
-            // holding of that answer.
+            // Nearly every request has no signature at all, so test for
+            // the headers before anything is parsed or allocated, with keys
+            // built once. That case is answered in the request's own
+            // Element Data from values that never change.
             var fromQuery = FindSource(data);
-            if (HasSignatureHeaders(data, fromQuery) == false)
-            {
-                data.GetOrAdd(ElementDataKeyTyped, _absentData);
-                return;
-            }
+            var hasSignature = HasSignatureHeaders(data, fromQuery);
 
             var elementData = data.GetOrAdd(
                 ElementDataKeyTyped, _createData) as AgentSignatureData;
             if (elementData == null)
             {
+                return;
+            }
+            if (hasSignature == false)
+            {
+                ApplyAbsent(elementData);
                 return;
             }
 
@@ -418,71 +413,6 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         private static bool HasValue(IFlowData data, string key)
         {
             return data.TryGetEvidence(key, out object raw) && raw != null;
-        }
-
-        /// <summary>
-        /// The answer to a request with no signature, filled once for each
-        /// pipeline the element is in and then handed to every such
-        /// request, so that nothing is made for it. The table holds the
-        /// pipeline weakly, so a pipeline that is gone takes its answer
-        /// with it.
-        /// </summary>
-        private readonly ConditionalWeakTable<IPipeline, AbsentData>
-            _absentByPipeline =
-                new ConditionalWeakTable<IPipeline, AbsentData>();
-
-        /// <summary>
-        /// The factory handed to the flow data's GetOrAdd for a request
-        /// with no signature, made once for the same reason as
-        /// <see cref="_createData"/>.
-        /// </summary>
-        private readonly Func<IPipeline, IAgentSignatureData> _absentData;
-
-        private readonly ConditionalWeakTable<IPipeline, AbsentData>
-            .CreateValueCallback _createAbsent;
-
-        private AbsentData CreateAbsent(IPipeline pipeline)
-        {
-            // The shared answer only returns the values it was filled
-            // with, so it has nothing of its own to log.
-            var absent = new AbsentData(
-                NullLogger<AgentSignatureData>.Instance,
-                pipeline);
-            ApplyAbsent(absent);
-            absent.Freeze();
-            return absent;
-        }
-
-        /// <summary>
-        /// The element data shared by every request with no signature.
-        /// Once filled it cannot be changed, because a change would reach
-        /// every other request that has no signature.
-        /// </summary>
-        private sealed class AbsentData : AgentSignatureData
-        {
-            private bool _frozen;
-
-            public AbsentData(
-                ILogger<AgentSignatureData> logger,
-                IPipeline pipeline)
-                : base(logger, pipeline)
-            { }
-
-            public void Freeze() => _frozen = true;
-
-            public override object this[string key]
-            {
-                get => base[key];
-                set
-                {
-                    if (_frozen)
-                    {
-                        throw new InvalidOperationException(
-                            Messages.ExceptionAbsentDataReadOnly);
-                    }
-                    base[key] = value;
-                }
-            }
         }
 
         /// <summary>

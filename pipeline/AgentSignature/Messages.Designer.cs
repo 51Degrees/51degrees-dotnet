@@ -70,15 +70,6 @@ namespace FiftyOne.Pipeline.AgentSignature {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The agent signature data for a request with no signature is shared by every such request, so it cannot be changed.
-        /// </summary>
-        internal static string ExceptionAbsentDataReadOnly {
-            get {
-                return ResourceManager.GetString("ExceptionAbsentDataReadOnly", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to The signature did not carry this information.
         /// </summary>
         internal static string NoValueDetailNotSent {
