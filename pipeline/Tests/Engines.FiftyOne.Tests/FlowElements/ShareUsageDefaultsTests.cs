@@ -46,29 +46,28 @@ public class ShareUsageDefaultsTests
     private readonly LoggerFactory _loggerFactory = new LoggerFactory();
 
     /// <summary>
-    /// Share all query string parameters is on by default, so a parameter
-    /// that does not start 51D_ and was never named is shared.
+    /// By default a parameter that does not start 51D_ and that no Flow
+    /// Element in the Pipeline uses is not shared.
     /// </summary>
     [TestMethod]
-    public void ByDefault_EveryQueryStringParameterIsShared()
+    public void ByDefault_OnlyThe51DQueryStringParametersAreShared()
     {
         var xml = ShareOne(
             builder => builder,
             ("query.utm_campaign", "spring"),
             ("query.51D_ScreenPixelsWidth", "1024"));
 
-        Assert.Contains(
-            "<query Name=\"utm_campaign\"><![CDATA[spring]]></query>", xml);
+        Assert.DoesNotContain("spring", xml);
         Assert.Contains("<![CDATA[1024]]>", xml);
     }
 
     /// <summary>
-    /// With share all query string parameters off, only the parameters
-    /// that start 51D_ and the ones named are shared. A name given while
-    /// every parameter is shared takes effect once that is turned off.
+    /// The share all query string parameters and included query string
+    /// parameters options have no effect, so a named parameter that no
+    /// Flow Element in the Pipeline uses is still not shared.
     /// </summary>
     [TestMethod]
-    public void ShareAllQueryStringParametersOff_SharesThe51DAndNamedOnes()
+    public void QueryStringParameterOptions_HaveNoEffect()
     {
         var xml = ShareOne(
             builder => builder
@@ -79,8 +78,7 @@ public class ShareUsageDefaultsTests
             ("query.utm_campaign", "spring"),
             ("query.51D_ScreenPixelsWidth", "1024"));
 
-        Assert.Contains(
-            "<query Name=\"utm_source\"><![CDATA[newsletter]]></query>", xml);
+        Assert.DoesNotContain("newsletter", xml);
         Assert.DoesNotContain("spring", xml);
         Assert.Contains("<![CDATA[1024]]>", xml);
     }

@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using FiftyOne.Pipeline.Engines.FiftyOne.Trackers;
 using System;
@@ -31,7 +32,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
     /// <summary>
     /// Decides which of the evidence the <see cref="ShareUsageElement"/>
     /// finds is shared.
-    /// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/pipeline-elements/usage-sharing-element.md#shared-evidence">Specification</see>
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/d79bbe3b2aef86273570742f6b660f29bfe72816/pipeline-specification/pipeline-elements/usage-sharing-element.md#shared-evidence">Specification</see>
     /// </summary>
     /// <remarks>
     /// This filter is not the element's
@@ -77,11 +78,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         };
 
         /// <summary>
-        /// The query string parameters shared besides those starting 51D_,
-        /// in lower case. Null shares every parameter, which is what the
-        /// builder passes by default.
+        /// The Pipeline whose Flow Elements decide which query string and
+        /// form parameters, besides those starting 51D_, are shared. Null
+        /// until the usage sharing element joins a Pipeline, and while it is
+        /// null only the parameters starting 51D_ are shared.
         /// </summary>
-        private HashSet<string> _includedQueryStringParams = new HashSet<string>();
+        private volatile IPipeline _pipeline;
 
         /// <summary>
         /// Evidence keys that are never shared, regardless of the share-all
@@ -98,12 +100,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// 'request-query' is the whole query string of the request, added
         /// as 'server.request-query' by the web integrations so that a
         /// signature made over the request line can be checked. It is held
-        /// back here because a caller can withhold query string parameters,
-        /// sharing only the ones named through the constructor, and the
-        /// whole query string carries every one of those parameters
-        /// together. Without this entry the same value would be withheld
-        /// under its 'query' prefix and shared under its 'server' prefix,
-        /// which would quietly undo a choice a caller had made.
+        /// back here because it carries every parameter together, including
+        /// those the rule for parameters in <see cref="Include"/> withholds,
+        /// so sharing it would undo that rule.
         /// </para>
         /// <para>
         /// 'request-path' is held back for a different reason, being what it
@@ -142,6 +141,14 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// </summary>
         private static readonly string _cookiePrefix =
             Core.Constants.EVIDENCE_COOKIE_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR;
+
+        /// <summary>
+        /// The prefix of every query string and form parameter's evidence
+        /// key, with its separator.
+        /// </summary>
+        private static readonly string _queryPrefix =
+            Core.Constants.EVIDENCE_QUERY_PREFIX +
             Core.Constants.EVIDENCE_SEPERATOR;
 
         /// <summary>
@@ -186,9 +193,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// not send to 51Degrees.
         /// </param>
         /// <param name="includedQueryStringParams">
-        /// A list of the names of query string parameters that share 
-        /// usage should send to 51Degrees.
-        /// If this value is null, all query string parameters are shared.
+        /// Deprecated and has no effect. A query string or form parameter
+        /// is shared only when its name starts 51D_ or a Flow Element in
+        /// the Pipeline accepts it.
         /// </param>
         /// <param name="includeSession">
         /// If true then the repeat tracker's filter, which derives from
@@ -228,21 +235,37 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                     _blockedHttpHeaders.Add(lowerHeader);
                 }
             }
-            if (includedQueryStringParams == null)
+        }
+
+        /// <summary>
+        /// Sets the Pipeline whose Flow Elements decide which query string
+        /// and form parameters, besides those starting 51D_, are shared.
+        /// </summary>
+        /// <param name="pipeline">
+        /// The Pipeline the usage sharing element has joined.
+        /// </param>
+        internal void UsePipeline(IPipeline pipeline)
+        {
+            _pipeline = pipeline;
+        }
+
+        /// <summary>
+        /// True if a query string or form parameter is shared, being when
+        /// its name starts 51D_ or a Flow Element in the Pipeline accepts
+        /// it, whatever the other settings.
+        /// </summary>
+        /// <param name="key">A key with the query prefix.</param>
+        /// <returns>True if the parameter is shared.</returns>
+        private bool IsSharedParameter(string key)
+        {
+            if (key.Substring(_queryPrefix.Length).StartsWith(
+                    Engines.Constants.FIFTYONE_COOKIE_PREFIX,
+                    StringComparison.OrdinalIgnoreCase))
             {
-                _includedQueryStringParams = null;
-            } 
-            else
-            { 
-                foreach (var parameter in includedQueryStringParams)
-                {
-                    var lowerParameter = parameter.ToLowerInvariant();
-                    if (!_includedQueryStringParams.Contains(lowerParameter))
-                    {
-                        _includedQueryStringParams.Add(lowerParameter);
-                    }
-                }
+                return true;
             }
+            var used = _pipeline?.EvidenceKeyFilter;
+            return used != null && used.Include(key);
         }
 
         /// <summary>
@@ -312,6 +335,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                 return false;
             }
 
+            // A query string or form parameter follows the same rule, and is
+            // also shared when the Pipeline uses it, whatever the settings.
+            if (key.StartsWith(_queryPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return IsSharedParameter(key);
+            }
+
             bool result = _shareAll;
 
             if (_shareAll == false)
@@ -342,28 +372,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                         result = lastPart.StartsWith(Engines.Constants.FIFTYONE_COOKIE_PREFIX,
                             StringComparison.OrdinalIgnoreCase);
                     }
-                    else if (string.Equals(firstPart, Core.Constants.EVIDENCE_QUERY_PREFIX,
-                        StringComparison.OrdinalIgnoreCase))
-                    {
-                        // If no query string parameter filter was specified 
-                        // then share all of them.
-                        // Otherwise, only include query string parameters that 
-                        // start with 51d_ or that have been specified in 
-                        // the constructor.
-                        result = _includedQueryStringParams == null ||
-                            lastPart.StartsWith(Engines.Constants.FIFTYONE_COOKIE_PREFIX,
-                            StringComparison.OrdinalIgnoreCase) ||
-                            _includedQueryStringParams.Contains(
-#pragma warning disable CA1308 // Normalize strings to uppercase
-                            // Pipeline specification is for keys to be lower-case.
-                            lastPart.ToLowerInvariant());
-#pragma warning restore CA1308 // Normalize strings to uppercase
-                    }
                     else
                     {
-                        // Add anything that is not a header, session
-                        // variable or query string parameter. A cookie
-                        // that gets here starts 51D_.
+                        // Add anything that is not a header or session
+                        // variable. A cookie that gets here starts 51D_.
                         result = true;
                     }
                 }

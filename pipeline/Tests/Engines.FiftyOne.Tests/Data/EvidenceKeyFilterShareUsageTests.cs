@@ -43,7 +43,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
             Assert.IsFalse(filter.Include("header.id.email"));
             Assert.IsFalse(filter.Include("query.id.salt"));
             Assert.IsFalse(filter.Include("header.id.salt"));
-            Assert.IsTrue(filter.Include("query.id.usage"));
+            Assert.IsTrue(filter.Include("header.id.usage"));
             Assert.IsTrue(filter.Include("header.user-agent"));
         }
 
@@ -111,13 +111,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
         /// The whole query string is never shared, in either mode.
         /// </summary>
         /// <remarks>
-        /// This class withholds query string parameters by default and only
-        /// shares the ones a caller names through the constructor, so
-        /// 'query.email' is withheld unless it was asked for. The whole
-        /// query string carries every one of those parameters at once, so
-        /// without this the same value would be withheld under its 'query'
-        /// prefix and shared under its 'server' prefix, undoing a choice
-        /// the caller had made without anyone deciding to.
+        /// This class withholds every query string parameter that does not
+        /// start 51D_ and that no Flow Element of the Pipeline uses, and a
+        /// name given through the constructor has no effect. The whole
+        /// query string carries every parameter at once, so without this
+        /// the same value would be withheld under its 'query' prefix and
+        /// shared under its 'server' prefix.
         /// </remarks>
         [TestMethod]
         public void TheWholeQueryStringIsNeverShared()
@@ -135,15 +134,15 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
 
             Assert.IsFalse(configured.Include("server.request-query"));
 
-            // Naming a parameter for sharing does not bring the whole query
-            // string with it.
+            // Naming a parameter shares neither it nor the whole query
+            // string.
             var namedParameter = new EvidenceKeyFilterShareUsage(
                 new List<string>(),
                 new List<string>() { "utm_source" },
                 false,
                 "sessionid");
 
-            Assert.IsTrue(namedParameter.Include("query.utm_source"));
+            Assert.IsFalse(namedParameter.Include("query.utm_source"));
             Assert.IsFalse(namedParameter.Include("server.request-query"));
         }
 
@@ -155,7 +154,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
             // never-shared key.
             var filter = new EvidenceKeyFilterShareUsage();
 
-            Assert.IsTrue(filter.Include("query.valid.email"));
+            Assert.IsTrue(filter.Include("header.valid.email"));
         }
 
         [TestMethod]
@@ -180,7 +179,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
 
             Assert.IsFalse(filter.Include("query.id.email"));
             Assert.IsFalse(filter.Include("query.id.salt"));
-            Assert.IsTrue(filter.Include("query.id.usage"));
+            Assert.IsTrue(filter.Include("header.id.usage"));
             Assert.IsTrue(filter.Include("header.user-agent"));
         }
 
@@ -277,7 +276,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
             Assert.IsTrue(tracked.Include("cookie.ASP.NET_SessionId"));
             Assert.IsFalse(tracked.Include("cookie.other"));
             Assert.IsTrue(tracked.Include("cookie.51d_screenpixelswidth"));
-            Assert.IsTrue(tracked.Include("query.utm_campaign"));
+            Assert.IsFalse(tracked.Include("query.utm_campaign"));
             Assert.IsFalse(untracked.Include("cookie.asp.net_sessionid"));
         }
 
@@ -309,10 +308,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
 
         /// <summary>
         /// A query string parameter is shared only when its name starts with
-        /// 51D_ or is on the allow list, unless all Evidence is shared.
+        /// 51D_ or a Flow Element of the Pipeline uses it, whatever the
+        /// settings. With no Pipeline, only the 51D_ ones are shared, and
+        /// the allow list has no effect.
         /// </summary>
         [TestMethod]
-        public void Filtered_QueryOutsideTheAllowListIsNotShared()
+        public void NoPipeline_OnlyThe51DQueryParametersAreShared()
         {
             var filter = new EvidenceKeyFilterShareUsage(
                 new List<string>(),
@@ -321,13 +322,15 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
                 "asp.net_sessionid");
 
             Assert.IsFalse(filter.Include("query.other"));
-            Assert.IsTrue(filter.Include("query.allowed"));
-            Assert.IsTrue(filter.Include("QUERY.Allowed"));
+            Assert.IsFalse(filter.Include("query.allowed"));
+            Assert.IsFalse(filter.Include("QUERY.Allowed"));
             Assert.IsTrue(filter.Include("query.51D_ScreenPixelsWidth"));
+            Assert.IsTrue(filter.Include("QUERY.51d_ScreenPixelsWidth"));
 
             var shareAll = new EvidenceKeyFilterShareUsage();
 
-            Assert.IsTrue(shareAll.Include("query.other"));
+            Assert.IsFalse(shareAll.Include("query.other"));
+            Assert.IsTrue(shareAll.Include("query.51D_ScreenPixelsWidth"));
         }
 
         /// <summary>

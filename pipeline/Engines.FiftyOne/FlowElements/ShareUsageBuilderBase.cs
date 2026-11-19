@@ -123,15 +123,15 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// </summary>
         protected List<string> BlockedHttpHeaders { get; private set; } = new List<string>();
         /// <summary>
-        /// The query string parameters to be shared besides those starting
-        /// 51D_, or null when every one is shared.
+        /// The included query string parameters, or null when every one
+        /// was asked for. Deprecated and has no effect on what is shared.
         /// </summary>
         protected List<string> IncludedQueryStringParameters =>
             ShareAllQueryStringParameters ? null : _includedQueryStringParameters;
         private readonly List<string> _includedQueryStringParameters = new List<string>();
         /// <summary>
-        /// If true then every query string and HTTP form parameter is
-        /// shared, and the included parameters have no effect.
+        /// The share all query string parameters setting. Deprecated and
+        /// has no effect on what is shared.
         /// </summary>
         protected bool ShareAllQueryStringParameters { get; private set; } = Constants.SHARE_USAGE_DEFAULT_SHARE_ALL_QUERY_STRING_PARAMETERS;
         /// <summary>
@@ -220,10 +220,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Every query string and HTTP form parameter is shared by default.
-        /// When <see cref="SetShareAllQueryStringParameters(bool)"/> turns
-        /// that off, only the parameters starting '51D_' and the ones named
-        /// here are shared.
+        /// Deprecated and has no effect. A query string or HTTP form
+        /// parameter is shared only when its name starts '51D_' or a Flow
+        /// Element in the Pipeline accepts it, whatever this setting.
         /// </summary>
         /// <param name="queryStringParameterNames">
         /// The (case insensitive) names of the query string parameters to include.
@@ -248,10 +247,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Every query string and HTTP form parameter is shared by default.
-        /// When <see cref="SetShareAllQueryStringParameters(bool)"/> turns
-        /// that off, only the parameters starting '51D_' and the ones named
-        /// here are shared.
+        /// Deprecated and has no effect. A query string or HTTP form
+        /// parameter is shared only when its name starts '51D_' or a Flow
+        /// Element in the Pipeline accepts it, whatever this setting.
         /// </summary>
         /// <param name="queryStringParameterNames">
         /// A comma separated list of the (case insensitive) names of 
@@ -273,10 +271,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Every query string and HTTP form parameter is shared by default.
-        /// When <see cref="SetShareAllQueryStringParameters(bool)"/> turns
-        /// that off, only the parameters starting '51D_' and the ones named
-        /// here are shared.
+        /// Deprecated and has no effect. A query string or HTTP form
+        /// parameter is shared only when its name starts '51D_' or a Flow
+        /// Element in the Pipeline accepts it, whatever this setting.
         /// </summary>
         /// <param name="queryStringParameterName">
         /// The (case insensitive) name of the query string parameter to
@@ -290,13 +287,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Configure whether the usage sharing element shares every query
-        /// string and HTTP form parameter, which it does by default. When
-        /// off, only the parameters starting '51D_' and the included ones
-        /// are shared.
+        /// Deprecated and has no effect. A query string or HTTP form
+        /// parameter is shared only when its name starts '51D_' or a Flow
+        /// Element in the Pipeline accepts it, whatever this setting.
         /// </summary>
         /// <param name="shareAll">
-        /// If set to true then all query string parameters will be shared
+        /// Has no effect.
         /// </param>
         /// <returns>
         /// This builder instance

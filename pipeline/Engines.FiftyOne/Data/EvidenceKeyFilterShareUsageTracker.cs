@@ -66,9 +66,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// not send to 51Degrees.
         /// </param>
         /// <param name="includedQueryStringParams">
-        /// A list of the names of query string parameters that share 
-        /// usage should send to 51Degrees.
-        /// If this value is null, all query string parameters are shared.
+        /// Deprecated and has no effect.
         /// </param>
         /// <param name="includeSession">
         /// If true then the asp.net session cookie is part of the key, so
