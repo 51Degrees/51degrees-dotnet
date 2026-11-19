@@ -92,8 +92,8 @@ namespace FiftyOne.Pipeline.Core.Data
         private int _groupsRunning;
 
         /// <summary>
-        /// Lock that members of a parallel group take to add errors and
-        /// warnings while the group runs. Errors are rare, so it costs
+        /// Lock taken to add errors and warnings while a parallel group or a
+        /// lazy loading background task runs. Errors are rare, so it costs
         /// nothing in the normal case.
         /// </summary>
         private readonly object _errorsLock = new object();
@@ -367,8 +367,8 @@ namespace FiftyOne.Pipeline.Core.Data
         public void AddError(Exception ex, IFlowElement flowElement, bool shouldThrow, bool shouldLog)
         {
             var error = new FlowError(ex, flowElement, shouldThrow);
-            // Members of a parallel group add errors from several threads,
-            // so they take the lock while the group runs, and only then.
+            // A parallel group or a lazy loading task can add errors from
+            // another thread, so take the lock while one runs, and only then.
             if (Volatile.Read(ref _groupsRunning) > 0)
             {
                 lock (_errorsLock)
@@ -485,7 +485,7 @@ namespace FiftyOne.Pipeline.Core.Data
                 throw new ArgumentNullException(nameof(message));
             }
             var warning = new FlowWarning(message, flowElement);
-            // Members of a parallel group take the lock while the group
+            // Take the lock while a parallel group or a lazy loading task
             // runs, and only then.
             if (Volatile.Read(ref _groupsRunning) > 0)
             {
