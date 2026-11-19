@@ -25,6 +25,7 @@ using FiftyOne.Pipeline.AgentSignature.Tests.Helpers;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Core.TypedMap;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
@@ -48,22 +49,20 @@ public class NoSignatureAllocationTests
 
     /// <summary>
     /// Processing a request with no signature allocates nothing beyond
-    /// what the flow data spends to hold an answer that already exists.
-    /// The cost of holding it is measured the same way on the same
-    /// kind of flow data, so the test counts only the element's own
-    /// allocations.
+    /// the Element Data the request is given and the values written into
+    /// it. That cost is measured by making the same Element Data, adding
+    /// it to the same kind of flow data and writing the same values, so
+    /// the test counts only the element's own allocations.
     /// </summary>
     [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
-    public void NoSignature_AllocatesNothing(bool trustForwarded)
+    public void NoSignature_AllocatesOnlyItsElementData(bool trustForwarded)
     {
         using (var harness = ElementHarness.Create(
             b => b.SetTrustForwardedEvidence(trustForwarded)))
         {
-            var existing = harness.ProcessPlainRequest();
-            Func<IPipeline, IAgentSignatureData> holdExisting =
-                p => existing;
+            var answer = harness.ProcessPlainRequest();
             var key = harness.Element.ElementDataKeyTyped;
 
             // Run both paths enough times first that nothing compiled
@@ -71,16 +70,34 @@ public class NoSignatureAllocationTests
             for (var i = 0; i < 3; i++)
             {
                 MeasureElement(harness);
-                MeasureHolding(harness, key, holdExisting);
+                MeasureElementData(harness, key, answer);
             }
 
             var element = MeasureElement(harness);
-            var holding = MeasureHolding(harness, key, holdExisting);
+            var elementData = MeasureElementData(harness, key, answer);
             Assert.IsTrue(
-                element <= holding,
+                element <= elementData,
                 $"Processing {Requests} requests with no signature " +
-                $"allocated {element} bytes, where holding an answer " +
-                $"that already exists costs the flow data {holding}.");
+                $"allocated {element} bytes, where making, adding and " +
+                $"filling their Element Data costs {elementData}.");
+        }
+    }
+
+    /// <summary>
+    /// Each request with no signature is answered in its own Element
+    /// Data, as every request is, so that an instance belongs to one
+    /// flow data.
+    /// </summary>
+    [TestMethod]
+    public void NoSignature_EachRequestHasItsOwnElementData()
+    {
+        using (var harness = ElementHarness.Create())
+        {
+            var first = harness.ProcessPlainRequest();
+            var second = harness.ProcessPlainRequest();
+            Assert.AreEqual(
+                Constants.STATUS_ABSENT, first.AgentSignature.Value);
+            Assert.AreNotSame(first, second);
         }
     }
 
@@ -137,16 +154,35 @@ public class NoSignatureAllocationTests
         return allocated;
     }
 
-    private static long MeasureHolding(
+    private static readonly Func<IPipeline, IAgentSignatureData>
+        MakeElementData = p => new AgentSignatureData(
+            NullLogger<AgentSignatureData>.Instance, p);
+
+    private static long MeasureElementData(
         ElementHarness harness,
         ITypedKey<IAgentSignatureData> key,
-        Func<IPipeline, IAgentSignatureData> holdExisting)
+        IAgentSignatureData answer)
     {
         var requests = PlainRequests(harness);
         var before = GC.GetAllocatedBytesForCurrentThread();
         foreach (var data in requests)
         {
-            data.GetOrAdd(key, holdExisting);
+            var target = (AgentSignatureData)data.GetOrAdd(
+                key, MakeElementData);
+            target.AgentSignature = answer.AgentSignature;
+            target.AgentSignatureReason = answer.AgentSignatureReason;
+            target.AgentSignatureAgent = answer.AgentSignatureAgent;
+            target.AgentSignatureKeyId = answer.AgentSignatureKeyId;
+            target.AgentSignatureAlgorithm =
+                answer.AgentSignatureAlgorithm;
+            target.AgentSignatureCreated = answer.AgentSignatureCreated;
+            target.AgentSignatureExpires = answer.AgentSignatureExpires;
+            target.AgentSignatureNonce = answer.AgentSignatureNonce;
+            target.AgentSignaturePurpose = answer.AgentSignaturePurpose;
+            target.AgentSignatureName = answer.AgentSignatureName;
+            target.AgentSignatureProductToken =
+                answer.AgentSignatureProductToken;
+            target.AgentSignatureCardUrl = answer.AgentSignatureCardUrl;
         }
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         foreach (var data in requests)
