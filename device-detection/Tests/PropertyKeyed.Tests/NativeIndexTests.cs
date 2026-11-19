@@ -38,10 +38,8 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
     /// <summary>
     /// Compares the TAC and NativeModel engines on one data file with two
     /// Hash engines, one whose data set indexes those properties itself and
-    /// one that does not, so that the engines fall back to the index the
-    /// data set service builds by processing every profile. The Hash
-    /// engine's index matches a value's exact spelling, where the fallback
-    /// matches ignoring case.
+    /// one that does not, so that its native lookup reads every profile.
+    /// Both match a value's exact spelling and give the same profiles.
     /// </summary>
     [TestClass]
     public class NativeIndexTests
@@ -138,20 +136,21 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
         }
 
         /// <summary>
-        /// A property the Hash engine's data set indexes is not indexed
-        /// again by processing every profile, and one it does not index is.
+        /// No profile is processed at start-up to build an index of the
+        /// engines' own, whether or not the Hash engine indexes the
+        /// property, because the engines find the profiles through the
+        /// native lookup.
         /// </summary>
         [TestMethod]
         [DataRow(TAC)]
         [DataRow(NATIVE_MODEL)]
-        public void ManagedIndex_BuiltOnlyWithoutTheNativeIndex(
-            string property)
+        public void ManagedIndex_NeverBuilt(string property)
         {
             Assert.IsEmpty(ManagedIndex(_native, property),
                 "The managed index was built although the Hash engine " +
                 "indexes the property.");
-            Assert.AreNotEqual(0, ManagedIndex(_managed, property).Count,
-                "The managed index was not built for a Hash engine that " +
+            Assert.IsEmpty(ManagedIndex(_managed, property),
+                "The managed index was built for a Hash engine that " +
                 "does not index the property.");
         }
 
@@ -238,8 +237,6 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
             }
 
             var differences = new List<string>();
-            var changed = 0;
-            var ignoringCase = ManagedIndex(_managed, property);
             foreach (var value in values.OrderBy(v => v, StringComparer.Ordinal))
             {
                 var expected = exact.TryGetValue(value, out var ids) ?
@@ -254,21 +251,12 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
                         $"'{value}' exact [{string.Join(",", expected)}] " +
                         $"native [{string.Join(",", actual)}]");
                 }
-                var old = ignoringCase.TryGetValue(value, out var oldIds) ?
-                    oldIds.Distinct() :
-                    Enumerable.Empty<uint>();
-                if (old.SequenceEqual(expected) == false)
-                {
-                    changed++;
-                }
             }
 
             Console.WriteLine(
-                $"{property}: {values.Count} values. {changed} give other " +
-                "profiles than the index that ignores case, " +
+                $"{property}: {values.Count} values, of which " +
                 $"{SharedSpellings(exact.Keys).Count} are spelled the same " +
-                "as another ignoring case, and that index repeats a profile " +
-                $"for {ignoringCase.Values.Count(l => l.Distinct().Count() != l.Count)}.");
+                "as another ignoring case.");
             Assert.AreNotEqual(0, values.Count);
             Assert.IsEmpty(differences,
                 $"{differences.Count} of {values.Count} {property} values " +
@@ -302,12 +290,15 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
                 var expected = exact[value]
                     .Select(id => id.ToString(CultureInfo.InvariantCulture))
                     .ToList();
-                var actual = ProfileIds(_native, property, value);
-                if (expected.SequenceEqual(actual) == false)
+                foreach (var side in new[] { _native, _managed })
                 {
-                    differences.Add(
-                        $"'{value}' exact [{string.Join(",", expected)}] " +
-                        $"engine [{string.Join(",", actual)}]");
+                    var actual = ProfileIds(side, property, value);
+                    if (expected.SequenceEqual(actual) == false)
+                    {
+                        differences.Add(
+                            $"'{value}' exact [{string.Join(",", expected)}] " +
+                            $"engine [{string.Join(",", actual)}]");
+                    }
                 }
             }
             Assert.IsEmpty(differences,
@@ -317,10 +308,9 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
         }
 
         /// <summary>
-        /// With the Hash engine's index, a NativeModel in a case that no
-        /// value in the data file has finds no profiles, because the index
-        /// matches the exact spelling. Without it, the engine still matches
-        /// ignoring case.
+        /// A NativeModel in a case that no value in the data file has finds
+        /// no profiles, with the Hash engine's index or without it, because
+        /// the native lookup matches the exact spelling either way.
         /// </summary>
         [TestMethod]
         public void ValueInAnotherCase_FindsNothingWithTheNativeIndex()
@@ -345,14 +335,14 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
                 "found profiles, for example " +
                 string.Join("; ", found.Take(5)));
 
-            var notFoundWithoutIndex = values
-                .Where(v => ProfileIds(_managed, NATIVE_MODEL, v).Count == 0)
+            var foundWithoutIndex = values
+                .Where(v => ProfileIds(_managed, NATIVE_MODEL, v).Count > 0)
                 .ToList();
-            Assert.IsEmpty(notFoundWithoutIndex,
-                $"{notFoundWithoutIndex.Count} of {values.Count} values in " +
-                "another case found nothing without the Hash engine's " +
+            Assert.IsEmpty(foundWithoutIndex,
+                $"{foundWithoutIndex.Count} of {values.Count} values in " +
+                "another case found profiles without the Hash engine's " +
                 "index, for example " +
-                string.Join("; ", notFoundWithoutIndex.Take(5)));
+                string.Join("; ", foundWithoutIndex.Take(5)));
         }
 
         private static List<string> ProfileIds(
