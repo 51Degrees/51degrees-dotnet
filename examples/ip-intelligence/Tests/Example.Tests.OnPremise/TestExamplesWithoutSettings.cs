@@ -54,7 +54,6 @@ public class TestExamplesWithoutSettings
             "_51DEGREES_LICENSE_KEY",
             "_51DEGREES_DD_PATH"
         }
-        .Concat(Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS)
         .ToArray();
 
     /// <summary>

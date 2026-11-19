@@ -79,8 +79,7 @@ using Examples.Did.CreatorContextWeb;
 using FiftyOne.Did.Client;
 using Microsoft.AspNetCore.Mvc;
 
-var resource = EnvironmentSetting.Read(
-    "_51DEGREES_RESOURCE_KEY", "RESOURCE_KEY");
+var resource = Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
 if (string.IsNullOrEmpty(resource))
 {
     // A fresh clone has no key, so this says where to create one and
@@ -91,8 +90,7 @@ if (string.IsNullOrEmpty(resource))
         + "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-did-creatorcontextweb-program.cs&utm_term=resource-key-required");
     return 0;
 }
-var licence = EnvironmentSetting.Read(
-    "_51DEGREES_LICENSE_KEY", "LICENSE_KEY");
+var licence = Environment.GetEnvironmentVariable("_51DEGREES_LICENSE_KEY");
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5100";
 if (string.IsNullOrEmpty(licence))
 {

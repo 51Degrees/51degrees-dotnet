@@ -78,37 +78,6 @@ namespace FiftyOne.IpIntelligence.Examples
         public const string IPI_PATH_ENV_VAR = "_51DEGREES_IPI_PATH";
 
         /// <summary>
-        /// An old environment variable for the path to the IP Intelligence
-        /// data file, read only when <see cref="IPI_PATH_ENV_VAR"/> is not
-        /// set.
-        /// </summary>
-        [System.Obsolete("Use IPI_PATH_ENV_VAR, which names the environment " +
-            "variable that replaces this one.")]
-        public const string IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "51DEGREES_IPI_PATH";
-
-        /// <summary>
-        /// An old environment variable for the path to the IP Intelligence
-        /// data file, read only when <see cref="IPI_PATH_ENV_VAR"/> is not
-        /// set.
-        /// </summary>
-        [System.Obsolete("Use IPI_PATH_ENV_VAR, which names the environment " +
-            "variable that replaces this one.")]
-        public const string LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "IPINTELLIGENCEDATAFILE";
-
-#pragma warning disable CS0618 // The old names are listed to be read.
-        /// <summary>
-        /// The old names of
-        /// <see cref="IPI_PATH_ENV_VAR"/>,
-        /// read in this order only when that variable is not set.
-        /// </summary>
-        public static readonly string[] OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS = new string[]
-        {
-            IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
-            LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
-        };
-#pragma warning restore CS0618
-
-        /// <summary>
         /// The free Device Detection data file, which the mixed examples
         /// use by default. The data repository links it, and the examples
         /// download it when it is missing.
@@ -120,16 +89,6 @@ namespace FiftyOne.IpIntelligence.Examples
         /// Device Detection data file that the mixed examples use.
         /// </summary>
         public const string DD_PATH_ENV_VAR = "_51DEGREES_DD_PATH";
-
-        /// <summary>
-        /// The old names of <see cref="DD_PATH_ENV_VAR"/>, read in this
-        /// order only when that variable is not set.
-        /// </summary>
-        public static readonly string[] OLD_DD_PATH_ENV_VARS = new string[]
-        {
-            "51DEGREES_DD_PATH",
-            "DEVICEDETECTIONDATAFILE",
-        };
 
         /// <summary>
         /// Environment variable key for the evidence file to use for the tests.

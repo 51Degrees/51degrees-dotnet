@@ -528,9 +528,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI
             var dataFile = dataFileOverride;
             if (string.IsNullOrWhiteSpace(dataFile))
             {
-                dataFile = Examples.ExampleUtils.FromEnvironment(
-                    Examples.Constants.IPI_PATH_ENV_VAR,
-                    Examples.Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS);
+                dataFile = System.Environment.GetEnvironmentVariable(
+                    Examples.Constants.IPI_PATH_ENV_VAR);
             }
             if (string.IsNullOrWhiteSpace(dataFile))
             {
@@ -599,9 +598,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI
             var dataFile = dataFileOverride;
             if (string.IsNullOrWhiteSpace(dataFile))
             {
-                dataFile = Examples.ExampleUtils.FromEnvironment(
-                    Examples.Constants.DD_PATH_ENV_VAR,
-                    Examples.Constants.OLD_DD_PATH_ENV_VARS);
+                dataFile = System.Environment.GetEnvironmentVariable(
+                    Examples.Constants.DD_PATH_ENV_VAR);
             }
             if (string.IsNullOrWhiteSpace(dataFile))
             {

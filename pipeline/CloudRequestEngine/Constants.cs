@@ -39,9 +39,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine
             "_51DEGREES_CLOUD_ENDPOINT";
 
         /// <summary>
-        /// The old environment variable that names the URL of the cloud
-        /// service, read only when <see cref="CLOUD_ENDPOINT_ENV_VAR"/> is
-        /// unset or empty. Use <see cref="CLOUD_ENDPOINT_ENV_VAR"/>.
+        /// The old environment variable that named the URL of the cloud
+        /// service. It is no longer read. Use
+        /// <see cref="CLOUD_ENDPOINT_ENV_VAR"/>.
         /// </summary>
         [System.Obsolete("Use CLOUD_ENDPOINT_ENV_VAR, which names the "
             + "environment variable that replaces this one.")]

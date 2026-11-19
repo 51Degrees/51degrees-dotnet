@@ -53,8 +53,6 @@ public class WithoutSettingsTest
             Examples.Constants.IPI_PATH_ENV_VAR,
             Examples.Constants.DD_PATH_ENV_VAR
         }
-        .Concat(Examples.Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS)
-        .Concat(Examples.Constants.OLD_DD_PATH_ENV_VARS)
         .ToArray();
 
     /// <summary>

@@ -120,9 +120,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb
             var dataFile = dataFileOverride;
             if (string.IsNullOrWhiteSpace(dataFile))
             {
-                dataFile = Examples.ExampleUtils.FromEnvironment(
-                    Constants.IPI_PATH_ENV_VAR,
-                    Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS);
+                dataFile = Environment.GetEnvironmentVariable(
+                    Constants.IPI_PATH_ENV_VAR);
             }
             if (string.IsNullOrWhiteSpace(dataFile))
             {

@@ -24,9 +24,8 @@ $OldStyle = "^FiftyOne\.(Pipeline\.Web\.Framework\.Tests|DeviceDetection\.Tests\
 $Filter = "^FiftyOne\.(?!Pipeline\.Web\.Framework\.Tests\.dll$)(?!DeviceDetection\.Tests\.Framework\.dll$)(?!.*Examples?\.Tests)(?!.*TestHelpers).*Tests?(\.Core|\.Framework)?\.dll$"
 # A run can be narrowed to some assemblies by setting _51DEGREES_TEST_FILTER,
 # which the probe workflow does.
-$TestFilter = & "$PSScriptRoot/test-filter.ps1"
-if ($TestFilter) {
-    $Filter = $TestFilter
+if ($env:_51DEGREES_TEST_FILTER) {
+    $Filter = $env:_51DEGREES_TEST_FILTER
 }
 
 $Exclude = $Depth -eq 'standard' ?

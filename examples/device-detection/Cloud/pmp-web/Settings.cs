@@ -47,15 +47,6 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public const string RESOURCE_KEY_VARIABLE = "_51DEGREES_RESOURCE_KEY";
 
         /// <summary>
-        /// The old name of <see cref="RESOURCE_KEY_VARIABLE"/>, read only
-        /// when neither that variable nor
-        /// <see cref="CI_RESOURCE_KEY_ENV_VAR"/> is set.
-        /// </summary>
-        [System.Obsolete("Use RESOURCE_KEY_VARIABLE, which names the environment " +
-            "variable that replaces this one.")]
-        public const string RESOURCE_KEY_ENV_VAR = "51DEGREES_RESOURCE_KEY";
-
-        /// <summary>
         /// The name continuous integration sets a resource key carrying the
         /// 51Did product in, read only when
         /// <see cref="RESOURCE_KEY_VARIABLE"/> is not set.
@@ -68,14 +59,6 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         /// and the pipeline asks.
         /// </summary>
         public const string CLOUD_ENDPOINT_VARIABLE = "_51DEGREES_CLOUD_ENDPOINT";
-
-        /// <summary>
-        /// The old name of <see cref="CLOUD_ENDPOINT_VARIABLE"/>, read only
-        /// when that variable is not set.
-        /// </summary>
-        [System.Obsolete("Use CLOUD_ENDPOINT_VARIABLE, which names the environment " +
-            "variable that replaces this one.")]
-        public const string CLOUD_ENDPOINT_ENV_VAR = "51DEGREES_CLOUD_ENDPOINT";
 
         /// <summary>
         /// The cloud used when no endpoint variable is set.
@@ -146,24 +129,10 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
                 RESOURCE_KEY_VARIABLE, CI_RESOURCE_KEY_ENV_VAR);
             if (key == null)
             {
-#pragma warning disable CS0618 // The old name is the one read here.
-                (keyVariable, key) = FirstOld(
-                    RESOURCE_KEY_VARIABLE, RESOURCE_KEY_ENV_VAR);
-#pragma warning restore CS0618
-            }
-            if (key == null)
-            {
                 return null;
             }
 
             var (endpointVariable, endpoint) = First(CLOUD_ENDPOINT_VARIABLE);
-            if (endpoint == null)
-            {
-#pragma warning disable CS0618 // The old name is the one read here.
-                (endpointVariable, endpoint) = FirstOld(
-                    CLOUD_ENDPOINT_VARIABLE, CLOUD_ENDPOINT_ENV_VAR);
-#pragma warning restore CS0618
-            }
             return new Settings(
                 key,
                 keyVariable!,
@@ -275,26 +244,6 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
                 }
             }
             return (null, null);
-        }
-
-        /// <summary>
-        /// The old name with its value where it holds one that is not
-        /// blank, reported on the error stream as deprecated, or two nulls
-        /// where it does not.
-        /// </summary>
-        private static (string? Name, string? Value) FirstOld(
-            string newName,
-            string oldName)
-        {
-            var (name, value) = First(oldName);
-            if (value != null)
-            {
-                Console.Error.WriteLine(
-                    $"The environment variable {oldName} is deprecated " +
-                    $"and {newName} replaces it. Set {newName} to the " +
-                    "same value instead.");
-            }
-            return (name, value);
         }
 
         /// <summary>

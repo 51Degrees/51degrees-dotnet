@@ -59,8 +59,6 @@ public class TestWebExamplesWithoutSettings
             Constants.IPI_PATH_ENV_VAR,
             Constants.DD_PATH_ENV_VAR
         }
-        .Concat(Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS)
-        .Concat(Constants.OLD_DD_PATH_ENV_VARS)
         .ToArray();
 
     /// <summary>
