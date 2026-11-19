@@ -26,7 +26,6 @@ using FiftyOne.Pipeline.Core.TypedMap;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -49,9 +48,10 @@ namespace FiftyOne.Pipeline.Core.Data
         private Evidence _evidence;
 
         /// <summary>
-        /// The output data
+        /// The output data, a linked list that members of a parallel group
+        /// add to with compare and swap, and that is read with no lock.
         /// </summary>
-        private ITypedKeyMap _data;
+        private TypedKeyMap _data;
 
         /// <summary>
         /// The errors that have occurred during processing
@@ -76,13 +76,6 @@ namespace FiftyOne.Pipeline.Core.Data
         private ILogger<FlowData> _logger;
 
         /// <summary>
-        /// Lock to use when adding element data. Created only for a
-        /// concurrent pipeline, which is also when <see cref="_data"/> is
-        /// the concurrent map, and null otherwise.
-        /// </summary>
-        private readonly object _dataLock;
-
-        /// <summary>
         /// The errors that have occurred during processing
         /// </summary>
         public IList<IFlowError> Errors
@@ -91,23 +84,27 @@ namespace FiftyOne.Pipeline.Core.Data
         }
 
         /// <summary>
-        /// Lock to use when adding errors.
+        /// The number of parallel groups, and of the deprecated lazy loading
+        /// option's background tasks, running on this instance. While it is
+        /// above zero, errors and warnings are added under
+        /// <see cref="_errorsLock"/>. At any other time nothing is locked.
+        /// </summary>
+        private int _groupsRunning;
+
+        /// <summary>
+        /// Lock taken to add errors and warnings while a parallel group or a
+        /// lazy loading background task runs. Errors are rare, so it costs
+        /// nothing in the normal case.
         /// </summary>
         private readonly object _errorsLock = new object();
 
         /// <summary>
         /// Messages for the caller that did not stop the request being
-        /// served. Created on the first warning, under
-        /// <see cref="_warningsLock"/>.
+        /// served, oldest first. Never changed once set. A new warning
+        /// replaces the array with one compare and swap, so reads take no
+        /// lock.
         /// </summary>
-        private List<IFlowWarning> _warnings;
-
-        /// <summary>
-        /// Lock to use when adding or reading warnings. Assigned here rather
-        /// than on first use so that concurrent elements cannot each install
-        /// a lock of their own and then add while holding different ones.
-        /// </summary>
-        private readonly object _warningsLock = new object();
+        private IFlowWarning[] _warnings = EmptyWarnings;
 
         private bool disposedValue;
 
@@ -296,7 +293,6 @@ namespace FiftyOne.Pipeline.Core.Data
             PipelineInternal = pipeline;
             var concurrent = pipeline?.IsConcurrent ?? false;
             _data = new TypedKeyMap(concurrent);
-            _dataLock = concurrent ? new object() : null;
             _evidence = evidence;
             _cancellationToken = cancellationToken;
 
@@ -371,12 +367,18 @@ namespace FiftyOne.Pipeline.Core.Data
         public void AddError(Exception ex, IFlowElement flowElement, bool shouldThrow, bool shouldLog)
         {
             var error = new FlowError(ex, flowElement, shouldThrow);
-            // The elements of a parallel group add errors from several
-            // threads, so the list is created under the lock.
-            lock (_errorsLock)
+            // A parallel group or a lazy loading task can add errors from
+            // another thread, so take the lock while one runs, and only then.
+            if (Volatile.Read(ref _groupsRunning) > 0)
             {
-                if (_errors == null) { _errors = new List<IFlowError>(); }
-                _errors.Add(error);
+                lock (_errorsLock)
+                {
+                    AddErrorToList(error);
+                }
+            }
+            else
+            {
+                AddErrorToList(error);
             }
 
             if (_logger != null && _logger.IsEnabled(LogLevel.Error) && shouldLog)
@@ -387,7 +389,52 @@ namespace FiftyOne.Pipeline.Core.Data
                     logMessage = logMessage + $" of {flowElement.GetType().Name}";
                 }
                 _logger.LogError(ex, logMessage);
-            }            
+            }
+        }
+
+        private void AddErrorToList(IFlowError error)
+        {
+            if (_errors == null) { _errors = new List<IFlowError>(); }
+            _errors.Add(error);
+        }
+
+        /// <summary>
+        /// Called by a parallel group on its own thread before its members
+        /// start. Until <see cref="GroupFinished"/>, errors and warnings are
+        /// added under a lock.
+        /// </summary>
+        internal void GroupStarted()
+        {
+            Interlocked.Increment(ref _groupsRunning);
+        }
+
+        /// <summary>
+        /// Called by a parallel group on its own thread once every member
+        /// has stopped.
+        /// </summary>
+        internal void GroupFinished()
+        {
+            Interlocked.Decrement(ref _groupsRunning);
+        }
+
+        /// <summary>
+        /// Called before the deprecated lazy loading option starts an
+        /// engine's processing in a background task. That task can add
+        /// errors while the Pipeline goes on, so until
+        /// <see cref="BackgroundTaskFinished"/> errors and warnings are
+        /// added under a lock.
+        /// </summary>
+        internal void BackgroundTaskStarted()
+        {
+            Interlocked.Increment(ref _groupsRunning);
+        }
+
+        /// <summary>
+        /// Called by the background task once its processing has ended.
+        /// </summary>
+        internal void BackgroundTaskFinished()
+        {
+            Interlocked.Decrement(ref _groupsRunning);
         }
 
         /// <summary>
@@ -397,18 +444,16 @@ namespace FiftyOne.Pipeline.Core.Data
         /// <remarks>
         /// A snapshot rather than the live collection, so that a caller
         /// reading this while a concurrent element is still adding cannot
-        /// observe a partially written list.
+        /// observe a partially written list. Takes no lock.
         /// </remarks>
         public IReadOnlyList<IFlowWarning> Warnings
         {
             get
             {
-                lock (_warningsLock)
-                {
-                    return _warnings == null
-                        ? EmptyWarnings
-                        : _warnings.ToArray();
-                }
+                var warnings = Volatile.Read(ref _warnings);
+                return warnings.Length == 0
+                    ? EmptyWarnings
+                    : (IFlowWarning[])warnings.Clone();
             }
         }
 
@@ -440,13 +485,18 @@ namespace FiftyOne.Pipeline.Core.Data
                 throw new ArgumentNullException(nameof(message));
             }
             var warning = new FlowWarning(message, flowElement);
-            lock (_warningsLock)
+            // Take the lock while a parallel group or a lazy loading task
+            // runs, and only then.
+            if (Volatile.Read(ref _groupsRunning) > 0)
             {
-                if (_warnings == null)
+                lock (_errorsLock)
                 {
-                    _warnings = new List<IFlowWarning>();
+                    AddWarningToArray(warning);
                 }
-                _warnings.Add(warning);
+            }
+            else
+            {
+                AddWarningToArray(warning);
             }
 
             if (_logger != null && _logger.IsEnabled(LogLevel.Warning))
@@ -458,6 +508,27 @@ namespace FiftyOne.Pipeline.Core.Data
                         + $" (from {flowElement.GetType().Name})";
                 }
                 _logger.LogWarning(logMessage);
+            }
+        }
+
+        /// <summary>
+        /// Put a copy of the warnings with this one added in place of the
+        /// current array with one compare and swap, trying again if another
+        /// thread added first.
+        /// </summary>
+        private void AddWarningToArray(IFlowWarning warning)
+        {
+            while (true)
+            {
+                var current = Volatile.Read(ref _warnings);
+                var added = new IFlowWarning[current.Length + 1];
+                Array.Copy(current, added, current.Length);
+                added[current.Length] = warning;
+                if (ReferenceEquals(Interlocked.CompareExchange(
+                    ref _warnings, added, current), current))
+                {
+                    return;
+                }
             }
         }
 
@@ -612,10 +683,6 @@ namespace FiftyOne.Pipeline.Core.Data
             {
                 throw new ArgumentNullException(nameof(value));
             }
-            if (RefusedInParallelGroup(key))
-            {
-                return this;
-            }
 
             if (_logger.IsEnabled(LogLevel.Debug))
             {
@@ -625,19 +692,6 @@ namespace FiftyOne.Pipeline.Core.Data
             _evidence[key] = value;
             return this;
         }
-
-        /// <summary>
-        /// The other elements of a parallel group read the Evidence while
-        /// one of them runs, so a value an element of a group adds to this
-        /// Flow Data is refused, with a configuration error recorded against
-        /// the element. A value added to another Flow Data is not affected.
-        /// Checked here as well as in <see cref="Evidence"/> so that a
-        /// refused value is not logged as set.
-        /// </summary>
-        /// <param name="key">The key of the value being added.</param>
-        /// <returns>True when the value is refused.</returns>
-        private bool RefusedInParallelGroup(string key) =>
-            ParallelElements.RefuseEvidence(_evidence, key);
 
         /// <summary>
         /// Add the specified evidence to the FlowData
@@ -658,10 +712,6 @@ namespace FiftyOne.Pipeline.Core.Data
             var log = _logger.IsEnabled(LogLevel.Debug);
             foreach (var entry in evidence)
             {
-                if (RefusedInParallelGroup(entry.Key))
-                {
-                    continue;
-                }
                 if (log)
                 {
                     _logger.LogDebug($"FlowData '{GetHashCode()}' set evidence " +
@@ -988,22 +1038,11 @@ namespace FiftyOne.Pipeline.Core.Data
             object data;
             if (_data.AsStringKeyDictionary().TryGetValue(elementDataKey, out data) == false)
             {
-                if (_dataLock != null)
-                {
-                    lock (_dataLock)
-                    {
-                        if (_data.AsStringKeyDictionary().TryGetValue(elementDataKey, out data) == false)
-                        {
-                            data = dataFactory(Pipeline);
-                            _data.AsStringKeyDictionary().Add(elementDataKey, data);
-                        }
-                    }
-                }
-                else
-                {
-                    data = dataFactory(Pipeline);
-                    _data.AsStringKeyDictionary().Add(elementDataKey, data);
-                }
+                // No lock. The instance is made first, then added with one
+                // compare and swap, so a member of a parallel group never
+                // waits for another. Flow Elements that share a key are
+                // never in the same group, so the add does not race.
+                _data.TryAdd(elementDataKey, dataFactory(Pipeline), out data);
             }
             try
             {
@@ -1050,21 +1089,20 @@ namespace FiftyOne.Pipeline.Core.Data
             T data = default(T);
             if (_data.TryGetValue(key, out data) == false)
             {
-                if (_dataLock != null)
+                // No lock, as above.
+                data = dataFactory(Pipeline);
+                if (_data.TryAdd(key.Name, data, out var held) == false)
                 {
-                    lock (_dataLock)
+                    if (held is T existing)
                     {
-                        if (_data.TryGetValue(key, out data) == false)
-                        {
-                            data = dataFactory(Pipeline);
-                            _data.Add(key, data);
-                        }
+                        data = existing;
                     }
-                }
-                else
-                {
-                    data = dataFactory(Pipeline);
-                    _data.Add(key, data);
+                    else
+                    {
+                        // A value of another type under the name is
+                        // replaced, as before.
+                        _data.Add(key, data);
+                    }
                 }
             }
             return data;
