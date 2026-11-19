@@ -635,14 +635,15 @@ namespace FiftyOne.DeviceDetection
             
                 if (deviceDetectionEngine != null)
                 {
-                    // Add the share usage element to the list if enabled
+                    // Add the device detection engine to the list
+                    FlowElements.Add(deviceDetectionEngine);
+                    // Add the share usage element if enabled. It goes last,
+                    // so it shares the evidence every other element adds.
                     if (_shareUsageEnabled)
                     {
                         shareUsageElement = new ShareUsageBuilder(LoggerFactory, _httpClient).Build();
                         FlowElements.Add(shareUsageElement);
                     }
-                    // Add the device detection engine to the list
-                    FlowElements.Add(deviceDetectionEngine);
                 }
                 else
                 {

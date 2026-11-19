@@ -61,6 +61,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RevalidationTests.cs" />
     <Compile Include="ShareUsageWebRequestTests.cs" />
+    <Compile Include="UsageSharingLastTests.cs" />
     <Compile Include="WebPipelineEvidenceFillerTests.cs" />
     <Compile Include="WebPipelineRequestEvidenceTests.cs" />
   </ItemGroup>

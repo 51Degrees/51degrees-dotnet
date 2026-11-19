@@ -91,9 +91,14 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// A new <see cref="IPipeline"/> instance containing the configured
         /// <see cref="IFlowElement"/> instances.
         /// </returns>
+        /// <exception cref="Exceptions.PipelineConfigurationException">
+        /// Thrown if an <see cref="IUsageSharingElement"/> is not the last
+        /// element or is in a parallel group.
+        /// </exception>
         public virtual IPipeline Build()
         {
             OnPreBuild();
+            UsageSharingPosition.Check(FlowElements);
             return new Pipeline(
                 LoggerFactory.CreateLogger<Pipeline>(),
                 NewFlowData,

@@ -141,6 +141,9 @@
   <data name="ExceptionParallelElementsNoDataKey" xml:space="preserve">
     <value>ParallelElements instances do not have an element data key</value>
   </data>
+  <data name="ExceptionUsageSharingNotLast" xml:space="preserve">
+    <value>The usage sharing element must be the last Flow Element in the Pipeline and outside any parallel group, so that it shares the evidence every other Flow Element adds. Add it after every other Flow Element, on its own.</value>
+  </data>
   <data name="MessagePipelineCreationFailed" xml:space="preserve">
     <value>Problem with pipeline configuration, failed to create pipeline</value>
   </data>
