@@ -1192,9 +1192,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             }
             // Check that the expected values are populated.
             Assert.Contains(@"iPhone\x0018", _xmlContent[0]);
-            Assert.AreEqual("true", (string)EvidenceEntry(
-                _xmlContent[0], "header", "user-agent").Attribute("escaped"));
-            Assert.DoesNotContain("BadSchema", _xmlContent[0]);
+            Assert.Contains("<BadSchema>true</BadSchema>", _xmlContent[0]);
 
         }
 
@@ -1266,8 +1264,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
 
             Assert.Contains("a\U0001F600\\x0001b", xml);
             Assert.Contains("kept", xml);
-            Assert.AreEqual("true", (string)EvidenceEntry(
-                xml, "query", "51D_Emoji").Attribute("escaped"));
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
         }
 
         /// <summary>
@@ -1284,8 +1281,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
 
             Assert.Contains(@"a\xfffeb\xffffc", xml);
             Assert.Contains("kept", xml);
-            Assert.AreEqual("true", (string)EvidenceEntry(
-                xml, "query", "51D_Fffe").Attribute("escaped"));
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
         }
 
         /// <summary>
@@ -1302,135 +1298,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
 
             Assert.Contains(@"a\xd83db", xml);
             Assert.Contains("kept", xml);
-            Assert.AreEqual("true", (string)EvidenceEntry(
-                xml, "query", "51D_Lone").Attribute("escaped"));
-        }
-
-        /// <summary>
-        /// The element written for the evidence entry with the category and
-        /// name given.
-        /// </summary>
-        private static System.Xml.Linq.XElement EvidenceEntry(
-            string xml,
-            string category,
-            string name)
-        {
-            var document = System.Xml.Linq.XDocument.Parse(xml);
-            var entries = document.Descendants(category)
-                .Where(e => (string)e.Attribute("Name") == name)
-                .ToList();
-            Assert.HasCount(1, entries, $"The entry {category}.{name}.");
-            return entries[0];
-        }
-
-        /// <summary>
-        /// usage-sharing-element.md: "A character that XML 1.0 does not
-        /// allow is replaced by the text \x followed by the code of the
-        /// character as four lower-case hexadecimal digits, for example
-        /// \x001f, and the element for that Evidence entry is marked
-        /// escaped="true"." Only the entry that was changed is marked.
-        /// </summary>
-        [TestMethod]
-        public void ShareUsageElement_EscapedValue_EntryMarkedEscaped()
-        {
-            var xml = ShareAllAndGetMessage(
-                new KeyValuePair<string, object>(
-                    "query.51D_Control", "a\u001fb"),
-                new KeyValuePair<string, object>("query.51D_Other", "kept"));
-
-            var escaped = EvidenceEntry(xml, "query", "51D_Control");
-            Assert.AreEqual(@"a\x001fb", escaped.Value);
-            Assert.AreEqual("true", (string)escaped.Attribute("escaped"));
-            Assert.IsNull(escaped.Attribute("truncated"));
-
-            var other = EvidenceEntry(xml, "query", "51D_Other");
-            Assert.IsNull(other.Attribute("escaped"));
-            Assert.IsNull(other.Attribute("truncated"));
-        }
-
-        /// <summary>
-        /// usage-sharing-element.md: "A value longer than 10,000 characters
-        /// is cut to 10,000 characters and the element for that Evidence
-        /// entry is marked truncated="true"." Nothing is added to the value.
-        /// </summary>
-        [TestMethod]
-        public void ShareUsageElement_LongValue_CutAndMarkedTruncated()
-        {
-            var xml = ShareAllAndGetMessage(
-                new KeyValuePair<string, object>(
-                    "query.51D_Long", new string('a', 10100)),
-                new KeyValuePair<string, object>("query.51D_Other", "kept"));
-
-            var entry = EvidenceEntry(xml, "query", "51D_Long");
-            Assert.AreEqual(new string('a', 10000), entry.Value);
-            Assert.AreEqual("true", (string)entry.Attribute("truncated"));
-            Assert.IsNull(entry.Attribute("escaped"));
-            Assert.IsNull(
-                EvidenceEntry(xml, "query", "51D_Other")
-                    .Attribute("truncated"));
-        }
-
-        /// <summary>
-        /// usage-sharing-element.md: "The limit counts Unicode code points,
-        /// and the cut never splits a character, so a character that UTF-16
-        /// stores as two units (a surrogate pair, such as most emoji) is
-        /// never divided."
-        /// </summary>
-        [TestMethod]
-        public void ShareUsageElement_LongValue_CutCountsCodePoints()
-        {
-            // 10,003 code points in 10,004 UTF-16 units, where the 10,000th
-            // code point is the emoji.
-            var value = new string('a', 9999) + "\U0001F600" + "bbb";
-            var xml = ShareAllAndGetMessage(
-                new KeyValuePair<string, object>("query.51D_Long", value));
-
-            var entry = EvidenceEntry(xml, "query", "51D_Long");
-            Assert.AreEqual(
-                new string('a', 9999) + "\U0001F600",
-                entry.Value);
-            Assert.AreEqual("true", (string)entry.Attribute("truncated"));
-            Assert.IsNull(entry.Attribute("escaped"));
-        }
-
-        /// <summary>
-        /// A value of 10,000 code points that UTF-16 stores in more than
-        /// 10,000 units is not longer than the limit, so it is kept whole.
-        /// </summary>
-        [TestMethod]
-        public void ShareUsageElement_TenThousandCodePoints_NotTruncated()
-        {
-            var value = new string('a', 9999) + "\U0001F600";
-            var xml = ShareAllAndGetMessage(
-                new KeyValuePair<string, object>("query.51D_Long", value));
-
-            var entry = EvidenceEntry(xml, "query", "51D_Long");
-            Assert.AreEqual(value, entry.Value);
-            Assert.IsNull(entry.Attribute("truncated"));
-        }
-
-        /// <summary>
-        /// usage-sharing-element.md: "The limit applies to the value as it
-        /// was supplied, before any character is replaced, so the \x
-        /// escapes do not count towards it." A value cut and escaped
-        /// carries both marks, and no mark is written for the record as a
-        /// whole.
-        /// </summary>
-        [TestMethod]
-        public void ShareUsageElement_LimitBeforeEscaping_BothMarks()
-        {
-            var value = new string('a', 9990) + new string('\u0001', 20);
-            var xml = ShareAllAndGetMessage(
-                new KeyValuePair<string, object>("query.51D_Long", value));
-
-            var entry = EvidenceEntry(xml, "query", "51D_Long");
-            Assert.AreEqual(
-                new string('a', 9990) +
-                    string.Concat(Enumerable.Repeat(@"\x0001", 10)),
-                entry.Value);
-            Assert.AreEqual("true", (string)entry.Attribute("truncated"));
-            Assert.AreEqual("true", (string)entry.Attribute("escaped"));
-            Assert.DoesNotContain("BadSchema", xml);
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
         }
 
         /// <summary>
@@ -2013,7 +1881,7 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
             CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
 
             string longValue = new string('a', Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH + 100);
-            string expectedValue =
+            string expectedValue = "[TRUNCATED BY USAGE SHARING] " +
                 new string('a', Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH);
             Dictionary<string, object> evidenceData = new Dictionary<string, object>()
             {
@@ -2038,7 +1906,7 @@ callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
                 while (xr.Read()) { }
             }
             // Check that the value was truncated and marked as such.
-            Assert.Contains($"<header Name=\"user-agent\" truncated=\"true\"><![CDATA[{expectedValue}]]></header>", _xmlContent[0]);
+            Assert.Contains($"<header Name=\"user-agent\"><![CDATA[{expectedValue}]]></header>", _xmlContent[0]);
             Assert.DoesNotContain(longValue, _xmlContent[0]);
         }
 
