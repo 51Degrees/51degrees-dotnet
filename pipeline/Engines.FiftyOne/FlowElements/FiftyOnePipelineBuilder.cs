@@ -123,7 +123,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 #pragma warning restore CA2000 // Dispose objects before losing scope
             }
             // If share usage is enabled then add the share usage element if it
-            // does not exist in the list.
+            // does not exist in the list. It goes after every other element,
+            // so it shares the evidence they add.
             if (_shareUsageEnabled &&
                 FlowElements.Any(e => e.GetType() == typeof(ShareUsageElement)) == false)
             {

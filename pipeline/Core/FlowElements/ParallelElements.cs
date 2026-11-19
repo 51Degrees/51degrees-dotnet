@@ -21,15 +21,12 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.Core.Data;
-using FiftyOne.Pipeline.Core.Exceptions;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.Core.FlowElements
@@ -41,62 +38,6 @@ namespace FiftyOne.Pipeline.Core.FlowElements
     /// </summary>
     internal class ParallelElements : FlowElementBase<IElementData, IElementPropertyMetaData>
     {
-        /// <summary>
-        /// The element of a group that is running in this asynchronous
-        /// flow, and the Flow Data it is processing, so that the Flow Data
-        /// can refuse a value the element adds to its Evidence while the
-        /// other elements of the group read it.
-        /// </summary>
-        internal static readonly AsyncLocal<Running> Current =
-            new AsyncLocal<Running>();
-
-        /// <summary>
-        /// Refuses a value for the Evidence of the Flow Data that the
-        /// running element of a group is processing, when that element adds
-        /// it, and records a configuration error against the element. Both
-        /// <see cref="FlowData.AddEvidence(string, object)"/> and a direct
-        /// write to <see cref="Evidence"/> call this.
-        /// </summary>
-        /// <param name="evidence">The Evidence being written.</param>
-        /// <param name="key">The key of the value being added.</param>
-        /// <returns>True when the value is refused.</returns>
-        internal static bool RefuseEvidence(IEvidence evidence, string key)
-        {
-            var running = Current.Value;
-            if (running == null ||
-                ReferenceEquals(running.Data.GetEvidence(), evidence) == false)
-            {
-                return false;
-            }
-            var suppress = running.Data.Pipeline?.SuppressProcessExceptions
-                ?? false;
-            running.Data.AddError(
-                new PipelineConfigurationException(string.Format(
-                    CultureInfo.InvariantCulture,
-                    Messages.ExceptionParallelGroupAddedEvidence,
-                    key)),
-                running.Element,
-                true,
-                suppress == false);
-            return true;
-        }
-
-        /// <summary>
-        /// An element of a group and the Flow Data it is processing.
-        /// </summary>
-        internal sealed class Running
-        {
-            internal Running(IFlowData data, IFlowElement element)
-            {
-                Data = data;
-                Element = element;
-            }
-
-            internal IFlowData Data { get; }
-
-            internal IFlowElement Element { get; }
-        }
-
         protected List<IFlowElement> _flowElements;
 
         /// <summary>
@@ -185,17 +126,19 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// </param>
         protected override void ProcessInternal(IFlowData data)
         {
-            List<Task> allTasks = new List<Task>();
-            foreach (var element in _flowElements)
+            // While the group runs, members add their own errors and
+            // warnings under the Flow Data's lock.
+            var flowData = data as FlowData;
+            flowData?.GroupStarted();
+            var allTasks = new List<Task>(_flowElements.Count);
+            try
             {
-                allTasks.Add(
+                foreach (var element in _flowElements)
+                {
                     // Run each element on a new thread.
-                    Task.Run(() =>
+                    allTasks.Add(Task.Run(() =>
                     {
                         var activity = ElementTracing.StartElement(element);
-                        // Set inside the task, so it reaches only this
-                        // element and what it calls.
-                        Current.Value = new Running(data, element);
                         try
                         {
                             element.Process(data);
@@ -210,40 +153,54 @@ namespace FiftyOne.Pipeline.Core.FlowElements
                         }
                         finally
                         {
-                            Current.Value = null;
                             activity?.Dispose();
                         }
-                    }).ContinueWith(t =>
-                    {
-                        // If any exceptions occurred then add them to the 
-                        // flow data.
-                        if (t.Exception != null)
-                        {
-                            // As in Pipeline.Process, error level logging is
-                            // skipped when the pipeline suppresses process
-                            // exceptions. The error remains available through
-                            // IFlowData.Errors and is logged at debug level.
-                            // Pipeline is never null on a flow data created by
-                            // a pipeline, but stub implementations can leave it
-                            // unset, so treat that as 'do not suppress'.
-                            var suppress =
-                                data.Pipeline?.SuppressProcessExceptions ?? false;
-                            foreach (var innerException in t.Exception.InnerExceptions)
-                            {
-                                data.AddError(innerException, element, true, !suppress);
-                                if (suppress && Logger.IsEnabled(LogLevel.Debug))
-                                {
-                                    Logger.LogDebug(innerException,
-                                        "Suppressed error during processing of " +
-                                        $"'{element?.GetType().Name}'.");
-                                }
-                            }
-                        }
-                    }, TaskScheduler.Default));
+                    }));
+                }
+
+                // Wait until every member has stopped. The exceptions are
+                // read from each task below.
+                try
+                {
+                    Task.WaitAll(allTasks.ToArray());
+                }
+                catch (AggregateException)
+                {
+                }
+            }
+            finally
+            {
+                flowData?.GroupFinished();
             }
 
-            // Wait until all tasks have completed.
-            Task.WhenAll(allTasks).Wait();
+            // Add the exceptions the members threw, on this thread, in the
+            // order of the members. As in Pipeline.Process, error level
+            // logging is skipped when the pipeline suppresses process
+            // exceptions. The error remains available through
+            // IFlowData.Errors and is logged at debug level. Pipeline is
+            // never null on a flow data created by a pipeline, but stub
+            // implementations can leave it unset, so treat that as 'do not
+            // suppress'.
+            var suppress = data.Pipeline?.SuppressProcessExceptions ?? false;
+            for (var i = 0; i < allTasks.Count; i++)
+            {
+                var exception = allTasks[i].Exception;
+                if (exception == null)
+                {
+                    continue;
+                }
+                var element = _flowElements[i];
+                foreach (var innerException in exception.InnerExceptions)
+                {
+                    data.AddError(innerException, element, true, !suppress);
+                    if (suppress && Logger.IsEnabled(LogLevel.Debug))
+                    {
+                        Logger.LogDebug(innerException,
+                            "Suppressed error during processing of " +
+                            $"'{element?.GetType().Name}'.");
+                    }
+                }
+            }
         }
 
         protected override void ManagedResourcesCleanup()

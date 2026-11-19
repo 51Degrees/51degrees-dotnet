@@ -302,16 +302,25 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             {
                 throw new ArgumentNullException(nameof(data));
             }
+            // Nearly every request has no signature at all, so test for
+            // the headers before anything is parsed or allocated, with keys
+            // built once. That case is answered in the request's own
+            // Element Data from values that never change.
+            var fromQuery = FindSource(data);
+            var hasSignature = HasSignatureHeaders(data, fromQuery);
+
             var elementData = data.GetOrAdd(
                 ElementDataKeyTyped, _createData) as AgentSignatureData;
             if (elementData == null)
             {
                 return;
             }
+            if (hasSignature == false)
+            {
+                ApplyAbsent(elementData);
+                return;
+            }
 
-            // Nearly every request has no signature at all, so answer that
-            // case before anything is parsed or allocated.
-            //
             // Where the signature came from decides where everything else
             // comes from. A caller's own Pipeline forwards its evidence
             // with the prefix taken off, so a forwarded signature sits
@@ -322,22 +331,19 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             // no request line reports that a component was unavailable,
             // which says the check could not be made, rather than
             // reporting a mismatch, which would say the agent was lying.
-            var source = FindSource(data);
-            var hasSignature = TryGetBySource(
+            var source = fromQuery
+                ? Core.Constants.EVIDENCE_QUERY_PREFIX
+                : Core.Constants.EVIDENCE_HTTPHEADER_PREFIX;
+            TryGetBySource(
                 data,
                 source,
                 Constants.EVIDENCE_SIGNATURE_NAME,
                 out var signatureValue);
-            var hasInput = TryGetBySource(
+            TryGetBySource(
                 data,
                 source,
                 Constants.EVIDENCE_SIGNATURE_INPUT_NAME,
                 out var inputValue);
-            if (hasSignature == false && hasInput == false)
-            {
-                ApplyAbsent(elementData);
-                return;
-            }
 
             var outcome = Evaluate(data, source, signatureValue, inputValue);
             Apply(outcome, elementData);
@@ -356,8 +362,11 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// both would be a base no agent ever signed.
         /// </remarks>
         /// <param name="data">The flow data.</param>
-        /// <returns>The prefix to read this request from.</returns>
-        private string FindSource(IFlowData data)
+        /// <returns>
+        /// True to read this request from the query prefix, or false to
+        /// read it from the header prefix.
+        /// </returns>
+        private bool FindSource(IFlowData data)
         {
             // Without this, a visitor could put a signature, a host and a
             // path in the address bar of an ordinary page, have the web
@@ -376,16 +385,51 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                     data.TryGetEvidence<object>(
                         QuerySignatureInputKey, out _)))
             {
-                return Core.Constants.EVIDENCE_QUERY_PREFIX;
+                return true;
             }
-            return Core.Constants.EVIDENCE_HTTPHEADER_PREFIX;
+            return false;
         }
 
         /// <summary>
-        /// The two keys that say a request's evidence was forwarded,
-        /// built once rather than on every request, because this runs
+        /// Whether the prefix the signature would come from carries either
+        /// of the two signature headers, read with keys built once so that
+        /// the test allocates nothing.
+        /// </summary>
+        /// <param name="data">The flow data.</param>
+        /// <param name="fromQuery">
+        /// True to read the query prefix, false the header prefix.
+        /// </param>
+        /// <returns>True where either header is present.</returns>
+        private static bool HasSignatureHeaders(IFlowData data, bool fromQuery)
+        {
+            return HasValue(data, fromQuery
+                    ? QuerySignatureKey
+                    : HeaderSignatureKey) ||
+                HasValue(data, fromQuery
+                    ? QuerySignatureInputKey
+                    : HeaderSignatureInputKey);
+        }
+
+        private static bool HasValue(IFlowData data, string key)
+        {
+            return data.TryGetEvidence(key, out object raw) && raw != null;
+        }
+
+        /// <summary>
+        /// The keys of the two signature headers under each prefix, built
+        /// once rather than on every request, because they are read
         /// whether or not a request carries a signature at all.
         /// </summary>
+        private static readonly string HeaderSignatureKey =
+            Core.Constants.EVIDENCE_HTTPHEADER_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR +
+            Constants.EVIDENCE_SIGNATURE_NAME;
+
+        private static readonly string HeaderSignatureInputKey =
+            Core.Constants.EVIDENCE_HTTPHEADER_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR +
+            Constants.EVIDENCE_SIGNATURE_INPUT_NAME;
+
         private static readonly string QuerySignatureKey =
             Core.Constants.EVIDENCE_QUERY_PREFIX +
             Core.Constants.EVIDENCE_SEPERATOR +

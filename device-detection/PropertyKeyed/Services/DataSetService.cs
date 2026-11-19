@@ -96,21 +96,9 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Services
             // Create the context pipeline.
             var contextPipeline = _queryService.CreateContext(engine);
 
-            // Populate the indexes the Hash engine's data set does not hold
-            // itself, which needs every profile processed.
-            var nativelyIndexed = new HashSet<string>(
-                engine.IndexedProperties,
-                StringComparer.Ordinal);
-            var managedIndexes = indexes
-                .Where(i => nativelyIndexed.Contains(i.MetaData.Name) == false)
-                .ToList();
-            if (managedIndexes.Count > 0)
-            {
-                foreach (var item in _queryService.Query(contextPipeline))
-                {
-                    ProcessProfile(item, managedIndexes);
-                }
-            }
+            // The indexes name the properties and carry no values. The
+            // engine finds the profiles through the Hash engine's native
+            // lookup, so no profile is processed here at start-up.
 
             // Collect engine properties to expose as sub-properties of
             // "Profiles". Each is wrapped with DevicePropertyMetaData that
@@ -153,59 +141,6 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Services
                 element,
                 indexes,
                 (_, elem) => BuildProperties(profileProperties, elem));
-        }
-
-        /// <summary>
-        /// Extracts any relevant values from the profile and adds when as
-        /// keys for the profile.
-        /// </summary>
-        /// <param name="item"></param>
-        /// <param name="indexes"></param>
-        private void ProcessProfile(
-            (IProfileMetaData Profile, IDeviceData Data) item,
-            List<PropertyKeyedIndex> indexes)
-        {
-            foreach (var index in indexes)
-            {
-                var value = item.Data[index.MetaData.Name]
-                    as IAspectPropertyValue;
-                if (value != null && value.HasValue)
-                {
-                    foreach (var val in ConvertValues(value))
-                    {
-                        index.Add(val, item.Profile.ProfileId);
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        "Profile '{0}' missing property '{1}'",
-                        item.Profile,
-                        index.MetaData.Name);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Converts the given IAspectPropertyValue to an enumeration of string
-        /// values to be indexed.
-        /// </summary>
-        /// <param name="value">The aspect property value.</param>
-        /// <returns>An enumeration of string values.</returns>
-        private static IEnumerable<string> ConvertValues(
-            IAspectPropertyValue value)
-        {
-            if (value.Value is IEnumerable<string> list)
-            {
-                foreach (var item in list)
-                {
-                    yield return item;
-                }
-            }
-            else
-            {
-                yield return value.Value.ToString();
-            }
         }
 
         internal static List<IFiftyOneAspectPropertyMetaData> BuildProperties(

@@ -185,7 +185,9 @@ namespace FiftyOne.Pipeline.Web.Framework
                     }
                     else
                     {
-                        _options.Elements.Add(newElementOptions);
+                        _options.Elements.Insert(
+                            UsageSharingPlace.Before(_options.Elements),
+                            newElementOptions);
                     }
                 }
 
@@ -204,7 +206,9 @@ namespace FiftyOne.Pipeline.Web.Framework
                         javaScriptOptions.BuildParameters["Endpoint"] =
                             JsonPath;
                     }
-                    _options.Elements.Add(javaScriptOptions);
+                    _options.Elements.Insert(
+                        UsageSharingPlace.Before(_options.Elements),
+                        javaScriptOptions);
                 }
             }
 
@@ -215,12 +219,14 @@ namespace FiftyOne.Pipeline.Web.Framework
             if (setHeadersConfig.Any() == false &&
                 _options.SetHeadersElementEnabled)
             {
-                // The set headers element is not included, so add it.
-                // Make sure it's added as the last element.
-                _options.Elements.Add(new ElementOptions()
-                {
-                    BuilderName = nameof(SetHeadersElement)
-                });
+                // The set headers element is not included, so add it after
+                // every other element but usage sharing, which is last.
+                _options.Elements.Insert(
+                    UsageSharingPlace.Before(_options.Elements),
+                    new ElementOptions()
+                    {
+                        BuilderName = nameof(SetHeadersElement)
+                    });
             }
 
             ResolveApplicationRootPaths(_options, HostingEnvironment.MapPath);

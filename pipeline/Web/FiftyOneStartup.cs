@@ -295,7 +295,9 @@ namespace FiftyOne.Pipeline.Web
                 }
                 else
                 {
-                    options.Elements.Add(newElementOptions);
+                    options.Elements.Insert(
+                        UsageSharingPlace.Before(options.Elements),
+                        newElementOptions);
                 }
             }
 
@@ -313,7 +315,9 @@ namespace FiftyOne.Pipeline.Web
                     javaScriptOptions.BuildParameters["Endpoint"] =
                         options.JsonPath;
                 }
-                options.Elements.Add(javaScriptOptions);
+                options.Elements.Insert(
+                    UsageSharingPlace.Before(options.Elements),
+                    javaScriptOptions);
             }
         }
 
@@ -348,12 +352,14 @@ namespace FiftyOne.Pipeline.Web
                     StringComparison.OrdinalIgnoreCase));
             if (setHeadersConfig.Any() == false)
             {
-                // The set headers element is not included, so add it.
-                // Make sure it's added as the last element.
-                options.Elements.Add(new ElementOptions()
-                {
-                    BuilderName = nameof(SetHeadersElement)
-                });
+                // The set headers element is not included, so add it after
+                // every other element but usage sharing, which is last.
+                options.Elements.Insert(
+                    UsageSharingPlace.Before(options.Elements),
+                    new ElementOptions()
+                    {
+                        BuilderName = nameof(SetHeadersElement)
+                    });
             }
         }
     }

@@ -120,9 +120,6 @@
   <data name="ExceptionCannotFindProperty" xml:space="preserve">
     <value>Could not find property '{0}'.</value>
   </data>
-  <data name="ExceptionParallelGroupAddedEvidence" xml:space="preserve">
-    <value>An element of a parallel group tried to add the evidence '{0}', which was refused, because the other elements of the group read the evidence at the same time. Add the element on its own, before the elements that read the value.</value>
-  </data>
   <data name="ExceptionPipelineDisposed" xml:space="preserve">
     <value>The pipeline has been disposed, so this flow data can no longer be processed. Create the flow data from a pipeline that is still in use.</value>
   </data>
@@ -132,6 +129,9 @@
   <data name="ExceptionFlowDataNotYetProcessed" xml:space="preserve">
     <value>This instance has not yet been processed</value>
   </data>
+  <data name="ExceptionKeyAlreadyPresent" xml:space="preserve">
+    <value>An entry for '{0}' is already present.</value>
+  </data>
   <data name="ExceptionKeyNameNull" xml:space="preserve">
     <value>Key name cannot be null</value>
   </data>
@@ -140,6 +140,9 @@
   </data>
   <data name="ExceptionParallelElementsNoDataKey" xml:space="preserve">
     <value>ParallelElements instances do not have an element data key</value>
+  </data>
+  <data name="ExceptionUsageSharingNotLast" xml:space="preserve">
+    <value>The usage sharing element must be the last Flow Element in the Pipeline and outside any parallel group, so that it shares the evidence every other Flow Element adds. Add it after every other Flow Element, on its own.</value>
   </data>
   <data name="MessagePipelineCreationFailed" xml:space="preserve">
     <value>Problem with pipeline configuration, failed to create pipeline</value>
