@@ -70,6 +70,7 @@ public class FlowDataThreadsDocumentationTests
     private static readonly string[] FlowDataDocuments =
     {
         "pipeline/Core/Data/IFlowData.cs",
+        "pipeline/Core/Data/FlowData.cs",
     };
 
     private static readonly string[] Documents =
