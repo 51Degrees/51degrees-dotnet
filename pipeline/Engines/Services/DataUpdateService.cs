@@ -69,6 +69,12 @@ namespace FiftyOne.Pipeline.Engines.Services
         private readonly Random _rnd = new Random();
         private readonly object _rndLock = new object();
 
+        /// <summary>
+        /// The write time .NET gives a file that is not there.
+        /// </summary>
+        private static readonly DateTime MissingFileWriteTime =
+            DateTime.FromFileTimeUtc(0);
+
 		// All registered configurations
 		private List<AspectEngineDataFile> _configurations;
 
@@ -594,10 +600,16 @@ namespace FiftyOne.Pipeline.Engines.Services
 				{
 					// Get the last modified time of the new data file
 					DateTime dataTime = _fileSystem.File.GetLastWriteTimeUtc(e.FullPath);
+					// A file that is not there is not newer, so there is
+					// nothing to apply.
+					if (dataTime <= MissingFileWriteTime)
+					{
+						status = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+					}
 					// Use a lock with a double check on file time to make
 					// sure we only run the update once even if multiple
 					// events fire for a single file.
-					if (dataFile.LastUpdateFileModifiedTime < dataTime)
+					else if (dataFile.LastUpdateFileModifiedTime < dataTime)
 					{
 						lock (dataFile.UpdateSyncLock)
 						{
@@ -609,15 +621,27 @@ namespace FiftyOne.Pipeline.Engines.Services
 								// before notifying the engine, otherwise the copy
 								// may still be in progress.
 								bool fileLockable = false;
+								bool fileGone = false;
 								DateTime timeout = DateTime.UtcNow.AddMinutes(10);
 
 								while (fileLockable == false &&
+									fileGone == false &&
 									timeout > DateTime.UtcNow)
 								{
 									try
 									{
 										using (_fileSystem.File.OpenRead(e.FullPath)) { }
 										fileLockable = true;
+									}
+									catch (FileNotFoundException)
+									{
+										// Gone since the event, so there is
+										// nothing to wait for.
+										fileGone = true;
+									}
+									catch (DirectoryNotFoundException)
+									{
+										fileGone = true;
 									}
 									catch (IOException)
 									{
@@ -626,7 +650,11 @@ namespace FiftyOne.Pipeline.Engines.Services
 									}
 								}
 
-								if (fileLockable)
+								if (fileGone)
+								{
+									status = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+								}
+								else if (fileLockable)
 								{
 									// Complete the update
 									status = UpdatedDataAvailable(dataFile);
