@@ -63,6 +63,22 @@ namespace FiftyOne.DeviceDetection.Examples
         public const string DEVICE_DETECTION_DATA_FILE_ENV_VAR = "_51DEGREES_DD_PATH";
 
         /// <summary>
+        /// An old environment variable for the path to the device detection
+        /// data file. It is no longer read.
+        /// </summary>
+        [System.Obsolete("Use DEVICE_DETECTION_DATA_FILE_ENV_VAR, which names the environment " +
+            "variable that replaces this one.")]
+        public const string DD_PATH_ENV_VAR = "51DEGREES_DD_PATH";
+
+        /// <summary>
+        /// An old environment variable for the path to the device detection
+        /// data file. It is no longer read.
+        /// </summary>
+        [System.Obsolete("Use DEVICE_DETECTION_DATA_FILE_ENV_VAR, which names the environment " +
+            "variable that replaces this one.")]
+        public const string LEGACY_DEVICE_DETECTION_DATA_FILE_ENV_VAR = "DEVICEDETECTIONDATAFILE";
+
+        /// <summary>
         /// Every environment variable that can supply an explicit path to the
         /// device detection data file.
         /// </summary>

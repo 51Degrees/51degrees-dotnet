@@ -78,6 +78,22 @@ namespace FiftyOne.IpIntelligence.Examples
         public const string IPI_PATH_ENV_VAR = "_51DEGREES_IPI_PATH";
 
         /// <summary>
+        /// An old environment variable for the path to the IP Intelligence
+        /// data file. It is no longer read.
+        /// </summary>
+        [System.Obsolete("Use IPI_PATH_ENV_VAR, which names the environment " +
+            "variable that replaces this one.")]
+        public const string IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "51DEGREES_IPI_PATH";
+
+        /// <summary>
+        /// An old environment variable for the path to the IP Intelligence
+        /// data file. It is no longer read.
+        /// </summary>
+        [System.Obsolete("Use IPI_PATH_ENV_VAR, which names the environment " +
+            "variable that replaces this one.")]
+        public const string LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "IPINTELLIGENCEDATAFILE";
+
+        /// <summary>
         /// The free Device Detection data file, which the mixed examples
         /// use by default. The data repository links it, and the examples
         /// download it when it is missing.

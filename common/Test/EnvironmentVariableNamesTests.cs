@@ -34,8 +34,7 @@ namespace FiftyOne.Common.Tests;
 /// digit, and no old name is read. The tests read every file git tracks,
 /// which leaves out build output and the submodules, and fail on any name
 /// that starts with the digit and on any old name that is read or set,
-/// apart from the obsolete constants that still name the cloud endpoint's
-/// old variable.
+/// apart from the obsolete constants that still hold an old name.
 /// </summary>
 [TestClass]
 public class EnvironmentVariableNamesTests
@@ -142,6 +141,29 @@ public class EnvironmentVariableNamesTests
     private static bool IsKeptOldEndpointName(string relative, string match) =>
         OldEndpointNameFiles.Contains(relative) &&
         match == "\"" + OldEndpointName;
+
+    /// <summary>
+    /// The example files that keep obsolete constants holding the other old
+    /// names. The examples no longer read those names.
+    /// </summary>
+    private static readonly HashSet<string> ObsoleteConstantFiles =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "examples/device-detection/Cloud/pmp-web/Settings.cs",
+            "examples/device-detection/ExampleBase/Constants.cs",
+            "examples/device-detection/ExampleBase/ExampleUtils.cs",
+            "examples/ip-intelligence/Examples/Constants.cs",
+            "examples/ip-intelligence/Examples/ExampleUtils.cs",
+        };
+
+    /// <summary>
+    /// True when the file may hold the match, as one of the example files
+    /// that keep obsolete constants or as the cloud endpoint's old name
+    /// where it is kept.
+    /// </summary>
+    private static bool IsKeptOldName(string relative, string match) =>
+        ObsoleteConstantFiles.Contains(relative) ||
+        IsKeptOldEndpointName(relative, match);
 
     /// <summary>
     /// Each old name the line reads, sets or holds.
@@ -261,7 +283,8 @@ public class EnvironmentVariableNamesTests
     [TestMethod]
     public void NoFileNamesAVariableThatStartsWithADigit()
     {
-        var found = FindInTrackedFiles(DigitInitialNames, null);
+        var found = FindInTrackedFiles(
+            DigitInitialNames, null, IsKeptOldName);
         Assert.AreEqual(
             0,
             found.Count,
@@ -274,7 +297,7 @@ public class EnvironmentVariableNamesTests
     public void NoFileReadsAnOldName()
     {
         var found = FindInTrackedFiles(
-            OldNames, ThisFile, IsKeptOldEndpointName);
+            OldNames, ThisFile, IsKeptOldName);
         Assert.AreEqual(
             0,
             found.Count,

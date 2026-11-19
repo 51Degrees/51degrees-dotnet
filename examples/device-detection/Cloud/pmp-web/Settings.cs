@@ -47,6 +47,14 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public const string RESOURCE_KEY_VARIABLE = "_51DEGREES_RESOURCE_KEY";
 
         /// <summary>
+        /// The old name of <see cref="RESOURCE_KEY_VARIABLE"/>. It is no
+        /// longer read.
+        /// </summary>
+        [System.Obsolete("Use RESOURCE_KEY_VARIABLE, which names the environment " +
+            "variable that replaces this one.")]
+        public const string RESOURCE_KEY_ENV_VAR = "51DEGREES_RESOURCE_KEY";
+
+        /// <summary>
         /// The name continuous integration sets a resource key carrying the
         /// 51Did product in, read only when
         /// <see cref="RESOURCE_KEY_VARIABLE"/> is not set.
@@ -59,6 +67,14 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         /// and the pipeline asks.
         /// </summary>
         public const string CLOUD_ENDPOINT_VARIABLE = "_51DEGREES_CLOUD_ENDPOINT";
+
+        /// <summary>
+        /// The old name of <see cref="CLOUD_ENDPOINT_VARIABLE"/>. It is no
+        /// longer read.
+        /// </summary>
+        [System.Obsolete("Use CLOUD_ENDPOINT_VARIABLE, which names the environment " +
+            "variable that replaces this one.")]
+        public const string CLOUD_ENDPOINT_ENV_VAR = "51DEGREES_CLOUD_ENDPOINT";
 
         /// <summary>
         /// The cloud used when no endpoint variable is set.
