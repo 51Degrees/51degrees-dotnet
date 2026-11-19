@@ -95,5 +95,14 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed {
                 return ResourceManager.GetString("PerformanceProfileNotSupported", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The {0} engine is keyed on the &apos;{1}&apos; property, which the Device Detection Hash engine does not index, so each lookup reads every profile in the data file. To index it, build the Hash engine in code and pass the property to SetIndexedProperties on its builder..
+        /// </summary>
+        internal static string PropertyNotIndexed {
+            get {
+                return ResourceManager.GetString("PropertyNotIndexed", resourceCulture);
+            }
+        }
     }
 }
