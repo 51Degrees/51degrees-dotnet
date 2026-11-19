@@ -44,16 +44,18 @@ var writerOptions = new JsonWriterOptions
 var firstBuilders = new Type[]
 {
     typeof(SequenceElementBuilder),
-    typeof(ShareUsageBuilder),
     typeof(AppleProfileEngineBuilder),
     typeof(CloudRequestEngineBuilder)
 };
 // builder we want to appear in a specific order at the end of the file.
+// Usage sharing is last, because a Pipeline that puts it anywhere else is
+// refused.
 var lastBuilders = new Type[]
 {
     typeof(JsonBuilderElementBuilder),
     typeof(JavaScriptBuilderElementBuilder),
-    typeof(SetHeadersElementBuilder)
+    typeof(SetHeadersElementBuilder),
+    typeof(ShareUsageBuilder)
 };
 
 // This isn't actually used for anything other than ensuring the relevant types are
