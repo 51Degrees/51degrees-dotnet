@@ -48,9 +48,6 @@ namespace FiftyOne.GeoLocation.Example.Tests
         /// </summary>
         private const int CloudRequestTimeoutSeconds = 30;
 
-        // True once the old resource key name has been reported.
-        private static bool _oldNameReported;
-
         /// <summary>
         /// Init method - specify Resource Key to run examples here or 
         /// set a Resource Key in an environment variable called 'ResourceKey'.
@@ -59,21 +56,6 @@ namespace FiftyOne.GeoLocation.Example.Tests
         public void Init()
         {
             var resourceKey = Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
-            if (string.IsNullOrWhiteSpace(resourceKey))
-            {
-                // The old name, read only when the new one is not set.
-                resourceKey = Environment.GetEnvironmentVariable("SUPER_RESOURCE_KEY");
-                if (string.IsNullOrWhiteSpace(resourceKey) == false &&
-                    _oldNameReported == false)
-                {
-                    _oldNameReported = true;
-                    Console.Error.WriteLine(
-                        "The environment variable SUPER_RESOURCE_KEY is " +
-                        "deprecated and _51DEGREES_RESOURCE_KEY replaces " +
-                        "it. Set _51DEGREES_RESOURCE_KEY to the same " +
-                        "value instead.");
-                }
-            }
             ResourceKey = string.IsNullOrWhiteSpace(resourceKey) == false ? 
                 resourceKey : "!!YOUR_RESOURCE_KEY!!";
 

@@ -40,24 +40,24 @@ public static class ExampleUtils
     public const string RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
 
     /// <summary>
-    /// An old environment variable for the resource key, read only when
-    /// <see cref="RESOURCE_KEY_ENV_VAR"/> is not set.
+    /// An old environment variable for the resource key. It is no longer
+    /// read.
     /// </summary>
     [System.Obsolete("Use RESOURCE_KEY_ENV_VAR, which names the environment " +
         "variable that replaces this one.")]
     public const string CLOUD_RESOURCE_KEY_ENV_VAR = "51DEGREES_RESOURCE_KEY";
 
     /// <summary>
-    /// An old environment variable for the resource key, read only when
-    /// <see cref="RESOURCE_KEY_ENV_VAR"/> is not set.
+    /// An old environment variable for the resource key. It is no longer
+    /// read.
     /// </summary>
     [System.Obsolete("Use RESOURCE_KEY_ENV_VAR, which names the environment " +
         "variable that replaces this one.")]
     public const string LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR = "RESOURCE_KEY";
 
     /// <summary>
-    /// An old environment variable for the resource key, read only when
-    /// <see cref="RESOURCE_KEY_ENV_VAR"/> is not set.
+    /// An old environment variable for the resource key. It is no longer
+    /// read.
     /// </summary>
     [System.Obsolete("Use RESOURCE_KEY_ENV_VAR, which names the environment " +
         "variable that replaces this one.")]
@@ -71,36 +71,12 @@ public static class ExampleUtils
     public const string CLOUD_ENDPOINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
     /// <summary>
-    /// An old environment variable for the end point URL, read only when
-    /// <see cref="CLOUD_ENDPOINT_ENV_VAR"/> is not set.
+    /// An old environment variable for the end point URL. It is no longer
+    /// read.
     /// </summary>
     [System.Obsolete("Use CLOUD_ENDPOINT_ENV_VAR, which names the environment " +
         "variable that replaces this one.")]
     public const string CLOUD_END_POINT_ENV_VAR = "51D_CLOUD_ENDPOINT";
-
-#pragma warning disable CS0618 // The old names are listed to be read.
-    /// <summary>
-    /// The old names of
-    /// <see cref="CLOUD_ENDPOINT_ENV_VAR"/>,
-    /// read in this order only when that variable is not set.
-    /// </summary>
-    public static readonly string[] OLD_CLOUD_END_POINT_ENV_VARS = new string[]
-    {
-        CLOUD_END_POINT_ENV_VAR,
-    };
-
-    /// <summary>
-    /// The old names of
-    /// <see cref="RESOURCE_KEY_ENV_VAR"/>,
-    /// read in this order only when that variable is not set.
-    /// </summary>
-    public static readonly string[] OLD_CLOUD_RESOURCE_KEY_ENV_VARS = new string[]
-    {
-        CLOUD_RESOURCE_KEY_ENV_VAR,
-        LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR,
-        LEGACY_SUPER_RESOURCE_KEY_ENV_VAR,
-    };
-#pragma warning restore CS0618
 
     private static readonly HashSet<string> _oldNamesReported =
         new HashSet<string>();
@@ -516,9 +492,8 @@ public static class ExampleUtils
         string filename,
         DirectoryInfo dir = null)
     {
-        var path = FromEnvironment(
-            Constants.IPI_PATH_ENV_VAR,
-            Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS);
+        var path = Environment.GetEnvironmentVariable(
+            Constants.IPI_PATH_ENV_VAR);
         if (string.IsNullOrWhiteSpace(path))
         {
             path = FindFile(filename, dir);
@@ -651,9 +626,8 @@ public static class ExampleUtils
     /// </returns>
     public static string GetResourceKeyFromEnv()
     {
-        return FromEnvironment(
-            RESOURCE_KEY_ENV_VAR,
-            OLD_CLOUD_RESOURCE_KEY_ENV_VARS);
+        return Environment.GetEnvironmentVariable(
+            RESOURCE_KEY_ENV_VAR);
     }
 
     /// <summary>

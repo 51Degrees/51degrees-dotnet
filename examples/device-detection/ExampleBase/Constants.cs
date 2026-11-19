@@ -64,8 +64,7 @@ namespace FiftyOne.DeviceDetection.Examples
 
         /// <summary>
         /// An old environment variable for the path to the device detection
-        /// data file, read only when
-        /// <see cref="DEVICE_DETECTION_DATA_FILE_ENV_VAR"/> is not set.
+        /// data file. It is no longer read.
         /// </summary>
         [System.Obsolete("Use DEVICE_DETECTION_DATA_FILE_ENV_VAR, which names the environment " +
             "variable that replaces this one.")]
@@ -73,26 +72,20 @@ namespace FiftyOne.DeviceDetection.Examples
 
         /// <summary>
         /// An old environment variable for the path to the device detection
-        /// data file, read only when
-        /// <see cref="DEVICE_DETECTION_DATA_FILE_ENV_VAR"/> is not set.
+        /// data file. It is no longer read.
         /// </summary>
         [System.Obsolete("Use DEVICE_DETECTION_DATA_FILE_ENV_VAR, which names the environment " +
             "variable that replaces this one.")]
         public const string LEGACY_DEVICE_DETECTION_DATA_FILE_ENV_VAR = "DEVICEDETECTIONDATAFILE";
 
-#pragma warning disable CS0618 // The old names are listed to be read.
         /// <summary>
         /// Every environment variable that can supply an explicit path to the
-        /// device detection data file, in the order they are checked. The
-        /// first is the name to use and the rest are its old names.
+        /// device detection data file.
         /// </summary>
         public static readonly string[] DATA_FILE_ENV_VARS = new string[]
         {
-            DEVICE_DETECTION_DATA_FILE_ENV_VAR,
-            DD_PATH_ENV_VAR,
-            LEGACY_DEVICE_DETECTION_DATA_FILE_ENV_VAR
+            DEVICE_DETECTION_DATA_FILE_ENV_VAR
         };
-#pragma warning restore CS0618
 
         /// <summary>
         /// Environment variable key for the evidence file to use for the tests.

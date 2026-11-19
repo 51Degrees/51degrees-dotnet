@@ -481,9 +481,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
         /// </summary>
         private static string DefaultDataFilePath()
         {
-            var dataFile = Examples.ExampleUtils.FromEnvironment(
-                Constants.IPI_PATH_ENV_VAR,
-                Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS);
+            var dataFile = Environment.GetEnvironmentVariable(
+                Constants.IPI_PATH_ENV_VAR);
             if (string.IsNullOrWhiteSpace(dataFile))
             {
                 dataFile = Constants.ENTERPRISE_IPI_DATA_FILE_NAME;

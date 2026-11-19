@@ -75,43 +75,20 @@ public static class ExampleUtils
     public const string CLOUD_ENDPOINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
     /// <summary>
-    /// An old environment variable for the end point URL, read only when
-    /// <see cref="CLOUD_ENDPOINT_ENV_VAR"/> is not set.
+    /// An old environment variable for the end point URL. It is no longer
+    /// read.
     /// </summary>
     [System.Obsolete("Use CLOUD_ENDPOINT_ENV_VAR, which names the environment " +
         "variable that replaces this one.")]
     public const string CLOUD_END_POINT_ENV_VAR = "51D_CLOUD_ENDPOINT";
 
     /// <summary>
-    /// An old environment variable for the resource key, read only when
-    /// <see cref="CLOUD_RESOURCE_KEY_ENV_VAR"/> is not set.
+    /// An old environment variable for the resource key. It is no longer
+    /// read.
     /// </summary>
     [System.Obsolete("Use CLOUD_RESOURCE_KEY_ENV_VAR, which names the environment " +
         "variable that replaces this one.")]
     public const string LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR = "SUPER_RESOURCE_KEY";
-
-#pragma warning disable CS0618 // The old names are listed to be read.
-    /// <summary>
-    /// The old names of
-    /// <see cref="CLOUD_ENDPOINT_ENV_VAR"/>,
-    /// read in this order only when that variable is not set.
-    /// </summary>
-    public static readonly string[] OLD_CLOUD_END_POINT_ENV_VARS = new string[]
-    {
-        CLOUD_END_POINT_ENV_VAR,
-        "FIFTYONE_CLOUD_ENDPOINT",
-    };
-
-    /// <summary>
-    /// The old names of
-    /// <see cref="CLOUD_RESOURCE_KEY_ENV_VAR"/>,
-    /// read in this order only when that variable is not set.
-    /// </summary>
-    public static readonly string[] OLD_CLOUD_RESOURCE_KEY_ENV_VARS = new string[]
-    {
-        LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR,
-    };
-#pragma warning restore CS0618
 
     private static readonly HashSet<string> _oldNamesReported =
         new HashSet<string>();
@@ -525,30 +502,17 @@ public static class ExampleUtils
 
     /// <summary>
     /// Get an explicit device detection data file path from the
-    /// environment. The variables named in
-    /// <see cref="Constants.DATA_FILE_ENV_VARS"/> are checked in order and
-    /// the first one with a value wins.
+    /// environment, from
+    /// <see cref="Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR"/>.
     /// </summary>
     /// <returns>
-    /// The path from the environment, or null if none of the variables
-    /// is set.
+    /// The path from the environment, or null if the variable is not set.
     /// </returns>
     public static string GetDataFilePathFromEnv()
     {
-        foreach (var name in Constants.DATA_FILE_ENV_VARS)
-        {
-            var path = Environment.GetEnvironmentVariable(name);
-            if (string.IsNullOrWhiteSpace(path) == false)
-            {
-                if (name != Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR)
-                {
-                    ReportOldName(
-                        name, Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR);
-                }
-                return path;
-            }
-        }
-        return null;
+        var path = Environment.GetEnvironmentVariable(
+            Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR);
+        return string.IsNullOrWhiteSpace(path) ? null : path;
     }
 
     /// <summary>
@@ -935,17 +899,6 @@ public static class ExampleUtils
             if (string.IsNullOrWhiteSpace(value) == false)
             {
                 envVarName = name;
-                return value;
-            }
-        }
-
-        foreach (var oldName in OLD_CLOUD_RESOURCE_KEY_ENV_VARS)
-        {
-            var value = Environment.GetEnvironmentVariable(oldName);
-            if (string.IsNullOrWhiteSpace(value) == false)
-            {
-                ReportOldName(oldName, CLOUD_RESOURCE_KEY_ENV_VAR);
-                envVarName = oldName;
                 return value;
             }
         }

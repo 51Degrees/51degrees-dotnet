@@ -164,9 +164,8 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.GetAllProperties
 
             // Optional custom cloud endpoint via env var. If unset, the SDK
             // defaults to cloud.51degrees.com.
-            string cloudEndPoint = ExampleUtils.FromEnvironment(
-                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
-                ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS) ?? "";
+            string cloudEndPoint = Environment.GetEnvironmentVariable(
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR) ?? "";
 
             if (string.IsNullOrWhiteSpace(resourceKey))
             {
