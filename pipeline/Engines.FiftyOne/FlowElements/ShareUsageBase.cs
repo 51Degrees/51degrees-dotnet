@@ -1864,9 +1864,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 throw new ArgumentNullException(nameof(text));
             }
 
-            // Validate characters in string. If not valid check chars 
-            // individually and build new string with encoded chars. Set _flag 
-            // to add "bad schema" element into usage data.
+            // Return the text unchanged when every character is valid XML.
+            // Otherwise encode each invalid character and set the flag, so
+            // the entry is written with escaped="true".
 
             try
             {
