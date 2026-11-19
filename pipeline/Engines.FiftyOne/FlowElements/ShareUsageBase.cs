@@ -34,6 +34,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -204,6 +205,34 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         private string _staticXml = null;
         private object _staticXmlLock = new object();
 
+        /// <summary>
+        /// How long after the invariant values were last written to a
+        /// record they are written again.
+        /// </summary>
+        private static readonly TimeSpan InvariantValuesInterval =
+            TimeSpan.FromHours(1);
+
+        /// <summary>
+        /// The identifier created when the element is built, written to
+        /// every record as ProcessId so that a record that leaves out the
+        /// invariant values is tied to them. It is never stored, so a
+        /// process that starts again, or another element, has a new one.
+        /// </summary>
+        private readonly string _processId = Guid.NewGuid().ToString("D");
+
+        /// <summary>
+        /// When, on <see cref="ClockNow"/>, the invariant values were last
+        /// written to a record, or null before they have been.
+        /// </summary>
+        private TimeSpan? _invariantValuesWrittenAt = null;
+
+        /// <summary>
+        /// True when the invariant values were last written with an empty
+        /// ServerIP, because the address of this machine was not yet known.
+        /// </summary>
+        private bool _invariantValuesWrittenWithoutServerIP = false;
+        private readonly object _invariantValuesLock = new object();
+
 
         private List<string> _flowElements = null;
 
@@ -265,6 +294,138 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             }
             var revision = version.IndexOf('+');
             return revision < 0 ? version : version.Substring(0, revision);
+        }
+
+        /// <summary>
+        /// The key of the assembly metadata in which the build records the
+        /// id of the NuGet package an assembly ships in.
+        /// </summary>
+        private const string PACKAGE_ID_KEY = "FiftyOne.PackageId";
+
+        /// <summary>
+        /// What the build records for an assembly that ships in no package.
+        /// </summary>
+        private const string NOT_A_PACKAGE = "none";
+
+        /// <summary>
+        /// How the name of every 51Degrees assembly starts.
+        /// </summary>
+        private const string FIFTYONE_ASSEMBLY_PREFIX = "FiftyOne.";
+
+        private List<KeyValuePair<string, string>> _packages = null;
+
+        /// <summary>
+        /// The 51Degrees packages in use, in order of package id, each with
+        /// the version in use. They are the package that holds the
+        /// Pipeline, the package that holds each flow element, and every
+        /// 51Degrees package those depend on.
+        /// </summary>
+        private List<KeyValuePair<string, string>> Packages
+        {
+            get
+            {
+                if (_packages == null)
+                {
+                    var assemblies = new List<Assembly>()
+                    {
+                        typeof(IPipeline).Assembly
+                    };
+                    if (Pipelines.Count == 1)
+                    {
+                        assemblies.AddRange(Pipelines.Single().FlowElements
+                            .Select(e => e.GetType().Assembly));
+                    }
+                    _packages = FindPackages(assemblies);
+                }
+                return _packages;
+            }
+        }
+
+        /// <summary>
+        /// The packages the assemblies ship in, and the packages of the
+        /// 51Degrees assemblies they reference, and of the ones those
+        /// reference, each once.
+        /// </summary>
+        private static List<KeyValuePair<string, string>> FindPackages(
+            IEnumerable<Assembly> assemblies)
+        {
+            var packages = new SortedDictionary<string, string>(
+                StringComparer.OrdinalIgnoreCase);
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var pending = new Queue<Assembly>(assemblies);
+            while (pending.Count > 0)
+            {
+                var assembly = pending.Dequeue();
+                if (assembly.IsDynamic ||
+                    seen.Add(assembly.GetName().Name) == false)
+                {
+                    continue;
+                }
+                var id = PackageId(assembly);
+                if (id != null && packages.ContainsKey(id) == false)
+                {
+                    packages.Add(id, PackageVersion(assembly));
+                }
+                foreach (var reference in assembly.GetReferencedAssemblies())
+                {
+                    if (reference.Name.StartsWith(
+                            FIFTYONE_ASSEMBLY_PREFIX, StringComparison.Ordinal) &&
+                        seen.Contains(reference.Name) == false)
+                    {
+                        var loaded = Load(reference);
+                        if (loaded != null)
+                        {
+                            pending.Enqueue(loaded);
+                        }
+                    }
+                }
+            }
+            return packages.ToList();
+        }
+
+        /// <summary>
+        /// The id of the package the assembly ships in, as the build
+        /// recorded it, or null when it ships in none. An assembly built
+        /// before the build recorded it ships in the package named after
+        /// it, when it is a 51Degrees one.
+        /// </summary>
+        private static string PackageId(Assembly assembly)
+        {
+            var recorded = assembly
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
+                .FirstOrDefault(a => a.Key == PACKAGE_ID_KEY)?.Value;
+            if (recorded != null)
+            {
+                return recorded.Length == 0 || recorded == NOT_A_PACKAGE ?
+                    null : recorded;
+            }
+            var name = assembly.GetName().Name;
+            return name.StartsWith(
+                FIFTYONE_ASSEMBLY_PREFIX, StringComparison.Ordinal) ?
+                name : null;
+        }
+
+        /// <summary>
+        /// The referenced assembly, or null when it cannot be loaded.
+        /// </summary>
+        private static Assembly Load(AssemblyName name)
+        {
+            try
+            {
+                return Assembly.Load(name);
+            }
+            catch (FileNotFoundException)
+            {
+                return null;
+            }
+            catch (FileLoadException)
+            {
+                return null;
+            }
+            catch (BadImageFormatException)
+            {
+                return null;
+            }
         }
 
         private string _osVersion = "";
@@ -381,6 +542,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// </summary>
         internal virtual HostAddressLookup HostAddressSource =>
             SharedHostAddress;
+
+        /// <summary>
+        /// The time elapsed on a monotonic clock, so that a change to the
+        /// system clock cannot shorten or lengthen an interval the element
+        /// measures.
+        /// </summary>
+        internal virtual TimeSpan ClockNow => ShareUsageBackOff.Now;
 
         /// <summary>
         /// The longest in milliseconds that a send waits for the address of
@@ -1398,6 +1566,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             // characters such as control characters.
             var flagBadSchema = false;
 
+            // The identifier of this element, the same in every record
+            writer.WriteElementString("ProcessId", _processId);
             // The SessionID used to track a series of requests
             writer.WriteElementString("SessionId", data.SessionId);
             // The sequence number of the request in a series of requests.
@@ -1409,7 +1579,14 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 CultureInfo.InvariantCulture));
             // The client IP of the request
             writer.WriteElementString("ClientIP", data.ClientIP);
-            writer.WriteRaw(GetStaticXml());
+            // The values that do not change while the element lives, in the
+            // first record, once an hour, and once the address of this
+            // machine is known when they were written without it
+            var invariantValues = InvariantValuesToWrite();
+            if (invariantValues != null)
+            {
+                writer.WriteRaw(invariantValues);
+            }
 
             // Write all other evidence data that has been included.
             foreach (var category in data.EvidenceData)
@@ -1449,15 +1626,56 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Get the part of the xml message that will be the same for every usage 
+        /// The invariant values for the record being written, or null when
+        /// it is to leave them out. They are written to the first record
+        /// the element writes, to the first it writes once an hour or more
+        /// has passed since it last wrote them, and, when they were last
+        /// written without the address of this machine, to the first it
+        /// writes once the address is known. The hour runs from when they
+        /// were written, whether or not the record arrives.
+        /// </summary>
+        private string InvariantValuesToWrite()
+        {
+            lock (_invariantValuesLock)
+            {
+                var now = ClockNow;
+                var hourUp = _invariantValuesWrittenAt.HasValue == false ||
+                    now - _invariantValuesWrittenAt.Value >=
+                        InvariantValuesInterval;
+                if (hourUp == false &&
+                    _invariantValuesWrittenWithoutServerIP == false)
+                {
+                    return null;
+                }
+                // Read once, so the record carries the address that decided
+                // whether it is written.
+                var serverIP = HostAddress;
+                if (hourUp == false && serverIP.Length == 0)
+                {
+                    return null;
+                }
+                _invariantValuesWrittenAt = now;
+                _invariantValuesWrittenWithoutServerIP = serverIP.Length == 0;
+                return GetStaticXml(serverIP);
+            }
+        }
+
+        /// <summary>
+        /// Get the part of the xml message that will be the same for every usage
         /// sharing event on this machine.
         /// This is written once to a string in memory and then re-used for
-        /// future messages. Until the lookup of the machine's address has
-        /// finished it is written again for each message, so that ServerIP
-        /// carries the address once the lookup has it.
+        /// future messages. While the address of this machine is not known
+        /// it is written again each time it is used, so that ServerIP
+        /// carries the address once it is known. It holds the invariant
+        /// values, which only the records that
+        /// <see cref="InvariantValuesToWrite"/> chooses carry.
         /// </summary>
+        /// <param name="serverIP">
+        /// The address of this machine, or an empty string while it is not
+        /// known.
+        /// </param>
         /// <returns></returns>
-        private string GetStaticXml()
+        private string GetStaticXml(string serverIP)
         {
             if (_staticXml == null)
             {
@@ -1478,17 +1696,25 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                             writer.WriteElementString("Version", _coreVersion);
                             // Write Pipeline information
                             WritePipelineInfo(writer);
+                            // The 51Degrees packages in use, with versions
+                            foreach (var package in Packages)
+                            {
+                                writer.WriteStartElement("Package");
+                                writer.WriteAttributeString("Name", package.Key);
+                                writer.WriteString(package.Value);
+                                writer.WriteEndElement();
+                            }
                             // The software language
                             writer.WriteElementString("Language", "dotnet");
                             // The software language version
                             writer.WriteElementString("LanguageVersion", _languageVersion);
                             // The IP of this server
-                            writer.WriteElementString("ServerIP", HostAddress);
+                            writer.WriteElementString("ServerIP", serverIP);
                             // The OS name and version
                             writer.WriteElementString("Platform", _osVersion);
                         }
 
-                        if (_hostAddress == null)
+                        if (serverIP.Length == 0)
                         {
                             return result.ToString();
                         }
