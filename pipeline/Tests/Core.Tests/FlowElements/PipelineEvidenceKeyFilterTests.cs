@@ -21,10 +21,13 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Core.Tests.HelperClasses;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace FiftyOne.Pipeline.Core.Tests.FlowElements;
@@ -73,5 +76,71 @@ public class PipelineEvidenceKeyFilterTests
         Assert.IsTrue(field.IsInitOnly,
             "The filter is built with the Pipeline, so its field is " +
             "readonly.");
+    }
+
+    /// <summary>
+    /// A Cloud Request Engine that cannot reach the cloud at start-up throws
+    /// from its Evidence key filter until discovery succeeds, which it
+    /// retries on first use. The specification says such a transient
+    /// failure "MUST NOT fail the build", and that a result obtained before
+    /// discovery has completed must not be kept. So building the Pipeline
+    /// must not read the element's filter, and once the element answers, the
+    /// Pipeline's filter includes its keys, even if the filter was asked
+    /// while the element was still recovering.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/9d12262654fe8914a5497bdacd85ca733898dd8b/pipeline-specification/pipeline-elements/cloud-request-engine.md?plain=1#L263-L271">Specification</see>
+    /// </summary>
+    [TestMethod]
+    public void EvidenceKeyFilter_ElementStillRecovering_BuildSucceedsAndKeysFollow()
+    {
+        const string recoveringKey = "header.x-recovering";
+        var answers = false;
+        var recovering = new Mock<IFlowElement>();
+        recovering.SetupGet(e => e.ElementDataKey).Returns("recovering");
+        recovering.Setup(e => e.Properties)
+            .Returns(new List<IElementPropertyMetaData>());
+        // Throws as a recovering Cloud Request Engine does, until it answers.
+        recovering.SetupGet(e => e.EvidenceKeyFilter).Returns(() => answers
+            ? new EvidenceKeyFilterWhitelist(new List<string> { recoveringKey })
+            : throw new PipelineTemporarilyUnavailableException(
+                "The cloud service is still recovering."));
+
+        IPipeline pipeline = null;
+        try
+        {
+            pipeline = new PipelineBuilder(LoggerFactory)
+                .AddFlowElement(new MultiplyByFiveElement())
+                .AddFlowElement(recovering.Object)
+                .Build();
+        }
+        catch (PipelineTemporarilyUnavailableException ex)
+        {
+            Assert.Fail(
+                "Build() failed because an element's Evidence key filter " +
+                "was not yet available: " + ex.Message);
+        }
+
+        using (pipeline)
+        {
+            // A request while the element is still recovering. It may fail,
+            // but it must not leave the Pipeline without the element's keys.
+            try
+            {
+                pipeline.EvidenceKeyFilter.Include(recoveringKey);
+            }
+            catch (PipelineTemporarilyUnavailableException)
+            {
+                // The element is asked again on the next request.
+            }
+
+            answers = true;
+
+            Assert.IsTrue(pipeline.EvidenceKeyFilter.Include(recoveringKey),
+                "Once the element answers, the Pipeline's filter accepts " +
+                "its Evidence.");
+            Assert.IsTrue(pipeline.EvidenceKeyFilter.Include("value"),
+                "The filter still accepts the other element's Evidence.");
+            Assert.IsFalse(pipeline.EvidenceKeyFilter.Include("header.x-none"),
+                "The filter accepts no Evidence that no element accepts.");
+        }
     }
 }
