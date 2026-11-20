@@ -30,8 +30,8 @@ $ErrorActionPreference = "Stop"
 #
 # Then three lanes alongside each other:
 #
-#   ports      the web example tests, which bind the fixed ports 5001, 5002,
-#              5101 and 5225, so only one of them can run at a time.
+#   ports      the web example tests, which bind the fixed ports 5001, 5002
+#              and 5151, so only one of them can run at a time.
 #   memory     the IP Intelligence example tests, which also load the
 #              Enterprise file, one at a time.
 #   pool       everything else, one fewer at once than the runner has cores.

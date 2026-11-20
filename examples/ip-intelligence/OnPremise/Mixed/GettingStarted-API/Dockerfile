@@ -10,4 +10,4 @@ WORKDIR /app
 COPY cxx/data/ip-intelligence/51Degrees-EnterpriseIpiV41.ipi .
 COPY --from=build /app/OnPremise/Mixed/GettingStarted-API/bin/Release/net8.0/publish .
 CMD ["dotnet", "GettingStarted-API.dll"]
-EXPOSE 5225
+EXPOSE 5151

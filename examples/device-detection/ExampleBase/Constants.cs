@@ -98,7 +98,7 @@ namespace FiftyOne.DeviceDetection.Examples
         /// _51DEGREES_EXAMPLE_HTTPS_PORTS to other ports, comma separated.
         /// </summary>
         public static readonly int[] LOCALHOST_HTTP_PORTS =
-            PortsFromEnvironment("_51DEGREES_EXAMPLE_HTTP_PORTS", new int[] { 5101 });
+            PortsFromEnvironment("_51DEGREES_EXAMPLE_HTTP_PORTS", new int[] { 5151 });
         public static readonly int[] LOCALHOST_HTTPS_PORTS =
             PortsFromEnvironment("_51DEGREES_EXAMPLE_HTTPS_PORTS", new int[] { 5001, 5002 });
 

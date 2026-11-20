@@ -76,10 +76,10 @@ using System.Net.Http;
 /// 
 /// ```
 /// # With data file path and custom URL (no license key needed)
-/// ./UpdateDataFile /path/to/datafile.ipi --data-update-url http://localhost:5225/download-ipi-gz
+/// ./UpdateDataFile /path/to/datafile.ipi --data-update-url http://localhost:5151/download-ipi-gz
 /// 
 /// # With just custom URL (uses default data file name)  
-/// ./UpdateDataFile --data-update-url http://localhost:5225/download-ipi-gz
+/// ./UpdateDataFile --data-update-url http://localhost:5151/download-ipi-gz
 /// 
 /// # With license key (no custom URL)
 /// ./UpdateDataFile /path/to/datafile.ipi your-license-key
