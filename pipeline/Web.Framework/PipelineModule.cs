@@ -31,6 +31,12 @@ namespace FiftyOne.Pipeline.Web.Framework
     /// HTTP module which processes each HTTP request through the pipeline, and
     /// adds the results to the BrowserCapabilities.
     /// </summary>
+    /// <remarks>
+    /// A Flow Data cannot be used by two threads at once. Application code
+    /// reads the values it needs from the Flow Data on the request's thread,
+    /// and hands those values, not the Flow Data, to any other thread or task.
+    /// The Flow Data is disposed of when the request ends.
+    /// </remarks>
     public class PipelineModule : IHttpModule
     {
         /// <summary>

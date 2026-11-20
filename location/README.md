@@ -44,6 +44,16 @@ Examples can be found in the `GeoLocation/Examples/` folder. See below for a lis
 |GettingStarted|This example uses the 51Degrees cloud to determine the country from a longitude and latitude.|
 |CombiningServices|This example uses geo-location alongside device detection to determine the country and device.|
 
+## Flow Data and threads
+
+A Flow Data cannot be used by two threads at once. The web examples handle
+each request one step at a time, and read the Flow Data there. An application
+that hands work from a request to another thread or task reads the values that
+work needs from the Flow Data on the request's thread, into its own variables,
+and passes those values, not the Flow Data. The Flow Data is disposed of when
+the request ends, so work that outlives the request must not keep it either.
+The [pipeline README](../pipeline/README.md#flow-data-and-threads) shows such a hand-off.
+
 ## Tests
 
 Tests can be found in the `Tests/` folder. These can all be run from within Visual Studio or 

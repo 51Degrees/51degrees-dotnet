@@ -120,6 +120,9 @@ namespace AspNetCore
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
+            // A Flow Data cannot be used by two threads at once. Work handed
+            // to another thread or task gets the values it needs, read on the
+            // request's thread, not the Flow Data.
             app.UseFiftyOne();
             app.UseHttpsRedirection();
             app.UseStaticFiles();

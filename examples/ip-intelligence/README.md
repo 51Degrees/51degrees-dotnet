@@ -158,6 +158,16 @@ The **Mixed examples** demonstrate how to combine Device Detection and IP Intell
   - Client hints support for improved browser detection
   - All device detection and IP intelligence properties displayed
 
+## Flow Data and threads
+
+A Flow Data cannot be used by two threads at once. The web examples handle
+each request one step at a time, and read the Flow Data there. An application
+that hands work from a request to another thread or task reads the values that
+work needs from the Flow Data on the request's thread, into its own variables,
+and passes those values, not the Flow Data. The Flow Data is disposed of when
+the request ends, so work that outlives the request must not keep it either.
+The [pipeline README](../../pipeline/README.md#flow-data-and-threads) shows such a hand-off.
+
 ## Testing
 
 Automated tests live in the `Tests/` folder and run as part of CI:

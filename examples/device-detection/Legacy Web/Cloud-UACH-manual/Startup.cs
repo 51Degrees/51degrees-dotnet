@@ -138,6 +138,10 @@ using Microsoft.Extensions.DependencyInjection;
 ///     ...
 /// ```
 /// 
+/// A Flow Data cannot be used by two threads at once. Read the values that
+/// work on another thread or task needs from the Flow Data on the
+/// request's thread, and hand it those values, not the Flow Data.
+/// 
 /// 5. Display device details in the view.
 /// ```{cs}
 /// @model FiftyOne.Pipeline.Core.Data.IFlowData

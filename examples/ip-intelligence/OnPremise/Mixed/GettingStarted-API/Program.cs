@@ -462,6 +462,9 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI
                 aggregated["fiftyone.resource-key"] = resource;
             }
 
+            // A Flow Data cannot be used by two threads at once. Work handed to
+            // another thread or task gets the values it needs, read here on the
+            // request's thread, not the Flow Data.
             using var flowData = pipeline.CreateFlowData();
             flowData.AddEvidence(aggregated);
             flowData.Process();
