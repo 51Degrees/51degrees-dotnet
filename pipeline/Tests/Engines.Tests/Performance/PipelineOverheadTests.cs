@@ -51,8 +51,9 @@ namespace FiftyOne.Pipeline.Engines.Tests.Performance
         /// - AMD EPYC 7551, 64 processors, Linux, quiet (issue #301):
         ///   no cache 0.1109 to 0.1384 ms, cache 0.1091 to 0.1221 ms,
         ///   concurrency about 0.123 ms on each of 64 threads.
-        /// - GitHub's runners: under the old limit of 0.1 ms. Each run now
-        ///   prints its measurements, so they can be read from the log.
+        /// - GitHub's runners, 4 processors: under the old limit of 0.1 ms.
+        ///   Each test writes its measurement to its test output, which the
+        ///   CI's log shows when the test fails, or with a detailed logger.
         /// A call on 64 threads costs about what it costs on one, so the
         /// thread count does not on its own change whether a test passes.
         /// </summary>
