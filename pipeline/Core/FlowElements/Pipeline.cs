@@ -78,9 +78,10 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// be used by at least one <see cref="IFlowElement"/> within 
         /// this pipeline. Built once in the constructor, because the
         /// elements do not change after that, and readonly so every
-        /// request can read it with no lock.
+        /// request can read it with no lock. It asks each element for its
+        /// filter when it is used, so building it reads no element's filter.
         /// </summary>
-        private readonly EvidenceKeyFilterAggregator _evidenceKeyFilter;
+        private readonly PipelineEvidenceKeyFilter _evidenceKeyFilter;
 
         /// <summary>
         /// True if the instance is disposed. False otherwise.
@@ -118,9 +119,24 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// <summary>
         /// Get a filter that will only include the evidence keys that can 
         /// be used by at least one <see cref="IFlowElement"/> within 
-        /// this pipeline.
+        /// this pipeline. The same object on every read. It asks each
+        /// element for its own filter when it is used.
         /// </summary>
-        public IEvidenceKeyFilter EvidenceKeyFilter => _evidenceKeyFilter;
+        /// <remarks>
+        /// Reading it asks each element for its filter, and keeps none of
+        /// them. So an element whose filter is not yet available, such as a
+        /// Cloud Request Engine still recovering from a failure at start-up,
+        /// throws here, where callers handle it, and is asked again on the
+        /// next read.
+        /// </remarks>
+        public IEvidenceKeyFilter EvidenceKeyFilter
+        {
+            get
+            {
+                _evidenceKeyFilter.AskEachElement();
+                return _evidenceKeyFilter;
+            }
+        }
 
         /// <summary>
         /// True if multiple <see cref="IFlowElement"/> instances will run 
@@ -319,12 +335,11 @@ namespace FiftyOne.Pipeline.Core.FlowElements
 
             // The filter depends only on the elements, which do not change
             // from here on, so it is built once now rather than on first use.
-            var evidenceKeyFilter = new EvidenceKeyFilterAggregator();
-            foreach (var element in _flowElements)
-            {
-                evidenceKeyFilter.AddFilter(element.EvidenceKeyFilter);
-            }
-            _evidenceKeyFilter = evidenceKeyFilter;
+            // It asks each element for its filter when it is used and reads
+            // none now, so an element that is not yet ready, such as a Cloud
+            // Request Engine that could not reach the cloud, does not fail
+            // the build.
+            _evidenceKeyFilter = new PipelineEvidenceKeyFilter(_flowElements);
 
             _ = ElementAvailableProperties; // perform caching attempt (default happy path)
 

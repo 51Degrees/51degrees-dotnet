@@ -28,7 +28,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System.Collections.Generic;
-using System.Reflection;
 
 namespace FiftyOne.Pipeline.Core.Tests.FlowElements;
 
@@ -36,8 +35,9 @@ namespace FiftyOne.Pipeline.Core.Tests.FlowElements;
 /// The Pipeline's Evidence key filter depends only on the Flow Elements it
 /// holds, which never change after it is built. So the Pipeline builds the
 /// filter once, when it is built, and every request then reads it with no
-/// lock, as usage sharing and the web integration do. A readonly field set
-/// in the constructor is seen whole by every thread.
+/// lock, as usage sharing and the web integration do. The filter asks each
+/// element for its own filter when it is used, so building the Pipeline
+/// reads no element's filter.
 /// See the <see href="https://github.com/51Degrees/specifications/blob/9d12262654fe8914a5497bdacd85ca733898dd8b/pipeline-specification/features/thread-safety.md#flow-elements">Specification</see>
 /// </summary>
 [TestClass]
@@ -45,10 +45,17 @@ public class PipelineEvidenceKeyFilterTests
 {
     private static readonly ILoggerFactory LoggerFactory = new LoggerFactory();
 
-    private static FieldInfo FilterField() =>
-        typeof(global::FiftyOne.Pipeline.Core.FlowElements.Pipeline).GetField(
-            "_evidenceKeyFilter",
-            BindingFlags.Instance | BindingFlags.NonPublic);
+    private static Mock<IFlowElement> ElementWithFilter(
+        string elementDataKey,
+        IEvidenceKeyFilter filter)
+    {
+        var element = new Mock<IFlowElement>();
+        element.SetupGet(e => e.ElementDataKey).Returns(elementDataKey);
+        element.Setup(e => e.Properties)
+            .Returns(new List<IElementPropertyMetaData>());
+        element.SetupGet(e => e.EvidenceKeyFilter).Returns(filter);
+        return element;
+    }
 
     [TestMethod]
     public void EvidenceKeyFilter_BuiltWithThePipeline()
@@ -57,25 +64,72 @@ public class PipelineEvidenceKeyFilterTests
             .AddFlowElement(new MultiplyByFiveElement())
             .Build();
 
-        var field = FilterField();
-        Assert.IsNotNull(field, "The Pipeline has no filter field.");
-        // Read the field before anything asks for the filter.
-        var built = field.GetValue(pipeline) as IEvidenceKeyFilter;
-        Assert.IsNotNull(built,
+        var first = pipeline.EvidenceKeyFilter;
+        Assert.IsNotNull(first,
             "The filter exists as soon as the Pipeline is built.");
-        Assert.IsTrue(built.Include("value"),
+        Assert.IsTrue(first.Include("value"),
             "The filter accepts the Flow Element's Evidence.");
-        Assert.AreSame(built, pipeline.EvidenceKeyFilter);
+        Assert.AreSame(first, pipeline.EvidenceKeyFilter,
+            "Every read gives the same filter.");
     }
 
     [TestMethod]
-    public void EvidenceKeyFilter_HeldInAReadonlyField()
+    public void EvidenceKeyFilter_SameAnswerOnManyThreads()
     {
-        var field = FilterField();
-        Assert.IsNotNull(field, "The Pipeline has no filter field.");
-        Assert.IsTrue(field.IsInitOnly,
-            "The filter is built with the Pipeline, so its field is " +
-            "readonly.");
+        using var pipeline = new PipelineBuilder(LoggerFactory)
+            .AddFlowElement(new MultiplyByFiveElement())
+            .Build();
+
+        var filters = new System.Collections.Concurrent.ConcurrentBag<
+            IEvidenceKeyFilter>();
+        var answers = new System.Collections.Concurrent.ConcurrentBag<bool>();
+        System.Threading.Tasks.Parallel.For(0, 64, _ =>
+        {
+            var filter = pipeline.EvidenceKeyFilter;
+            filters.Add(filter);
+            answers.Add(filter.Include("value"));
+        });
+
+        var expected = pipeline.EvidenceKeyFilter;
+        foreach (var filter in filters)
+        {
+            Assert.AreSame(expected, filter,
+                "Every thread reads the same filter.");
+        }
+        foreach (var answer in answers)
+        {
+            Assert.IsTrue(answer,
+                "Every thread finds the Flow Element's Evidence accepted.");
+        }
+    }
+
+    /// <summary>
+    /// The order of a key is the one the Evidence key filter aggregator
+    /// gave when the Pipeline built one, so the earlier element's inclusion
+    /// list wins.
+    /// </summary>
+    [TestMethod]
+    public void EvidenceKeyFilter_OrderFromTheEarlierElement()
+    {
+        var first = ElementWithFilter("first", new EvidenceKeyFilterWhitelist(
+            new Dictionary<string, int> { { "header.shared", 5 } }));
+        var second = ElementWithFilter("second", new EvidenceKeyFilterWhitelist(
+            new Dictionary<string, int>
+            {
+                { "header.shared", 1 },
+                { "header.second", 2 },
+            }));
+
+        using var pipeline = new PipelineBuilder(LoggerFactory)
+            .AddFlowElement(first.Object)
+            .AddFlowElement(second.Object)
+            .Build();
+
+        Assert.AreEqual(5, pipeline.EvidenceKeyFilter.Order("header.shared"));
+        Assert.AreEqual(5, pipeline.EvidenceKeyFilter.Order("HEADER.SHARED"),
+            "Keys are not case sensitive.");
+        Assert.AreEqual(2, pipeline.EvidenceKeyFilter.Order("header.second"));
+        Assert.IsNull(pipeline.EvidenceKeyFilter.Order("header.none"));
     }
 
     /// <summary>
