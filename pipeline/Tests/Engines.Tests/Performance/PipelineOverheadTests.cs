@@ -31,6 +31,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -43,6 +44,31 @@ namespace FiftyOne.Pipeline.Engines.Tests.Performance
     /// </summary>
     public class PipelineOverheadTests
     {
+        /// <summary>
+        /// The most a Process call may cost, in milliseconds. These tests
+        /// only look for gross performance problems, so the limit fits the
+        /// slowest machine the tests run on, with room to spare. Measured
+        /// per call at rc 41d4145, slowest first:
+        /// - AMD EPYC 7551, 64 processors, Linux, quiet (issue #301):
+        ///   no cache 0.1109 to 0.1384 ms, cache 0.1091 to 0.1221 ms,
+        ///   concurrency about 0.123 ms on each of 64 threads.
+        /// - GitHub's runners: under the old limit of 0.1 ms. Each test
+        ///   writes its measurement, with the machine's operating system,
+        ///   .NET version and processor count, as a "Build log: " line,
+        ///   which each CI job's log shows (ci/build-log-lines.ps1).
+        /// A call on 64 threads costs about what it costs on one, so the
+        /// thread count does not on its own change whether a test passes.
+        /// </summary>
+        private const double MaxMsPerCall = 0.5;
+
+        /// <summary>
+        /// The machine a measurement was taken on, for the build log.
+        /// </summary>
+        private static string Machine =>
+            $"{RuntimeInformation.OSDescription}, " +
+            $"{RuntimeInformation.FrameworkDescription}, " +
+            $"{Environment.ProcessorCount} processors";
+
         private IPipeline _pipeline;
         private EmptyEngine _engine;
 
@@ -85,10 +111,12 @@ namespace FiftyOne.Pipeline.Engines.Tests.Performance
             stopwatch.Stop();
 
             double msOverheadPerCall =
-                stopwatch.ElapsedMilliseconds / (double)iterations;
-            Assert.IsLessThan(0.1,
-msOverheadPerCall, $"Pipeline overhead per Process call was " +
-                $"{msOverheadPerCall}ms. Maximum permitted is 0.1ms");
+                stopwatch.Elapsed.TotalMilliseconds / iterations;
+            Console.WriteLine($"Build log: PipelineOverhead_NoCache " +
+                $"{msOverheadPerCall}ms per call ({Machine})");
+            Assert.IsLessThan(MaxMsPerCall,
+                msOverheadPerCall, $"Pipeline overhead per Process call was " +
+                $"{msOverheadPerCall}ms. Maximum permitted is {MaxMsPerCall}ms");
         }
 
         /// <summary>
@@ -105,26 +133,29 @@ msOverheadPerCall, $"Pipeline overhead per Process call was " +
                 Builder = new LruPutCacheBuilder(),
                 Size = 100
             }));
-            // Set process cost to 0.2 ms. Therefore the test cannot be passed 
-            // unless the cache is mitigating this cost as it should do.
-            _engine.SetProcessCost(2000);
+            // Set process cost to 2 ms, four times the limit. Therefore the
+            // test cannot be passed unless the cache is mitigating this cost
+            // as it should do.
+            _engine.SetProcessCost(20000);
 
             int iterations = 10000;
-            var start = DateTime.UtcNow;
+            var stopwatch = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
-                using (var flowData = _pipeline.CreateFlowData()) { 
+                using (var flowData = _pipeline.CreateFlowData()) {
                     flowData.AddEvidence("test.value", 10)
                         .Process();
                 }
             }
-            var end = DateTime.UtcNow;
+            stopwatch.Stop();
 
             double msOverheadPerCall =
-                end.Subtract(start).TotalMilliseconds / (double)iterations;
-            Assert.IsLessThan(0.1,
-msOverheadPerCall, $"Pipeline overhead per Process call was " +
-                $"{msOverheadPerCall}ms. Maximum permitted is 0.1ms");
+                stopwatch.Elapsed.TotalMilliseconds / iterations;
+            Console.WriteLine($"Build log: PipelineOverhead_Cache " +
+                $"{msOverheadPerCall}ms per call ({Machine})");
+            Assert.IsLessThan(MaxMsPerCall,
+                msOverheadPerCall, $"Pipeline overhead per Process call was " +
+                $"{msOverheadPerCall}ms. Maximum permitted is {MaxMsPerCall}ms");
         }
 
         /// <summary>
@@ -147,14 +178,15 @@ msOverheadPerCall, $"Pipeline overhead per Process call was " +
             {
                 tasks.Add(new Task<TimeSpan>(() =>
                 {
-                    var start = DateTime.UtcNow;
+                    var stopwatch = Stopwatch.StartNew();
                     for (int j = 0; j < iterations; j++)
                     {
                         using (var flowData = _pipeline.CreateFlowData()) {
                             flowData.Process();
                         }
                     }
-                    return DateTime.UtcNow.Subtract(start);
+                    stopwatch.Stop();
+                    return stopwatch.Elapsed;
                 }));
             }
             // Start all tasks together
@@ -168,10 +200,13 @@ msOverheadPerCall, $"Pipeline overhead per Process call was " +
             // Calculate the time per call from the task results.
             List<double> results = tasks
                 .Select(t => t.Result.TotalMilliseconds / (double)iterations).ToList();
-            Assert.IsTrue(results.All(r => r < 0.1),
+            Console.WriteLine($"Build log: PipelineOverhead_Concurrency " +
+                $"{string.Join(",", results.OrderByDescending(r => r))}ms " +
+                $"per call on {threads} threads ({Machine})");
+            Assert.IsTrue(results.All(r => r < MaxMsPerCall),
                     $"Pipeline overhead per Process call was too high for " +
-                    $"{results.Count(r => r > 0.1)} out of {threads} threads." +
-                    $" Maximum permitted is 0.1ms. Actual results: " +
+                    $"{results.Count(r => r >= MaxMsPerCall)} out of {threads} threads." +
+                    $" Maximum permitted is {MaxMsPerCall}ms. Actual results: " +
                     $"{string.Join(",", results.OrderByDescending(r => r))}");
         }
 
