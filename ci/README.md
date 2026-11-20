@@ -87,10 +87,26 @@ ends by printing those lines, which `build-log-lines.ps1` reads from the
 results files, and each job's log then holds what its runner measured.
 `build-log-lines.Tests.ps1` tests the reading, run with Pester 5 or later.
 
-The secrets are the ones the separate repositories used: `ACCESS_TOKEN`,
-`NUGET_API_KEY`, the `CODE_SIGNING_KEY_VAULT_*` set, `STRONG_NAME_KEY_BASE64`,
-`DEVICE_DETECTION_KEY`, `DEVICE_DETECTION_URL`, `IPI_DATA_FILE_URL`,
-`_51DEGREES_RESOURCE_KEY_BESPOKE` and the `ACCEPTCH_*_KEY` set.
+The workflows pass the secrets to the shared workflows with `secrets: inherit`.
+Apart from `ACCESS_TOKEN` and the publishing ones (`NUGET_API_KEY`, the
+`CODE_SIGNING_KEY_VAULT_*` set and `STRONG_NAME_KEY_BASE64`), every key is read
+only under its `_51DEGREES_` name, which the shared workflows export:
+
+- `_51DEGREES_LICENSE_KEY`, the data licence. The shared `fetch-assets.ps1`
+  downloads `TAC-HashV41.hash` and `51Degrees-EnterpriseIpiV41.ipi` from the
+  Distributor with it, and fails naming it when it is not set. The data file
+  update example tests read it too.
+- `_51DEGREES_RESOURCE_KEY`, filled from `_51DEGREES_RESOURCE_KEY_BESPOKE`, for
+  the cloud tests and examples.
+- `_51DEGREES_RESOURCE_KEY_51DID` and `_51DEGREES_LICENSE_KEY_51DID`, for the
+  live 51Did tests.
+- `_51DEGREES_LICENSE_KEY_BESPOKE`, for the Accept-CH tests of the cloud web
+  examples, which ask for one SetHeader property each with `values`.
+
+A live cloud test with no key skips and names the variable it needs.
+`run-integration-tests.ps1` sets `PAID_RESOURCE_KEY` from
+`_51DEGREES_RESOURCE_KEY` for the external Selenium contract suite only, which
+reads that name.
 
 `run-unit-tests.ps1` and `run-integration-tests.ps1` each begin by running
 `start-chrome-once.ps1`, which asks the Chrome driver for its version and

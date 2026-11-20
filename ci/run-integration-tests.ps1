@@ -5,7 +5,6 @@ param (
     [string]$Arch = "x64",
     [string]$BuildMethod = "dotnet",
     [string]$Version,
-    [string]$TestResourceKey,
     # How deeply a pull request is tested, as select-options.ps1 chose.
     # standard runs only the IP Intelligence on-premise example tests that
     # need no Enterprise data file. Empty, for the branch itself or a
@@ -89,8 +88,11 @@ if ($IsLinux -and $Arch -eq 'arm64') {
     Write-Host "::warning title=Selenium skipped::No selenium-manager build for linux-arm64. The contract runs on x64 and macOS."
     return
 }
-if (-not $TestResourceKey) {
-    Write-Host "::warning title=No Resource Key::No resource key, so the Selenium contract is not run."
+# The resource key is _51DEGREES_RESOURCE_KEY, which the shared workflows
+# export.
+$resourceKey = $env:_51DEGREES_RESOURCE_KEY
+if (-not $resourceKey) {
+    Write-Host "::warning title=No Resource Key::_51DEGREES_RESOURCE_KEY is not set, so the Selenium contract is not run."
     return
 }
 if (-not (Test-Path selenium-api-tests)) {
@@ -122,7 +124,9 @@ function Invoke-ContractTests {
         $example = dotnet run --no-build --project $Project @BuildArgs --no-launch-profile 2>&1 &
         curl -sS -o $(if ($IsWindows) { 'NUL' } else { '/dev/null' }) --retry 60 --retry-delay 2 --retry-connrefused "http://localhost:$Port"
         $env:CLOUD_ROOT_URL = "https://cloud.51degrees.com/"
-        $env:PAID_RESOURCE_KEY = $TestResourceKey
+        # The external suite reads its key from PAID_RESOURCE_KEY, so it is
+        # set for that suite only, and removed after it.
+        $env:PAID_RESOURCE_KEY = $resourceKey
         $env:EXAMPLE_URL = "http://localhost:$Port"
         $env:EXAMPLE_LANG = 'dotnet'
         dotnet test selenium-api-tests -c Release --filter TestCategory=Contract
