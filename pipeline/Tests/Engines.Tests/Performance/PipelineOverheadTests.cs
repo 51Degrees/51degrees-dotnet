@@ -31,6 +31,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -51,13 +52,22 @@ namespace FiftyOne.Pipeline.Engines.Tests.Performance
         /// - AMD EPYC 7551, 64 processors, Linux, quiet (issue #301):
         ///   no cache 0.1109 to 0.1384 ms, cache 0.1091 to 0.1221 ms,
         ///   concurrency about 0.123 ms on each of 64 threads.
-        /// - GitHub's runners, 4 processors: under the old limit of 0.1 ms.
-        ///   Each test writes its measurement to its test output, which the
-        ///   CI's log shows when the test fails, or with a detailed logger.
+        /// - GitHub's runners: under the old limit of 0.1 ms. Each test
+        ///   writes its measurement, with the machine's operating system,
+        ///   .NET version and processor count, as a "Build log: " line,
+        ///   which each CI job's log shows (ci/build-log-lines.ps1).
         /// A call on 64 threads costs about what it costs on one, so the
         /// thread count does not on its own change whether a test passes.
         /// </summary>
         private const double MaxMsPerCall = 0.5;
+
+        /// <summary>
+        /// The machine a measurement was taken on, for the build log.
+        /// </summary>
+        private static string Machine =>
+            $"{RuntimeInformation.OSDescription}, " +
+            $"{RuntimeInformation.FrameworkDescription}, " +
+            $"{Environment.ProcessorCount} processors";
 
         private IPipeline _pipeline;
         private EmptyEngine _engine;
@@ -102,9 +112,8 @@ namespace FiftyOne.Pipeline.Engines.Tests.Performance
 
             double msOverheadPerCall =
                 stopwatch.Elapsed.TotalMilliseconds / iterations;
-            Console.WriteLine($"PipelineOverhead_NoCache: " +
-                $"{msOverheadPerCall}ms per call on " +
-                $"{Environment.ProcessorCount} processors");
+            Console.WriteLine($"Build log: PipelineOverhead_NoCache " +
+                $"{msOverheadPerCall}ms per call ({Machine})");
             Assert.IsLessThan(MaxMsPerCall,
                 msOverheadPerCall, $"Pipeline overhead per Process call was " +
                 $"{msOverheadPerCall}ms. Maximum permitted is {MaxMsPerCall}ms");
@@ -142,9 +151,8 @@ namespace FiftyOne.Pipeline.Engines.Tests.Performance
 
             double msOverheadPerCall =
                 stopwatch.Elapsed.TotalMilliseconds / iterations;
-            Console.WriteLine($"PipelineOverhead_Cache: " +
-                $"{msOverheadPerCall}ms per call on " +
-                $"{Environment.ProcessorCount} processors");
+            Console.WriteLine($"Build log: PipelineOverhead_Cache " +
+                $"{msOverheadPerCall}ms per call ({Machine})");
             Assert.IsLessThan(MaxMsPerCall,
                 msOverheadPerCall, $"Pipeline overhead per Process call was " +
                 $"{msOverheadPerCall}ms. Maximum permitted is {MaxMsPerCall}ms");
@@ -192,9 +200,9 @@ namespace FiftyOne.Pipeline.Engines.Tests.Performance
             // Calculate the time per call from the task results.
             List<double> results = tasks
                 .Select(t => t.Result.TotalMilliseconds / (double)iterations).ToList();
-            Console.WriteLine($"PipelineOverhead_Concurrency: " +
+            Console.WriteLine($"Build log: PipelineOverhead_Concurrency " +
                 $"{string.Join(",", results.OrderByDescending(r => r))}ms " +
-                $"per call on {threads} threads");
+                $"per call on {threads} threads ({Machine})");
             Assert.IsTrue(results.All(r => r < MaxMsPerCall),
                     $"Pipeline overhead per Process call was too high for " +
                     $"{results.Count(r => r >= MaxMsPerCall)} out of {threads} threads." +
