@@ -25,6 +25,7 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -61,7 +62,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             }
 
             // Act
-            Driver.Navigate().GoToUrl(url + STATIC_HTML_PATH);
+            NavigateTo(url + STATIC_HTML_PATH, "Populates_51D_Cookie");
 
             // Firefox has no navigator.userAgentData, so there are no high
             // entropy values and no cookie to wait for. Asking once here
@@ -81,6 +82,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             // resolve. Browsers without userAgentData (Firefox) never set it,
             // so the value stays null and the wait times out.
             Dictionary<string, object> ghe = null;
+            var waitingForValues = Stopwatch.StartNew();
             try
             {
                 new WebDriverWait(Driver, TEST_TIMEOUT).Until(driver =>
@@ -90,12 +92,20 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
                             "return ghe");
                     return ghe != null;
                 });
+                LogWait(
+                    "Populates_51D_Cookie high entropy values",
+                    waitingForValues,
+                    "ended");
             }
             catch (WebDriverTimeoutException)
             {
                 // ghe is still null here. This is expected on browsers with no
                 // navigator.userAgentData, for which high entropy values, and
                 // therefore this test, do not apply.
+                LogWait(
+                    "Populates_51D_Cookie high entropy values",
+                    waitingForValues,
+                    "timed out");
             }
 
             // Guard before the loop below. Without this a null ghe dereferences
@@ -130,6 +140,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             IReadOnlyList<BiDiCookie> cookies = null;
             BiDiCookie fod_cookie = null;
             var noScript = false;
+            var waitingForCookie = Stopwatch.StartNew();
             try
             {
                 new WebDriverWait(Driver, TEST_TIMEOUT).Until(driver =>
@@ -149,9 +160,17 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
                     noScript = HasHighEntropyScript(driver) == false;
                     return noScript;
                 });
+                LogWait(
+                    "Populates_51D_Cookie cookie",
+                    waitingForCookie,
+                    "ended");
             }
             catch (WebDriverTimeoutException e)
             {
+                LogWait(
+                    "Populates_51D_Cookie cookie",
+                    waitingForCookie,
+                    "timed out");
                 Assert.Inconclusive(e.ToString());
             }
             if (noScript)
@@ -194,55 +213,51 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         {
             const string KEY = "access-control-allow-origin";
 
-            if (Network == null)
+            if (Network == null || Network.IsRecordingResponses == false)
             {
                 Assert.Inconclusive(
                     "Test session does not support CORS verification");
             }
 
-            // The header value pairs from the JSON response.
-            Dictionary<string, string> headerValuePairs = new();
-
-            // Set to true when the JSON response is recieved.
-            var jsonRecieved = false;
-
-            // Get Response Headers if the URL relates to a JSON response.
-            // Awaited so the subscription is active before navigation begins,
-            // otherwise the response could arrive before we are listening.
-            Network.OnResponseCompletedAsync(response =>
-            {
-                var responseUrl = response.Url;
-                var mimeType = response.MimeType;
-                if ("application/json".Equals(mimeType) &&
-                    responseUrl.EndsWith("json"))
-                {
-                    foreach (var header in response.Headers)
-                    {
-                        headerValuePairs[header.Key] = header.Value;
-                    }
-                    jsonRecieved = true;
-                }
-            }).Wait();
+            // The responses are recorded by one subscription made when the
+            // driver was set up, so nothing has to subscribe here, after
+            // the reset has just closed a tab. Forget those of earlier
+            // tests; the reset has already left their pages.
+            Network.ClearResponses();
 
             // Act
             // Do a cross origin request
-            Driver.Navigate().GoToUrl(url + STATIC_HTML_PATH);
+            NavigateTo(url + STATIC_HTML_PATH, "CORS_Response_Header");
 
+            // The JSON response from the cloud, once it has completed.
+            BiDiResponse json = null;
+            var waitingForJson = Stopwatch.StartNew();
             try
             {
-                // Wait for the page to load
                 new WebDriverWait(Driver, TEST_TIMEOUT).Until(driver =>
                 {
-                    return jsonRecieved;
+                    json = Network.FindResponse(response =>
+                        "application/json".Equals(response.MimeType) &&
+                        response.Url.EndsWith("json"));
+                    return json != null;
                 });
+                LogWait(
+                    "CORS_Response_Header cloud JSON response",
+                    waitingForJson,
+                    "ended");
             }
             catch (WebDriverTimeoutException e)
             {
+                LogWait(
+                    "CORS_Response_Header cloud JSON response",
+                    waitingForJson,
+                    "timed out");
                 Assert.Inconclusive(e.ToString());
             }
 
             // Assert
             // Verify that the response contains the header
+            var headerValuePairs = json.Headers;
             Assert.IsTrue(headerValuePairs.ContainsKey(KEY));
             Assert.IsTrue(
                 headerValuePairs[KEY].Equals(url) ||
@@ -365,13 +380,14 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         public void VerifyExample_GetHighEntropyValues_Fod_Completes(string url)
         {
             // Act
-            Driver.Navigate().GoToUrl(url + TEST_PAGE_PATH);
+            NavigateTo(url + TEST_PAGE_PATH, "Fod_Completes");
 
             string detectedBrowserName = null;
             string detectedBrowserVersion = null;
             string userAgent = null;
 
             bool result;
+            var waitingForComplete = Stopwatch.StartNew();
             try
             {
                 // This throws an exception if the timeout period elapses,
@@ -405,9 +421,14 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
                         }
                         return false;
                     });
+                LogWait("Fod_Completes 'complete'", waitingForComplete, "ended");
             }
             catch (WebDriverTimeoutException e)
             {
+                LogWait(
+                    "Fod_Completes 'complete'",
+                    waitingForComplete,
+                    "timed out");
                 Assert.Inconclusive(e.ToString());
                 throw;
             }

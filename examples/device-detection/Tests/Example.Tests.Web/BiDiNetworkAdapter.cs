@@ -23,6 +23,7 @@
 using OpenQA.Selenium.BiDi;
 using OpenQA.Selenium.BiDi.Network;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -62,17 +63,6 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         }
 
         /// <summary>
-        /// Subscribes to completed network responses. The returned task
-        /// completes once the subscription is active, so callers should await
-        /// it before navigating to be sure no response is missed.
-        /// </summary>
-        /// <param name="handler">
-        /// Called for each completed response.
-        /// </param>
-        /// <returns>
-        /// The subscription, which lives for as long as the BiDi session.
-        /// </returns>
-        /// <summary>
         /// Deletes every cookie the browser holds, for every site, which the
         /// WebDriver classic call cannot do because it only reaches the
         /// cookies of the page that is open.
@@ -91,19 +81,65 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             return _bidi.Network.SetCacheBehaviorAsync(CacheBehavior.Bypass);
         }
 
-        public Task<ISubscription> OnResponseCompletedAsync(
-            Action<BiDiResponse> handler)
+        /// <summary>
+        /// The completed responses seen since <see cref="ClearResponses"/>
+        /// was last called.
+        /// </summary>
+        private readonly ConcurrentQueue<BiDiResponse> _responses = new();
+
+        /// <summary>
+        /// True once <see cref="StartRecordingResponsesAsync"/> has
+        /// subscribed, so <see cref="FindResponse"/> can see responses.
+        /// </summary>
+        public bool IsRecordingResponses { get; private set; }
+
+        /// <summary>
+        /// Subscribes once, for the whole session, to completed network
+        /// responses and records each one. Called when the driver is set
+        /// up, while the browser has one tab and no page. The test that
+        /// needs responses used to subscribe itself, after the reset had
+        /// just closed a tab, and in run 44697200170 Firefox did not answer
+        /// that subscribe within the 30 second BiDi command timeout. Each
+        /// such subscription also lived until the session ended, so every
+        /// test added one more.
+        /// </summary>
+        public async Task StartRecordingResponsesAsync()
         {
-            return _bidi.Network.ResponseCompleted.SubscribeAsync(e =>
+            if (IsRecordingResponses)
+            {
+                return;
+            }
+            await _bidi.Network.ResponseCompleted.SubscribeAsync(e =>
             {
                 var headers = e.Response.Headers.ToDictionary(
                     h => h.Name.ToLowerInvariant(),
                     h => ReadValue(h.Value));
-                handler(new BiDiResponse(
+                _responses.Enqueue(new BiDiResponse(
                     e.Response.Url,
                     e.Response.MimeType,
                     headers));
             });
+            IsRecordingResponses = true;
+        }
+
+        /// <summary>
+        /// Forgets the responses recorded so far, so a test sees only those
+        /// of the pages it opens after calling this.
+        /// </summary>
+        public void ClearResponses()
+        {
+            while (_responses.TryDequeue(out _)) { }
+        }
+
+        /// <summary>
+        /// Finds the first recorded response that matches.
+        /// </summary>
+        /// <returns>
+        /// The response, or null if none has been recorded yet.
+        /// </returns>
+        public BiDiResponse FindResponse(Func<BiDiResponse, bool> match)
+        {
+            return _responses.FirstOrDefault(match);
         }
 
         /// <summary>

@@ -58,8 +58,105 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         /// Number of seconds to wait for a response that might satisfy the
         /// test.
         /// </summary>
-        protected static readonly TimeSpan TEST_TIMEOUT = 
+        protected static readonly TimeSpan TEST_TIMEOUT =
             TimeSpan.FromSeconds(20);
+
+        /// <summary>
+        /// How long the browser may take to load a page before the driver
+        /// reports a page load timeout. It must be shorter than the 60
+        /// seconds the Selenium client waits for any command. geckodriver's
+        /// own default is 300 seconds, so in run 44756128766 the client gave
+        /// up on a navigation after 60 seconds while geckodriver went on
+        /// waiting, and the next test's commands queued behind it: that
+        /// test, which skips at once on Firefox, took 30 s instead of the
+        /// 2 to 3 s the same test took in run 44697200170. With this limit
+        /// geckodriver ends the load itself and answers. Measured: the
+        /// Firefox tests that open /static.html took 2 to 3 s in all,
+        /// server start and reset included, and the example server served
+        /// the page in 1.5 s. 30 s is ten times the slowest of those. The
+        /// "Build log: Selenium ... navigation" lines record every load so
+        /// the limit can be checked against each run.
+        /// </summary>
+        protected static readonly TimeSpan PAGE_LOAD_TIMEOUT =
+            TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Opens a page and writes how long it took to the build log, or
+        /// how long it ran before it failed and what the page had reached.
+        /// </summary>
+        /// <param name="url">
+        /// The page to open.
+        /// </param>
+        /// <param name="step">
+        /// What the navigation is for, written in the build log line.
+        /// </param>
+        protected static void NavigateTo(string url, string step)
+        {
+            var loading = Stopwatch.StartNew();
+            try
+            {
+                Driver.Navigate().GoToUrl(url);
+            }
+            catch (WebDriverException exception)
+            {
+                Console.WriteLine(
+                    $"Build log: Selenium {BrowserName} {step}, the " +
+                    $"navigation to {url} failed after " +
+                    $"{loading.ElapsedMilliseconds} ms " +
+                    $"({exception.GetType().Name}), page state: " +
+                    $"{ReadPageState()}.");
+                throw;
+            }
+            Console.WriteLine(
+                $"Build log: Selenium {BrowserName} {step}, the navigation " +
+                $"to {url} took {loading.ElapsedMilliseconds} ms.");
+        }
+
+        /// <summary>
+        /// Writes how long a wait in a test took to the build log.
+        /// </summary>
+        /// <param name="step">
+        /// What was waited for.
+        /// </param>
+        /// <param name="waiting">
+        /// Started when the wait began.
+        /// </param>
+        /// <param name="outcome">
+        /// How the wait ended, for example "done" or "timed out".
+        /// </param>
+        protected static void LogWait(
+            string step,
+            Stopwatch waiting,
+            string outcome)
+        {
+            Console.WriteLine(
+                $"Build log: Selenium {BrowserName} {step}, the wait " +
+                $"{outcome} after {waiting.ElapsedMilliseconds} ms.");
+        }
+
+        /// <summary>
+        /// Reads how far the page got and which resources it was still
+        /// loading, so a navigation that fails says what it was waiting
+        /// for. A diagnostic only, so it never throws.
+        /// </summary>
+        private static string ReadPageState()
+        {
+            try
+            {
+                return (string)((IJavaScriptExecutor)Driver).ExecuteScript(@"
+                    var entries = performance.getEntriesByType('resource')
+                        .map(function (e) {
+                            return e.name + ' ' + Math.round(e.duration) +
+                                ' ms' + (e.responseEnd > 0 ? '' : ' (open)');
+                        });
+                    return 'readyState ' + document.readyState +
+                        ', resources [' + entries.join('; ') + ']';");
+            }
+            catch (Exception exception)
+            {
+                return $"unavailable: {exception.Message}";
+            }
+        }
 
         /// <summary>
         /// The driver being used for the active test. See 
@@ -146,7 +243,8 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             {
                 return;
             }
-            Driver.Navigate().GoToUrl("about:blank");
+            var resetting = Stopwatch.StartNew();
+            NavigateTo("about:blank", "reset");
             var deleting = Stopwatch.StartNew();
             if (Network != null)
             {
@@ -159,12 +257,17 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             Console.WriteLine(
                 "Build log: Selenium tests, the cookies were deleted in " +
                 $"{deleting.ElapsedMilliseconds} ms.");
+            var switching = Stopwatch.StartNew();
             var previous = Driver.CurrentWindowHandle;
             Driver.SwitchTo().NewWindow(WindowType.Tab);
             var fresh = Driver.CurrentWindowHandle;
             Driver.SwitchTo().Window(previous);
             Driver.Close();
             Driver.SwitchTo().Window(fresh);
+            Console.WriteLine(
+                $"Build log: Selenium {BrowserName} reset, the new tab took " +
+                $"{switching.ElapsedMilliseconds} ms and the whole reset " +
+                $"{resetting.ElapsedMilliseconds} ms.");
         }
 
         /// <summary>
@@ -258,8 +361,8 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             {
                 SkipBecauseBrowserUnavailable("Chrome", exception);
             }
-            Network = GetNetwork(Driver).Result;
             BrowserName = "Chrome";
+            Network = GetNetwork(Driver).Result;
             BrowserVersion = Version.Parse(
                 (string)Driver.Capabilities["browserVersion"]);
         }
@@ -294,8 +397,8 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             {
                 SkipBecauseBrowserUnavailable("Edge", exception);
             }
-            Network = GetNetwork(Driver).Result;
             BrowserName = "Edge";
+            Network = GetNetwork(Driver).Result;
             BrowserVersion = Version.Parse(
                 (string)Driver.Capabilities["browserVersion"]);
         }
@@ -321,6 +424,17 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             // BiDi WebSocket URL so AsBiDiAsync can attach.
             firefoxOptions.UseWebSocketUrl = true;
             firefoxOptions.SetLoggingPreference(LogType.Browser, LogLevel.All);
+            // Return from a navigation once the document is parsed, not
+            // when every resource has loaded. The client-only pages load
+            // the 51Degrees cloud script with async, which still holds back
+            // the load event, so a slow cloud response holds the navigation.
+            // In run 44756128766 a navigation to /static.html did not return
+            // within the client's 60 seconds, although the example server
+            // had sent the page in 1.5 s. No test needs the load event:
+            // each waits for the thing it checks, such as the high entropy
+            // values, the cookie, the cloud JSON response or the
+            // 'complete' value, within TEST_TIMEOUT.
+            firefoxOptions.PageLoadStrategy = PageLoadStrategy.Eager;
             try
             {
                 Driver = new FirefoxDriver(firefoxOptions);
@@ -329,8 +443,9 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             {
                 SkipBecauseBrowserUnavailable("Firefox", exception);
             }
-            Network = GetNetwork(Driver).Result;
+            Driver.Manage().Timeouts().PageLoad = PAGE_LOAD_TIMEOUT;
             BrowserName = "Firefox";
+            Network = GetNetwork(Driver).Result;
             BrowserVersion = Version.Parse(
                 (string)Driver.Capabilities["browserVersion"]);
         }
@@ -398,6 +513,27 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
                 // was complete serves it again to the next test, which then
                 // has nothing to fetch, so every test bypasses the cache.
                 await network.BypassCacheAsync();
+                // Subscribed here, once, while the browser has one tab and
+                // no page, rather than by the test after a reset has just
+                // closed a tab. A failure here leaves cookies usable and
+                // only the tests that need responses inconclusive.
+                var subscribing = Stopwatch.StartNew();
+                try
+                {
+                    await network.StartRecordingResponsesAsync();
+                    Console.WriteLine(
+                        $"Build log: Selenium {BrowserName} set-up, the " +
+                        "BiDi response subscription took " +
+                        $"{subscribing.ElapsedMilliseconds} ms.");
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine(
+                        $"Build log: Selenium {BrowserName} set-up, the " +
+                        "BiDi response subscription failed after " +
+                        $"{subscribing.ElapsedMilliseconds} ms " +
+                        $"({exception.GetType().Name}).");
+                }
                 return network;
             }
             catch (Exception)
