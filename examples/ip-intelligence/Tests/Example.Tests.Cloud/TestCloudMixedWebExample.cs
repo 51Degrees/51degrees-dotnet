@@ -61,7 +61,7 @@ public class TestCloudMixedWebExample
     // The example binds Constants.AllUrls; this is its plain-HTTP endpoint,
     // which is the one we query (avoiding the HTTPS ports keeps the request
     // side certificate-free).
-    private const string BaseUrl = "http://localhost:5101";
+    private const string BaseUrl = "http://localhost:5151";
 
     private static readonly string RepoRootPath =
         Path.GetFullPath(

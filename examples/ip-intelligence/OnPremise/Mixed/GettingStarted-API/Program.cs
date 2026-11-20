@@ -206,7 +206,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI
             }
 
             var builder = WebApplication.CreateBuilder(Args);
-            builder.WebHost.UseUrls("http://0.0.0.0:5225");
+            builder.WebHost.UseUrls("http://0.0.0.0:5151");
             AppendConfigOverrides(
                 builder.Configuration,
                 out var rawOptions,
