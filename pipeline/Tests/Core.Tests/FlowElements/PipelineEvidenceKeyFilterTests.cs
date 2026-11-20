@@ -197,4 +197,184 @@ public class PipelineEvidenceKeyFilterTests
                 "The filter accepts no Evidence that no element accepts.");
         }
     }
+
+    /// <summary>
+    /// Elements run in parallel have their filters combined by the
+    /// parallel group. Every request thread now asks for that combined
+    /// filter, so two requests that arrive together must both get a
+    /// complete answer. Here the first request is held inside the second
+    /// element's filter while the second request checks that element's key.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/9d12262654fe8914a5497bdacd85ca733898dd8b/pipeline-specification/features/thread-safety.md#flow-elements">Specification</see>
+    /// </summary>
+    [TestMethod]
+    public void EvidenceKeyFilter_ParallelElements_ConcurrentFirstRequestsSeeEveryKey()
+    {
+        var wait = System.TimeSpan.FromSeconds(10);
+        var first = ElementWithFilter("first",
+            new EvidenceKeyFilterWhitelist(new List<string> { "header.a" }));
+        var secondFilter =
+            new EvidenceKeyFilterWhitelist(new List<string> { "header.b" });
+        var armed = 0;
+        using var firstRequestInside = new System.Threading.ManualResetEventSlim();
+        using var secondRequestDone = new System.Threading.ManualResetEventSlim();
+        var second = new Mock<IFlowElement>();
+        second.SetupGet(e => e.ElementDataKey).Returns("second");
+        second.Setup(e => e.Properties)
+            .Returns(new List<IElementPropertyMetaData>());
+        // The first read after the Pipeline is built waits here until the
+        // second request has finished. Every later read answers at once.
+        second.SetupGet(e => e.EvidenceKeyFilter).Returns(() =>
+        {
+            if (System.Threading.Interlocked.Exchange(ref armed, 0) == 1)
+            {
+                firstRequestInside.Set();
+                secondRequestDone.Wait(wait);
+            }
+            return secondFilter;
+        });
+
+        using var pipeline = new PipelineBuilder(LoggerFactory)
+            .AddFlowElementsParallel(first.Object, second.Object)
+            .Build();
+        System.Threading.Volatile.Write(ref armed, 1);
+
+        System.Exception firstError = null;
+        var firstAnswer = false;
+        var firstRequest = new System.Threading.Thread(() =>
+        {
+            try
+            {
+                firstAnswer = pipeline.EvidenceKeyFilter.Include("header.b");
+            }
+            catch (System.Exception ex)
+            {
+                firstError = ex;
+            }
+        });
+        firstRequest.Start();
+        Assert.IsTrue(firstRequestInside.Wait(wait),
+            "The first request reached the second element's filter.");
+
+        System.Exception secondError = null;
+        var secondAnswer = false;
+        try
+        {
+            secondAnswer = pipeline.EvidenceKeyFilter.Include("header.b");
+        }
+        catch (System.Exception ex)
+        {
+            secondError = ex;
+        }
+        finally
+        {
+            secondRequestDone.Set();
+        }
+        Assert.IsTrue(firstRequest.Join(wait),
+            "The first request finished.");
+
+        Assert.IsNull(secondError, $"The second request threw: {secondError}");
+        Assert.IsTrue(secondAnswer,
+            "A request that arrives while another is reading the filters " +
+            "still finds the second element's Evidence accepted.");
+        Assert.IsNull(firstError, $"The first request threw: {firstError}");
+        Assert.IsTrue(firstAnswer,
+            "The first request finds the second element's Evidence accepted.");
+        Assert.IsTrue(pipeline.EvidenceKeyFilter.Include("header.a"),
+            "The filter accepts the first element's Evidence.");
+    }
+
+    /// <summary>
+    /// A Cloud Request Engine run in parallel with another element throws
+    /// from its Evidence key filter until it recovers, as one on its own
+    /// does. Its keys must be included once it answers, even if a request
+    /// asked while it was still recovering.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/9d12262654fe8914a5497bdacd85ca733898dd8b/pipeline-specification/pipeline-elements/cloud-request-engine.md?plain=1#L263-L271">Specification</see>
+    /// </summary>
+    [TestMethod]
+    public void EvidenceKeyFilter_ParallelElementStillRecovering_KeysFollow()
+    {
+        const string recoveringKey = "header.x-recovering";
+        var answers = false;
+        var other = ElementWithFilter("other",
+            new EvidenceKeyFilterWhitelist(new List<string> { "header.a" }));
+        var recovering = new Mock<IFlowElement>();
+        recovering.SetupGet(e => e.ElementDataKey).Returns("recovering");
+        recovering.Setup(e => e.Properties)
+            .Returns(new List<IElementPropertyMetaData>());
+        // Throws as a recovering Cloud Request Engine does, until it answers.
+        recovering.SetupGet(e => e.EvidenceKeyFilter).Returns(() => answers
+            ? new EvidenceKeyFilterWhitelist(new List<string> { recoveringKey })
+            : throw new PipelineTemporarilyUnavailableException(
+                "The cloud service is still recovering."));
+
+        using var pipeline = new PipelineBuilder(LoggerFactory)
+            .AddFlowElementsParallel(other.Object, recovering.Object)
+            .Build();
+
+        // A request while the element is still recovering.
+        try
+        {
+            pipeline.EvidenceKeyFilter.Include(recoveringKey);
+        }
+        catch (PipelineTemporarilyUnavailableException)
+        {
+            // The element is asked again on the next request.
+        }
+
+        answers = true;
+
+        Assert.IsTrue(pipeline.EvidenceKeyFilter.Include(recoveringKey),
+            "Once the element answers, the Pipeline's filter accepts its " +
+            "Evidence.");
+        Assert.IsTrue(pipeline.EvidenceKeyFilter.Include("header.a"),
+            "The filter still accepts the other element's Evidence.");
+        Assert.IsFalse(pipeline.EvidenceKeyFilter.Include("header.x-none"),
+            "The filter accepts no Evidence that no element accepts.");
+    }
+
+    /// <summary>
+    /// The order of a key from elements run in parallel is the one the
+    /// Evidence key filter aggregator gave. The inclusion lists of the
+    /// elements in the group count at the group's place among the
+    /// Pipeline's inclusion lists, and every inclusion list comes before a
+    /// filter of any other kind.
+    /// </summary>
+    [TestMethod]
+    public void EvidenceKeyFilter_ParallelElements_OrderAsBefore()
+    {
+        var custom = new Mock<IEvidenceKeyFilter>();
+        custom.Setup(f => f.Include(It.IsAny<string>())).Returns(true);
+        custom.Setup(f => f.Order(It.IsAny<string>())).Returns(9);
+        var before = ElementWithFilter("before", custom.Object);
+        var inGroup = ElementWithFilter("ingroup",
+            new EvidenceKeyFilterWhitelist(new Dictionary<string, int>
+            {
+                { "header.shared", 5 },
+            }));
+        var alsoInGroup = ElementWithFilter("alsoingroup",
+            new EvidenceKeyFilterWhitelist(new Dictionary<string, int>
+            {
+                { "header.group", 3 },
+            }));
+        var after = ElementWithFilter("after",
+            new EvidenceKeyFilterWhitelist(new Dictionary<string, int>
+            {
+                { "header.shared", 1 },
+                { "header.group", 2 },
+            }));
+
+        using var pipeline = new PipelineBuilder(LoggerFactory)
+            .AddFlowElement(before.Object)
+            .AddFlowElementsParallel(inGroup.Object, alsoInGroup.Object)
+            .AddFlowElement(after.Object)
+            .Build();
+
+        Assert.AreEqual(5, pipeline.EvidenceKeyFilter.Order("header.shared"),
+            "The group's list comes before the later element's list, and " +
+            "before the earlier element's filter of another kind.");
+        Assert.AreEqual(3, pipeline.EvidenceKeyFilter.Order("HEADER.GROUP"),
+            "Every list in the group counts, with keys not case sensitive.");
+        Assert.AreEqual(9, pipeline.EvidenceKeyFilter.Order("header.other"),
+            "A key in no list takes the order of the other filter.");
+    }
 }
