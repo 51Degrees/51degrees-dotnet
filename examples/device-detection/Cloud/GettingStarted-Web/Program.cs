@@ -56,6 +56,12 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb
         {
             var config = CreateConfiguration();
             var configOverrides = CreateConfigOverrides(config);
+            if (configOverrides == null)
+            {
+                // There is no resource key, so the message says where
+                // to create one and the example ends without a server.
+                return Task.CompletedTask;
+            }
             return CreateHostBuilder(config, configOverrides, args).Build().RunAsync(
                 stopToken);
         }
@@ -132,25 +138,25 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb
                 }
                 else
                 {
-                    throw new Exception($"No resource key specified in the configuration file " +
-                        $"'appsettings.json' or the environment variable " +
+                    Console.WriteLine($"No resource key specified in the configuration file " +
+                        $"'appsettings_51.json' or the environment variable " +
                         $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees cloud " +
                         $"service is accessed using a 'ResourceKey'. For more information " +
                         $"see https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-web-program.cs&utm_term=resource-key-required. " +
                         $"A free resource key can be created at " +
-                        $"https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-web-program.cs&utm_term=resource-key-required and populates the free " +
+                        $"https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-web-program.cs&utm_term=resource-key-required and populates the free " +
                         $"properties. With a paid subscription, a key created at " +
-                        $"https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-web-program.cs&utm_term=resource-key-required includes all the " +
+                        $"https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-web-program.cs&utm_term=resource-key-required includes all the " +
                         $"properties used by this example. " +
                         $"Once complete, populate the config file or environment variable " +
                         $"mentioned at the start of this message with the key.");
+                    return null;
                 }
             }
 
             // override the cloud endpoint from the environment, regardless of the resource key
-            string endpoint = ExampleUtils.FromEnvironment(
-                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
-                ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
+            string endpoint = Environment.GetEnvironmentVariable(
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR);
             if (string.IsNullOrEmpty(endpoint) == false)
             {
                 var cloudEngineIndex = options.Elements.IndexOf(

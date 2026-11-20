@@ -13,22 +13,24 @@ $PSNativeCommandUseErrorActionPreference = $true
 
 # Puts the packages about to be published where a restore finds them, and
 # rebuilds the examples in Package mode against them, at the versions being
-# published. A family that did not change restores from nuget.org at its last
-# version, as a customer would. run-integration-tests.ps1 then tests those
-# builds.
+# published. A package that did not change restores from nuget.org at its
+# last version, as a customer would. run-integration-tests.ps1 then tests
+# those builds. When no package is released there are none here, and every
+# package restores from nuget.org, so the examples are still built and tested
+# as a customer gets them.
 # The publish job installs too, before it pushes, and needs nothing built.
 if ($env:GITHUB_JOB -eq "Package") {
     Write-Host "Nothing to install before publishing"
     return
 }
 $packages = @(Get-ChildItem "$pwd/package/*.nupkg" -ErrorAction SilentlyContinue)
-if (-not $packages) {
-    Write-Host "No packages to install"
-    return
+if ($packages) {
+    dotnet nuget add source "$pwd/package" --name fiftyone-local
+} else {
+    Write-Host "No packages were built, so the examples use the published ones"
 }
-dotnet nuget add source "$pwd/package" --name fiftyone-local
 
-$versions = Get-FamilyVersions -RepoName $RepoName
+$versions = Get-PackageVersions -RepoName $RepoName
 $properties = Get-VersionProperties -Versions $versions
 Push-Location $RepoName
 try {

@@ -62,6 +62,9 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
             private const string _tac1 = "35925406";
             private const string _tac2 = "86386802";
 
+            private const string NoHardwareProperties =
+                "The resource key includes no 'hardware' properties.";
+
             public void Run(IServiceProvider serviceProvider, TextWriter output)
             {
                 output.WriteLine("This example shows the details of devices " +
@@ -84,6 +87,14 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                 using (var pipeline = new FiftyOnePipelineBuilder(loggerFactory, serviceProvider)
                     .BuildFromConfiguration(pipelineOptions))
                 {
+                    // A resource key without the 'hardware' properties leaves
+                    // the engine with none, so there is nothing to look up.
+                    if (pipeline.GetElement<HardwareProfileCloudEngine>()
+                            .Properties.Count == 0)
+                    {
+                        throw new PipelineException(NoHardwareProperties);
+                    }
+
                     // Pass a TAC into the pipeline and list the matching devices.
                     AnalyseTac(_tac1, pipeline, output);
                     AnalyseTac(_tac2, pipeline, output);
@@ -145,7 +156,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                     // If we don't have a resource key then log an error.
                     if (string.IsNullOrWhiteSpace(resourceKey))
                     {
-                        serviceProvider.GetRequiredService<ILogger<Program>>().LogError(
+                        serviceProvider.GetRequiredService<ILogger<Program>>().LogWarning(
                             $"No resource key specified on the command line or in " +
                             $"the environment variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. " +
                             $"The 51Degrees cloud service is accessed using a 'ResourceKey'. " +
@@ -155,7 +166,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                             $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required to get a paid subscription with " +
                             $"more properties. Once subscribed, a resource key with the " +
                             $"properties required by this example " +
-                            $"can be created at https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required. You " +
+                            $"can be created at https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required. You " +
                             $"can now populate the environment variable mentioned at the start " +
                             $"of this message with the resource key or pass it as the first " +
                             $"argument on the command line.");
@@ -199,8 +210,8 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                 options.SetResourceKey(resourceKey);
             }
 
-            // A resource key without the 'hardware' properties makes the
-            // pipeline refuse at start-up. That is a subscription that does
+            // A resource key without the 'hardware' properties stops the
+            // example before it looks anything up. That is a subscription that does
             // not cover this example rather than a fault, so it is reported
             // plainly and the process still exits non-zero, because the
             // example did not do its work.
@@ -215,7 +226,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                     Console.Out,
                     "the 'hardware' properties a TAC lookup returns, which " +
                     "need a paid subscription",
-                    "https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required");
+                    "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required");
                 Environment.Exit(1);
             }
             catch (PropertyMissingException exception)
@@ -225,9 +236,19 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                     Console.Out,
                     "every 'hardware' property this example displays, " +
                     "which needs a paid subscription",
-                    "https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required");
+                    "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-tac-console-program.cs&utm_term=resource-key-required");
                 Environment.Exit(1);
             }
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-tac-console-program.cs";
     }
 }

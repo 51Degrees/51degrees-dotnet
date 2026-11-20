@@ -39,17 +39,20 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         /// True if lazy loading is enabled for the relevant engine(s).
         /// False if not.
         /// </summary>
-        protected bool LazyLoading { get; set; } = false;
+        protected bool LazyLoading { get; set; } =
+            Constants.LAZY_LOADING_DEFAULT_ENABLED;
         /// <summary>
         /// True if a results cache should be added to the relevant engine(s).
         /// False if not.
         /// </summary>
-        protected bool ResultsCache { get; set; } = false;
+        protected bool ResultsCache { get; set; } =
+            Constants.RESULTS_CACHE_DEFAULT_ENABLED;
 
         /// <summary>
         /// The timeout to be used by the lazy loading feature.
         /// </summary>
-        protected TimeSpan LazyLoadingTimeout { get; set; } = TimeSpan.FromSeconds(5);
+        protected TimeSpan LazyLoadingTimeout { get; set; } =
+            TimeSpan.FromSeconds(Constants.LAZY_LOADING_DEFAULT_TIMEOUT_SECONDS);
         /// <summary>
         /// The cancellation token to be used by the lazy loading feature.
         /// </summary>
@@ -57,7 +60,8 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         /// <summary>
         /// The cache size to use for the results cache
         /// </summary>
-        protected int ResultsCacheSize { get; set; } = 1000;
+        protected int ResultsCacheSize { get; set; } =
+            Constants.RESULTS_CACHE_DEFAULT_SIZE;
 
         /// <summary>
         /// Constructor
@@ -86,8 +90,8 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         /// Enable lazy loading of results.
         /// </summary>
         /// <param name="timeoutMilliseconds">
-        /// The timeout to use when attempting to access lazy-loaded values.
-        /// Default is 5 seconds.
+        /// The timeout in milliseconds to use when attempting to access
+        /// lazy-loaded values. Default is 5 seconds.
         /// </param>
         /// <returns>
         /// This builder instance.
@@ -95,7 +99,7 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         public TBuilder UseLazyLoading(int timeoutMilliseconds)
         {
             LazyLoading = true;
-            LazyLoadingTimeout = TimeSpan.FromSeconds(timeoutMilliseconds);
+            LazyLoadingTimeout = TimeSpan.FromMilliseconds(timeoutMilliseconds);
             return this as TBuilder;
         }
 

@@ -148,13 +148,21 @@ namespace FiftyOne.GeoLocation.Cloud
             
             // Extract data from JSON to the aspectData instance.
             var dictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
-            var propertyValues = JsonConvert.DeserializeObject<Dictionary<string, object>>(dictionary[ElementDataKey].ToString(),
+            // A response with no section for this engine leaves its data
+            // without values.
+            if (dictionary.TryGetValue(ElementDataKey, out var section) == false ||
+                section == null)
+            {
+                return;
+            }
+            var propertyValues = JsonConvert.DeserializeObject<Dictionary<string, object>>(section.ToString(),
                 new JsonSerializerSettings()
                 {
                     Converters = JSON_CONVERTERS,
                 });
 
-            var location = CreateAPVDictionary(propertyValues, Properties.ToList());
+            var location = CreateAPVDictionary(
+                propertyValues, PropertiesForResponse.ToList());
             aspectData.PopulateFrom(location);
         }
 

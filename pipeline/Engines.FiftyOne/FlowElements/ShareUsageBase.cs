@@ -34,6 +34,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -49,14 +50,17 @@ using System.Xml;
 namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
 {
     /// <summary>
-    /// Abstract base class for ShareUsage elements. 
+    /// Abstract base class for ShareUsage elements. A Pipeline holds one as
+    /// its last Flow Element, outside any parallel group, and a builder
+    /// refuses it anywhere else.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/usage-sharing-element.md">Specification</see>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", 
         "CA1054:Uri parameters should not be strings", 
         Justification = "We do not wish to make this breaking change at this time.")]
     public abstract class ShareUsageBase : 
-        FlowElementBase<IElementData, IElementPropertyMetaData>
+        FlowElementBase<IElementData, IElementPropertyMetaData>,
+        IUsageSharingElement
     {
         /// <summary>
         /// The HttpClient to use when sending the data.
@@ -173,7 +177,20 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// </summary>
         protected int TakeTimeout { get; }
 
-        private Random _rng = new Random();
+        /// <summary>
+        /// A generator for each thread, because Random is not safe for
+        /// several threads and a lock would sit on every request.
+        /// </summary>
+        [ThreadStatic]
+        private static Random _threadRandom;
+
+        /// <summary>
+        /// This thread's generator, seeded from a new GUID so that threads
+        /// started at the same moment do not draw the same numbers.
+        /// </summary>
+        private static Random ThreadRandom =>
+            _threadRandom ??
+            (_threadRandom = new Random(Guid.NewGuid().GetHashCode()));
 
         /// <summary>
         /// The tracker to use to determine if a <see cref="FlowData"/>
@@ -203,6 +220,34 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         // Used to store the part of the xml message that will not change.
         private string _staticXml = null;
         private object _staticXmlLock = new object();
+
+        /// <summary>
+        /// How long after the invariant values were last written to a
+        /// record they are written again.
+        /// </summary>
+        private static readonly TimeSpan InvariantValuesInterval =
+            TimeSpan.FromHours(1);
+
+        /// <summary>
+        /// The identifier created when the element is built, written to
+        /// every record as ProcessId so that a record that leaves out the
+        /// invariant values is tied to them. It is never stored, so a
+        /// process that starts again, or another element, has a new one.
+        /// </summary>
+        private readonly string _processId = Guid.NewGuid().ToString("D");
+
+        /// <summary>
+        /// When, on <see cref="ClockNow"/>, the invariant values were last
+        /// written to a record, or null before they have been.
+        /// </summary>
+        private TimeSpan? _invariantValuesWrittenAt = null;
+
+        /// <summary>
+        /// True when the invariant values were last written with an empty
+        /// ServerIP, because the address of this machine was not yet known.
+        /// </summary>
+        private bool _invariantValuesWrittenWithoutServerIP = false;
+        private readonly object _invariantValuesLock = new object();
 
 
         private List<string> _flowElements = null;
@@ -241,6 +286,161 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                     }
                 }
                 return _flowElements;
+            }
+        }
+
+        /// <summary>
+        /// The version of the package the assembly was built as, which
+        /// the message names so that the release in use can be told from
+        /// it. The informational version holds it, followed by a plus sign
+        /// and the source revision when the build knew one. The file
+        /// version is the same for every release, so it is used only when
+        /// the assembly has no informational version.
+        /// </summary>
+        private static string PackageVersion(Assembly assembly)
+        {
+            var version = assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion;
+            if (string.IsNullOrEmpty(version))
+            {
+                return assembly
+                    .GetCustomAttribute<AssemblyFileVersionAttribute>()
+                    ?.Version ?? string.Empty;
+            }
+            var revision = version.IndexOf('+');
+            return revision < 0 ? version : version.Substring(0, revision);
+        }
+
+        /// <summary>
+        /// The key of the assembly metadata in which the build records the
+        /// id of the NuGet package an assembly ships in.
+        /// </summary>
+        private const string PACKAGE_ID_KEY = "FiftyOne.PackageId";
+
+        /// <summary>
+        /// What the build records for an assembly that ships in no package.
+        /// </summary>
+        private const string NOT_A_PACKAGE = "none";
+
+        /// <summary>
+        /// How the name of every 51Degrees assembly starts.
+        /// </summary>
+        private const string FIFTYONE_ASSEMBLY_PREFIX = "FiftyOne.";
+
+        private List<KeyValuePair<string, string>> _packages = null;
+
+        /// <summary>
+        /// The 51Degrees packages in use, in order of package id, each with
+        /// the version in use. They are the package that holds the
+        /// Pipeline, the package that holds each flow element, and every
+        /// 51Degrees package those depend on.
+        /// </summary>
+        private List<KeyValuePair<string, string>> Packages
+        {
+            get
+            {
+                if (_packages == null)
+                {
+                    var assemblies = new List<Assembly>()
+                    {
+                        typeof(IPipeline).Assembly
+                    };
+                    if (Pipelines.Count == 1)
+                    {
+                        assemblies.AddRange(Pipelines.Single().FlowElements
+                            .Select(e => e.GetType().Assembly));
+                    }
+                    _packages = FindPackages(assemblies);
+                }
+                return _packages;
+            }
+        }
+
+        /// <summary>
+        /// The packages the assemblies ship in, and the packages of the
+        /// 51Degrees assemblies they reference, and of the ones those
+        /// reference, each once.
+        /// </summary>
+        private static List<KeyValuePair<string, string>> FindPackages(
+            IEnumerable<Assembly> assemblies)
+        {
+            var packages = new SortedDictionary<string, string>(
+                StringComparer.OrdinalIgnoreCase);
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var pending = new Queue<Assembly>(assemblies);
+            while (pending.Count > 0)
+            {
+                var assembly = pending.Dequeue();
+                if (assembly.IsDynamic ||
+                    seen.Add(assembly.GetName().Name) == false)
+                {
+                    continue;
+                }
+                var id = PackageId(assembly);
+                if (id != null && packages.ContainsKey(id) == false)
+                {
+                    packages.Add(id, PackageVersion(assembly));
+                }
+                foreach (var reference in assembly.GetReferencedAssemblies())
+                {
+                    if (reference.Name.StartsWith(
+                            FIFTYONE_ASSEMBLY_PREFIX, StringComparison.Ordinal) &&
+                        seen.Contains(reference.Name) == false)
+                    {
+                        var loaded = Load(reference);
+                        if (loaded != null)
+                        {
+                            pending.Enqueue(loaded);
+                        }
+                    }
+                }
+            }
+            return packages.ToList();
+        }
+
+        /// <summary>
+        /// The id of the package the assembly ships in, as the build
+        /// recorded it, or null when it ships in none. An assembly built
+        /// before the build recorded it ships in the package named after
+        /// it, when it is a 51Degrees one.
+        /// </summary>
+        private static string PackageId(Assembly assembly)
+        {
+            var recorded = assembly
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
+                .FirstOrDefault(a => a.Key == PACKAGE_ID_KEY)?.Value;
+            if (recorded != null)
+            {
+                return recorded.Length == 0 || recorded == NOT_A_PACKAGE ?
+                    null : recorded;
+            }
+            var name = assembly.GetName().Name;
+            return name.StartsWith(
+                FIFTYONE_ASSEMBLY_PREFIX, StringComparison.Ordinal) ?
+                name : null;
+        }
+
+        /// <summary>
+        /// The referenced assembly, or null when it cannot be loaded.
+        /// </summary>
+        private static Assembly Load(AssemblyName name)
+        {
+            try
+            {
+                return Assembly.Load(name);
+            }
+            catch (FileNotFoundException)
+            {
+                return null;
+            }
+            catch (FileLoadException)
+            {
+                return null;
+            }
+            catch (BadImageFormatException)
+            {
+                return null;
             }
         }
 
@@ -301,7 +501,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// the evidence and the values of the web request that a web
         /// integration adds as
         /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>.
-        /// See the <see href="https://github.com/51Degrees/specifications/blob/5a250650766c025c42aa9d7943bd6781f4447646/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/d79bbe3b2aef86273570742f6b660f29bfe72816/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
         /// </summary>
         public override IEvidenceKeyFilter EvidenceKeyFilter
         {
@@ -311,15 +511,34 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// <summary>
         /// Decides which of the evidence found is shared.
         /// </summary>
-        private IEvidenceKeyFilter _sharedEvidenceFilter;
+        private EvidenceKeyFilterShareUsage _sharedEvidenceFilter;
+
+        /// <summary>
+        /// Decides which of the evidence found makes a request new to the
+        /// default tracker.
+        /// </summary>
+        private EvidenceKeyFilterShareUsage _trackerEvidenceFilter;
 
         private List<KeyValuePair<string, string>> _ignoreDataEvidenceFilter;
 
         private string _hostAddress;
+        private bool _hostAddressWaited;
         private IList<IElementPropertyMetaData> _properties;
 
         /// <summary>
-        /// Get the IP address of the machine that this code is running on.
+        /// Looks up the address of this machine once for the process. The
+        /// first element built starts it.
+        /// </summary>
+        private static readonly HostAddressLookup SharedHostAddress =
+            new HostAddressLookup(LookUpHostAddress);
+
+        /// <summary>
+        /// Get the IP address of the machine that this code is running on,
+        /// or an empty string while the lookup has not finished or if it
+        /// failed. The first read waits for the lookup for at most
+        /// <see cref="HostAddressWaitMilliseconds"/>, so a slow name lookup
+        /// cannot use up the time that disposal has for sending, and later
+        /// reads do not wait. Only a finished lookup's answer is kept.
         /// </summary>
         protected string HostAddress
         {
@@ -327,19 +546,55 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             {
                 if (_hostAddress == null)
                 {
-                    IPAddress[] addresses = Dns.GetHostAddresses(Dns.GetHostName());
-
-                    var address = addresses.FirstOrDefault(a => !IsLocalHost(a) &&
-                        a.AddressFamily == AddressFamily.InterNetwork);
-                    if (address == null)
+                    var wait = _hostAddressWaited ?
+                        0 :
+                        HostAddressWaitMilliseconds;
+                    _hostAddressWaited = true;
+                    if (HostAddressSource.TryGet(wait, out var address))
                     {
-                        address = addresses.FirstOrDefault(a => !IsLocalHost(a));
+                        _hostAddress = address;
                     }
-
-                    _hostAddress = address == null ? "" : address.ToString();
                 }
-                return _hostAddress;
+                return _hostAddress ?? string.Empty;
             }
+        }
+
+        /// <summary>
+        /// Where the address of this machine comes from.
+        /// </summary>
+        internal virtual HostAddressLookup HostAddressSource =>
+            SharedHostAddress;
+
+        /// <summary>
+        /// The time elapsed on a monotonic clock, so that a change to the
+        /// system clock cannot shorten or lengthen an interval the element
+        /// measures.
+        /// </summary>
+        internal virtual TimeSpan ClockNow => ShareUsageBackOff.Now;
+
+        /// <summary>
+        /// The longest in milliseconds that a send waits for the address of
+        /// this machine.
+        /// </summary>
+        internal virtual int HostAddressWaitMilliseconds =>
+            Constants.SHARE_USAGE_HOST_ADDRESS_WAIT_MILLISECONDS;
+
+        /// <summary>
+        /// Looks up the address of this machine by its name, preferring an
+        /// IPv4 address, and leaving out the loopback addresses.
+        /// </summary>
+        private static string LookUpHostAddress()
+        {
+            IPAddress[] addresses = Dns.GetHostAddresses(Dns.GetHostName());
+
+            var address = addresses.FirstOrDefault(a => !IsLocalHost(a) &&
+                a.AddressFamily == AddressFamily.InterNetwork);
+            if (address == null)
+            {
+                address = addresses.FirstOrDefault(a => !IsLocalHost(a));
+            }
+
+            return address == null ? "" : address.ToString();
         }
 
         /// <summary>
@@ -419,9 +674,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// not send to 51Degrees.
         /// </param>
         /// <param name="includedQueryStringParameters">
-        /// A list of the names of query string parameters that share 
-        /// usage should send to 51Degrees.
-        /// If this value is null, all query string parameters are shared.
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
         /// </param>
         /// <param name="ignoreDataEvidenceFilter"></param>
         /// <param name="aspSessionCookieName">
@@ -506,9 +761,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// not send to 51Degrees.
         /// </param>
         /// <param name="includedQueryStringParameters">
-        /// A list of the names of query string parameters that share 
-        /// usage should send to 51Degrees.
-        /// If this value is null, all query string parameters are shared.
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
         /// </param>
         /// <param name="ignoreDataEvidenceFilter"></param>
         /// <param name="aspSessionCookieName">
@@ -598,9 +853,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// not send to 51Degrees.
         /// </param>
         /// <param name="includedQueryStringParameters">
-        /// A list of the names of query string parameters that share 
-        /// usage should send to 51Degrees.
-        /// If this value is null, all query string parameters are shared.
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
         /// </param>
         /// <param name="ignoreDataEvidenceFilter"></param>
         /// <param name="aspSessionCookieName">
@@ -710,9 +965,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         /// not send to 51Degrees.
         /// </param>
         /// <param name="includedQueryStringParameters">
-        /// A list of the names of query string parameters that share
-        /// usage should send to 51Degrees.
-        /// If this value is null, all query string parameters are shared.
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
         /// </param>
         /// <param name="ignoreDataEvidenceFilter"></param>
         /// <param name="aspSessionCookieName">
@@ -805,44 +1060,43 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             _interval = TimeSpan.FromMinutes(repeatEvidenceIntervalMinutes);
             ShareUsageUri = new Uri(shareUsageUrl);
 
-            // Some data is going to stay the same on all requests so we can 
-            // gather that now.
+            // Some data is going to stay the same on all requests so we can
+            // gather that now. The address of this machine is looked up in
+            // the background, so that building the element does not wait.
+            SharedHostAddress.Start();
             _languageVersion = Environment.Version.ToString();
             _osVersion = Environment.OSVersion.VersionString;
 
             _enginesVersion = GetType().Assembly
                 .GetCustomAttribute<AssemblyFileVersionAttribute>().Version;
-            _coreVersion = typeof(IPipeline).Assembly
-                .GetCustomAttribute<AssemblyFileVersionAttribute>().Version;
-
-            IEvidenceKeyFilter trackerEvidenceFiler = null;
+            _coreVersion = PackageVersion(typeof(IPipeline).Assembly);
 
             if (shareAllEvidence == false)
             {
                 // Create evidence filters for the configured evidence
-                // sharing settings.
-                if (includedQueryStringParameters != null)
-                {
-                    includedQueryStringParameters.Add(Constants.EVIDENCE_SESSIONID_SUFFIX);
-                    includedQueryStringParameters.Add(Constants.EVIDENCE_SEQUENCE_SUFIX);
-                }
-
+                // sharing settings. The included query string parameters
+                // have no effect, as the filters share a parameter only
+                // when its name starts 51D_ or the Pipeline uses it.
                 _sharedEvidenceFilter = new EvidenceKeyFilterShareUsage(
                     blockedHttpHeaders, includedQueryStringParameters, false,
                     aspSessionCookieName);
 
-                 trackerEvidenceFiler = new EvidenceKeyFilterShareUsageTracker(
-                     blockedHttpHeaders, 
-                     includedQueryStringParameters, 
-                     trackSession, 
+                 _trackerEvidenceFilter = new EvidenceKeyFilterShareUsageTracker(
+                     blockedHttpHeaders,
+                     includedQueryStringParameters,
+                     trackSession,
                      aspSessionCookieName);
             }
             else
             {
-                // Create evidence filters what will allow all 
-                // evidence to be shared
+                // Create evidence filters what will allow all evidence to
+                // be shared. No cookie but the 51D_ ones is shared, so the
+                // tracker is told the session cookie, as it is when only
+                // some evidence is shared.
                 _sharedEvidenceFilter = new EvidenceKeyFilterShareUsage();
-                trackerEvidenceFiler = new EvidenceKeyFilterShareUsageTracker();
+                _trackerEvidenceFilter = new EvidenceKeyFilterShareUsageTracker(
+                    trackSession,
+                    aspSessionCookieName);
             }
 
             _ignoreDataEvidenceFilter = ignoreDataEvidenceFilter;
@@ -857,7 +1111,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                     Size = 1000
                 },
                 _interval,
-               trackerEvidenceFiler);
+               _trackerEvidenceFilter);
             }
 
             _properties = new List<IElementPropertyMetaData>();
@@ -874,6 +1128,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 throw new PipelineException(Messages.ExceptionShareUsageSinglePipeline);
             }
             base.AddPipeline(pipeline);
+            // The Pipeline's Flow Elements decide which parameters are
+            // shared and which make a request new to the tracker.
+            _sharedEvidenceFilter.UsePipeline(pipeline);
+            _trackerEvidenceFilter.UsePipeline(pipeline);
         }
 
         /// <summary>
@@ -1015,7 +1273,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 return;
             }
 
-            if (_rng.NextDouble() > _sharePercentage)
+            if (ThreadRandom.NextDouble() > _sharePercentage)
             {
                 return;
             }
@@ -1098,15 +1356,21 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 else if (entry.Key.Equals(Constants.EVIDENCE_SESSIONID,
                     StringComparison.OrdinalIgnoreCase))
                 {
-                    // The SessionID is dealt with separately.
-                    data.SessionId = entry.Value.ToString();
+                    // The SessionID has its own field, filled only when
+                    // shared, being when the Sequence Element uses it.
+                    if (_sharedEvidenceFilter.Include(entry.Key))
+                    {
+                        data.SessionId = entry.Value.ToString();
+                    }
                 }
                 else if (entry.Key.Equals(Constants.EVIDENCE_SEQUENCE,
                     StringComparison.OrdinalIgnoreCase))
                 {
-                    // The Sequence is dealt with separately.
+                    // The Sequence has its own field, filled only when
+                    // shared, being when the Sequence Element uses it.
                     var sequence = 0;
-                    if (int.TryParse(entry.Value.ToString(), out sequence))
+                    if (_sharedEvidenceFilter.Include(entry.Key) &&
+                        int.TryParse(entry.Value.ToString(), out sequence))
                     {
                         data.Sequence = sequence;
                     }
@@ -1328,6 +1592,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
             // characters such as control characters.
             var flagBadSchema = false;
 
+            // The identifier of this element, the same in every record
+            writer.WriteElementString("ProcessId", _processId);
             // The SessionID used to track a series of requests
             writer.WriteElementString("SessionId", data.SessionId);
             // The sequence number of the request in a series of requests.
@@ -1339,7 +1605,14 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                 CultureInfo.InvariantCulture));
             // The client IP of the request
             writer.WriteElementString("ClientIP", data.ClientIP);
-            writer.WriteRaw(GetStaticXml());
+            // The values that do not change while the element lives, in the
+            // first record, once an hour, and once the address of this
+            // machine is known when they were written without it
+            var invariantValues = InvariantValuesToWrite();
+            if (invariantValues != null)
+            {
+                writer.WriteRaw(invariantValues);
+            }
 
             // Write all other evidence data that has been included.
             foreach (var category in data.EvidenceData)
@@ -1379,13 +1652,56 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         }
 
         /// <summary>
-        /// Get the part of the xml message that will be the same for every usage 
+        /// The invariant values for the record being written, or null when
+        /// it is to leave them out. They are written to the first record
+        /// the element writes, to the first it writes once an hour or more
+        /// has passed since it last wrote them, and, when they were last
+        /// written without the address of this machine, to the first it
+        /// writes once the address is known. The hour runs from when they
+        /// were written, whether or not the record arrives.
+        /// </summary>
+        private string InvariantValuesToWrite()
+        {
+            lock (_invariantValuesLock)
+            {
+                var now = ClockNow;
+                var hourUp = _invariantValuesWrittenAt.HasValue == false ||
+                    now - _invariantValuesWrittenAt.Value >=
+                        InvariantValuesInterval;
+                if (hourUp == false &&
+                    _invariantValuesWrittenWithoutServerIP == false)
+                {
+                    return null;
+                }
+                // Read once, so the record carries the address that decided
+                // whether it is written.
+                var serverIP = HostAddress;
+                if (hourUp == false && serverIP.Length == 0)
+                {
+                    return null;
+                }
+                _invariantValuesWrittenAt = now;
+                _invariantValuesWrittenWithoutServerIP = serverIP.Length == 0;
+                return GetStaticXml(serverIP);
+            }
+        }
+
+        /// <summary>
+        /// Get the part of the xml message that will be the same for every usage
         /// sharing event on this machine.
         /// This is written once to a string in memory and then re-used for
-        /// future messages.
+        /// future messages. While the address of this machine is not known
+        /// it is written again each time it is used, so that ServerIP
+        /// carries the address once it is known. It holds the invariant
+        /// values, which only the records that
+        /// <see cref="InvariantValuesToWrite"/> chooses carry.
         /// </summary>
+        /// <param name="serverIP">
+        /// The address of this machine, or an empty string while it is not
+        /// known.
+        /// </param>
         /// <returns></returns>
-        private string GetStaticXml()
+        private string GetStaticXml(string serverIP)
         {
             if (_staticXml == null)
             {
@@ -1406,16 +1722,28 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
                             writer.WriteElementString("Version", _coreVersion);
                             // Write Pipeline information
                             WritePipelineInfo(writer);
+                            // The 51Degrees packages in use, with versions
+                            foreach (var package in Packages)
+                            {
+                                writer.WriteStartElement("Package");
+                                writer.WriteAttributeString("Name", package.Key);
+                                writer.WriteString(package.Value);
+                                writer.WriteEndElement();
+                            }
                             // The software language
                             writer.WriteElementString("Language", "dotnet");
                             // The software language version
                             writer.WriteElementString("LanguageVersion", _languageVersion);
                             // The IP of this server
-                            writer.WriteElementString("ServerIP", HostAddress);
+                            writer.WriteElementString("ServerIP", serverIP);
                             // The OS name and version
                             writer.WriteElementString("Platform", _osVersion);
                         }
 
+                        if (serverIP.Length == 0)
+                        {
+                            return result.ToString();
+                        }
                         _staticXml = result.ToString();
                     }
 

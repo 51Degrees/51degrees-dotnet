@@ -56,6 +56,10 @@ using System.Web.UI;
 /// var deviceData = flowData.Get<IDeviceData>();
 /// ```
 /// 
+/// A Flow Data cannot be used by two threads at once. Read the values that
+/// work on another thread or task needs from the Flow Data on the
+/// request's thread, and hand it those values, not the Flow Data.
+/// 
 /// The 'IPipeline' instance that is being used can also be accessed through the static 
 /// `WebPipeline` class:
 /// 

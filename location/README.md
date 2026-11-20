@@ -14,7 +14,7 @@ is supported through the 51Degrees cloud service.
 
 Visual Studio 2019 or later is recommended. Although Visual Studio Code can be used for working with most of the projects.
 
-The Pipeline engines are written in C# and target .NET Standard 2.0.3.
+The Pipeline engines are written in C# and target .NET Standard 2.0 and .NET 10. The examples target .NET 8, and the tests run under .NET 8 and .NET 10.
 
 The [tested versions](https://51degrees.com/documentation/_product_summaries__tested_versions.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.geolocation&utm_term=dependencies) page shows 
 the .NET versions that we currently test against. The software may run fine against other versions, 
@@ -43,6 +43,16 @@ Examples can be found in the `GeoLocation/Examples/` folder. See below for a lis
 |-------|-----------|
 |GettingStarted|This example uses the 51Degrees cloud to determine the country from a longitude and latitude.|
 |CombiningServices|This example uses geo-location alongside device detection to determine the country and device.|
+
+## Flow Data and threads
+
+A Flow Data cannot be used by two threads at once. The web examples handle
+each request one step at a time, and read the Flow Data there. An application
+that hands work from a request to another thread or task reads the values that
+work needs from the Flow Data on the request's thread, into its own variables,
+and passes those values, not the Flow Data. The Flow Data is disposed of when
+the request ends, so work that outlives the request must not keep it either.
+The [pipeline README](../pipeline/README.md#flow-data-and-threads) shows such a hand-off.
 
 ## Tests
 

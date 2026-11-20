@@ -5,7 +5,18 @@ param (
     [string]$Arch = "x64",
     [string]$BuildMethod = "dotnet",
     [string]$Version,
-    [string]$TestResourceKey
+    [string]$TestResourceKey,
+    # How deeply a pull request is tested, as select-options.ps1 chose.
+    # standard runs only the IP Intelligence on-premise example tests that
+    # need no Enterprise data file. Empty, for the branch itself or a
+    # release, runs them all.
+    [string]$Depth,
+    # False, from select-options.ps1, unless the pull request changes the web
+    # integration or the web examples.
+    [bool]$WebExamples = $true,
+    # False, from select-options.ps1, on every entry of a pull request but
+    # one, so the browser contract runs once.
+    [bool]$SeleniumContract = $true
 )
 $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
@@ -21,9 +32,8 @@ $PSNativeCommandUseErrorActionPreference = $true
 $Filter = "^FiftyOne\.(?!DeviceDetection\.Example\.Tests\.Web\.dll$).*Examples?\.Tests.*\.dll$"
 # A run can be narrowed to some assemblies by setting _51DEGREES_TEST_FILTER,
 # which the probe workflow does.
-$TestFilter = & "$PSScriptRoot/test-filter.ps1"
-if ($TestFilter) {
-    $Filter = $TestFilter
+if ($env:_51DEGREES_TEST_FILTER) {
+    $Filter = $env:_51DEGREES_TEST_FILTER
 }
 # A test is treated as hung after 20 minutes, the limit the separate examples
 # repository allowed, because the IP Intelligence examples load the 6 GB
@@ -31,13 +41,38 @@ if ($TestFilter) {
 # Every example test project is SDK-style, so dotnet test runs them on every
 # platform. The host is picked from the assembly's platform, which the
 # on-premise example test projects set, so an x86 build loads its x86 library.
-# They run in parallel lanes, which ci/run-test-lanes.ps1 describes.
+# They run in parallel lanes, which ci/run-test-lanes.ps1 describes, less
+# those a pull request leaves out. At standard depth the IP Intelligence
+# on-premise example tests run only the WithoutSettings category, which runs
+# each example as a fresh clone does, on the free data files, and the Unit
+# category, which needs no data file. The others load the Enterprise data
+# file.
+$Narrow = $Depth -eq 'standard' ?
+    '^FiftyOne\.IpIntelligence\.Example\.Tests\.OnPremise\.dll$' : ''
+$Exclude = @(
+    if (-not $WebExamples) { '^FiftyOne\.DeviceDetection\.Example\.Tests\.Web\.' }
+) -join '|'
+# The first start of Chrome on a runner takes many times longer than the
+# starts after it, so it is made here, before the browser tests, where it
+# counts against no test's limit. Linux on Arm64 has no Chrome driver, and
+# the browser tests do not run there.
+if (-not ($IsLinux -and $Arch -eq 'arm64')) {
+    try {
+        & "$PSScriptRoot/start-chrome-once.ps1"
+    } catch {
+        Write-Host "::warning title=Chrome not started::$_"
+    }
+}
+
 & "$PSScriptRoot/run-test-lanes.ps1" `
     -RepoName $RepoName `
     -Name $Name `
     -Configuration $Configuration `
     -BlameHangTimeout "20m" `
     -Filter $Filter `
+    -Exclude $Exclude `
+    -Narrow $Narrow `
+    -NarrowFilter "TestCategory=WithoutSettings|TestCategory=Unit" `
     -OutputFolder "integration"
 if ($LASTEXITCODE -ne 0) {
     throw "The example tests failed."
@@ -46,6 +81,10 @@ if ($LASTEXITCODE -ne 0) {
 # The shared Selenium contract tests, run against the device detection web
 # examples. Lite data has neither the DeviceType property nor the JavaScript
 # properties the contract needs, so on-premise runs only with the TAC file.
+if (-not $SeleniumContract) {
+    Write-Host "Another entry runs the Selenium contract for this pull request."
+    return
+}
 if ($IsLinux -and $Arch -eq 'arm64') {
     Write-Host "::warning title=Selenium skipped::No selenium-manager build for linux-arm64. The contract runs on x64 and macOS."
     return

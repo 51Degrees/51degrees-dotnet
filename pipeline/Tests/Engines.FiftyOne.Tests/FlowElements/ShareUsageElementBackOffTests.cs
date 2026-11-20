@@ -254,6 +254,44 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
+        /// A pause, and a pause lengthened, are logged as warnings giving
+        /// the delay, and sending again is logged as information.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_BackOff_PausesAndResumeLogged()
+        {
+            _element = Build(1, 0.5, 1.0);
+
+            Process();
+            WaitFor(() => _handler.Count == 1 && _element.IsRunning == false,
+                "The first send was not made.");
+            Process();
+            WaitFor(() => _handler.Count == 2 && _element.IsRunning == false,
+                "The send after the first pause was not made.");
+            _handler.Status = HttpStatusCode.OK;
+            Process();
+            WaitFor(() => Logged(l => l.InfoEntries).Any(
+                    i => i.StartsWith("Usage sharing resumed")),
+                "Sending again was not logged as information.");
+
+            var warnings = Logged(l => l.WarningEntries).ToList();
+            Assert.IsTrue(
+                warnings.Any(w => w.StartsWith("Usage sharing paused for 0.5 seconds")),
+                "The pause was not logged with its delay. Warnings: " +
+                string.Join(" | ", warnings));
+            Assert.IsTrue(
+                warnings.Any(w => w.StartsWith("Usage sharing paused for 1 seconds")),
+                "The lengthened pause was not logged with its delay. " +
+                "Warnings: " + string.Join(" | ", warnings));
+        }
+
+        private IEnumerable<string> Logged(
+            Func<TestLogger, IEnumerable<string>> entries)
+        {
+            return _loggerFactory.Loggers.SelectMany(entries).ToList();
+        }
+
+        /// <summary>
         /// Each failed send after a pause multiplies the delay, and the
         /// delay stops growing at the maximum.
         /// </summary>
@@ -398,6 +436,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// Opens the queue, so a test can fill it with more than one
         /// message without a send starting. A message holds at most 4
         /// entries, and one failed send pauses sending for 60 seconds.
+        /// Disposal has no time bound, so what it sends does not depend on
+        /// how fast the machine is.
         /// </summary>
         private class QueueOpenElement : ShareUsageElement
         {
@@ -416,6 +456,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                       recoveryMultiplier: 2)
             {
             }
+
+            internal override int DisposeTimeoutMilliseconds =>
+                Timeout.Infinite;
 
             public void Enqueue(string clientIp) =>
                 EvidenceCollection.Add(

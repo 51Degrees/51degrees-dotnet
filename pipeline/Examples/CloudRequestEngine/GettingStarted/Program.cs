@@ -37,6 +37,21 @@ namespace GettingStarted
 
         static void Main(string[] args)
         {
+            var resourceKey = GetResourceKey();
+            if (resourceKey == null)
+            {
+                // There is no resource key, so the message says where to
+                // create one and the example ends.
+                Console.WriteLine(
+                    "No resource key is set in the environment variable " +
+                    "'_51DEGREES_RESOURCE_KEY'. The 51Degrees cloud service " +
+                    "is accessed with a resource key, and a free one with " +
+                    "the properties this example uses can be created at " +
+                    "https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloudrequestengine-gettingstarted-program.cs&utm_term=resource-key-required " +
+                    "and set in that variable.");
+                return;
+            }
+
             var ct = new CancellationToken();
 
             var cfg = new LazyLoadingConfiguration(10000, ct);
@@ -52,10 +67,10 @@ namespace GettingStarted
                 // works unchanged against either.
                 .SetEndPoint(GetCloudEndpoint())
                 // A resource key with the properties needed by the examples
-                // can be created at https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloudrequestengine-gettingstarted-program.cs&utm_term=main.
+                // can be created at https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloudrequestengine-gettingstarted-program.cs&utm_term=main.
                 // It is read from the _51DEGREES_RESOURCE_KEY environment
                 // variable.
-                .SetResourceKey(GetResourceKey())
+                .SetResourceKey(resourceKey)
                 .SetLazyLoading(cfg)
                 .Build();
 
@@ -69,12 +84,63 @@ namespace GettingStarted
                 Console.WriteLine(result);
             }
 
+            WriteFindOutMore();
+
             // Only wait for a key where there is a keyboard to press one
             // on, so the example also runs to completion from a script.
             if (Console.IsInputRedirected == false)
             {
                 Console.ReadKey();
             }
+        }
+
+        /// <summary>
+        /// Print where to find out more, so that anyone this example is
+        /// shown to can follow up from the output itself.
+        /// </summary>
+        private static void WriteFindOutMore()
+        {
+            Console.WriteLine("==========================================");
+            Console.WriteLine("Find out more");
+            Console.WriteLine(
+                "  Resource keys, which say what the cloud service returns:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation/_services__cloud__resource_keys.html" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloudrequestengine-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine("  The 51Degrees documentation:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloudrequestengine-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine("  Plans and prices:");
+            Console.WriteLine(
+                "    https://51degrees.com/pricing" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloudrequestengine-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  Talk to 51Degrees about using the cloud service:");
+            Console.WriteLine(
+                "    https://51degrees.com/contact-us" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloudrequestengine-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  This repository, where the cloud request engine lives:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline");
+            Console.WriteLine(
+                "  The device detection engine, which reads the cloud " +
+                "service's answer into properties:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/device-detection");
         }
 
         /// <summary>
@@ -88,8 +154,8 @@ namespace GettingStarted
         /// </summary>
         private static string GetCloudEndpoint()
         {
-            var endpoint = FromEnvironment(
-                "_51DEGREES_CLOUD_ENDPOINT", "FOD_CLOUD_API_URL");
+            var endpoint = Environment.GetEnvironmentVariable(
+                "_51DEGREES_CLOUD_ENDPOINT");
             if (string.IsNullOrWhiteSpace(endpoint))
             {
                 endpoint = "https://cloud.51degrees.com/api/v4/";
@@ -99,42 +165,16 @@ namespace GettingStarted
 
         /// <summary>
         /// Get the resource key to use for this example, from the
-        /// _51DEGREES_RESOURCE_KEY environment variable. If it is not set
-        /// then the hard-coded key below is used.
+        /// _51DEGREES_RESOURCE_KEY environment variable.
         /// </summary>
+        /// <returns>
+        /// The key, or null when it is not set.
+        /// </returns>
         private static string GetResourceKey()
         {
             var resourceKey =
-                FromEnvironment("_51DEGREES_RESOURCE_KEY", "RESOURCE_KEY");
-            if (string.IsNullOrEmpty(resourceKey))
-            {
-                resourceKey = "AQS5HKcyHJbECm6E10g";
-            }
-            return resourceKey;
-        }
-
-        /// <summary>
-        /// Get an environment variable. When it is not set its old name is
-        /// read, and a value read from the old name is reported on the
-        /// error stream as deprecated.
-        /// </summary>
-        private static string FromEnvironment(string name, string oldName)
-        {
-            var value = Environment.GetEnvironmentVariable(name);
-            if (string.IsNullOrWhiteSpace(value) == false)
-            {
-                return value;
-            }
-            var oldValue = Environment.GetEnvironmentVariable(oldName);
-            if (string.IsNullOrWhiteSpace(oldValue))
-            {
-                return value;
-            }
-            Console.Error.WriteLine(
-                $"The environment variable {oldName} is deprecated and " +
-                $"{name} replaces it. Set {name} to the same value " +
-                "instead.");
-            return oldValue;
+                Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
+            return string.IsNullOrWhiteSpace(resourceKey) ? null : resourceKey;
         }
     }
 }

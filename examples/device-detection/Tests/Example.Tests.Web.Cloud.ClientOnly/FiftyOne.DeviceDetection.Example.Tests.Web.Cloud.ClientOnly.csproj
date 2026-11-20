@@ -8,6 +8,15 @@
     <Configurations>Debug;Release</Configurations>
 
     <Platforms>AnyCPU;x64;x86;ARM64</Platforms>
+
+    <!--
+      The tests serve no static web assets of their own, as in the other web
+      example test projects. With them on, a Debug build with the .NET 11 SDK
+      fails, because each web project it references adds a hot reload module
+      this project finds no endpoint for
+      (https://github.com/dotnet/sdk/issues/56656).
+    -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
   </PropertyGroup>
 
   <ItemGroup>

@@ -56,7 +56,8 @@ namespace FiftyOne.IpIntelligence
         private ushort? _concurrency = null;
         private PerformanceProfiles _performanceProfile =
             PerformanceProfiles.Balanced;
-        private bool _shareUsageEnabled = true;
+        private bool _shareUsageEnabled =
+            Pipeline.Engines.FiftyOne.Constants.SHARE_USAGE_DEFAULT_ENABLED;
         private List<string> _requestedProperties = new List<string>();
 
         private string _dataUpdateUrlString = null;
@@ -468,14 +469,15 @@ namespace FiftyOne.IpIntelligence
 
                 if (ipiEngine != null)
                 {
-                    // Add the share usage element to the list if enabled
+                    // Add the IP intelligence engine to the list
+                    FlowElements.Add(ipiEngine);
+                    // Add the share usage element if enabled. It goes last,
+                    // so it shares the evidence every other element adds.
                     if (_shareUsageEnabled)
                     {
                         shareUsageElement = new ShareUsageBuilder(LoggerFactory, _httpClient).Build();
                         FlowElements.Add(shareUsageElement);
                     }
-                    // Add the IP intelligence engine to the list
-                    FlowElements.Add(ipiEngine);
                 }
                 else
                 {

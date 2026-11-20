@@ -199,7 +199,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Keys
                 {
                     return slot;
                 }
-                _cache.Put(key, new DirectorySlot(() => Load(url, type)));
+                _cache.Put(key, new DirectorySlot(() => Start(url, type)));
                 slot = _cache[key];
                 if (slot != null)
                 {
@@ -210,12 +210,23 @@ namespace FiftyOne.Pipeline.AgentSignature.Keys
             // cache at all, so this request gets a slot of its own. The
             // fetch it starts serves only this request, which is the cost
             // of answering rather than a fault.
-            return new DirectorySlot(() => Load(url, type));
+            return new DirectorySlot(() => Start(url, type));
+        }
+
+        /// <summary>
+        /// Counts the fetch and queues it on the thread pool. A slot calls
+        /// this inside Lazy's lock, and starting a network request can
+        /// block, so the request starts on another thread and no other
+        /// request for the agent waits on the lock for it.
+        /// </summary>
+        private Task<DirectoryEntry> Start(string url, string type)
+        {
+            Interlocked.Increment(ref _fetchCount);
+            return Task.Run(() => Load(url, type));
         }
 
         private async Task<DirectoryEntry> Load(string url, string type)
         {
-            Interlocked.Increment(ref _fetchCount);
             try
             {
                 using (var source = new CancellationTokenSource(_fetchTimeout))

@@ -40,6 +40,9 @@ namespace Cloud_Client_Hints_Not_Integrated.Controllers
 
         public IActionResult Index()
         {
+            // A Flow Data cannot be used by two threads at once. Work handed to
+            // another thread or task gets the values it needs, read here on the
+            // request's thread, not the Flow Data.
             var flowData = _pipeline.CreateFlowData();
             // Register the flow data instance for disposal
             // when the response is sent.

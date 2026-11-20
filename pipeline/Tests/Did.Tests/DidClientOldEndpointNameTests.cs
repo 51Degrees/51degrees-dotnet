@@ -23,18 +23,15 @@
 using FiftyOne.Did.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 
 namespace FiftyOne.Did.Tests
 {
     /// <summary>
-    /// Tests that <see cref="DidClient"/> reads the cloud endpoint from the
-    /// new environment variable first and from the old one when the new one
-    /// is unset or empty, and that the old constant keeps its name and
-    /// value. Nothing here touches the network.
+    /// Tests that <see cref="DidClient"/> reads the cloud endpoint from its
+    /// environment variable, and that the old constant keeps its name and
+    /// value although the variable it names is no longer read. Nothing here
+    /// touches the network.
     /// </summary>
     [TestClass]
     public class DidClientOldEndpointNameTests
@@ -44,75 +41,22 @@ namespace FiftyOne.Did.Tests
         private const string OldName = "FOD_CLOUD_API_URL";
         private const string NewConstant = "CloudEndpointEnvironmentVariable";
         private const string NewUrl = "https://new.example/api/v4/";
-        private const string OldUrl = "https://old.example/api/v4/";
-
-        /// <summary>
-        /// Keeps every warning written to <see cref="Trace"/>.
-        /// </summary>
-        private sealed class RecordingListener : TraceListener
-        {
-            public List<string> Warnings { get; } = new List<string>();
-
-            public override void TraceEvent(
-                TraceEventCache? eventCache,
-                string source,
-                TraceEventType eventType,
-                int id,
-                string? message)
-            {
-                if (eventType == TraceEventType.Warning && message != null)
-                {
-                    lock (Warnings)
-                    {
-                        Warnings.Add(message);
-                    }
-                }
-            }
-
-            public override void Write(string? message) { }
-
-            public override void WriteLine(string? message) { }
-        }
-
-        /// <summary>
-        /// Listens for the whole class. The deprecation is written once in
-        /// the process, so one listener has to see every client that reads
-        /// the old name for the count to mean anything.
-        /// </summary>
-        private static readonly RecordingListener Listener =
-            new RecordingListener();
 
         private FakeHttpHandler _handler = null!;
         private string? _previousNew;
-        private string? _previousOld;
-
-        [ClassInitialize]
-        public static void ClassInitialize(TestContext context)
-        {
-            Trace.Listeners.Add(Listener);
-        }
-
-        [ClassCleanup]
-        public static void ClassCleanup()
-        {
-            Trace.Listeners.Remove(Listener);
-        }
 
         [TestInitialize]
         public void TestInitialize()
         {
             _handler = new FakeHttpHandler();
             _previousNew = Environment.GetEnvironmentVariable(NewName);
-            _previousOld = Environment.GetEnvironmentVariable(OldName);
             Environment.SetEnvironmentVariable(NewName, null);
-            Environment.SetEnvironmentVariable(OldName, null);
         }
 
         [TestCleanup]
         public void TestCleanup()
         {
             Environment.SetEnvironmentVariable(NewName, _previousNew);
-            Environment.SetEnvironmentVariable(OldName, _previousOld);
         }
 
         /// <summary>
@@ -122,45 +66,21 @@ namespace FiftyOne.Did.Tests
         private DidClient NewClient() =>
             new DidClient(Resource, null, null, _handler.Client);
 
-        /// <summary>
-        /// The warnings that say the old name is deprecated.
-        /// </summary>
-        private static List<string> Deprecations()
-        {
-            lock (Listener.Warnings)
-            {
-                return Listener.Warnings
-                    .Where(warning => warning.Contains(OldName))
-                    .ToList();
-            }
-        }
-
         [TestMethod]
-        public void OnlyOldNameSet_GivesThatEndpoint()
+        public void NewNameSet_GivesThatEndpoint()
         {
-            Environment.SetEnvironmentVariable(OldName, OldUrl);
+            Environment.SetEnvironmentVariable(NewName, NewUrl);
 
             using var client = NewClient();
 
-            Assert.AreEqual(OldUrl, client.Endpoint);
+            Assert.AreEqual(NewUrl, client.Endpoint);
         }
 
 #if NET9_0_OR_GREATER
         // .NET 8 deletes a variable that is set to an empty value, so an
         // empty value can only be set up from .NET 9.
         [TestMethod]
-        public void NewNameEmpty_OldNameSet_GivesTheOldEndpoint()
-        {
-            Environment.SetEnvironmentVariable(NewName, string.Empty);
-            Environment.SetEnvironmentVariable(OldName, OldUrl);
-
-            using var client = NewClient();
-
-            Assert.AreEqual(OldUrl, client.Endpoint);
-        }
-
-        [TestMethod]
-        public void NewNameEmpty_OldNameNotSet_GivesTheDefault()
+        public void NewNameEmpty_GivesTheDefault()
         {
             Environment.SetEnvironmentVariable(NewName, string.Empty);
 
@@ -171,18 +91,7 @@ namespace FiftyOne.Did.Tests
 #endif
 
         [TestMethod]
-        public void BothNamesSet_NewNameWins()
-        {
-            Environment.SetEnvironmentVariable(NewName, NewUrl);
-            Environment.SetEnvironmentVariable(OldName, OldUrl);
-
-            using var client = NewClient();
-
-            Assert.AreEqual(NewUrl, client.Endpoint);
-        }
-
-        [TestMethod]
-        public void NeitherNameSet_GivesTheDefault()
+        public void NewNameNotSet_GivesTheDefault()
         {
             using var client = NewClient();
 
@@ -190,34 +99,15 @@ namespace FiftyOne.Did.Tests
         }
 
         [TestMethod]
-        public void EndpointGiven_WinsOverBothNames()
+        public void EndpointGiven_WinsOverTheNewName()
         {
             Environment.SetEnvironmentVariable(NewName, NewUrl);
-            Environment.SetEnvironmentVariable(OldName, OldUrl);
 
             using var client = new DidClient(
                 Resource, null, "https://given.example/api/v4/",
                 _handler.Client);
 
             Assert.AreEqual("https://given.example/api/v4/", client.Endpoint);
-        }
-
-        [TestMethod]
-        public void OldNameRead_DeprecationIsWrittenOnce()
-        {
-            Environment.SetEnvironmentVariable(OldName, OldUrl);
-
-            using var first = NewClient();
-            using var second = NewClient();
-
-            var deprecations = Deprecations();
-            Assert.AreEqual(
-                1,
-                deprecations.Count,
-                "The deprecation is written once however many clients read " +
-                "the old name:\n" + string.Join("\n", deprecations));
-            StringAssert.Contains(deprecations[0], "deprecated");
-            StringAssert.Contains(deprecations[0], NewName);
         }
 
         [TestMethod]

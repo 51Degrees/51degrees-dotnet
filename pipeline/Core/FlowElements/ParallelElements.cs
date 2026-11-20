@@ -126,12 +126,17 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// </param>
         protected override void ProcessInternal(IFlowData data)
         {
-            List<Task> allTasks = new List<Task>();
-            foreach (var element in _flowElements)
+            // While the group runs, members add their own errors and
+            // warnings under the Flow Data's lock.
+            var flowData = data as FlowData;
+            flowData?.GroupStarted();
+            var allTasks = new List<Task>(_flowElements.Count);
+            try
             {
-                allTasks.Add(
+                foreach (var element in _flowElements)
+                {
                     // Run each element on a new thread.
-                    Task.Run(() =>
+                    allTasks.Add(Task.Run(() =>
                     {
                         var activity = ElementTracing.StartElement(element);
                         try
@@ -150,37 +155,52 @@ namespace FiftyOne.Pipeline.Core.FlowElements
                         {
                             activity?.Dispose();
                         }
-                    }).ContinueWith(t =>
-                    {
-                        // If any exceptions occurred then add them to the 
-                        // flow data.
-                        if (t.Exception != null)
-                        {
-                            // As in Pipeline.Process, error level logging is
-                            // skipped when the pipeline suppresses process
-                            // exceptions. The error remains available through
-                            // IFlowData.Errors and is logged at debug level.
-                            // Pipeline is never null on a flow data created by
-                            // a pipeline, but stub implementations can leave it
-                            // unset, so treat that as 'do not suppress'.
-                            var suppress =
-                                data.Pipeline?.SuppressProcessExceptions ?? false;
-                            foreach (var innerException in t.Exception.InnerExceptions)
-                            {
-                                data.AddError(innerException, element, true, !suppress);
-                                if (suppress && Logger.IsEnabled(LogLevel.Debug))
-                                {
-                                    Logger.LogDebug(innerException,
-                                        "Suppressed error during processing of " +
-                                        $"'{element?.GetType().Name}'.");
-                                }
-                            }
-                        }
-                    }, TaskScheduler.Default));
+                    }));
+                }
+
+                // Wait until every member has stopped. The exceptions are
+                // read from each task below.
+                try
+                {
+                    Task.WaitAll(allTasks.ToArray());
+                }
+                catch (AggregateException)
+                {
+                }
+            }
+            finally
+            {
+                flowData?.GroupFinished();
             }
 
-            // Wait until all tasks have completed.
-            Task.WhenAll(allTasks).Wait();
+            // Add the exceptions the members threw, on this thread, in the
+            // order of the members. As in Pipeline.Process, error level
+            // logging is skipped when the pipeline suppresses process
+            // exceptions. The error remains available through
+            // IFlowData.Errors and is logged at debug level. Pipeline is
+            // never null on a flow data created by a pipeline, but stub
+            // implementations can leave it unset, so treat that as 'do not
+            // suppress'.
+            var suppress = data.Pipeline?.SuppressProcessExceptions ?? false;
+            for (var i = 0; i < allTasks.Count; i++)
+            {
+                var exception = allTasks[i].Exception;
+                if (exception == null)
+                {
+                    continue;
+                }
+                var element = _flowElements[i];
+                foreach (var innerException in exception.InnerExceptions)
+                {
+                    data.AddError(innerException, element, true, !suppress);
+                    if (suppress && Logger.IsEnabled(LogLevel.Debug))
+                    {
+                        Logger.LogDebug(innerException,
+                            "Suppressed error during processing of " +
+                            $"'{element?.GetType().Name}'.");
+                    }
+                }
+            }
         }
 
         protected override void ManagedResourcesCleanup()

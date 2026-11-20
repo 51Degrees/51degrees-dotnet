@@ -1,12 +1,12 @@
-# Called by common-ci's steps/release-plan.ps1 for each family with changed
+# Called by common-ci's steps/release-plan.ps1 for each package with changed
 # files, once its globs have left out documentation, tests and examples.
-# Returns the files whose changes release the family.
+# Returns the files whose changes release the package.
 #
 # A project file or nuspec does not count when the only changes to it are to
 # the package metadata listed below, such as its description or links, or to
 # the white space between elements. Any other change to it counts, a comment
 # included, as does every other file. A file that is new, deleted or not
-# valid XML counts, so that a doubt releases the family.
+# valid XML counts, so that a doubt releases the package.
 param (
     [Parameter(Mandatory)][string]$RepoPath,
     [Parameter(Mandatory)]$Package,
@@ -92,7 +92,7 @@ function Get-BuildXml([byte[]]$Content, [string[]]$Paths) {
     return $xml.OuterXml
 }
 
-# Whether every change to the file since the family's last tag is to its
+# Whether every change to the file since the package's last tag is to its
 # package metadata.
 function Test-MetadataOnly([string]$Path) {
     if ($Path -match '\.csproj$') {

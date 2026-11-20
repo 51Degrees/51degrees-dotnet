@@ -22,7 +22,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -32,11 +31,10 @@ namespace FiftyOne.Common.Tests;
 /// <summary>
 /// Every 51Degrees environment variable name in this repository starts with
 /// an underscore, because a POSIX shell cannot set a name that starts with a
-/// digit. A name a release read is still read when the new name is not set,
-/// in the files listed in <see cref="OldNameFiles"/>. The tests read every
-/// file git tracks, which leaves out build output and the submodules, and
-/// fail on any name that starts with the digit and on any old name that is
-/// read or set anywhere else.
+/// digit, and no old name is read. The tests read every file git tracks,
+/// which leaves out build output and the submodules, and fail on any name
+/// that starts with the digit and on any old name that is read or set,
+/// apart from the obsolete constants that still hold an old name.
 /// </summary>
 [TestClass]
 public class EnvironmentVariableNamesTests
@@ -46,64 +44,6 @@ public class EnvironmentVariableNamesTests
     /// this file does not match itself.
     /// </summary>
     private const string DigitInitial = "5" + "1DEGREES_";
-
-    /// <summary>
-    /// How long git is given to list the tracked files.
-    /// </summary>
-    private const int GitTimeoutSeconds = 120;
-
-    /// <summary>
-    /// The repository root, being the first folder at or above the test
-    /// assembly that holds a .git entry.
-    /// </summary>
-    private static string RepositoryRoot()
-    {
-        var folder = new DirectoryInfo(AppContext.BaseDirectory);
-        while (folder != null)
-        {
-            if (Directory.Exists(Path.Combine(folder.FullName, ".git")) ||
-                File.Exists(Path.Combine(folder.FullName, ".git")))
-            {
-                return folder.FullName;
-            }
-            folder = folder.Parent;
-        }
-        throw new InvalidOperationException(
-            $"No folder at or above '{AppContext.BaseDirectory}' holds .git.");
-    }
-
-    /// <summary>
-    /// The files git tracks, as paths relative to the repository root.
-    /// </summary>
-    private static List<string> TrackedFiles(string root)
-    {
-        var start = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = root,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        start.ArgumentList.Add("ls-files");
-        start.ArgumentList.Add("-z");
-        using var process = Process.Start(start)
-            ?? throw new InvalidOperationException("git did not start.");
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        Assert.IsTrue(
-            process.WaitForExit(GitTimeoutSeconds * 1000),
-            "git ls-files did not finish in time.");
-        Assert.AreEqual(0, process.ExitCode, $"git ls-files failed: {error}");
-        var paths = new List<string>();
-        foreach (var path in output.Split('\0'))
-        {
-            if (path.Length > 0)
-            {
-                paths.Add(path);
-            }
-        }
-        return paths;
-    }
 
     /// <summary>
     /// True when the character can be part of an environment variable name.
@@ -181,8 +121,8 @@ public class EnvironmentVariableNamesTests
 
     /// <summary>
     /// The only files that may hold <see cref="OldEndpointName"/>, being
-    /// the two packages that read it when the new name is unset or empty,
-    /// and the tests of that read.
+    /// the two packages that keep an obsolete constant holding it, and the
+    /// tests of those constants.
     /// </summary>
     private static readonly HashSet<string> OldEndpointNameFiles =
         new HashSet<string>(StringComparer.Ordinal)
@@ -203,56 +143,26 @@ public class EnvironmentVariableNamesTests
         match == "\"" + OldEndpointName;
 
     /// <summary>
-    /// The only files that may hold the other old names, being the code
-    /// that reads an old name when the new one is not set, and the tests of
-    /// that read.
+    /// The example files that keep obsolete constants holding the other old
+    /// names. The examples no longer read those names.
     /// </summary>
-    private static readonly HashSet<string> OldNameFiles =
+    private static readonly HashSet<string> ObsoleteConstantFiles =
         new HashSet<string>(StringComparer.Ordinal)
         {
-            "ci/test-filter.ps1",
-            "common/Test/TestFilterScriptTests.cs",
-            "device-detection/Tests/Cloud.Tests/LiveCloudKey.cs",
-            "device-detection/Tests/Cloud.Tests/" +
-                "LiveCloudKeyOldNamesTests.cs",
             "examples/device-detection/Cloud/pmp-web/Settings.cs",
             "examples/device-detection/ExampleBase/Constants.cs",
             "examples/device-detection/ExampleBase/ExampleUtils.cs",
-            "examples/device-detection/Tests/Example.Tests.Cloud/" +
-                "OldEnvironmentNamesTests.cs",
-            "examples/device-detection/Tests/Example.Tests.Web.Cloud/" +
-                "LiveCloudKey.cs",
-            "examples/device-detection/Tests/Example.Tests.Web.Cloud/" +
-                "LiveCloudKeyOldNamesTests.cs",
             "examples/ip-intelligence/Examples/Constants.cs",
             "examples/ip-intelligence/Examples/ExampleUtils.cs",
-            "examples/ip-intelligence/Tests/Example.Tests.Cloud/" +
-                "OldEnvironmentNamesTests.cs",
-            "ip-intelligence/Tests/CloudTests/LiveCloudKey.cs",
-            "ip-intelligence/Tests/CloudTests/LiveCloudKeyOldNamesTests.cs",
-            "location/Tests/Example.Tests/OldResourceKeyNameTests.cs",
-            "location/Tests/Example.Tests/TestAllExamples.cs",
-            "location/Tests/GeoLocation.Tests/Constants.cs",
-            "location/Tests/GeoLocation.Tests/OldResourceKeyNameTests.cs",
-            "pipeline/Examples/CloudRequestEngine/GettingStarted/Program.cs",
-            "pipeline/Examples/Did/CreatorContextWeb/Program.cs",
-            "pipeline/Tests/CloudRequestEngine.Examples.Tests/" +
-                "GettingStartedOldNamesTests.cs",
-            "pipeline/Tests/Did.Cloud.Tests/LiveCloudKey.cs",
-            "pipeline/Tests/Did.Cloud.Tests/LiveCloudKeyOldNamesTests.cs",
-            "pipeline/Tests/Did.Examples.Tests/EnvironmentSettingTests.cs",
-            "pipeline/Tests/Did.Tests/CloudDidClientTests.cs",
-            "pipeline/Tests/Did.Tests/LiveCloudKey.cs",
-            "pipeline/Tests/Did.Tests/LiveCloudKeyOldNamesTests.cs",
-            "pipeline/Tests/Did.Tests/OldLicenceKeyNameTests.cs",
         };
 
     /// <summary>
-    /// True when the file may hold the match, as one of the files that
-    /// read old names or as the cloud endpoint's old name where it is kept.
+    /// True when the file may hold the match, as one of the example files
+    /// that keep obsolete constants or as the cloud endpoint's old name
+    /// where it is kept.
     /// </summary>
     private static bool IsKeptOldName(string relative, string match) =>
-        OldNameFiles.Contains(relative) ||
+        ObsoleteConstantFiles.Contains(relative) ||
         IsKeptOldEndpointName(relative, match);
 
     /// <summary>
@@ -278,9 +188,9 @@ public class EnvironmentVariableNamesTests
         string skip,
         Func<string, string, bool> allow = null)
     {
-        var root = RepositoryRoot();
+        var root = Repository.Root();
         var found = new List<string>();
-        foreach (var relative in TrackedFiles(root))
+        foreach (var relative in Repository.TrackedFiles(root))
         {
             if (relative == skip)
             {
@@ -351,7 +261,7 @@ public class EnvironmentVariableNamesTests
     }
 
     [TestMethod]
-    public void TheOldEndpointNameIsKeptOnlyInTheFilesThatReadIt()
+    public void TheOldEndpointNameIsKeptOnlyInTheFilesThatHoldItsConstant()
     {
         var quoted = "\"" + OldEndpointName;
         foreach (var file in OldEndpointNameFiles)
@@ -368,19 +278,6 @@ public class EnvironmentVariableNamesTests
                 "CloudRequestEngineBuilder.cs",
             quoted));
         Assert.IsFalse(IsKeptOldEndpointName(ThisFile, quoted));
-    }
-
-    [TestMethod]
-    public void OtherOldNamesAreKeptOnlyInTheFilesThatReadThem()
-    {
-        foreach (var file in OldNameFiles)
-        {
-            Assert.IsTrue(IsKeptOldName(file, "\"SUPER_RESOURCE_KEY"), file);
-        }
-        Assert.IsFalse(IsKeptOldName(
-            "pipeline/CloudRequestEngine/Constants.cs",
-            "\"SUPER_RESOURCE_KEY"));
-        Assert.IsFalse(IsKeptOldName(ThisFile, "\"SUPER_RESOURCE_KEY"));
     }
 
     [TestMethod]
@@ -404,9 +301,8 @@ public class EnvironmentVariableNamesTests
         Assert.AreEqual(
             0,
             found.Count,
-            $"{found.Count} old names are still read, set or held to fall " +
-            "back to outside the files that keep them, so each must use " +
-            "its _51DEGREES_ name alone:\n" +
+            $"{found.Count} old names are still read, set or held, so " +
+            "each must use its _51DEGREES_ name alone:\n" +
             string.Join("\n", found));
     }
 }

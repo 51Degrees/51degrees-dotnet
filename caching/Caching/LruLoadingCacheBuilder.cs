@@ -31,7 +31,8 @@ namespace FiftyOne.Caching
     public class LruLoadingCacheBuilder : ILruLoadingCacheBuilder
     {
         private TimeSpan? _itemLifetime = null;
-        private int _concurrency = Environment.ProcessorCount;
+        private int _concurrency =
+            Constants.LRU_CACHE_DEFAULT_CONCURRENCY;
 
         /// <summary>
         /// Build and return an <see cref="LruLoadingCache{K, V}"/> 

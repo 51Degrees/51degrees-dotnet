@@ -104,12 +104,12 @@ public class ShareUsageWebRequestTests
                 .Build())
             .AddFlowElement(new EmptyEngineBuilder(_loggerFactory)
                 .Build())
+            .AddFlowElement(new JsonBuilderElementBuilder(_loggerFactory)
+                .Build())
             .AddFlowElement(new ShareUsageBuilder(_loggerFactory, _http)
                 .SetSharePercentage(1)
                 .SetMinimumEntriesPerMessage(1)
                 .SetBlockedHttpHeader("x-blocked")
-                .Build())
-            .AddFlowElement(new JsonBuilderElementBuilder(_loggerFactory)
                 .Build())
             .Build();
         _evidence = new WebRequestEvidenceService(

@@ -66,6 +66,15 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne
         internal const int SHARE_USAGE_DISPOSE_TIMEOUT_MILLISECONDS = 5000;
 
         /// <summary>
+        /// The longest in milliseconds that a usage sharing send waits for
+        /// the address of the machine. The lookup takes 0 to 54 ms on quick
+        /// machines and about 5,000 ms on one whose own name is slow to look
+        /// up, so any wait between the two gives the same result, and
+        /// 1,000 ms leaves 4 of the 5 seconds disposal has to the send.
+        /// </summary>
+        internal const int SHARE_USAGE_HOST_ADDRESS_WAIT_MILLISECONDS = 1000;
+
+        /// <summary>
         /// The default repeat evidence interval in minutes.
         /// This is the maximum time to consider a set of evidence as a 
         /// match for another (and thus, prevent it from being shared)
@@ -92,6 +101,20 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne
         internal const bool SHARE_USAGE_DEFAULT_SHARE_ALL_EVIDENCE = false;
 
         /// <summary>
+        /// The default of the share all query string parameters setting,
+        /// which is deprecated and has no effect.
+        /// </summary>
+        internal const bool SHARE_USAGE_DEFAULT_SHARE_ALL_QUERY_STRING_PARAMETERS = true;
+
+        /// <summary>
+        /// The default of the included query string parameters, as the
+        /// configuration documentation shows it. The setting is deprecated
+        /// and has no effect.
+        /// </summary>
+        internal const string SHARE_USAGE_DEFAULT_INCLUDED_QUERY_STRING_PARAMETERS =
+            "None, as it has no effect";
+
+        /// <summary>
         /// Share just one set of evidence from each user session or not?
         /// This defaults to false because there may be useful data in subsequent requests 
         /// (e.g. client-side properties or high entropy UACH values).
@@ -101,10 +124,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne
         internal const bool SHARE_USAGE_DEFAULT_TRACK_SESSION = false;
 
         /// <summary>
-        /// The default value for the flag on FiftyOnePipelineBuilder that controls whether 
-        /// usage sharing is enabled or disabled.
+        /// The default value for the flag on FiftyOnePipelineBuilder and the
+        /// on-premise pipeline builders that controls whether usage sharing
+        /// is enabled or disabled.
         /// </summary>
-        internal const bool SHARE_USAGE_DEFAULT_ENABLED = true;
+        public const bool SHARE_USAGE_DEFAULT_ENABLED = true;
 
         /// <summary>
         /// The default value for the flag on FiftyOnePipelineBuilder that

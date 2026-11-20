@@ -192,6 +192,13 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             internal override int DisposeTimeoutMilliseconds =>
                 _disposeTimeoutMilliseconds;
 
+            /// <summary>
+            /// The element's clock when the test sets it.
+            /// </summary>
+            public TimeSpan? Clock { get; set; }
+
+            internal override TimeSpan ClockNow => Clock ?? base.ClockNow;
+
             public void Enqueue(string clientIp) =>
                 EvidenceCollection.Add(new ShareUsageData() { ClientIP = clientIp });
 
@@ -200,6 +207,170 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             public Task SendAsync() => BuildAndSendXmlAsync();
 
             public void StartSending() => TrySendData();
+        }
+
+        /// <summary>
+        /// Takes the address of the machine from the lookup the test gives,
+        /// and waits for it for as long as the test chooses, or for the
+        /// product's wait when the test does not choose.
+        /// </summary>
+        private class LookupHostAddressElement : QueueOpenShareUsageElement
+        {
+            private readonly int? _waitMilliseconds;
+
+            public LookupHostAddressElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                ITracker tracker,
+                Func<string> lookUp,
+                int? waitMilliseconds = null)
+                : base(logger, httpClient, 2, 100, tracker)
+            {
+                Lookup = new HostAddressLookup(lookUp);
+                _waitMilliseconds = waitMilliseconds;
+            }
+
+            public HostAddressLookup Lookup { get; }
+
+            internal override HostAddressLookup HostAddressSource => Lookup;
+
+            internal override int HostAddressWaitMilliseconds =>
+                _waitMilliseconds ?? base.HostAddressWaitMilliseconds;
+        }
+
+        /// <summary>
+        /// Takes the address of the machine from a lookup that does not
+        /// finish until the test releases it, as on a machine whose own name
+        /// is slow to look up. Disposal keeps the product's bound.
+        /// </summary>
+        private class SlowHostAddressElement : LookupHostAddressElement
+        {
+            /// <summary>
+            /// The longest the lookup blocks if the test never releases it.
+            /// </summary>
+            internal static readonly TimeSpan LookupLimit =
+                TimeSpan.FromSeconds(30);
+
+            public SlowHostAddressElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                ITracker tracker,
+                ManualResetEventSlim release,
+                int? waitMilliseconds = null)
+                : base(logger, httpClient, tracker, () =>
+                {
+                    release.Wait(LookupLimit);
+                    return "192.0.2.1";
+                }, waitMilliseconds)
+            {
+            }
+        }
+
+        /// <summary>
+        /// A lookup of the machine's address that fails, by throwing or by
+        /// giving no address, gives an empty ServerIP and the entry is
+        /// still sent.
+        /// </summary>
+        [DataRow(true)]
+        [DataRow(false)]
+        [TestMethod]
+        public void ShareUsageElement_HostAddressLookupFails_ServerIPEmpty(
+            bool throws)
+        {
+            var element = new LookupHostAddressElement(
+                _logger, _httpClient, _tracker.Object,
+                () => throws ?
+                    throw new System.Net.Sockets.SocketException() :
+                    (string)null);
+            element.AddPipeline(_pipeline.Object);
+            element.Enqueue("10.3.0.2");
+
+            element.SendAsync().Wait();
+
+            Assert.HasCount(1, _xmlContent);
+            StringAssert.Contains(_xmlContent[0], "<ClientIP>10.3.0.2</ClientIP>");
+            StringAssert.Matches(_xmlContent[0],
+                new Regex("<ServerIP\\s*/>|<ServerIP></ServerIP>"),
+                "ServerIP was not empty when the lookup failed.");
+        }
+
+        /// <summary>
+        /// A message built before the lookup of the machine's address has
+        /// finished has an empty ServerIP, and a message built after it has
+        /// finished carries the address, so the empty value is not kept for
+        /// the life of the element. ServerIP is one of the invariant values,
+        /// which the specification at 07e1fced writes "again to the first
+        /// record the element writes once an hour or more has passed since
+        /// it last wrote them" and "MUST NOT" write "to any other record"
+        /// (usage-sharing-element.md lines 151 to 153), so the later
+        /// message is built an hour on, by the element's clock.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_HostAddressLookupFinishesLater_LaterMessageCarriesIt()
+        {
+            using (var release = new ManualResetEventSlim(false))
+            {
+                var element = new SlowHostAddressElement(
+                    _logger, _httpClient, _tracker.Object, release, 10);
+                element.Clock = TimeSpan.Zero;
+                element.AddPipeline(_pipeline.Object);
+                element.Enqueue("10.3.0.3");
+                element.SendAsync().Wait();
+                element.Clock = TimeSpan.FromHours(1);
+
+                release.Set();
+                Assert.IsTrue(
+                    element.Lookup.TryGet(
+                        (int)SlowHostAddressElement.LookupLimit.TotalMilliseconds,
+                        out _),
+                    "The lookup did not finish once it was released.");
+                element.Enqueue("10.3.0.4");
+                element.SendAsync().Wait();
+
+                Assert.HasCount(2, _xmlContent);
+                StringAssert.Matches(_xmlContent[0],
+                    new Regex("<ServerIP\\s*/>|<ServerIP></ServerIP>"),
+                    "ServerIP was not empty before the lookup finished.");
+                StringAssert.Contains(_xmlContent[1],
+                    "<ServerIP>192.0.2.1</ServerIP>",
+                    "The message built after the lookup finished did not " +
+                    "carry the address.");
+            }
+        }
+
+        /// <summary>
+        /// A lookup of the machine's address that has not finished holds up
+        /// no send. Disposal, with the product's bound, still sends the entry
+        /// queued, with an empty ServerIP.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_SlowHostAddressLookup_StillSends()
+        {
+            using (var release = new ManualResetEventSlim(false))
+            {
+                var element = new SlowHostAddressElement(
+                    _logger, _httpClient, _tracker.Object, release);
+                element.AddPipeline(_pipeline.Object);
+                element.Enqueue("10.3.0.1");
+
+                var timer = System.Diagnostics.Stopwatch.StartNew();
+                element.Dispose();
+                timer.Stop();
+                release.Set();
+
+                var sent = _xmlContent
+                    .SelectMany(xml => Regex.Matches(xml, "<ClientIP>([^<]+)</ClientIP>")
+                        .Cast<System.Text.RegularExpressions.Match>()
+                        .Select(m => m.Groups[1].Value))
+                    .ToList();
+                CollectionAssert.AreEqual(new[] { "10.3.0.1" }, sent,
+                    "The entry queued was not sent while the lookup of the " +
+                    "machine's address had not finished. Disposal took " +
+                    $"{timer.ElapsedMilliseconds} ms.");
+                StringAssert.Matches(_xmlContent[0],
+                    new Regex("<ServerIP\\s*/>|<ServerIP></ServerIP>"),
+                    "ServerIP was not empty while the lookup had not finished.");
+            }
         }
 
         /// <summary>
@@ -428,6 +599,38 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
+        /// The message names the version the Pipeline packages were built
+        /// as, so that the release a caller runs can be told from the
+        /// message. The build gives this test project that version.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_SingleEvent_VersionIsThePackageVersion()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            var data = MockFlowData.CreateFromEvidence(
+                new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" }
+                },
+                false);
+            var built = typeof(ShareUsageElementTests).Assembly
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
+                .Single(a => a.Key == "FiftyOnePipelineCoreVersion")
+                .Value;
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            WaitForSendDataTask();
+
+            // Assert
+            Assert.IsFalse(string.IsNullOrEmpty(built),
+                "The build gave the tests no Pipeline version.");
+            Assert.HasCount(1, _xmlContent);
+            Assert.Contains($"<Version>{built}</Version>", _xmlContent[0]);
+        }
+
+        /// <summary>
         /// Test that the ShareUsageElement behaves as expected when it is 
         /// configured to send data after two events and just one event is 
         /// logged.
@@ -598,12 +801,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// <summary>
         /// Test that any data collected is sent when the element is disposed
         /// of rather than being discarded.
+        /// Disposal is given no time bound, because the subject is that the
+        /// queued entry is sent and not how soon the runner gets round to it.
         /// </summary>
         [TestMethod]
         public void ShareUsageElement_SendOnCleanup()
         {
             // Arrange
-            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, 2, 4, _tracker.Object, Timeout.Infinite);
+            element.AddPipeline(_pipeline.Object);
 
             Dictionary<string, object> evidenceData = new Dictionary<string, object>()
             {
@@ -612,18 +819,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             var data = MockFlowData.CreateFromEvidence(evidenceData, false);
 
             // Act
-            _shareUsageElement.Process(data.Object);
+            element.Process(data.Object);
 
             // No data should be being sending yet.
-            Assert.IsNull(_shareUsageElement.SendDataTask);
+            Assert.IsNull(element.SendDataTask);
             _httpHandler.VerifySendCalled(0);
 
-            // Dispose of the element - this should trigger sending remaining data.
-            _shareUsageElement.Dispose();
-
-            // The dispose should have completed the send synchronously, but allow
-            // a small buffer for async operations on slower CI environments.
-            Thread.Sleep(200);
+            // Dispose of the element - this should trigger sending remaining
+            // data. Disposal waits for the send, so nothing here waits on a
+            // clock.
+            element.Dispose();
 
             // Assert
             // Check that one HTTP message was sent during cleanup.
@@ -789,6 +994,66 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             Assert.AreEqual(1, _logger.WarningEntries.Count());
             Assert.StartsWith("Failure sending usage data", _logger.WarningEntries.First());
             Console.WriteLine(_logger.WarningEntries.First());
+        }
+
+        /// <summary>
+        /// A refused message is logged with the status code and the content
+        /// of the response, to help find why it was refused.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_LogErrors_StatusCodeAndContent()
+        {
+            const string refusal = "The usage data was refused.";
+            _httpHandler.SetupResponse(request =>
+                new HttpResponseMessage(
+                    System.Net.HttpStatusCode.InternalServerError)
+                {
+                    Content = new StringContent(refusal),
+                });
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            var data = MockFlowData.CreateFromEvidence(
+                new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                },
+                false);
+
+            _shareUsageElement.Process(data.Object);
+            WaitForSendDataTask();
+
+            var warning = _logger.WarningEntries.Single(
+                w => w.StartsWith("Failure sending usage data"));
+            StringAssert.Contains(warning, "500");
+            StringAssert.Contains(warning, refusal);
+        }
+
+        /// <summary>
+        /// The message is one Devices element holding a Device element for
+        /// each request shared.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Message_DevicesHoldsADevicePerEntry()
+        {
+            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            foreach (var ip in new[] { "1.2.3.4", "5.6.7.8" })
+            {
+                var data = MockFlowData.CreateFromEvidence(
+                    new Dictionary<string, object>()
+                    {
+                        { Core.Constants.EVIDENCE_CLIENTIP_KEY, ip },
+                    },
+                    false);
+                _shareUsageElement.Process(data.Object);
+            }
+            WaitForSendDataTask();
+
+            Assert.HasCount(1, _xmlContent);
+            var root = System.Xml.Linq.XDocument.Parse(_xmlContent[0]).Root;
+            Assert.AreEqual("Devices", root.Name.LocalName);
+            CollectionAssert.AreEqual(
+                new[] { "Device", "Device" },
+                root.Elements().Select(e => e.Name.LocalName).ToArray());
         }
 
         /// <summary>
@@ -1149,6 +1414,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         {
             // Arrange
             CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            // The Pipeline holds the Sequence Element, so it uses the
+            // session id and sequence, and they are shared.
+            _pipeline.Setup(p => p.EvidenceKeyFilter)
+                .Returns(_sequenceElement.EvidenceKeyFilter);
 
             Dictionary<string, object> evidenceData = new Dictionary<string, object>()
             {
@@ -1193,6 +1462,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         {
             // Arrange
             CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            // The Pipeline holds the Sequence Element, so it uses the
+            // session id and sequence, and they are shared.
+            _pipeline.Setup(p => p.EvidenceKeyFilter)
+                .Returns(_sequenceElement.EvidenceKeyFilter);
 
             Dictionary<string, object> evidenceData = new Dictionary<string, object>()
             {
@@ -1230,7 +1503,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         }
 
         /// <summary>
-        /// Test that the share all function causes all evidence to be shared.
+        /// Test that the share all function causes all evidence to be
+        /// shared, apart from cookies whose names do not start 51D_.
         /// </summary>
         [TestMethod]
         public void ShareUsageElement_ShareAll()
@@ -1246,6 +1520,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 { Core.Constants.EVIDENCE_HTTPHEADER_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "notblocked", "abc" },
                 { Core.Constants.EVIDENCE_QUERY_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "somevalue", "123" },
                 { Core.Constants.EVIDENCE_COOKIE_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "mycookie", "zyx" },
+                { Core.Constants.EVIDENCE_COOKIE_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "51D_mycookie", "wvu" },
                 { "someprefix" + Core.Constants.EVIDENCE_SEPERATOR + "anothervalue", "987" },
             };
             var data = MockFlowData.CreateFromEvidence(evidenceData, false);
@@ -1267,15 +1542,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             }
             // Check that the expected values are populated.
             Assert.Contains("<header Name=\"notblocked\"><![CDATA[abc]]></header>", _xmlContent[0]);
-            Assert.Contains("<query Name=\"somevalue\"><![CDATA[123]]></query>", _xmlContent[0]);
-            Assert.Contains("<cookie Name=\"mycookie\"><![CDATA[zyx]]></cookie>", _xmlContent[0]);
+            Assert.DoesNotContain("<query Name=\"somevalue\">", _xmlContent[0]);
+            Assert.DoesNotContain("zyx", _xmlContent[0]);
+            Assert.Contains("<cookie Name=\"51D_mycookie\"><![CDATA[wvu]]></cookie>", _xmlContent[0]);
             Assert.Contains("<someprefix Name=\"anothervalue\"><![CDATA[987]]></someprefix>", _xmlContent[0]);
         }
 
         /// <summary>
-        /// Test that passing a null value for the 
-        /// 'included query string parameters' value will
-        /// result in all query. evidence being shared.
+        /// Test that a null value for the 'included query string
+        /// parameters', which has no effect, leaves a query parameter
+        /// that no Flow Element in the Pipeline uses unshared.
         /// </summary>
         /// <param name="prefix">
         /// The prefix for the evidence.
@@ -1287,10 +1563,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// True if the header values are expected to be present in the share usage content otherwise false.
         /// </param>
         [TestMethod]
-        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, true)]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, false)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, false, true)]
-        [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, true, true)]
-        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, true)]
+        [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, true, false)]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, false)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, true, true)]
         [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, false, false)]
         public void ShareUsageElement_NullQueryWhitelist(string prefix, bool shareAll, bool expected)
@@ -1340,9 +1616,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         /// True if the header values are expected to be present in the share usage content otherwise false.
         /// </param>
         [TestMethod]
-        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, true)]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, false)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, false, true)]
-        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, true)]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, false)]
         [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, true, true)]
         public void ShareUsageElement_MissingUserAgent(string prefix, bool shareAll, bool expected)
         {

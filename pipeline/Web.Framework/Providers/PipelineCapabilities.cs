@@ -36,6 +36,12 @@ namespace FiftyOne.Pipeline.Web.Framework.Providers
     /// Extends the default HttpBrowserCapabilities implementation to override
     /// and add values using the result of the 51Degrees Pipeline's processing.
     /// </summary>
+    /// <remarks>
+    /// A Flow Data cannot be used by two threads at once. Application code
+    /// reads the values it needs from the Flow Data on the request's thread,
+    /// and hands those values, not the Flow Data, to any other thread or task.
+    /// The Flow Data is disposed of when the request ends.
+    /// </remarks>
     public class PipelineCapabilities : HttpBrowserCapabilities
     {
         /// <summary>

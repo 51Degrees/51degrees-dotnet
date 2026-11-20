@@ -59,6 +59,9 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
             private const string _nativeModel1 = "SC-03L";
             private const string _nativeModel2 = "iPhone11,8";
 
+            private const string NoHardwareProperties =
+                "The resource key includes no 'hardware' properties.";
+
             public void Run(string resourceKey, ILoggerFactory loggerFactory, 
                 TextWriter output, string cloudEndPoint = "")
             {
@@ -101,6 +104,13 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                     .AddFlowElement(propertyKeyedEngine)
                     .Build())
                 {
+                    // A resource key without the 'hardware' properties leaves
+                    // the engine with none, so there is nothing to look up.
+                    if (propertyKeyedEngine.Properties.Count == 0)
+                    {
+                        throw new PipelineException(NoHardwareProperties);
+                    }
+
                     // Pass a native model into the pipeline and list the matching devices.
                     AnalyseNativeModel(_nativeModel1, pipeline, output);
                     // Repeat for an alternative native model name.
@@ -150,7 +160,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
 
             if (string.IsNullOrEmpty(resourceKey))
             {
-                logger.LogError($"No resource key specified on the command line or in the " +
+                logger.LogWarning($"No resource key specified on the command line or in the " +
                     $"environment variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. " +
                     $"The 51Degrees cloud service is accessed using a 'ResourceKey'. " +
                     $"For more information " +
@@ -159,14 +169,14 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                     $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required to get a paid subscription with more " +
                     $"properties. Once subscribed, a resource " +
                     $"key with the properties required by this example can be created at " +
-                    $"https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required. You can now populate the " +
+                    $"https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required. You can now populate the " +
                     $"environment variable mentioned at the start of this message with the " +
                     $"resource key or pass it as the first argument on the command line.");
             }
             else
             {
-                // A resource key without the 'hardware' properties makes
-                // the pipeline refuse at start-up. That is a subscription
+                // A resource key without the 'hardware' properties stops
+                // the example before it looks anything up. That is a subscription
                 // that does not cover this example rather than a fault, so
                 // it is reported plainly and the process still exits
                 // non-zero, because the example did not do its work.
@@ -182,7 +192,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                         Console.Out,
                         "the 'hardware' properties a native model lookup " +
                         "returns, which need a paid subscription",
-                        "https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
+                        "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
                     loggerFactory.Dispose();
                     Environment.Exit(1);
                 }
@@ -193,7 +203,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                         Console.Out,
                         "every 'hardware' property this example displays, " +
                         "which needs a paid subscription",
-                        "https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
+                        "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
                     loggerFactory.Dispose();
                     Environment.Exit(1);
                 }
@@ -201,6 +211,16 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
 
             // Dispose the logger to ensure any messages get flushed
             loggerFactory.Dispose();
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-nativemodel-console-program.cs";
     }
 }

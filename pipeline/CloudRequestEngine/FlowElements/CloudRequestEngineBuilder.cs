@@ -32,7 +32,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
-using System.Threading;
 
 namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 {
@@ -50,11 +49,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<CloudRequestData> _dataLogger;
-
-        // 1 once the deprecation of the old environment variable has been
-        // logged, so that a process logs it once.
-        private static int _oldEndpointNameLogged;
         private readonly HttpClient _httpClient;
+
+        // What GetDiscoveryResults gave after an earlier build, or null to
+        // ask the cloud service.
+        private string _discoveryResults;
 
         // Note - Defaults for these fields are set in the Build method.
         private string _dataEndpoint = "";
@@ -373,6 +372,27 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
+        /// Builds the engine from the discovery results that
+        /// <see cref="CloudRequestEngine.GetDiscoveryResults"/> gave after
+        /// an earlier build with the same keys and endpoints, so that
+        /// building asks the cloud service for nothing. Results made for
+        /// other keys or endpoints are refused when the engine is built.
+        /// </summary>
+        /// <param name="discoveryResults">
+        /// The results, as GetDiscoveryResults gave them, or null to ask the
+        /// cloud service.
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        public CloudRequestEngineBuilder SetDiscoveryResults(
+            string discoveryResults)
+        {
+            _discoveryResults = discoveryResults;
+            return this;
+        }
+
+        /// <summary>
         /// Build and return a new <see cref="CloudRequestEngine"/>
         /// instance using the current configuration.
         /// This calls <see cref="CloudRequestEngine.WarmUp"/> before
@@ -380,7 +400,9 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// of the discovery requests. See that method's documentation for
         /// the failure semantics: a definitive configuration error (4xx)
         /// throws, while a transient failure falls back to retrying on
-        /// first use.
+        /// first use. With discovery results set by
+        /// <see cref="SetDiscoveryResults"/>, the engine uses them and asks
+        /// the cloud service for nothing.
         /// </summary>
         /// <returns>
         /// A new <see cref="CloudRequestEngine"/>.
@@ -389,6 +411,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// Thrown if the cloud service definitively rejected a discovery
         /// request (4xx response), for example because the resource key
         /// is invalid.
+        /// </exception>
+        /// <exception cref="PipelineConfigurationException">
+        /// Thrown if the discovery results set are not what
+        /// <see cref="CloudRequestEngine.GetDiscoveryResults"/> gives, or
+        /// were made for other keys or endpoints.
         /// </exception>
         public CloudRequestEngine Build()
         {
@@ -421,7 +448,14 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             var engine = BuildEngine();
             try
             {
-                engine.WarmUp();
+                if (_discoveryResults == null)
+                {
+                    engine.WarmUp();
+                }
+                else
+                {
+                    engine.UseDiscoveryResults(_discoveryResults);
+                }
             }
             catch
             {
@@ -445,42 +479,15 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// The cloud service URL the environment gives, or null when no
-        /// variable holds one. <see cref="Constants.CLOUD_ENDPOINT_ENV_VAR"/>
-        /// is read first. The old variable is read only when that one is
-        /// unset or empty, and reading a value from it is logged as
-        /// deprecated once in the process.
+        /// The cloud service URL that
+        /// <see cref="Constants.CLOUD_ENDPOINT_ENV_VAR"/> holds, or null
+        /// when it is unset or empty.
         /// </summary>
-        private string EndpointFromEnvironment()
+        private static string EndpointFromEnvironment()
         {
             var endpoint = Environment.GetEnvironmentVariable(
                 Constants.CLOUD_ENDPOINT_ENV_VAR);
-            if (string.IsNullOrEmpty(endpoint) == false)
-            {
-                return endpoint;
-            }
-
-#pragma warning disable CS0618 // The obsolete name is the one read here.
-            const string oldName = Constants.FOD_CLOUD_API_URL;
-#pragma warning restore CS0618
-            var oldEndpoint = Environment.GetEnvironmentVariable(oldName);
-            if (string.IsNullOrEmpty(oldEndpoint))
-            {
-                return null;
-            }
-
-            if (Interlocked.Exchange(ref _oldEndpointNameLogged, 1) == 0)
-            {
-                _loggerFactory.CreateLogger<CloudRequestEngineBuilder>()
-                    .LogWarning(
-                        $"The environment variable {oldName} is " +
-                        $"deprecated and " +
-                        $"{Constants.CLOUD_ENDPOINT_ENV_VAR} replaces it. " +
-                        $"The cloud endpoint was read from {oldName}. Set " +
-                        $"{Constants.CLOUD_ENDPOINT_ENV_VAR} to the same " +
-                        $"value instead.");
-            }
-            return oldEndpoint;
+            return string.IsNullOrEmpty(endpoint) ? null : endpoint;
         }
 
         private static string TrimOrEmpty(string value)

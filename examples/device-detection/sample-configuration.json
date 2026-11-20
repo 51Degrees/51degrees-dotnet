@@ -9,43 +9,6 @@ Each property value is set to the default for that property.*/
         "BuildParameters": {}
       },
       {
-        "BuilderName": "ShareUsageBuilder",
-        "BuildParameters": {
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetIncludedQueryStringParameters(String)*/
-          "SetIncludedQueryStringParameters": "No sharing unless the query/form parameter starts with 51D_"
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetIncludedQueryStringParameter(String)*/,
-          "SetIncludedQueryStringParameter": "No sharing unless the query/form parameter starts with 51D_"
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetShareAllQueryStringParameters(Boolean)*/,
-          "SetShareAllQueryStringParameters": false
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetShareAllEvidence(Boolean)*/,
-          "SetShareAllEvidence": false
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetBlockedHttpHeaders(List`1)*/,
-          "SetBlockedHttpHeaders": "All HTTP Headers are shared except cookies that do not start with 51D_"
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetBlockedHttpHeader(String)*/,
-          "SetBlockedHttpHeader": "All HTTP Headers are shared except cookies that do not start with 51D_"
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetIgnoreFlowDataEvidenceFilter(String)*/,
-          "SetIgnoreFlowDataEvidenceFilter": "All values are shared"
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetSharePercentage(Double)*/,
-          "SetSharePercentage": 1
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetMinimumEntriesPerMessage(Int32)*/,
-          "SetMinimumEntriesPerMessage": 50
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetMaximumQueueSize(Int32)*/,
-          "SetMaximumQueueSize": 1000
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetAddTimeout(Int32)*/,
-          "SetAddTimeout": 5
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetTakeTimeout(Int32)*/,
-          "SetTakeTimeout": 100
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetShareUsageUrl(String)*/,
-          "SetShareUsageUrl": "https://devices-v4.51degrees.com/new.ashx"
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetAspSessionCookieName(String)*/,
-          "SetAspSessionCookieName": "asp.net_sessionid"
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetRepeatEvidenceIntervalMinutes(Int32)*/,
-          "SetRepeatEvidenceIntervalMinutes": 20
-          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetTrackSession(Boolean)*/,
-          "SetTrackSession": false
-        }
-      },
-      {
         "BuilderName": "AppleProfileEngineBuilder",
         "BuildParameters": {
           /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.FiftyOneOnPremiseAspectEngineBuilderBase`2.SetDataDownloadType(String)*/
@@ -240,6 +203,43 @@ Each property value is set to the default for that property.*/
       {
         "BuilderName": "SetHeadersElementBuilder",
         "BuildParameters": {}
+      },
+      {
+        "BuilderName": "ShareUsageBuilder",
+        "BuildParameters": {
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetIncludedQueryStringParameters(String)*/
+          "SetIncludedQueryStringParameters": "Only those starting 51D_, when share all query string parameters is off"
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetIncludedQueryStringParameter(String)*/,
+          "SetIncludedQueryStringParameter": "Only those starting 51D_, when share all query string parameters is off"
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetShareAllQueryStringParameters(Boolean)*/,
+          "SetShareAllQueryStringParameters": true
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetShareAllEvidence(Boolean)*/,
+          "SetShareAllEvidence": false
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetBlockedHttpHeaders(List`1)*/,
+          "SetBlockedHttpHeaders": "All HTTP Headers are shared except cookies that do not start with 51D_"
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetBlockedHttpHeader(String)*/,
+          "SetBlockedHttpHeader": "All HTTP Headers are shared except cookies that do not start with 51D_"
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetIgnoreFlowDataEvidenceFilter(String)*/,
+          "SetIgnoreFlowDataEvidenceFilter": "All values are shared"
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetSharePercentage(Double)*/,
+          "SetSharePercentage": 1
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetMinimumEntriesPerMessage(Int32)*/,
+          "SetMinimumEntriesPerMessage": 50
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetMaximumQueueSize(Int32)*/,
+          "SetMaximumQueueSize": 1000
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetAddTimeout(Int32)*/,
+          "SetAddTimeout": 5
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetTakeTimeout(Int32)*/,
+          "SetTakeTimeout": 100
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetShareUsageUrl(String)*/,
+          "SetShareUsageUrl": "https://devices-v4.51degrees.com/new.ashx"
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetAspSessionCookieName(String)*/,
+          "SetAspSessionCookieName": "asp.net_sessionid"
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetRepeatEvidenceIntervalMinutes(Int32)*/,
+          "SetRepeatEvidenceIntervalMinutes": 20
+          /*See FiftyOne.Pipeline.Engines.FiftyOne.FlowElements.ShareUsageBuilderBase`1.SetTrackSession(Boolean)*/,
+          "SetTrackSession": false
+        }
       }
     ],
     "BuildParameters": {

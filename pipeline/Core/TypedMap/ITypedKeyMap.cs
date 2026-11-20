@@ -83,8 +83,8 @@ namespace FiftyOne.Pipeline.Core.TypedMap
         /// <summary>
         /// Return the entire collection as a
         /// <see cref="IDictionary{TKey, TValue}"/> object.
-        /// Note that this is the actual internal dictionary instance so any 
-        /// changes to it will be reflected in the ITypedKeyMap object. 
+        /// This is a live view, so any changes to it are made to the
+        /// ITypedKeyMap object.
         /// </summary>
         /// <returns>
         /// The data as a <see cref="IDictionary{TKey, TValue}"/>.

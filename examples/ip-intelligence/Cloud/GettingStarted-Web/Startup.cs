@@ -71,6 +71,10 @@ using System.Threading.Tasks;
 /// var hardwareVendor = deviceData.HardwareVendor;
 /// ```
 /// 
+/// A Flow Data cannot be used by two threads at once. Read the values that
+/// work on another thread or task needs from the Flow Data on the
+/// request's thread, and hand it those values, not the Flow Data.
+/// 
 /// Results can also be accessed in client-side code by using the `fod` object. See the 
 /// [JavaScriptBuilderElementBuilder](https://51degrees.com/pipeline-dotnet/class_fifty_one_1_1_pipeline_1_1_java_script_builder_1_1_flow_element_1_1_java_script_builder_element_builder.html?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-gettingstarted-web-startup.cs&amp;utm_term=header)
 /// for details on available settings such as changing the `fod` name.

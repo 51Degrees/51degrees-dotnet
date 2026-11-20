@@ -22,6 +22,7 @@
 
 using FiftyOne.Common;
 using FiftyOne.Common.TestHelpers;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
@@ -54,6 +55,25 @@ namespace FiftyOne.IpIntelligence.TestHelpers
                         new FileInfo(inDataFolder) :
                         TestUtils.GetFilePath(filename, GetOnPremiseDirectory());
                 });
+        }
+
+        /// <summary>
+        /// Finds a data file that only a paid licence provides. The test is
+        /// skipped, with a message saying why, when the file is missing.
+        /// </summary>
+        public static FileInfo GetPaidFilePath(string filename)
+        {
+            try
+            {
+                return GetFilePath(filename);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // No data folder, so the file is missing.
+            }
+            Assert.Inconclusive($"This test needs the paid data file " +
+                $"'{filename}', which was not found. Test not run.");
+            return null;
         }
 
         /// <summary>

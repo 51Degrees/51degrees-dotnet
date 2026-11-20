@@ -79,7 +79,7 @@ namespace FiftyOne.Pipeline.Engines {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to An error occurred when applying a data update to engine &apos;{0}&apos;.
+        ///   Looks up a localized string similar to An error occurred when applying a data update to engine &apos;{0}&apos;..
         /// </summary>
         internal static string ExceptionAutoUpdateRefreshEngine {
             get {

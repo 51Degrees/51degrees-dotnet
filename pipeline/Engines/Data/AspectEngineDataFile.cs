@@ -168,6 +168,13 @@ namespace FiftyOne.Pipeline.Engines.Data
         // is held takes the service's other locks or UpdateSyncLock, which
         // the file watcher holds for the whole engine refresh.
         internal object TimerLock { get; } = new object();
+        private bool _timerClosed;
+        // True once the file is disposed, after which no timer may be
+        // stored. Read and written under TimerLock.
+        internal bool TimerClosed
+        {
+            get { lock (TimerLock) { return _timerClosed; } }
+        }
         internal FileSystemWatcher FileWatcher { get; set; }
         internal object UpdateSyncLock { get; } = new object();
         internal DateTime LastUpdateFileModifiedTime { get; set; }
@@ -254,6 +261,17 @@ namespace FiftyOne.Pipeline.Engines.Data
             {
                 if (disposing)
                 {
+                    // Close the timer first, so that a check running now
+                    // cannot register the file again and create one.
+                    lock (TimerLock)
+                    {
+                        _timerClosed = true;
+                        if (Timer != null)
+                        {
+                            Timer.Dispose();
+                            Timer = null;
+                        }
+                    }
                     if (_dataUpdateService != null)
                     {
                         _dataUpdateService.UnRegisterDataFile(this);
@@ -262,14 +280,6 @@ namespace FiftyOne.Pipeline.Engines.Data
                     if (FileWatcher != null)
                     {
                         FileWatcher.Dispose();
-                    }
-                    lock (TimerLock)
-                    {
-                        if (Timer != null)
-                        {
-                            Timer.Dispose();
-                            Timer = null;
-                        }
                     }
                 }
 

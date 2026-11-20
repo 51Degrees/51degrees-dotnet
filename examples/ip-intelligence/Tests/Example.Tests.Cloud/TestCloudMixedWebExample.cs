@@ -61,7 +61,7 @@ public class TestCloudMixedWebExample
     // The example binds Constants.AllUrls; this is its plain-HTTP endpoint,
     // which is the one we query (avoiding the HTTPS ports keeps the request
     // side certificate-free).
-    private const string BaseUrl = "http://localhost:5101";
+    private const string BaseUrl = "http://localhost:5151";
 
     private static readonly string RepoRootPath =
         Path.GetFullPath(
@@ -84,7 +84,7 @@ public class TestCloudMixedWebExample
             string.IsNullOrWhiteSpace(resourceKey),
             $"Environment variable '{ExampleUtils.RESOURCE_KEY_ENV_VAR}' " +
             $"is not set. Obtain a resource key at " +
-            $"https://configure.51degrees.com and export it to run this test.");
+            $"https://51degrees.com/configure and export it to run this test.");
     }
 
     [TestCleanup]

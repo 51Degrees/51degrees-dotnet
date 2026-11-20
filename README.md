@@ -19,7 +19,7 @@ dotnet add package FiftyOne.IpIntelligence
 
 The product guides below list the other packages. To build from source, see [Getting the code](#getting-the-code).
 
-Try the [User-Agent tester](https://51degrees.com/developers/user-agent-tester?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install) and [IP tester](https://51degrees.com/developers/ip-tester?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install). For cloud use, [create a Resource Key](https://configure.51degrees.com/?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install).
+Try the [User-Agent tester](https://51degrees.com/developers/user-agent-tester?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install) and [IP tester](https://51degrees.com/developers/ip-tester?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install). For cloud use, [create a Resource Key](https://51degrees.com/configure/?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install).
 
 Created from `pipeline-dotnet`, `device-detection-dotnet`, `ip-intelligence-dotnet`, `location-dotnet`, `common-dotnet`, `caching-dotnet`, `device-detection-dotnet-examples`, and `ip-intelligence-dotnet-examples`, this repository continues their work.
 
@@ -152,6 +152,10 @@ files, with `_51DEGREES_DD_PATH` and `_51DEGREES_IPI_PATH`. The tests that use
 the cloud read a Resource Key from `_51DEGREES_RESOURCE_KEY`, and the 51Did
 tests a License Key from `_51DEGREES_LICENSE_KEY`. See each folder's README
 for the keys and data files its tests use.
+
+Every environment variable name that the packages, tests, examples and CI
+scripts read is in [common-ci's list of environment variable names](https://github.com/51Degrees/common-ci/blob/d8a9c596eabf69dd5581a08e9360cdd1c9b3d9e8/environment-variables.md),
+which decides.
 
 ## Regenerating the SWIG wrappers
 

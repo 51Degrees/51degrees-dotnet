@@ -61,6 +61,10 @@ using System.Web.UI;
 /// var deviceData = flowData.Get<IDeviceData>();
 /// ```
 /// 
+/// A Flow Data cannot be used by two threads at once. Read the values that
+/// work on another thread or task needs from the Flow Data on the
+/// request's thread, and hand it those values, not the Flow Data.
+/// 
 /// The 'IPipeline' instance that is being used can also be accessed through the static 
 /// `WebPipeline` class:
 /// 
@@ -76,12 +80,14 @@ using System.Web.UI;
 /// the same as those that will be available in the configuration file. 
 /// 
 /// Note that you will need to create a 'resource key' using our 
-/// [configurator](https://configure.51degrees.com/1QWJwHxl?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx.cs&amp;utm_term=header) site in order to get this example to 
+/// [configuration page](https://51degrees.com/configure/1QWJwHxl?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx.cs&amp;utm_term=header) in order to get this example to 
 /// work. The previous link will pre-populate the key with the properties that are used in this
 /// example.
 /// See our [documentation](https://51degrees.com/documentation/_services__configurator.html?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-framework-web-default.aspx.cs&amp;utm_term=header) 
-/// for more detail on resource keys and the configurator site. Once created, the key will 
-/// need to be copied into the configuration file:
+/// for more detail on resource keys and the configurator site. Once created, set the key in
+/// the '_51DEGREES_RESOURCE_KEY' environment variable before the site starts, or copy it
+/// into the configuration file in place of '!!ENTER_YOUR_RESOURCE_KEY_HERE!!'. With neither,
+/// the page says how to get a key rather than showing results. The configuration file:
 /// 
 /// @include Cloud/Framework-Web/App_Data/51Degrees.json
 /// 
