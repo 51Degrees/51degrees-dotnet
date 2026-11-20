@@ -70,10 +70,13 @@ jobs:
             10.0.x
       - name: Cloud 51Did test for each resource key secret
         shell: pwsh
+        # The basic tier comes from _51DEGREES_RESOURCE_KEY_FREE and the 51Did
+        # pass from _51DEGREES_RESOURCE_KEY_BESPOKE, the key with FODid at
+        # CloudV5Bespoke.
         env:
-          _51DEGREES_RESOURCE_KEY_BASIC: ${{ vars._51DEGREES_RESOURCE_KEY_BASIC }}
+          _51DEGREES_RESOURCE_KEY_BASIC: ${{ secrets._51DEGREES_RESOURCE_KEY_FREE }}
           _51DEGREES_RESOURCE_KEY_BESPOKE: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
-          _51DEGREES_RESOURCE_KEY_51DID: ${{ vars._51DEGREES_RESOURCE_KEY_51DID }}
+          _51DEGREES_RESOURCE_KEY_51DID: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
           _51DEGREES_LICENSE_KEY_51DID: ${{ secrets._51DEGREES_LICENSE_KEY_51DID }}
         run: |
           $runs = @(
