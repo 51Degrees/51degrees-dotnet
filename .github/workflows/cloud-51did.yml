@@ -2,7 +2,10 @@ name: Cloud 51Did Tests
 
 # Runs the live cloud 51Did tests once for every _51DEGREES_RESOURCE_KEY*
 # key passed in below. Each run sets _51DEGREES_RESOURCE_KEY, the first name
-# every one of the tests reads, to that key. A run with no key fails, because
+# DidCloudEngineLiveEntitlementTests reads, and _51DEGREES_RESOURCE_KEY_51DID,
+# the name CloudFodIdTests and CloudDidClientTests read, to that key. A test
+# with no key skips and names the variable, so a job with no key at all
+# fails here, because
 # a cloud test that passes without calling the cloud has proved nothing.
 #
 # The Basic tier key gets a 51Did for the non-marketing usage only, so it runs
@@ -107,6 +110,7 @@ jobs:
           $failed = $false
           foreach ($k in $keys) {
             $env:_51DEGREES_RESOURCE_KEY = $k.Value
+            $env:_51DEGREES_RESOURCE_KEY_51DID = $k.Value
             $licenseName = $k.Name -replace '^_51DEGREES_RESOURCE_KEY', '_51DEGREES_LICENSE_KEY'
             if ($licenses.ContainsKey($licenseName)) {
               Set-Item "env:$licenseName" $licenses[$licenseName]

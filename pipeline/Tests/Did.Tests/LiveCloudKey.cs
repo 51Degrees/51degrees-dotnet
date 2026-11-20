@@ -28,27 +28,25 @@ using System.Text.Json;
 namespace FiftyOne.Did.Tests;
 
 /// <summary>
-/// The resource key for the tests that call the live cloud service, and
-/// the messages they fail with when there is no key or the cloud answers
-/// without what a test asked for. There is no skip, because a cloud test
+/// The 51Did resource key for the tests that call the live cloud service,
+/// the message they skip with when there is no key, and the messages they
+/// fail with when the cloud answers without what a test asked for. A
+/// skipped test names the variable, and never passes, because a cloud test
 /// that passes without calling the cloud has proved nothing.
 /// </summary>
 internal static class LiveCloudKey
 {
     /// <summary>
-    /// The environment variables the key is read from, in the order tried.
-    /// The 51Did workflow sets the first to each key in turn, so it has to
-    /// come first for every pass to use its own key.
+    /// The environment variable the key is read from, the 51Did resource
+    /// key. The 51Did workflow sets it to each key in turn.
     /// </summary>
     internal static readonly string[] Names =
     {
-        "_51DEGREES_RESOURCE_KEY",
-        "_51DEGREES_RESOURCE_KEY_BESPOKE",
+        "_51DEGREES_RESOURCE_KEY_51DID",
     };
 
     /// <summary>
-    /// The key from the first of <see cref="Names"/> that is set, or null
-    /// when none is.
+    /// The key from <see cref="Names"/>, or null when it is not set.
     /// </summary>
     private static string? FromEnvironment()
     {
@@ -64,7 +62,7 @@ internal static class LiveCloudKey
         "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=pipeline-tests-did.tests-livecloudkey.cs&utm_term=resource-key";
 
     /// <summary>
-    /// The key, failing the tests when none of <see cref="Names"/> is set.
+    /// The key, skipping the test when <see cref="Names"/> is not set.
     /// </summary>
     /// <param name="product">The product the key has to carry.</param>
     /// <param name="asksFor">What the tests ask the service for.</param>
@@ -73,11 +71,11 @@ internal static class LiveCloudKey
         var key = FromEnvironment();
         if (key == null)
         {
-            Assert.Fail(
+            Assert.Inconclusive(
                 "These tests call the live 51Degrees cloud service, so they " +
                 "need a resource key and there is nothing to fall back " +
-                $"on. None of {string.Join(", ", Names)} is set, tried in " +
-                $"that order. The key has to carry the {product} product, " +
+                $"on. {string.Join(", ", Names)} is not set. " +
+                $"The key has to carry the {product} product, " +
                 $"because these tests ask the service for {asksFor}. To see " +
                 "the products a key carries, open " +
                 $"{AccessiblePropertiesUrl}. Create a key at " +

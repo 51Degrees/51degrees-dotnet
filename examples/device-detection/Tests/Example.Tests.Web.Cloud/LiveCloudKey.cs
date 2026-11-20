@@ -27,9 +27,9 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud;
 
 /// <summary>
 /// The resource key for the tests that run the cloud web examples against
-/// the live cloud service, and the message they fail with when there is
-/// none. There is no skip, because a cloud test that passes without
-/// calling the cloud has proved nothing.
+/// the live cloud service, and the message they skip with when there is
+/// none. A skipped test names the variables, and never passes, because a
+/// cloud test that passes without calling the cloud has proved nothing.
 /// </summary>
 internal static class LiveCloudKey
 {
@@ -40,7 +40,6 @@ internal static class LiveCloudKey
     {
         "_51DEGREES_RESOURCE_KEY",
         "_51DEGREES_RESOURCE_KEY_BESPOKE",
-        "RESOURCE_KEY_CLOUD_V5_BESPOKE",
     };
 
     /// <summary>
@@ -66,7 +65,7 @@ internal static class LiveCloudKey
     internal static string Find() => FromEnvironment();
 
     /// <summary>
-    /// What the tests fail with when <see cref="Find"/> finds no key.
+    /// What the tests skip with when <see cref="Find"/> finds no key.
     /// </summary>
     /// <param name="product">The product the key has to carry.</param>
     /// <param name="asksFor">What the tests ask the service for.</param>

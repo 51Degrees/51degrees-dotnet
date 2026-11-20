@@ -39,6 +39,10 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
 
         private string ResourceKey { get; set; }
 
+        private string LicenseKey { get; set; }
+
+        private string RequestedProperties { get; set; }
+
         /// <summary>
         /// Path to the app settings to use for the test.
         /// </summary>
@@ -68,6 +72,17 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
                 {
                 { resourceKeyConfigKey, ResourceKey },
                 };
+            if (string.IsNullOrEmpty(LicenseKey) == false)
+            {
+                // The licence key alone, with the properties the case asks
+                // for. The example's resource key is replaced with an
+                // empty one, which the engine treats as absent.
+                testConfigOverrides.Add(
+                    $"{requestEnginePrefix}LicenseKey", LicenseKey);
+                testConfigOverrides.Add(
+                    $"{requestEnginePrefix}RequestedProperties",
+                    RequestedProperties);
+            }
             if (string.IsNullOrEmpty(CloudEndPoint) == false)
             {
                 testConfigOverrides.Add(endPointConfigKey, CloudEndPoint);
@@ -87,22 +102,61 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
             base.ConfigureWebHost(builder);
         }
 
+        /// <summary>
+        /// Runs the example for one case of
+        /// <see cref="Parameters.VerifyCloudExample_DATA"/> and checks
+        /// Accept-CH. A case whose key is not set is skipped, naming the
+        /// variable it needs.
+        /// </summary>
+        /// <param name="caseName">The name of the case.</param>
+        /// <param name="requestedProperties">
+        /// The properties the licence key case asks for, or null for the
+        /// resource key case.
+        /// </param>
+        /// <param name="userAgent">The User-Agent to send.</param>
+        /// <param name="expectedAcceptCH">
+        /// The values expected in Accept-CH.
+        /// </param>
+        /// <param name="exampleDirName">The example to run.</param>
         protected async Task VerifyExample(
-            string resourceKey,
+            string caseName,
+            string requestedProperties,
             string userAgent,
             List<string> expectedAcceptCH,
             string exampleDirName)
         {
-            if (string.IsNullOrWhiteSpace(resourceKey))
+            if (requestedProperties == null)
             {
-                Assert.Fail(LiveCloudKey.NoKey(
-                    "device",
-                    "the SetHeaderBrowserAccept-CH, " +
-                    "SetHeaderHardwareAccept-CH and " +
-                    "SetHeaderPlatformAccept-CH properties"));
+                var resourceKey = LiveCloudKey.Find();
+                if (resourceKey == null)
+                {
+                    Assert.Inconclusive(LiveCloudKey.NoKey(
+                        "device",
+                        "the SetHeaderBrowserAccept-CH, " +
+                        "SetHeaderHardwareAccept-CH and " +
+                        "SetHeaderPlatformAccept-CH properties"));
+                }
+                ResourceKey = resourceKey;
+                LicenseKey = null;
+                RequestedProperties = null;
             }
-
-            ResourceKey = resourceKey;
+            else
+            {
+                var licenseKey = Environment.GetEnvironmentVariable(
+                    Parameters.LICENSE_KEY_ENV_VAR);
+                if (string.IsNullOrWhiteSpace(licenseKey))
+                {
+                    Assert.Inconclusive(
+                        $"The '{caseName}' case calls the live 51Degrees " +
+                        "cloud service with a licence key, and " +
+                        $"{Parameters.LICENSE_KEY_ENV_VAR} is not set. The " +
+                        "licence has to carry the device product, because " +
+                        $"the case asks for {requestedProperties}.");
+                }
+                ResourceKey = string.Empty;
+                LicenseKey = licenseKey;
+                RequestedProperties = requestedProperties;
+            }
 
             // Determine the path to the app settings file we need to used
             string appSettingsPath = Environment.CurrentDirectory;

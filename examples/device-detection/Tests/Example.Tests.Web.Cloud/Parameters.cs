@@ -20,7 +20,6 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
-using FiftyOne.DeviceDetection.Examples;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -28,66 +27,75 @@ using Base = FiftyOne.DeviceDetection.Example.Tests.Web.Parameters;
 
 namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
 {
+    /// <summary>
+    /// The cases the Accept-CH tests run against the cloud web examples.
+    /// The case with every SetHeader property uses the resource key that
+    /// <see cref="LiveCloudKey"/> finds. The single header cases use the
+    /// licence key in <see cref="LICENSE_KEY_ENV_VAR"/> alone and ask the
+    /// cloud for only the properties they need, sent as 'values'. No key
+    /// is part of a case, so no key appears in a test's name.
+    /// </summary>
     public static class Parameters
     {
-        public static string SUPER_KEY { get; private set; }
-        public static string V5_BESPOKE_KEY { get; private set; }
-        public static string BROWSER_KEY { get; private set; }
-        public static string HARDWARE_KEY { get; private set; }
-        public static string PLATFORM_KEY { get; private set; }
-        public static string NO_ACCEPTCH_KEY { get; private set; }
+        /// <summary>
+        /// The licence key the single header cases use.
+        /// </summary>
+        public const string LICENSE_KEY_ENV_VAR =
+            "_51DEGREES_LICENSE_KEY_BESPOKE";
 
-        private static bool _gotEnvVars = false;
+        /// <summary>
+        /// The case that uses the resource key, which carries every
+        /// SetHeader property.
+        /// </summary>
+        public const string RESOURCE_KEY_CASE = "resource key";
 
-        public static void GetEnvVars()
+        /// <summary>
+        /// The properties the example page shows. None of them needs a
+        /// client hint, so they add nothing to Accept-CH. The page reads
+        /// each of them, so every case asks for them.
+        /// </summary>
+        public static readonly IReadOnlyList<string> PAGE_PROPERTIES =
+            Base.BASE_PROPERTIES.Split(',')
+                .Select(p => $"device.{p}")
+                .ToList();
+
+        public const string BROWSER_PROPERTY =
+            "device.SetHeaderBrowserAccept-CH";
+        public const string HARDWARE_PROPERTY =
+            "device.SetHeaderHardwareAccept-CH";
+        public const string PLATFORM_PROPERTY =
+            "device.SetHeaderPlatformAccept-CH";
+
+        /// <summary>
+        /// The properties each licence key case asks for, by the name of
+        /// the case. Each names one SetHeader property at most, with its
+        /// component, and 'none' names none.
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, string>
+            LICENSE_KEY_CASES = new Dictionary<string, string>()
         {
-            if (_gotEnvVars == false)
-            {
-                // Get resource keys from environment variables.
-                // These must be configured with at least the following
-                // properties:
-                // HardwareVendor,HardwareName,DeviceType,PlatformVendor,
-                // PlatformName,PlatformVersion,BrowserVendor,BrowserName,
-                // BrowserVersion
-                // In addition, each key will need to have specific setup
-                // for the '*Accept-CH' properties:
-                // The key LiveCloudKey finds, and
-                // RESOURCE_KEY_CLOUD_V5_BESPOKE when that is set -
-                //    SetHeaderBrowserAccept-CH, SetHeaderHardwareAccept-CH,
-                //    SetHeaderPlatformAccept-CH
-                // ACCEPTCH_BROWSER_KEY - SetHeaderBrowserAccept-CH only
-                // ACCEPTCH_HARDWARE_KEY - SetHeaderHardwareAccept-CH only
-                // ACCEPTCH_PLATFORM_KEY - SetHeaderPlatformAccept-CH only
-                // ACCEPTCH_NONE_KEY - No *Accept-CH properties.
-                // The V5 bespoke rows use the same key as the others when
-                // no V5 bespoke key of its own is set.
-                SUPER_KEY = LiveCloudKey.Find();
-                var v5BespokeKey = System.Environment.GetEnvironmentVariable(
-                    "RESOURCE_KEY_CLOUD_V5_BESPOKE");
-                V5_BESPOKE_KEY = string.IsNullOrWhiteSpace(v5BespokeKey)
-                    ? SUPER_KEY
-                    : v5BespokeKey;
-                ExampleUtils.GetKeyFromEnv("ACCEPTCH_BROWSER_KEY", v => BROWSER_KEY = v);
-                ExampleUtils.GetKeyFromEnv("ACCEPTCH_HARDWARE_KEY", v => HARDWARE_KEY = v);
-                ExampleUtils.GetKeyFromEnv("ACCEPTCH_PLATFORM_KEY", v => PLATFORM_KEY = v);
-                ExampleUtils.GetKeyFromEnv("ACCEPTCH_NONE_KEY", v => NO_ACCEPTCH_KEY = v);
-                _gotEnvVars = true;
-            }
-        }
+            { "browser", Values(BROWSER_PROPERTY) },
+            { "hardware", Values(HARDWARE_PROPERTY) },
+            { "platform", Values(PLATFORM_PROPERTY) },
+            { "none", Values() },
+        };
+
+        private static string Values(params string[] setHeader) =>
+            string.Join(",", PAGE_PROPERTIES.Concat(setHeader));
 
         /// <summary>
         /// Used to supply parameters to the VerifyExample tests for
-        /// cloud-backed examples.
+        /// cloud-backed examples. Each row is the case, the properties it
+        /// asks for (null for the resource key case), the User-Agent and
+        /// the values expected in Accept-CH.
         /// </summary>
-        /// <returns></returns>
         public static IEnumerable<object[]> VerifyCloudExample_DATA()
         {
-            GetEnvVars();
-            List<string> ResourceKeys = new List<string>()
+            var cases = new List<(string Name, string Values)>()
             {
-                SUPER_KEY,
-                V5_BESPOKE_KEY
+                (RESOURCE_KEY_CASE, null)
             };
+            cases.AddRange(LICENSE_KEY_CASES.Select(c => (c.Key, c.Value)));
 
             List<string> UserAgents = new List<string>()
             {
@@ -98,47 +106,49 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
                 Base.CURL_UA
             };
 
-            // Get all combinations of keys and uas
-            var joined = ResourceKeys
-                .Join(UserAgents, (x) => true, (x) => true,
-                    (a, b) => new { ResourceKey = a, UserAgent = b });
-
-            foreach (var permutation in joined)
+            foreach (var testCase in cases)
             {
-                var expectedAcceptCH = new List<string>();
-
-                // Determine which values we are expecting to
-                // see in Accept-CH.
-                if (permutation.UserAgent == Base.CHROME_UA ||
-                    permutation.UserAgent == Base.EDGE_UA)
+                foreach (var userAgent in UserAgents)
                 {
-                    if (permutation.ResourceKey == BROWSER_KEY ||
-                        permutation.ResourceKey == SUPER_KEY ||
-                        permutation.ResourceKey == V5_BESPOKE_KEY)
+                    yield return new object[]
                     {
-                        expectedAcceptCH.AddRange(Base.BROWSER_ACCEPT_CH);
-                    }
-                    if (permutation.ResourceKey == HARDWARE_KEY ||
-                        permutation.ResourceKey == SUPER_KEY ||
-                        permutation.ResourceKey == V5_BESPOKE_KEY)
-                    {
-                        expectedAcceptCH.AddRange(Base.HARDWARE_ACCEPT_CH);
-                    }
-                    if (permutation.ResourceKey == PLATFORM_KEY ||
-                        permutation.ResourceKey == SUPER_KEY ||
-                        permutation.ResourceKey == V5_BESPOKE_KEY)
-                    {
-                        expectedAcceptCH.AddRange(Base.PLATFORM_ACCEPT_CH);
-                    }
+                        testCase.Name,
+                        testCase.Values,
+                        userAgent,
+                        ExpectedAcceptCH(testCase.Values, userAgent)
+                    };
                 }
-
-                yield return new object[]
-                {
-                    permutation.ResourceKey,
-                    permutation.UserAgent,
-                    expectedAcceptCH
-                };
             }
+        }
+
+        /// <summary>
+        /// The values expected in Accept-CH. Only Chrome and Edge are sent
+        /// any, and only for the SetHeader properties the case has. The
+        /// resource key case has all three.
+        /// </summary>
+        private static List<string> ExpectedAcceptCH(
+            string values,
+            string userAgent)
+        {
+            var expected = new List<string>();
+            if (userAgent != Base.CHROME_UA && userAgent != Base.EDGE_UA)
+            {
+                return expected;
+            }
+            var asked = values?.Split(',');
+            if (asked == null || asked.Contains(BROWSER_PROPERTY))
+            {
+                expected.AddRange(Base.BROWSER_ACCEPT_CH);
+            }
+            if (asked == null || asked.Contains(HARDWARE_PROPERTY))
+            {
+                expected.AddRange(Base.HARDWARE_ACCEPT_CH);
+            }
+            if (asked == null || asked.Contains(PLATFORM_PROPERTY))
+            {
+                expected.AddRange(Base.PLATFORM_ACCEPT_CH);
+            }
+            return expected;
         }
     }
 }

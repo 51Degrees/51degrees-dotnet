@@ -28,9 +28,9 @@ namespace FiftyOne.Did.Cloud.Tests;
 
 /// <summary>
 /// The resource key for the test that calls the live cloud service, and
-/// the message it fails with when there is none. There is no skip,
-/// because a cloud test that passes without calling the cloud has proved
-/// nothing.
+/// the message it skips with when there is none. A skipped test names the
+/// variables, and never passes, because a cloud test that passes without
+/// calling the cloud has proved nothing.
 /// </summary>
 internal static class LiveCloudKey
 {
@@ -64,7 +64,7 @@ internal static class LiveCloudKey
         "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=pipeline-tests-did.cloud.tests-livecloudkey.cs&utm_term=resource-key";
 
     /// <summary>
-    /// The key, failing the test when none of <see cref="Names"/> is set.
+    /// The key, skipping the test when none of <see cref="Names"/> is set.
     /// The test checks the pipeline against whatever the key carries, so
     /// the message asks for no particular product.
     /// </summary>
@@ -74,7 +74,7 @@ internal static class LiveCloudKey
         var key = FromEnvironment();
         if (key == null)
         {
-            Assert.Fail(
+            Assert.Inconclusive(
                 "This test calls the live 51Degrees cloud service, so it " +
                 "needs a resource key and there is nothing to fall back " +
                 $"on. None of {string.Join(", ", Names)} is set, tried in " +

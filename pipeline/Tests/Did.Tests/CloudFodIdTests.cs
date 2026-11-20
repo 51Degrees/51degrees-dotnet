@@ -39,14 +39,14 @@ namespace FiftyOne.Did.Tests
     /// <remarks>
     /// <para>
     /// The test uses a single resource key from the environment, found by
-    /// <see cref="LiveCloudKey"/>, which fails the test when none is set.
+    /// <see cref="LiveCloudKey"/>, which skips the test when it is not set.
     /// The key has to carry the CloudV5FODiD product, because both tests
     /// need a marketing 51Did.
     /// </para>
     /// <para>
     /// To exercise more than one key, the CI workflow runs this test once for
     /// each <c>_51DEGREES_RESOURCE_KEY*</c> secret that carries the marketing
-    /// usages, setting <c>_51DEGREES_RESOURCE_KEY</c>, the first name
+    /// usages, setting <c>_51DEGREES_RESOURCE_KEY_51DID</c>, the name
     /// <see cref="LiveCloudKey"/> reads, to each in turn.
     /// </para>
     /// <para>
