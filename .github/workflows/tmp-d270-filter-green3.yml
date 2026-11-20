@@ -1,0 +1,32 @@
+name: Temporary build of 10600ad6 on tmp/d270-filter-green3
+
+on:
+  push:
+    branches:
+      - 'tmp/d270-filter-green3'
+
+jobs:
+  Build:
+    uses: 51Degrees/common-ci/.github/workflows/nightly-pull-requests.yml@main
+    with:
+      repo-name: 51degrees-dotnet
+      org-name: 51Degrees
+      branch: tmp/d270-filter-green3
+      prs: ''
+      build-without-pull-requests: true
+      dryrun: true
+      cache-assets: true
+      fail-fast: false
+      skip-compare-performance: true
+      common-ci-ref: tmp/no-macos
+    secrets:
+      token: ${{ secrets.ACCESS_TOKEN }}
+      StrongNameKeyBase64: ${{ secrets.STRONG_NAME_KEY_BASE64 }}
+      DeviceDetection: ${{ secrets.DEVICE_DETECTION_KEY }}
+      DeviceDetectionUrl: ${{ secrets.DEVICE_DETECTION_URL }}
+      IpIntelligenceUrl: ${{ secrets.IPI_DATA_FILE_URL }}
+      TestResourceKey: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
+      AcceptCHBrowserKey: ${{ secrets.ACCEPTCH_BROWSER_KEY }}
+      AcceptCHHardwareKey: ${{ secrets.ACCEPTCH_HARDWARE_KEY }}
+      AcceptCHPlatformKey: ${{ secrets.ACCEPTCH_PLATFORM_KEY }}
+      AcceptCHNoneKey: ${{ secrets.ACCEPTCH_NONE_KEY }}
