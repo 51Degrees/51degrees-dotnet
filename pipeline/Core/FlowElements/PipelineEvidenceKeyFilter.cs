@@ -27,8 +27,9 @@ using System.Collections.Generic;
 namespace FiftyOne.Pipeline.Core.FlowElements
 {
     /// <summary>
-    /// The Evidence key filter of a <see cref="Pipeline"/>. It holds the
-    /// Pipeline's Flow Elements and asks each element for its own filter
+    /// The Evidence key filter of a <see cref="Pipeline"/>, and of a group
+    /// of elements run in parallel (<see cref="ParallelElements"/>). It
+    /// holds the Flow Elements and asks each element for its own filter
     /// every time it is used. It never copies an element's keys.
     /// </summary>
     /// <remarks>
@@ -46,7 +47,9 @@ namespace FiftyOne.Pipeline.Core.FlowElements
     /// <para>
     /// A key is included if any element's filter includes it. Its order
     /// is the one <see cref="EvidenceKeyFilterAggregator"/> gives for the
-    /// same filters in the same order.
+    /// same filters in the same order. That includes the filter of a
+    /// parallel group, which is one of these. Its elements' filters count
+    /// at the group's place, as the aggregator's did.
     /// </para>
     /// <para>
     /// It holds nothing that changes, so every thread can use it with no
@@ -124,16 +127,45 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// </returns>
         public int? Order(string key)
         {
+            return OrderFromLists(key) ?? OrderFromOtherFilters(key);
+        }
+
+        /// <summary>
+        /// The order of the key from the first case insensitive inclusion
+        /// list that holds it, in element order. A parallel group's lists
+        /// count at the group's place, as
+        /// <see cref="EvidenceKeyFilterAggregator.AddFilter"/> merged them.
+        /// </summary>
+        private int? OrderFromLists(string key)
+        {
             for (int i = 0; i < _elements.Count; i++)
             {
-                if (_elements[i].EvidenceKeyFilter
-                        is EvidenceKeyFilterWhitelist list &&
-                    IsMergedList(list) &&
-                    list.Whitelist.TryGetValue(key, out var order))
+                var filter = _elements[i].EvidenceKeyFilter;
+                if (filter is PipelineEvidenceKeyFilter group)
                 {
-                    return order;
+                    var groupOrder = group.OrderFromLists(key);
+                    if (groupOrder.HasValue)
+                    {
+                        return groupOrder;
+                    }
+                }
+                else if (filter is EvidenceKeyFilterWhitelist list &&
+                    IsMergedList(list) &&
+                    list.Whitelist.TryGetValue(key, out var listOrder))
+                {
+                    return listOrder;
                 }
             }
+            return null;
+        }
+
+        /// <summary>
+        /// The order of the key from the first other filter that gives one,
+        /// in element order. A parallel group's other filters count at the
+        /// group's place.
+        /// </summary>
+        private int? OrderFromOtherFilters(string key)
+        {
             for (int i = 0; i < _elements.Count; i++)
             {
                 var filter = _elements[i].EvidenceKeyFilter;
@@ -141,14 +173,22 @@ namespace FiftyOne.Pipeline.Core.FlowElements
                 {
                     continue;
                 }
-                if (filter is EvidenceKeyFilterWhitelist list &&
+                int? order;
+                if (filter is PipelineEvidenceKeyFilter group)
+                {
+                    order = group.OrderFromOtherFilters(key);
+                }
+                else if (filter is EvidenceKeyFilterWhitelist list &&
                     IsMergedList(list) &&
                     list.GetType() == typeof(EvidenceKeyFilterWhitelist))
                 {
                     // Already answered from its list above.
                     continue;
                 }
-                var order = filter.Order(key);
+                else
+                {
+                    order = filter.Order(key);
+                }
                 if (order.HasValue)
                 {
                     return order;
