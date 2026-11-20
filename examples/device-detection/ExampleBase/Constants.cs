@@ -44,15 +44,16 @@ namespace FiftyOne.DeviceDetection.Examples
         public const string YAML_EVIDENCE_FILE_NAME = "20000 Evidence Records.yml";
 
         /// <summary>
-        /// Environment variable key for the license key file to use for the
-        /// tests.
+        /// An old environment variable for the licence key the data file
+        /// update example uses. It is no longer read.
         /// </summary>
+        [System.Obsolete("Use DATA_UPDATE_LICENSE_KEY_ENV_VAR, which names the environment " +
+            "variable that replaces this one.")]
         public const string LICENSE_KEY_ENV_VAR = "DEVICEDETECTIONLICENSEKEY_DOTNET";
 
         /// <summary>
         /// Environment variable key for the licence key the data file update
-        /// example uses. <see cref="LICENSE_KEY_ENV_VAR"/> is read when it is
-        /// not set.
+        /// example and its test use.
         /// </summary>
         public const string DATA_UPDATE_LICENSE_KEY_ENV_VAR = "_51DEGREES_LICENSE_KEY";
 

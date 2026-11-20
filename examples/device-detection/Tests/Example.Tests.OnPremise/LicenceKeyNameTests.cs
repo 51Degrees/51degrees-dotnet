@@ -28,8 +28,8 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise;
 
 /// <summary>
 /// The data file update example reads its licence key from
-/// '_51DEGREES_LICENSE_KEY', and from the name it read before only when
-/// that is not set. The tests change the environment of the whole process,
+/// '_51DEGREES_LICENSE_KEY' only. The name it read before is not read,
+/// even when the new one is not set. The tests change the environment of the whole process,
 /// so they run apart from the tests that read it.
 /// </summary>
 [TestClass]
@@ -88,10 +88,10 @@ public class LicenceKeyNameTests
     }
 
     [TestMethod]
-    public void TheOldNameIsReadWhenTheNameIsNotSet()
+    public void TheOldNameIsNotReadWhenTheNameIsNotSet()
     {
         Environment.SetEnvironmentVariable(OldName, "old");
-        Assert.AreEqual("old", LicenseKey());
+        Assert.IsNull(LicenseKey());
     }
 
     [TestMethod]
