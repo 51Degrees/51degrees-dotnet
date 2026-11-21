@@ -425,6 +425,74 @@ public class EnvironmentVariableNamesTests
             "secret:\n" + string.Join("\n", found));
     }
 
+    /// <summary>
+    /// A 51Did key that a workflow fills from a secret. A 51Did license key
+    /// reads only a sealed result made with a resource key of its own
+    /// account, so a 51Did key is filled from the secret of its own name
+    /// and never from another key.
+    /// </summary>
+    private static readonly Regex DidKeyFill = new Regex(
+        @"(?<![A-Za-z0-9_])(?<name>_51DEGREES_[A-Z_]*_51DID)\s*:\s*" +
+        @"\$\{\{\s*secrets[.](?<secret>[A-Za-z0-9_]+)\s*\}\}",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Each 51Did key the line fills from a secret of another name.
+    /// </summary>
+    private static List<string> DidKeysFilledFromAnotherSecret(string line)
+    {
+        var fills = new List<string>();
+        foreach (Match match in DidKeyFill.Matches(line))
+        {
+            if (match.Groups["name"].Value != match.Groups["secret"].Value)
+            {
+                fills.Add(match.Value);
+            }
+        }
+        return fills;
+    }
+
+    [TestMethod]
+    public void TheDidKeyFillMatcherFindsOnlyAnotherSecret()
+    {
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "_51DEGREES_RESOURCE_KEY_51DID: " +
+                    "${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}",
+            },
+            DidKeysFilledFromAnotherSecret(
+                "_51DEGREES_RESOURCE_KEY_51DID: " +
+                    "${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}"));
+        CollectionAssert.AreEqual(
+            Array.Empty<string>(),
+            DidKeysFilledFromAnotherSecret(
+                "_51DEGREES_RESOURCE_KEY_51DID: " +
+                    "${{ secrets._51DEGREES_RESOURCE_KEY_51DID }}"));
+        CollectionAssert.AreEqual(
+            Array.Empty<string>(),
+            DidKeysFilledFromAnotherSecret(
+                "_51DEGREES_LICENSE_KEY_51DID: " +
+                    "${{ secrets._51DEGREES_LICENSE_KEY_51DID }}"));
+    }
+
+    [TestMethod]
+    public void EveryWorkflowFillsADidKeyFromTheSecretOfItsName()
+    {
+        var found = FindInTrackedFiles(
+            DidKeysFilledFromAnotherSecret,
+            ThisFile,
+            (relative, _) => relative.StartsWith(
+                ".github/", StringComparison.Ordinal) == false);
+        Assert.AreEqual(
+            0,
+            found.Count,
+            $"{found.Count} 51Did keys are filled from another secret. A " +
+            "51Did license key reads only a result sealed with the 51Did " +
+            "resource key, so each must be filled from the secret of its " +
+            "own name:\n" + string.Join("\n", found));
+    }
+
     [TestMethod]
     public void NoFileReadsAnOldName()
     {
