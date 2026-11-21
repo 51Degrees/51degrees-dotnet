@@ -90,16 +90,21 @@ results files, and each job's log then holds what its runner measured.
 The workflows pass the secrets to the shared workflows with `secrets: inherit`.
 Apart from `ACCESS_TOKEN` and the publishing ones (`NUGET_API_KEY`, the
 `CODE_SIGNING_KEY_VAULT_*` set and `STRONG_NAME_KEY_BASE64`), every key is read
-only under its `_51DEGREES_` name, which the shared workflows export:
+only under its `_51DEGREES_` name. The shared workflows export each of these
+except `_51DEGREES_LICENSE_KEY_51DID`:
 
-- `_51DEGREES_LICENSE_KEY`, the data licence. The shared `fetch-assets.ps1`
+- `_51DEGREES_LICENSE_KEY`, the data license. The shared `fetch-assets.ps1`
   downloads `TAC-HashV41.hash` and `51Degrees-EnterpriseIpiV41.ipi` from the
   Distributor with it, and fails naming it when it is not set. The data file
   update example tests read it too.
 - `_51DEGREES_RESOURCE_KEY`, filled from `_51DEGREES_RESOURCE_KEY_BESPOKE`, for
   the cloud tests and examples.
 - `_51DEGREES_RESOURCE_KEY_51DID` and `_51DEGREES_LICENSE_KEY_51DID`, for the
-  live 51Did tests.
+  live 51Did tests. The license key reads only results sealed with the 51Did
+  resource key, so the shared workflows never export it. Only
+  `.github/workflows/cloud-51did.yml` sets it, from the secret of that name,
+  beside `_51DEGREES_RESOURCE_KEY_51DID`. In the other workflows it is empty,
+  so the 51Did tests run as they do with no license key.
 - `_51DEGREES_LICENSE_KEY_BESPOKE`, for the Accept-CH tests of the cloud web
   examples, which ask for one SetHeader property each with `values`.
 

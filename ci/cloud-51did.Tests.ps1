@@ -83,4 +83,20 @@ Describe 'the Cloud 51Did step' {
         $result.Output | Should -Match '_51DEGREES_RESOURCE_KEY_51DID'
         $result.Calls | Should -BeNullOrEmpty
     }
+
+    # A deployment without 51Did has neither secret. Its other keys must
+    # still run and pass, with no 51Did pass and no error.
+    It 'runs the other keys with no 51Did pass when both 51Did keys are empty' {
+        $env:_51DEGREES_RESOURCE_KEY_51DID = ''
+        $env:_51DEGREES_LICENSE_KEY_51DID = ''
+
+        $result = Invoke-Step
+
+        $result.ExitCode | Should -Be 0
+        $result.Output | Should -Not -Match '::error::'
+        $result.Output | Should -Not -Match 'with _51DEGREES_RESOURCE_KEY_51DID'
+        $result.Output | Should -Match 'with _51DEGREES_RESOURCE_KEY_BASIC'
+        $result.Output | Should -Match 'with _51DEGREES_RESOURCE_KEY_BESPOKE'
+        $result.Calls | Where-Object { $_ -like 'test *' } | Should -Not -BeNullOrEmpty
+    }
 }
