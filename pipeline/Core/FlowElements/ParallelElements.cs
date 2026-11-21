@@ -26,7 +26,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.Core.FlowElements
@@ -55,11 +54,11 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// <summary>
         /// A filter that will only include the evidence keys that can 
         /// be used by at least one <see cref="IFlowElement"/> within 
-        /// this pipeline.
-        /// (Will only be populated after the <see cref="EvidenceKeyFilter"/>
-        /// property is used.)
+        /// this group. Created with the group. It asks each child element
+        /// for its own filter when it is used and keeps none of them, so
+        /// every thread can use it with no lock.
         /// </summary>
-        private EvidenceKeyFilterAggregator _evidenceKeyFilter;
+        private readonly PipelineEvidenceKeyFilter _evidenceKeyFilter;
 
 
         public override string ElementDataKey
@@ -79,20 +78,21 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// <summary>
         /// Get a filter that will only include the evidence keys that can 
         /// be used by at least one <see cref="IFlowElement"/> within 
-        /// this pipeline.
+        /// this group. The same object on every read. It asks each child
+        /// element for its own filter when it is used.
         /// </summary>
+        /// <remarks>
+        /// Reading it asks each child element for its filter, and keeps
+        /// none of them. So a child whose filter is not yet available, such
+        /// as a Cloud Request Engine still recovering from a failure at
+        /// start-up, throws here, as it does in a Pipeline on its own, and
+        /// is asked again on the next read.
+        /// </remarks>
         public override IEvidenceKeyFilter EvidenceKeyFilter
         {
             get
             {
-                if (_evidenceKeyFilter == null)
-                {
-                    _evidenceKeyFilter = new EvidenceKeyFilterAggregator();
-                    foreach (var filter in _flowElements.Select(e => e.EvidenceKeyFilter))
-                    {
-                        _evidenceKeyFilter.AddFilter(filter);
-                    }
-                }
+                _evidenceKeyFilter.AskEachElement();
                 return _evidenceKeyFilter;
             }
         }
@@ -114,6 +114,7 @@ namespace FiftyOne.Pipeline.Core.FlowElements
             params IFlowElement[] flowElements) : base(logger)
         {
             _flowElements = new List<IFlowElement>(flowElements);
+            _evidenceKeyFilter = new PipelineEvidenceKeyFilter(_flowElements);
         }
 
         /// <summary>
