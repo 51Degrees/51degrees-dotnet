@@ -97,6 +97,19 @@ jobs:
             Write-Host '::error::No _51DEGREES_RESOURCE_KEY* secret reached this job. The tests need a key that carries the FODid product, and the CloudV5FODiD product for the marketing usages.'
             exit 1
           }
+          # A license key whose resource key is empty means that secret is
+          # missing. Its pass would be left out and the job would pass on
+          # the other keys alone, so the step fails naming the secret.
+          $missing = @(Get-ChildItem env: |
+            Where-Object { $_.Name -like '_51DEGREES_LICENSE_KEY*' -and $_.Value } |
+            ForEach-Object {
+              $resourceName = $_.Name -replace '^_51DEGREES_LICENSE_KEY', '_51DEGREES_RESOURCE_KEY'
+              if (-not [Environment]::GetEnvironmentVariable($resourceName)) {
+                Write-Host "::error::$($_.Name) has a value but $resourceName is empty, so the licensed tests would not run. Add the secret $resourceName."
+                $resourceName
+              }
+            })
+          if ($missing) { exit 1 }
           foreach ($run in $runs) {
             dotnet build $run.Project -c Release --nologo
             if ($LASTEXITCODE -ne 0) { exit 1 }
