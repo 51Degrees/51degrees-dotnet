@@ -73,12 +73,13 @@ jobs:
             10.0.x
       - name: Cloud 51Did test for each resource key secret
         shell: pwsh
-        # The basic tier comes from _51DEGREES_RESOURCE_KEY_FREE. The 51Did
-        # pass comes from the secret _51DEGREES_RESOURCE_KEY_51DID, because
-        # _51DEGREES_LICENSE_KEY_51DID reads only a result sealed with that
-        # key. With the bespoke key instead, the redeem test gets Unreadable.
+        # The basic tier comes from the secret _51DEGREES_RESOURCE_KEY_BASIC.
+        # The 51Did pass comes from the secret _51DEGREES_RESOURCE_KEY_51DID,
+        # because _51DEGREES_LICENSE_KEY_51DID reads only a result sealed with
+        # that key. With the bespoke key instead, the redeem test gets
+        # Unreadable.
         env:
-          _51DEGREES_RESOURCE_KEY_BASIC: ${{ secrets._51DEGREES_RESOURCE_KEY_FREE }}
+          _51DEGREES_RESOURCE_KEY_BASIC: ${{ secrets._51DEGREES_RESOURCE_KEY_BASIC }}
           _51DEGREES_RESOURCE_KEY_BESPOKE: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
           _51DEGREES_RESOURCE_KEY_51DID: ${{ secrets._51DEGREES_RESOURCE_KEY_51DID }}
           _51DEGREES_LICENSE_KEY_51DID: ${{ secrets._51DEGREES_LICENSE_KEY_51DID }}
