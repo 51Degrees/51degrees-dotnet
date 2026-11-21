@@ -425,15 +425,14 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
         private const string ContactUs = "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-onpremise-updatedatafile-console-program.cs&utm_term=licence-key";
 
         /// <summary>
-        /// The licence key from the environment. It is the value of
-        /// '_51DEGREES_LICENSE_KEY' or, when that is not set, of the name this
-        /// example read before, which is reported as deprecated.
+        /// The licence key from the environment, which is the value of
+        /// '_51DEGREES_LICENSE_KEY'. The name this example read before is not
+        /// read.
         /// </summary>
         public static string LicenseKeyFromEnvironment()
         {
             return ExampleUtils.FromEnvironment(
-                Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR,
-                Constants.LICENSE_KEY_ENV_VAR);
+                Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR);
         }
 
         public static void Main(string[] args)

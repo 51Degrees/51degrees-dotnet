@@ -491,15 +491,14 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
         }
 
         /// <summary>
-        /// The licence key from the environment. It is the value of
-        /// '_51DEGREES_LICENSE_KEY' or, when that is not set, of the name this
-        /// example read before, which is reported as deprecated.
+        /// The licence key from the environment, which is the value of
+        /// '_51DEGREES_LICENSE_KEY'. The name this example read before is not
+        /// read.
         /// </summary>
         public static string LicenseKeyFromEnvironment()
         {
             return Examples.ExampleUtils.FromEnvironment(
-                Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR,
-                Constants.LICENSE_KEY_ENV_VAR);
+                Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR);
         }
 
         public static int Main(string[] args)

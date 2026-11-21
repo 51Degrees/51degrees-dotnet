@@ -95,4 +95,19 @@ Describe 'run-integration-tests.ps1' {
         $calls.Count | Should -Be 1
         $calls[0] | Should -Not -Match '--filter'
     }
+
+    It 'skips the Selenium contract naming _51DEGREES_RESOURCE_KEY when it is not set' {
+        $saved = $env:_51DEGREES_RESOURCE_KEY
+        Remove-Item Env:_51DEGREES_RESOURCE_KEY -ErrorAction SilentlyContinue
+        Push-Location $Root
+        try {
+            $output = & $Script -RepoName $Repo -Depth 'standard' -SeleniumContract $true *>&1 |
+                Out-String
+        } finally {
+            Pop-Location
+            if ($null -ne $saved) { $env:_51DEGREES_RESOURCE_KEY = $saved }
+        }
+
+        $output | Should -Match '_51DEGREES_RESOURCE_KEY is not set'
+    }
 }

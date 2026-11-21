@@ -47,8 +47,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
             Constants.DATA_FILE_ENV_VARS.Concat(new[]
             {
                 Constants.EVIDENCE_FILE_ENV_VAR,
-                Constants.LICENSE_KEY_ENV_VAR,
-                "_51DEGREES_LICENSE_KEY"
+                Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR
             }).ToArray();
 
         /// <summary>
