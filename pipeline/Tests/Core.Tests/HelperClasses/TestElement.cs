@@ -36,7 +36,8 @@ namespace FiftyOne.Pipeline.Core.Tests.HelperClasses
     {
         public override string ElementDataKey => "testkey";
 
-        public override IEvidenceKeyFilter EvidenceKeyFilter => throw new NotImplementedException();
+        public override IEvidenceKeyFilter EvidenceKeyFilter { get; } =
+            new EvidenceKeyFilterWhitelist(new List<string>());
         public override IList<IElementPropertyMetaData> Properties => new List<IElementPropertyMetaData>();
 
         public TestElement() :
