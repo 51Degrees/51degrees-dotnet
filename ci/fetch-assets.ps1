@@ -1,8 +1,7 @@
-param (
-    [string]$DeviceDetection,
-    [string]$DeviceDetectionUrl,
-    [string]$IpIntelligenceUrl
-)
+# The data files that need a licence come from the Distributor with
+# _51DEGREES_LICENSE_KEY, which the shared fetch-assets step reads itself.
+# It fails naming the variable when the key is not set.
+param ()
 $ErrorActionPreference = "Stop"
 
 # PreBuild only compiles the native libraries, which need no data.
@@ -16,24 +15,15 @@ $data = "$PSScriptRoot/../cxx/data"
 $deviceDetectionData = "$data/device-detection"
 $ipIntelligenceData = "$data/ip-intelligence"
 
-$assets = @("51Degrees-LiteV4.1.hash", "20000 Evidence Records.yml", "20000 User Agents.csv")
-if ($DeviceDetection) {
-    $assets += "TAC-HashV41.hash"
-} else {
-    Write-Host "::warning title=No License Key::No device detection license, so the TAC data file is not downloaded and the tests that need it are skipped."
-}
-./steps/fetch-assets.ps1 -DeviceDetection:$DeviceDetection -DeviceDetectionUrl:$DeviceDetectionUrl -Assets $assets
+$assets = @("51Degrees-LiteV4.1.hash", "20000 Evidence Records.yml", "20000 User Agents.csv", "TAC-HashV41.hash")
+./steps/fetch-assets.ps1 -Assets $assets
 foreach ($asset in $assets) {
     Copy-Item "assets/$asset" $deviceDetectionData
 }
 
-if ($IpIntelligenceUrl) {
-    $asset = "51Degrees-EnterpriseIpiV41.ipi"
-    ./steps/fetch-assets.ps1 -IpIntelligenceUrl:$IpIntelligenceUrl -Assets $asset
-    New-Item -ItemType SymbolicLink -Force -Target "$PWD/assets/$asset" -Path "$ipIntelligenceData/$asset"
-} else {
-    Write-Host "::warning title=No License Key::No IP Intelligence data file URL, so the Enterprise file is not downloaded and the tests that need it are skipped."
-}
+$asset = "51Degrees-EnterpriseIpiV41.ipi"
+./steps/fetch-assets.ps1 -Assets $asset
+New-Item -ItemType SymbolicLink -Force -Target "$PWD/assets/$asset" -Path "$ipIntelligenceData/$asset"
 
 # The other free files the tests and examples read, which are the Asn file the
 # IP Intelligence tests use and the Lite file that the IP Intelligence examples

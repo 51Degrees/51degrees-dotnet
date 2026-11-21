@@ -41,11 +41,10 @@ namespace FiftyOne.Did.Tests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The resource key is found by <see cref="LiveCloudKey"/>, which fails
-    /// the tests when none is set, and has to carry the FODid product.
-    /// <c>_51DEGREES_LICENSE_KEY_51DID</c>, then
-    /// <c>_51DEGREES_LICENSE_KEY</c>, is read for
-    /// the license key and is optional. When one is set it must belong to
+    /// The resource key is found by <see cref="LiveCloudKey"/>, which skips
+    /// the tests when it is not set, and has to carry the FODid product.
+    /// <c>_51DEGREES_LICENSE_KEY_51DID</c> alone is read for the license
+    /// key and is optional. When one is set it must belong to
     /// the resource key's account and carry the 51Did product, because a
     /// sealed result must then read back as a verdict.
     /// <c>_51DEGREES_CLOUD_ENDPOINT</c> points every call at another host.
@@ -74,10 +73,12 @@ namespace FiftyOne.Did.Tests
             Timeout = TimeSpan.FromSeconds(30),
         };
 
+        /// <summary>
+        /// The 51Did licence. The data licence, _51DEGREES_LICENSE_KEY, is
+        /// not read, because it is for data file downloads.
+        /// </summary>
         private static string? LicenceKey() =>
-            FirstSet(
-                "_51DEGREES_LICENSE_KEY_51DID",
-                "_51DEGREES_LICENSE_KEY");
+            FirstSet("_51DEGREES_LICENSE_KEY_51DID");
 
         private static string? FirstSet(params string[] names)
         {
@@ -93,7 +94,7 @@ namespace FiftyOne.Did.Tests
         }
 
         /// <summary>
-        /// A client for the key in the environment, failing the test when
+        /// A client for the key in the environment, skipping the test when
         /// there is none.
         /// </summary>
         private static DidClient Client() =>

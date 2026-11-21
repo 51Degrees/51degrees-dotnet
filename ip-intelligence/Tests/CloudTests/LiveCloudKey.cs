@@ -27,10 +27,11 @@ using System.Linq;
 namespace FiftyOne.IpIntelligence.CloudTests;
 
 /// <summary>
-/// The resource key for the tests that call the live cloud service, and
-/// the messages they fail with when there is no key or the cloud answers
-/// without what a test asked for. There is no skip, because a cloud test
-/// that passes without calling the cloud has proved nothing.
+/// The resource key for the tests that call the live cloud service, the
+/// message they skip with when there is no key, and the messages they fail
+/// with when the cloud answers without what a test asked for. A skipped
+/// test names the variables, and never passes, because a cloud test that
+/// passes without calling the cloud has proved nothing.
 /// </summary>
 internal static class LiveCloudKey
 {
@@ -61,7 +62,7 @@ internal static class LiveCloudKey
         "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=ip-intelligence-tests-cloudtests-livecloudkey.cs&utm_term=resource-key";
 
     /// <summary>
-    /// The key, failing the test when none of <see cref="Names"/> is set.
+    /// The key, skipping the test when none of <see cref="Names"/> is set.
     /// </summary>
     /// <param name="product">The product the key has to carry.</param>
     /// <param name="asksFor">What the test asks the service for.</param>
@@ -70,7 +71,7 @@ internal static class LiveCloudKey
         var key = FromEnvironment();
         if (key == null)
         {
-            Assert.Fail(
+            Assert.Inconclusive(
                 "This test calls the live 51Degrees cloud service, so it " +
                 "needs a resource key and there is nothing to fall back " +
                 $"on. None of {string.Join(", ", Names)} is set, tried in " +

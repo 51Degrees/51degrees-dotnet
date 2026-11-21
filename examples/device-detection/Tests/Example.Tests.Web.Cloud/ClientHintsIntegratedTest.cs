@@ -35,9 +35,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
         /// returning the expected Accept-CH header values for various
         /// different scenarios.
         /// </summary>
-        /// <param name="resourceKey">
-        /// The resource key to use when creating the web server 
-        /// running the example.
+        /// <param name="caseName">
+        /// The case, which says which key the example runs with.
+        /// </param>
+        /// <param name="requestedProperties">
+        /// The properties a licence key case asks for, or null for the
+        /// resource key case.
         /// </param>
         /// <param name="userAgent">
         /// The value to set the User-Agent header to when making 
@@ -54,12 +57,14 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
             typeof(Parameters),
             DynamicDataSourceType.Method)]
         public async Task VerifyExample_Cloud(
-            string resourceKey,
+            string caseName,
+            string requestedProperties,
             string userAgent,
             List<string> expectedAcceptCH)
         {
             await VerifyExample(
-                resourceKey,
+                caseName,
+                requestedProperties,
                 userAgent,
                 expectedAcceptCH,
                 "Cloud-UACH");

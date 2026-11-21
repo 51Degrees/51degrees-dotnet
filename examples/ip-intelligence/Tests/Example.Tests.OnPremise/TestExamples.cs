@@ -81,9 +81,10 @@ public class TestExamples
     {
         OutputString = new StringBuilder();
         OutputWriter = new StringWriter(OutputString);
-        // Set license key for autoupdate examples.
-        var licenseKey = Environment.GetEnvironmentVariable(
-            Constants.LICENSE_KEY_ENV_VAR);
+        // Set license key for autoupdate examples, read as the data file
+        // update example reads it.
+        var licenseKey = Examples.OnPremise.UpdateDataFile.Program
+            .LicenseKeyFromEnvironment();
         LicenseKey = string.IsNullOrWhiteSpace(licenseKey) == false ?
             licenseKey: "!!YOUR_LICENSE_KEY!!";
 
@@ -524,7 +525,7 @@ public class TestExamples
         {
             Assert.Inconclusive("This test requires a 51Degrees license key. This can be " +
                 "specified in the TestHashExamples.Init method or by setting an Environment " +
-                $"variable called '{Constants.LICENSE_KEY_ENV_VAR}'");
+                $"variable called '{Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR}'");
         }
     }
 

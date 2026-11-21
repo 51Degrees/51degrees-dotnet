@@ -50,8 +50,7 @@ public class TestExamplesWithoutSettings
             Constants.IPI_PATH_ENV_VAR,
             Constants.EVIDENCE_FILE_ENV_VAR,
             Constants.GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR,
-            Constants.LICENSE_KEY_ENV_VAR,
-            "_51DEGREES_LICENSE_KEY",
+            Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR,
             "_51DEGREES_DD_PATH"
         }
         .ToArray();
