@@ -57,3 +57,29 @@ Both products:
 - The on-premise engine projects build the native library for the machine's
   architecture when built as AnyCPU, so they build from any solution.
 - The test helpers find the data files in the `cxx` data folders.
+
+### Names of environment variables and build options
+
+Every environment variable that the packages, examples and tests read, and
+every build option, has a name that starts `_51DEGREES_`, and
+[environment-variables.md](environment-variables.md) lists them all.
+These changes can break code or scripts that name the old ones:
+
+- `FiftyOne.Pipeline.CloudRequestEngine` no longer has
+  `Constants.FOD_CLOUD_API_URL`, and `FiftyOne.Did` no longer has
+  `DidClient.EndpointEnvironmentVariable`. Both held a variable name that
+  neither package reads. The cloud address is read from
+  `_51DEGREES_CLOUD_ENDPOINT`, as before.
+- The examples read each setting under one name only. The resource key is
+  `_51DEGREES_RESOURCE_KEY`, and the Device Detection examples no longer take
+  the key from another variable whose name starts with it. The evidence file
+  of the on-premise examples is `_51DEGREES_EVIDENCE_YAML`, and the port of the
+  Human Confidence and creator context web examples is
+  `_51DEGREES_EXAMPLE_HTTP_PORTS`, as in the other web examples. The examples'
+  shared code no longer has the constants that held other names.
+- The build options are `_51DEGREES_REFERENCES`, in place of
+  `FiftyOneReferences`, and `_51DEGREES_BUILT_ON_CI`, in place of
+  `BuiltOnCI`, and each package's version property is
+  `_51DEGREES_<package>_VERSION`, such as `_51DEGREES_PIPELINE_CORE_VERSION`
+  in place of `FiftyOnePipelineCoreVersion`. A `Directory.Build.local.props`
+  that sets the old name needs the new one.
