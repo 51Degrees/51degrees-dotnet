@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonTestHelpersVersion)" />
+    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(_51DEGREES_COMMON_TEST_HELPERS_VERSION)" />
   </ItemGroup>
 
 </Project>

@@ -3,7 +3,7 @@
   <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" />
   <PropertyGroup>
     <!-- The family version from the root file, unless the build passes one. -->
-    <Version Condition="'$(Version)' == ''">$(FiftyOneCommonVersion)</Version>
+    <Version Condition="'$(Version)' == ''">$(_51DEGREES_COMMON_VERSION)</Version>
     <AssemblyVersion>5.1.0.0</AssemblyVersion>
 
     <!-- The private key signs the assemblies when the key file is there,

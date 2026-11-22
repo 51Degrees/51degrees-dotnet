@@ -45,7 +45,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineCloudRequestEngineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(_51DEGREES_PIPELINE_CLOUD_REQUEST_ENGINE_VERSION)" />
     <ProjectReference Include="..\RobotsTxt\FiftyOne.DeviceDetection.RobotsTxt.csproj" />
   </ItemGroup>
 

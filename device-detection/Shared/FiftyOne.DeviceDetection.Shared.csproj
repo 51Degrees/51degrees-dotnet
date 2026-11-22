@@ -62,7 +62,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineEnginesFiftyOneVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(_51DEGREES_PIPELINE_ENGINES_FIFTYONE_VERSION)" />
   </ItemGroup>
 
 </Project>

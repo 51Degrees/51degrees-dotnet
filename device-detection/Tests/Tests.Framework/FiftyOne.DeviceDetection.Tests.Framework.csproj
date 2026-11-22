@@ -119,14 +119,14 @@
     in already, and declaring them again conflicts with those versions.
   -->
   <ItemGroup Condition="'$(_51DEGREES_REFERENCES)' == 'Project'">
-    <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\..\caching\Caching\FiftyOne.Caching.csproj" Version="$(FiftyOneCachingVersion)" />
-    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\common\Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
-    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonTestHelpersVersion)" />
-    <FiftyOneReference Include="FiftyOne.DeviceDetection.Cloud" ProjectPath="..\..\Cloud\FiftyOne.DeviceDetection.Cloud.csproj" Version="$(FiftyOneDeviceDetectionCloudVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineCloudRequestEngineVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Core" ProjectPath="..\..\..\pipeline\Core\FiftyOne.Pipeline.Core.csproj" Version="$(FiftyOnePipelineCoreVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Engines" ProjectPath="..\..\..\pipeline\Engines\FiftyOne.Pipeline.Engines.csproj" Version="$(FiftyOnePipelineEnginesVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineEnginesFiftyOneVersion)" />
+    <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\..\caching\Caching\FiftyOne.Caching.csproj" Version="$(_51DEGREES_CACHING_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\common\Common\FiftyOne.Common.csproj" Version="$(_51DEGREES_COMMON_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(_51DEGREES_COMMON_TEST_HELPERS_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection.Cloud" ProjectPath="..\..\Cloud\FiftyOne.DeviceDetection.Cloud.csproj" Version="$(_51DEGREES_DEVICE_DETECTION_CLOUD_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(_51DEGREES_PIPELINE_CLOUD_REQUEST_ENGINE_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Core" ProjectPath="..\..\..\pipeline\Core\FiftyOne.Pipeline.Core.csproj" Version="$(_51DEGREES_PIPELINE_CORE_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines" ProjectPath="..\..\..\pipeline\Engines\FiftyOne.Pipeline.Engines.csproj" Version="$(_51DEGREES_PIPELINE_ENGINES_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(_51DEGREES_PIPELINE_ENGINES_FIFTYONE_VERSION)" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

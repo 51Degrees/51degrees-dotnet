@@ -80,8 +80,8 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.JavaScriptBuilder" ProjectPath="..\..\..\..\pipeline\JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj" Version="$(FiftyOnePipelineJavaScriptBuilderVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\Web.Framework\FiftyOne.Pipeline.Web.Framework.csproj" Version="$(FiftyOnePipelineWebVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.JavaScriptBuilder" ProjectPath="..\..\..\..\pipeline\JavaScriptBuilderElement\FiftyOne.Pipeline.JavaScriptBuilder.csproj" Version="$(_51DEGREES_PIPELINE_JAVASCRIPT_BUILDER_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\Web.Framework\FiftyOne.Pipeline.Web.Framework.csproj" Version="$(_51DEGREES_PIPELINE_WEB_VERSION)" />
     <PackageReference Include="Microsoft.Extensions.Configuration">
       <Version>8.0.0</Version>
     </PackageReference>
@@ -190,20 +190,20 @@
     in already, and declaring them again conflicts with those versions.
   -->
   <ItemGroup Condition="'$(_51DEGREES_REFERENCES)' == 'Project'">
-    <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\..\..\caching\Caching\FiftyOne.Caching.csproj" Version="$(FiftyOneCachingVersion)" />
-    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\..\common\Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
-    <FiftyOneReference Include="FiftyOne.IpIntelligence" ProjectPath="..\..\..\..\ip-intelligence\IpIntelligence\FiftyOne.IpIntelligence.csproj" Version="$(FiftyOneIpIntelligenceVersion)" />
-    <FiftyOneReference Include="FiftyOne.IpIntelligence.Cloud" ProjectPath="..\..\..\..\ip-intelligence\Cloud\FiftyOne.IpIntelligence.Cloud.csproj" Version="$(FiftyOneIpIntelligenceCloudVersion)" />
-    <FiftyOneReference Include="FiftyOne.IpIntelligence.Engine.OnPremise" ProjectPath="..\..\..\..\ip-intelligence\Engine.OnPremise\FiftyOne.IpIntelligence.Engine.OnPremise.csproj" Version="$(FiftyOneIpIntelligenceEngineOnPremiseVersion)" />
-    <FiftyOneReference Include="FiftyOne.IpIntelligence.Shared" ProjectPath="..\..\..\..\ip-intelligence\Shared\FiftyOne.IpIntelligence.Shared.csproj" Version="$(FiftyOneIpIntelligenceSharedVersion)" />
-    <FiftyOneReference Include="FiftyOne.IpIntelligence.Translation" ProjectPath="..\..\..\..\ip-intelligence\Translation\FiftyOne.IpIntelligence.Translation.csproj" Version="$(FiftyOneIpIntelligenceTranslationVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineCloudRequestEngineVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Core" ProjectPath="..\..\..\..\pipeline\Core\FiftyOne.Pipeline.Core.csproj" Version="$(FiftyOnePipelineCoreVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Engines" ProjectPath="..\..\..\..\pipeline\Engines\FiftyOne.Pipeline.Engines.csproj" Version="$(FiftyOnePipelineEnginesVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineEnginesFiftyOneVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.JsonBuilder" ProjectPath="..\..\..\..\pipeline\JsonBuilderElement\FiftyOne.Pipeline.JsonBuilder.csproj" Version="$(FiftyOnePipelineJsonBuilderVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Translation" ProjectPath="..\..\..\..\pipeline\Translation\FiftyOne.Pipeline.Translation.csproj" Version="$(FiftyOnePipelineTranslationVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Web.Shared" ProjectPath="..\..\..\..\pipeline\Web.Shared\FiftyOne.Pipeline.Web.Shared.csproj" Version="$(FiftyOnePipelineWebSharedVersion)" />
+    <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\..\..\caching\Caching\FiftyOne.Caching.csproj" Version="$(_51DEGREES_CACHING_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\..\common\Common\FiftyOne.Common.csproj" Version="$(_51DEGREES_COMMON_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.IpIntelligence" ProjectPath="..\..\..\..\ip-intelligence\IpIntelligence\FiftyOne.IpIntelligence.csproj" Version="$(_51DEGREES_IP_INTELLIGENCE_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.IpIntelligence.Cloud" ProjectPath="..\..\..\..\ip-intelligence\Cloud\FiftyOne.IpIntelligence.Cloud.csproj" Version="$(_51DEGREES_IP_INTELLIGENCE_CLOUD_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.IpIntelligence.Engine.OnPremise" ProjectPath="..\..\..\..\ip-intelligence\Engine.OnPremise\FiftyOne.IpIntelligence.Engine.OnPremise.csproj" Version="$(_51DEGREES_IP_INTELLIGENCE_ENGINE_ON_PREMISE_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.IpIntelligence.Shared" ProjectPath="..\..\..\..\ip-intelligence\Shared\FiftyOne.IpIntelligence.Shared.csproj" Version="$(_51DEGREES_IP_INTELLIGENCE_SHARED_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.IpIntelligence.Translation" ProjectPath="..\..\..\..\ip-intelligence\Translation\FiftyOne.IpIntelligence.Translation.csproj" Version="$(_51DEGREES_IP_INTELLIGENCE_TRANSLATION_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(_51DEGREES_PIPELINE_CLOUD_REQUEST_ENGINE_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Core" ProjectPath="..\..\..\..\pipeline\Core\FiftyOne.Pipeline.Core.csproj" Version="$(_51DEGREES_PIPELINE_CORE_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines" ProjectPath="..\..\..\..\pipeline\Engines\FiftyOne.Pipeline.Engines.csproj" Version="$(_51DEGREES_PIPELINE_ENGINES_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(_51DEGREES_PIPELINE_ENGINES_FIFTYONE_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.JsonBuilder" ProjectPath="..\..\..\..\pipeline\JsonBuilderElement\FiftyOne.Pipeline.JsonBuilder.csproj" Version="$(_51DEGREES_PIPELINE_JSON_BUILDER_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Translation" ProjectPath="..\..\..\..\pipeline\Translation\FiftyOne.Pipeline.Translation.csproj" Version="$(_51DEGREES_PIPELINE_TRANSLATION_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Web.Shared" ProjectPath="..\..\..\..\pipeline\Web.Shared\FiftyOne.Pipeline.Web.Shared.csproj" Version="$(_51DEGREES_PIPELINE_WEB_SHARED_VERSION)" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" Condition="false" />

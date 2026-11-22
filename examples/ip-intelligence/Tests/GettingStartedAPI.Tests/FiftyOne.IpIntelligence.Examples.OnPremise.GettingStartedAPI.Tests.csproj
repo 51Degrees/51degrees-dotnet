@@ -17,9 +17,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonTestHelpersVersion)" />
-    <FiftyOneReference Include="FiftyOne.DeviceDetection.Hash.Engine.OnPremise" ProjectPath="..\..\..\..\device-detection\Hash.Engine.OnPremise\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj" Version="$(FiftyOneDeviceDetectionHashEngineOnPremiseVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.TestHelpers" ProjectPath="..\..\..\..\pipeline\Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" Version="$(FiftyOnePipelineEnginesTestHelpersVersion)" />
+    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(_51DEGREES_COMMON_TEST_HELPERS_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.DeviceDetection.Hash.Engine.OnPremise" ProjectPath="..\..\..\..\device-detection\Hash.Engine.OnPremise\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj" Version="$(_51DEGREES_DEVICE_DETECTION_HASH_ENGINE_ON_PREMISE_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.TestHelpers" ProjectPath="..\..\..\..\pipeline\Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" Version="$(_51DEGREES_PIPELINE_ENGINES_TEST_HELPERS_VERSION)" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="4.1.0" />
     <PackageReference Include="MSTest.TestFramework" Version="4.1.0" />

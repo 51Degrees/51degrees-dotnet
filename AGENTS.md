@@ -226,7 +226,7 @@ The root `Directory.Build.targets` turns it into one or the other from the
 `_51DEGREES_REFERENCES` property, which defaults to `Package`. CI builds and
 tests with `Project`, so a change that crosses folders is tested together.
 When a package's dependency changes, change the item, and when a version
-changes, change the package's `FiftyOne*Version` property in the root
+changes, change the package's `_51DEGREES_*_VERSION` property in the root
 `Directory.Build.props`. A package that starts to reference another package
 also needs it in its own `DependsOn` in `ci/packages.json`, or a release of the
 package it references leaves it at the old requirement.

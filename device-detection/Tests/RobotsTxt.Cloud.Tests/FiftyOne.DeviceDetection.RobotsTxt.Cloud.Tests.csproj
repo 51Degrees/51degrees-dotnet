@@ -20,8 +20,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonTestHelpersVersion)" />
-    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.TestHelpers" ProjectPath="..\..\..\pipeline\Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" Version="$(FiftyOnePipelineEnginesTestHelpersVersion)" />
+    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(_51DEGREES_COMMON_TEST_HELPERS_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.TestHelpers" ProjectPath="..\..\..\pipeline\Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" Version="$(_51DEGREES_PIPELINE_ENGINES_TEST_HELPERS_VERSION)" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
   </ItemGroup>
 

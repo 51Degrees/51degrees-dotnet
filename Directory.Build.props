@@ -21,7 +21,7 @@
 
       <FiftyOneReference Include="FiftyOne.Pipeline.Engines"
                          ProjectPath="..\..\pipeline\Engines\FiftyOne.Pipeline.Engines.csproj"
-                         Version="$(FiftyOnePipelineEnginesVersion)" />
+                         Version="$(_51DEGREES_PIPELINE_ENGINES_VERSION)" />
 
     and Directory.Build.targets turns it into one of:
 
@@ -94,40 +94,40 @@
     released here, and the nightly package update changes them too.
   -->
   <PropertyGroup>
-    <FiftyOneCommonVersion>5.1.10</FiftyOneCommonVersion>
-    <FiftyOneCachingVersion>4.5.4</FiftyOneCachingVersion>
-    <FiftyOneDidVersion>4.5.130</FiftyOneDidVersion>
-    <FiftyOnePipelineCoreVersion>4.5.130</FiftyOnePipelineCoreVersion>
-    <FiftyOneCommonTestHelpersVersion>5.1.10</FiftyOneCommonTestHelpersVersion>
-    <FiftyOnePipelineEnginesVersion>4.5.130</FiftyOnePipelineEnginesVersion>
-    <FiftyOnePipelineAgentSignatureVersion>4.5.130</FiftyOnePipelineAgentSignatureVersion>
-    <FiftyOnePipelineCloudRequestEngineVersion>4.5.130</FiftyOnePipelineCloudRequestEngineVersion>
-    <FiftyOnePipelineDerivedPropertyVersion>4.5.130</FiftyOnePipelineDerivedPropertyVersion>
-    <FiftyOnePipelineEnginesFiftyOneVersion>4.5.130</FiftyOnePipelineEnginesFiftyOneVersion>
-    <FiftyOnePipelineEnginesTestHelpersVersion>4.5.130</FiftyOnePipelineEnginesTestHelpersVersion>
-    <FiftyOnePipelineExamplesSharedVersion>4.5.130</FiftyOnePipelineExamplesSharedVersion>
-    <FiftyOnePipelineTranslationVersion>4.5.130</FiftyOnePipelineTranslationVersion>
-    <FiftyOneDidCoreVersion>4.5.130</FiftyOneDidCoreVersion>
-    <FiftyOnePipelineJsonBuilderVersion>4.5.130</FiftyOnePipelineJsonBuilderVersion>
-    <FiftyOneDeviceDetectionSharedVersion>4.5.181</FiftyOneDeviceDetectionSharedVersion>
-    <FiftyOneIpIntelligenceSharedVersion>4.5.156</FiftyOneIpIntelligenceSharedVersion>
-    <FiftyOneGeolocationCoreVersion>4.5.197</FiftyOneGeolocationCoreVersion>
-    <FiftyOneDidCloudVersion>4.5.130</FiftyOneDidCloudVersion>
-    <FiftyOnePipelineJavaScriptBuilderVersion>4.5.130</FiftyOnePipelineJavaScriptBuilderVersion>
-    <FiftyOneDeviceDetectionCloudVersion>4.5.181</FiftyOneDeviceDetectionCloudVersion>
-    <FiftyOneDeviceDetectionHashEngineOnPremiseVersion>4.5.181</FiftyOneDeviceDetectionHashEngineOnPremiseVersion>
-    <FiftyOneIpIntelligenceEngineOnPremiseVersion>4.5.156</FiftyOneIpIntelligenceEngineOnPremiseVersion>
-    <FiftyOneIpIntelligenceTranslationVersion>4.5.156</FiftyOneIpIntelligenceTranslationVersion>
-    <FiftyOneGeolocationCloudVersion>4.5.197</FiftyOneGeolocationCloudVersion>
-    <FiftyOnePipelineWebSharedVersion>4.5.130</FiftyOnePipelineWebSharedVersion>
-    <FiftyOneDeviceDetectionVersion>4.5.181</FiftyOneDeviceDetectionVersion>
-    <FiftyOneDeviceDetectionPropertyKeyedVersion>4.5.181</FiftyOneDeviceDetectionPropertyKeyedVersion>
-    <FiftyOneIpIntelligenceCloudVersion>4.5.156</FiftyOneIpIntelligenceCloudVersion>
-    <FiftyOneGeolocationVersion>4.5.197</FiftyOneGeolocationVersion>
-    <FiftyOnePipelineWebVersion>4.5.130</FiftyOnePipelineWebVersion>
-    <FiftyOneDeviceDetectionRobotsTxtVersion>4.5.181</FiftyOneDeviceDetectionRobotsTxtVersion>
-    <FiftyOneIpIntelligenceVersion>4.5.156</FiftyOneIpIntelligenceVersion>
-    <FiftyOneDeviceDetectionRobotsTxtCloudVersion>4.5.181</FiftyOneDeviceDetectionRobotsTxtCloudVersion>
+    <_51DEGREES_COMMON_VERSION>5.1.10</_51DEGREES_COMMON_VERSION>
+    <_51DEGREES_CACHING_VERSION>4.5.4</_51DEGREES_CACHING_VERSION>
+    <_51DEGREES_DID_VERSION>4.5.130</_51DEGREES_DID_VERSION>
+    <_51DEGREES_PIPELINE_CORE_VERSION>4.5.130</_51DEGREES_PIPELINE_CORE_VERSION>
+    <_51DEGREES_COMMON_TEST_HELPERS_VERSION>5.1.10</_51DEGREES_COMMON_TEST_HELPERS_VERSION>
+    <_51DEGREES_PIPELINE_ENGINES_VERSION>4.5.130</_51DEGREES_PIPELINE_ENGINES_VERSION>
+    <_51DEGREES_PIPELINE_AGENT_SIGNATURE_VERSION>4.5.130</_51DEGREES_PIPELINE_AGENT_SIGNATURE_VERSION>
+    <_51DEGREES_PIPELINE_CLOUD_REQUEST_ENGINE_VERSION>4.5.130</_51DEGREES_PIPELINE_CLOUD_REQUEST_ENGINE_VERSION>
+    <_51DEGREES_PIPELINE_DERIVED_PROPERTY_VERSION>4.5.130</_51DEGREES_PIPELINE_DERIVED_PROPERTY_VERSION>
+    <_51DEGREES_PIPELINE_ENGINES_FIFTYONE_VERSION>4.5.130</_51DEGREES_PIPELINE_ENGINES_FIFTYONE_VERSION>
+    <_51DEGREES_PIPELINE_ENGINES_TEST_HELPERS_VERSION>4.5.130</_51DEGREES_PIPELINE_ENGINES_TEST_HELPERS_VERSION>
+    <_51DEGREES_PIPELINE_EXAMPLES_SHARED_VERSION>4.5.130</_51DEGREES_PIPELINE_EXAMPLES_SHARED_VERSION>
+    <_51DEGREES_PIPELINE_TRANSLATION_VERSION>4.5.130</_51DEGREES_PIPELINE_TRANSLATION_VERSION>
+    <_51DEGREES_DID_CORE_VERSION>4.5.130</_51DEGREES_DID_CORE_VERSION>
+    <_51DEGREES_PIPELINE_JSON_BUILDER_VERSION>4.5.130</_51DEGREES_PIPELINE_JSON_BUILDER_VERSION>
+    <_51DEGREES_DEVICE_DETECTION_SHARED_VERSION>4.5.181</_51DEGREES_DEVICE_DETECTION_SHARED_VERSION>
+    <_51DEGREES_IP_INTELLIGENCE_SHARED_VERSION>4.5.156</_51DEGREES_IP_INTELLIGENCE_SHARED_VERSION>
+    <_51DEGREES_GEOLOCATION_CORE_VERSION>4.5.197</_51DEGREES_GEOLOCATION_CORE_VERSION>
+    <_51DEGREES_DID_CLOUD_VERSION>4.5.130</_51DEGREES_DID_CLOUD_VERSION>
+    <_51DEGREES_PIPELINE_JAVASCRIPT_BUILDER_VERSION>4.5.130</_51DEGREES_PIPELINE_JAVASCRIPT_BUILDER_VERSION>
+    <_51DEGREES_DEVICE_DETECTION_CLOUD_VERSION>4.5.181</_51DEGREES_DEVICE_DETECTION_CLOUD_VERSION>
+    <_51DEGREES_DEVICE_DETECTION_HASH_ENGINE_ON_PREMISE_VERSION>4.5.181</_51DEGREES_DEVICE_DETECTION_HASH_ENGINE_ON_PREMISE_VERSION>
+    <_51DEGREES_IP_INTELLIGENCE_ENGINE_ON_PREMISE_VERSION>4.5.156</_51DEGREES_IP_INTELLIGENCE_ENGINE_ON_PREMISE_VERSION>
+    <_51DEGREES_IP_INTELLIGENCE_TRANSLATION_VERSION>4.5.156</_51DEGREES_IP_INTELLIGENCE_TRANSLATION_VERSION>
+    <_51DEGREES_GEOLOCATION_CLOUD_VERSION>4.5.197</_51DEGREES_GEOLOCATION_CLOUD_VERSION>
+    <_51DEGREES_PIPELINE_WEB_SHARED_VERSION>4.5.130</_51DEGREES_PIPELINE_WEB_SHARED_VERSION>
+    <_51DEGREES_DEVICE_DETECTION_VERSION>4.5.181</_51DEGREES_DEVICE_DETECTION_VERSION>
+    <_51DEGREES_DEVICE_DETECTION_PROPERTY_KEYED_VERSION>4.5.181</_51DEGREES_DEVICE_DETECTION_PROPERTY_KEYED_VERSION>
+    <_51DEGREES_IP_INTELLIGENCE_CLOUD_VERSION>4.5.156</_51DEGREES_IP_INTELLIGENCE_CLOUD_VERSION>
+    <_51DEGREES_GEOLOCATION_VERSION>4.5.197</_51DEGREES_GEOLOCATION_VERSION>
+    <_51DEGREES_PIPELINE_WEB_VERSION>4.5.130</_51DEGREES_PIPELINE_WEB_VERSION>
+    <_51DEGREES_DEVICE_DETECTION_ROBOTS_TXT_VERSION>4.5.181</_51DEGREES_DEVICE_DETECTION_ROBOTS_TXT_VERSION>
+    <_51DEGREES_IP_INTELLIGENCE_VERSION>4.5.156</_51DEGREES_IP_INTELLIGENCE_VERSION>
+    <_51DEGREES_DEVICE_DETECTION_ROBOTS_TXT_CLOUD_VERSION>4.5.181</_51DEGREES_DEVICE_DETECTION_ROBOTS_TXT_CLOUD_VERSION>
   </PropertyGroup>
 
   <!--
@@ -136,40 +136,40 @@
     version is set is never a change to the package itself.
   -->
   <PropertyGroup>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Common'">$(FiftyOneCommonVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Caching'">$(FiftyOneCachingVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Did'">$(FiftyOneDidVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Core'">$(FiftyOnePipelineCoreVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Common.TestHelpers'">$(FiftyOneCommonTestHelpersVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Engines'">$(FiftyOnePipelineEnginesVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.AgentSignature'">$(FiftyOnePipelineAgentSignatureVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.CloudRequestEngine'">$(FiftyOnePipelineCloudRequestEngineVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.DerivedProperty'">$(FiftyOnePipelineDerivedPropertyVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Engines.FiftyOne'">$(FiftyOnePipelineEnginesFiftyOneVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Engines.TestHelpers'">$(FiftyOnePipelineEnginesTestHelpersVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Examples.Shared'">$(FiftyOnePipelineExamplesSharedVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Translation'">$(FiftyOnePipelineTranslationVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Did.Core'">$(FiftyOneDidCoreVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.JsonBuilder'">$(FiftyOnePipelineJsonBuilderVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.Shared'">$(FiftyOneDeviceDetectionSharedVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Shared'">$(FiftyOneIpIntelligenceSharedVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.GeoLocation.Core'">$(FiftyOneGeolocationCoreVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Did.Cloud'">$(FiftyOneDidCloudVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.JavaScriptBuilder'">$(FiftyOnePipelineJavaScriptBuilderVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.Cloud'">$(FiftyOneDeviceDetectionCloudVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.Hash.Engine.OnPremise'">$(FiftyOneDeviceDetectionHashEngineOnPremiseVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Engine.OnPremise'">$(FiftyOneIpIntelligenceEngineOnPremiseVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Translation'">$(FiftyOneIpIntelligenceTranslationVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.GeoLocation.Cloud'">$(FiftyOneGeolocationCloudVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Web.Shared'">$(FiftyOnePipelineWebSharedVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection'">$(FiftyOneDeviceDetectionVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.PropertyKeyed'">$(FiftyOneDeviceDetectionPropertyKeyedVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Cloud'">$(FiftyOneIpIntelligenceCloudVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.GeoLocation'">$(FiftyOneGeolocationVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Web'">$(FiftyOnePipelineWebVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Web.Framework'">$(FiftyOnePipelineWebVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.RobotsTxt'">$(FiftyOneDeviceDetectionRobotsTxtVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence'">$(FiftyOneIpIntelligenceVersion)</Version>
-    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.RobotsTxt.Cloud'">$(FiftyOneDeviceDetectionRobotsTxtCloudVersion)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Common'">$(_51DEGREES_COMMON_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Caching'">$(_51DEGREES_CACHING_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Did'">$(_51DEGREES_DID_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Core'">$(_51DEGREES_PIPELINE_CORE_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Common.TestHelpers'">$(_51DEGREES_COMMON_TEST_HELPERS_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Engines'">$(_51DEGREES_PIPELINE_ENGINES_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.AgentSignature'">$(_51DEGREES_PIPELINE_AGENT_SIGNATURE_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.CloudRequestEngine'">$(_51DEGREES_PIPELINE_CLOUD_REQUEST_ENGINE_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.DerivedProperty'">$(_51DEGREES_PIPELINE_DERIVED_PROPERTY_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Engines.FiftyOne'">$(_51DEGREES_PIPELINE_ENGINES_FIFTYONE_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Engines.TestHelpers'">$(_51DEGREES_PIPELINE_ENGINES_TEST_HELPERS_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Examples.Shared'">$(_51DEGREES_PIPELINE_EXAMPLES_SHARED_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Translation'">$(_51DEGREES_PIPELINE_TRANSLATION_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Did.Core'">$(_51DEGREES_DID_CORE_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.JsonBuilder'">$(_51DEGREES_PIPELINE_JSON_BUILDER_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.Shared'">$(_51DEGREES_DEVICE_DETECTION_SHARED_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Shared'">$(_51DEGREES_IP_INTELLIGENCE_SHARED_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.GeoLocation.Core'">$(_51DEGREES_GEOLOCATION_CORE_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Did.Cloud'">$(_51DEGREES_DID_CLOUD_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.JavaScriptBuilder'">$(_51DEGREES_PIPELINE_JAVASCRIPT_BUILDER_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.Cloud'">$(_51DEGREES_DEVICE_DETECTION_CLOUD_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.Hash.Engine.OnPremise'">$(_51DEGREES_DEVICE_DETECTION_HASH_ENGINE_ON_PREMISE_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Engine.OnPremise'">$(_51DEGREES_IP_INTELLIGENCE_ENGINE_ON_PREMISE_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Translation'">$(_51DEGREES_IP_INTELLIGENCE_TRANSLATION_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.GeoLocation.Cloud'">$(_51DEGREES_GEOLOCATION_CLOUD_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Web.Shared'">$(_51DEGREES_PIPELINE_WEB_SHARED_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection'">$(_51DEGREES_DEVICE_DETECTION_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.PropertyKeyed'">$(_51DEGREES_DEVICE_DETECTION_PROPERTY_KEYED_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence.Cloud'">$(_51DEGREES_IP_INTELLIGENCE_CLOUD_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.GeoLocation'">$(_51DEGREES_GEOLOCATION_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Web'">$(_51DEGREES_PIPELINE_WEB_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.Pipeline.Web.Framework'">$(_51DEGREES_PIPELINE_WEB_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.RobotsTxt'">$(_51DEGREES_DEVICE_DETECTION_ROBOTS_TXT_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.IpIntelligence'">$(_51DEGREES_IP_INTELLIGENCE_VERSION)</Version>
+    <Version Condition="'$(Version)' == '' and '$(MSBuildProjectName)' == 'FiftyOne.DeviceDetection.RobotsTxt.Cloud'">$(_51DEGREES_DEVICE_DETECTION_ROBOTS_TXT_CLOUD_VERSION)</Version>
   </PropertyGroup>
 </Project>

@@ -51,7 +51,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.Translation" ProjectPath="..\..\pipeline\Translation\FiftyOne.Pipeline.Translation.csproj" Version="$(FiftyOnePipelineTranslationVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Translation" ProjectPath="..\..\pipeline\Translation\FiftyOne.Pipeline.Translation.csproj" Version="$(_51DEGREES_PIPELINE_TRANSLATION_VERSION)" />
   </ItemGroup>
 
 </Project>

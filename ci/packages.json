@@ -10,7 +10,7 @@
     "Publish": true,
     "Family": "common",
     "Project": "common/Common/FiftyOne.Common.csproj",
-    "Property": "FiftyOneCommonVersion"
+    "Property": "_51DEGREES_COMMON_VERSION"
   },
   {
     "Name": "FiftyOne.Caching",
@@ -23,7 +23,7 @@
     "Publish": true,
     "Family": "caching",
     "Project": "caching/Caching/FiftyOne.Caching.csproj",
-    "Property": "FiftyOneCachingVersion"
+    "Property": "_51DEGREES_CACHING_VERSION"
   },
   {
     "Name": "FiftyOne.Did",
@@ -38,7 +38,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/Did/FiftyOne.Did.csproj",
-    "Property": "FiftyOneDidVersion"
+    "Property": "_51DEGREES_DID_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.Core",
@@ -52,7 +52,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/Core/FiftyOne.Pipeline.Core.csproj",
-    "Property": "FiftyOnePipelineCoreVersion"
+    "Property": "_51DEGREES_PIPELINE_CORE_VERSION"
   },
   {
     "Name": "FiftyOne.Common.TestHelpers",
@@ -67,7 +67,7 @@
     "Publish": true,
     "Family": "common",
     "Project": "common/TestHelpers/FiftyOne.Common.TestHelpers.csproj",
-    "Property": "FiftyOneCommonTestHelpersVersion"
+    "Property": "_51DEGREES_COMMON_TEST_HELPERS_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.Engines",
@@ -85,7 +85,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/Engines/FiftyOne.Pipeline.Engines.csproj",
-    "Property": "FiftyOnePipelineEnginesVersion"
+    "Property": "_51DEGREES_PIPELINE_ENGINES_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.AgentSignature",
@@ -101,7 +101,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/AgentSignature/FiftyOne.Pipeline.AgentSignature.csproj",
-    "Property": "FiftyOnePipelineAgentSignatureVersion"
+    "Property": "_51DEGREES_PIPELINE_AGENT_SIGNATURE_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.CloudRequestEngine",
@@ -117,7 +117,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/CloudRequestEngine/FiftyOne.Pipeline.CloudRequestEngine.csproj",
-    "Property": "FiftyOnePipelineCloudRequestEngineVersion"
+    "Property": "_51DEGREES_PIPELINE_CLOUD_REQUEST_ENGINE_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.DerivedProperty",
@@ -133,7 +133,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/DerivedProperty/FiftyOne.Pipeline.DerivedProperty.csproj",
-    "Property": "FiftyOnePipelineDerivedPropertyVersion"
+    "Property": "_51DEGREES_PIPELINE_DERIVED_PROPERTY_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.Engines.FiftyOne",
@@ -149,7 +149,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/Engines.FiftyOne/FiftyOne.Pipeline.Engines.FiftyOne.csproj",
-    "Property": "FiftyOnePipelineEnginesFiftyOneVersion"
+    "Property": "_51DEGREES_PIPELINE_ENGINES_FIFTYONE_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.Engines.TestHelpers",
@@ -165,7 +165,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/Engines.TestHelpers/FiftyOne.Pipeline.Engines.TestHelpers.csproj",
-    "Property": "FiftyOnePipelineEnginesTestHelpersVersion"
+    "Property": "_51DEGREES_PIPELINE_ENGINES_TEST_HELPERS_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.Examples.Shared",
@@ -182,7 +182,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/Examples.Shared/FiftyOne.Pipeline.Examples.Shared.csproj",
-    "Property": "FiftyOnePipelineExamplesSharedVersion"
+    "Property": "_51DEGREES_PIPELINE_EXAMPLES_SHARED_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.Translation",
@@ -198,7 +198,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/Translation/FiftyOne.Pipeline.Translation.csproj",
-    "Property": "FiftyOnePipelineTranslationVersion"
+    "Property": "_51DEGREES_PIPELINE_TRANSLATION_VERSION"
   },
   {
     "Name": "FiftyOne.Did.Core",
@@ -215,7 +215,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/Did.Core/FiftyOne.Did.Core.csproj",
-    "Property": "FiftyOneDidCoreVersion"
+    "Property": "_51DEGREES_DID_CORE_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.JsonBuilder",
@@ -231,7 +231,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/JsonBuilderElement/FiftyOne.Pipeline.JsonBuilder.csproj",
-    "Property": "FiftyOnePipelineJsonBuilderVersion"
+    "Property": "_51DEGREES_PIPELINE_JSON_BUILDER_VERSION"
   },
   {
     "Name": "FiftyOne.DeviceDetection.Shared",
@@ -247,7 +247,7 @@
     "Publish": true,
     "Family": "device-detection",
     "Project": "device-detection/Shared/FiftyOne.DeviceDetection.Shared.csproj",
-    "Property": "FiftyOneDeviceDetectionSharedVersion"
+    "Property": "_51DEGREES_DEVICE_DETECTION_SHARED_VERSION"
   },
   {
     "Name": "FiftyOne.IpIntelligence.Shared",
@@ -263,7 +263,7 @@
     "Publish": true,
     "Family": "ip-intelligence",
     "Project": "ip-intelligence/Shared/FiftyOne.IpIntelligence.Shared.csproj",
-    "Property": "FiftyOneIpIntelligenceSharedVersion"
+    "Property": "_51DEGREES_IP_INTELLIGENCE_SHARED_VERSION"
   },
   {
     "Name": "FiftyOne.Geolocation.Core",
@@ -279,7 +279,7 @@
     "Publish": true,
     "Family": "location",
     "Project": "location/GeoLocation/Core/FiftyOne.GeoLocation.Core.csproj",
-    "Property": "FiftyOneGeolocationCoreVersion"
+    "Property": "_51DEGREES_GEOLOCATION_CORE_VERSION"
   },
   {
     "Name": "FiftyOne.Did.Cloud",
@@ -297,7 +297,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/Did.Cloud/FiftyOne.Did.Cloud.csproj",
-    "Property": "FiftyOneDidCloudVersion"
+    "Property": "_51DEGREES_DID_CLOUD_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.JavaScriptBuilder",
@@ -315,7 +315,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/JavaScriptBuilderElement/FiftyOne.Pipeline.JavaScriptBuilder.csproj",
-    "Property": "FiftyOnePipelineJavaScriptBuilderVersion"
+    "Property": "_51DEGREES_PIPELINE_JAVASCRIPT_BUILDER_VERSION"
   },
   {
     "Name": "FiftyOne.DeviceDetection.Cloud",
@@ -332,7 +332,7 @@
     "Publish": true,
     "Family": "device-detection",
     "Project": "device-detection/Cloud/FiftyOne.DeviceDetection.Cloud.csproj",
-    "Property": "FiftyOneDeviceDetectionCloudVersion"
+    "Property": "_51DEGREES_DEVICE_DETECTION_CLOUD_VERSION"
   },
   {
     "Name": "FiftyOne.DeviceDetection.Hash.Engine.OnPremise",
@@ -350,7 +350,7 @@
     "Publish": true,
     "Family": "device-detection",
     "Project": "device-detection/Hash.Engine.OnPremise/FiftyOne.DeviceDetection.Hash.Engine.OnPremise.csproj",
-    "Property": "FiftyOneDeviceDetectionHashEngineOnPremiseVersion"
+    "Property": "_51DEGREES_DEVICE_DETECTION_HASH_ENGINE_ON_PREMISE_VERSION"
   },
   {
     "Name": "FiftyOne.IpIntelligence.Engine.OnPremise",
@@ -367,7 +367,7 @@
     "Publish": true,
     "Family": "ip-intelligence",
     "Project": "ip-intelligence/Engine.OnPremise/FiftyOne.IpIntelligence.Engine.OnPremise.csproj",
-    "Property": "FiftyOneIpIntelligenceEngineOnPremiseVersion"
+    "Property": "_51DEGREES_IP_INTELLIGENCE_ENGINE_ON_PREMISE_VERSION"
   },
   {
     "Name": "FiftyOne.IpIntelligence.Translation",
@@ -385,7 +385,7 @@
     "Publish": true,
     "Family": "ip-intelligence",
     "Project": "ip-intelligence/Translation/FiftyOne.IpIntelligence.Translation.csproj",
-    "Property": "FiftyOneIpIntelligenceTranslationVersion"
+    "Property": "_51DEGREES_IP_INTELLIGENCE_TRANSLATION_VERSION"
   },
   {
     "Name": "FiftyOne.Geolocation.Cloud",
@@ -402,7 +402,7 @@
     "Publish": true,
     "Family": "location",
     "Project": "location/GeoLocation/Cloud/FiftyOne.GeoLocation.Cloud.csproj",
-    "Property": "FiftyOneGeolocationCloudVersion"
+    "Property": "_51DEGREES_GEOLOCATION_CLOUD_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.Web.Shared",
@@ -420,7 +420,7 @@
     "Publish": true,
     "Family": "pipeline",
     "Project": "pipeline/Web.Shared/FiftyOne.Pipeline.Web.Shared.csproj",
-    "Property": "FiftyOnePipelineWebSharedVersion"
+    "Property": "_51DEGREES_PIPELINE_WEB_SHARED_VERSION"
   },
   {
     "Name": "FiftyOne.DeviceDetection",
@@ -437,7 +437,7 @@
     "Publish": true,
     "Family": "device-detection",
     "Project": "device-detection/DeviceDetection/FiftyOne.DeviceDetection.csproj",
-    "Property": "FiftyOneDeviceDetectionVersion"
+    "Property": "_51DEGREES_DEVICE_DETECTION_VERSION"
   },
   {
     "Name": "FiftyOne.DeviceDetection.PropertyKeyed",
@@ -454,7 +454,7 @@
     "Publish": true,
     "Family": "device-detection",
     "Project": "device-detection/PropertyKeyed/FiftyOne.DeviceDetection.PropertyKeyed.csproj",
-    "Property": "FiftyOneDeviceDetectionPropertyKeyedVersion"
+    "Property": "_51DEGREES_DEVICE_DETECTION_PROPERTY_KEYED_VERSION"
   },
   {
     "Name": "FiftyOne.IpIntelligence.Cloud",
@@ -472,7 +472,7 @@
     "Publish": true,
     "Family": "ip-intelligence",
     "Project": "ip-intelligence/Cloud/FiftyOne.IpIntelligence.Cloud.csproj",
-    "Property": "FiftyOneIpIntelligenceCloudVersion"
+    "Property": "_51DEGREES_IP_INTELLIGENCE_CLOUD_VERSION"
   },
   {
     "Name": "FiftyOne.Geolocation",
@@ -488,7 +488,7 @@
     "Publish": true,
     "Family": "location",
     "Project": "location/GeoLocation/GeoLocation/FiftyOne.GeoLocation.csproj",
-    "Property": "FiftyOneGeolocationVersion"
+    "Property": "_51DEGREES_GEOLOCATION_VERSION"
   },
   {
     "Name": "FiftyOne.Pipeline.Web",
@@ -515,7 +515,7 @@
       "pipeline/Web/FiftyOne.Pipeline.Web.csproj",
       "pipeline/Web.Framework/FiftyOne.Pipeline.Web.Framework.csproj"
     ],
-    "Property": "FiftyOnePipelineWebVersion",
+    "Property": "_51DEGREES_PIPELINE_WEB_VERSION",
     "Solution": "pipeline/FiftyOne.Pipeline.Web.sln"
   },
   {
@@ -533,7 +533,7 @@
     "Publish": true,
     "Family": "device-detection",
     "Project": "device-detection/RobotsTxt/FiftyOne.DeviceDetection.RobotsTxt.csproj",
-    "Property": "FiftyOneDeviceDetectionRobotsTxtVersion"
+    "Property": "_51DEGREES_DEVICE_DETECTION_ROBOTS_TXT_VERSION"
   },
   {
     "Name": "FiftyOne.IpIntelligence",
@@ -550,7 +550,7 @@
     "Publish": true,
     "Family": "ip-intelligence",
     "Project": "ip-intelligence/IpIntelligence/FiftyOne.IpIntelligence.csproj",
-    "Property": "FiftyOneIpIntelligenceVersion"
+    "Property": "_51DEGREES_IP_INTELLIGENCE_VERSION"
   },
   {
     "Name": "FiftyOne.DeviceDetection.RobotsTxt.Cloud",
@@ -567,6 +567,6 @@
     "Publish": true,
     "Family": "device-detection",
     "Project": "device-detection/RobotsTxt.Cloud/FiftyOne.DeviceDetection.RobotsTxt.Cloud.csproj",
-    "Property": "FiftyOneDeviceDetectionRobotsTxtCloudVersion"
+    "Property": "_51DEGREES_DEVICE_DETECTION_ROBOTS_TXT_CLOUD_VERSION"
   }
 ]

@@ -106,7 +106,7 @@ Describe 'packages.json' {
     It 'gives the root Directory.Build.props one version per package and nothing else' {
         $props = Get-ProjectXml 'Directory.Build.props'
         $defined = @($props.SelectNodes("//*[local-name()='PropertyGroup']/*") |
-            Where-Object { $_.LocalName -match '^FiftyOne.*Version$' } |
+            Where-Object { $_.LocalName -match '^_51DEGREES_.*_VERSION$' } |
             ForEach-Object LocalName)
         ($defined | Sort-Object) | Should -Be (@($PackageList.Property) | Sort-Object)
     }
