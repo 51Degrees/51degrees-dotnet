@@ -103,13 +103,8 @@ public class TestExamples
                 Constants.YAML_EVIDENCE_FILE_NAME);
         }
 
-        GeoIpTruthEvidenceFile = Environment.GetEnvironmentVariable(
-            Constants.GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR);
-        if (string.IsNullOrWhiteSpace(GeoIpTruthEvidenceFile))
-        {
-            GeoIpTruthEvidenceFile = ExampleUtils.FindFile(
-                Constants.GEOIP_COMPARISON_EVIDENCE_FILE_NAME);
-        }
+        GeoIpTruthEvidenceFile = ExampleUtils.FindFile(
+            Constants.GEOIP_COMPARISON_EVIDENCE_FILE_NAME);
     }
 
     [TestCleanup]

@@ -84,15 +84,10 @@ namespace FiftyOne.IpIntelligence.Examples
         public const string DD_PATH_ENV_VAR = "_51DEGREES_DD_PATH";
 
         /// <summary>
-        /// Environment variable key for the evidence file to use for the tests.
+        /// Environment variable key for the YAML evidence file to use for the
+        /// tests.
         /// </summary>
-        public const string EVIDENCE_FILE_ENV_VAR = "EVIDENCEFILE";
-
-        /// <summary>
-        /// Environment variable key for the geo ip truth 
-        /// evidence file to use for the tests.
-        /// </summary>
-        public const string GEOIP_TRUTH_EVIDENCE_FILE_ENV_VAR = "GEOIPEVIDENCEFILE";
+        public const string EVIDENCE_FILE_ENV_VAR = "_51DEGREES_EVIDENCE_YAML";
 
         /// <summary>
         /// Ports used for running web examples and their tests. When these
