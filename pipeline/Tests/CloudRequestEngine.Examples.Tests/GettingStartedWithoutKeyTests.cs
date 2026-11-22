@@ -22,8 +22,6 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -43,19 +41,12 @@ public class GettingStartedWithoutKeyTests
 {
     private const string ResourceKeyName = "_51DEGREES_RESOURCE_KEY";
 
-    /// <summary>
-    /// Every variable whose name, with an underscore put in front, holds
-    /// this is cleared, so that no resource key of any tier, and no older
-    /// name for one, reaches the example.
-    /// </summary>
-    private const string KeyNamePart = "_RESOURCE_KEY";
 
     private static readonly Regex CreateKeyLink = new Regex(
         @"https://51degrees\.com/configure(/[A-Za-z0-9]+)?\?" +
         "utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet");
 
-    private readonly Dictionary<string, string> _previous =
-        new Dictionary<string, string>();
+    private string _previous;
 
     private TextWriter _previousOut;
 
@@ -78,17 +69,8 @@ public class GettingStartedWithoutKeyTests
     [TestInitialize]
     public void Init()
     {
-        foreach (DictionaryEntry entry in
-            Environment.GetEnvironmentVariables())
-        {
-            var name = (string)entry.Key;
-            if (("_" + name).Contains(
-                KeyNamePart, StringComparison.OrdinalIgnoreCase))
-            {
-                _previous[name] = (string)entry.Value;
-                Environment.SetEnvironmentVariable(name, null);
-            }
-        }
+        _previous = Environment.GetEnvironmentVariable(ResourceKeyName);
+        Environment.SetEnvironmentVariable(ResourceKeyName, null);
         _previousOut = Console.Out;
         _out = new StringWriter();
         Console.SetOut(_out);
@@ -98,10 +80,7 @@ public class GettingStartedWithoutKeyTests
     public void Cleanup()
     {
         Console.SetOut(_previousOut);
-        foreach (var pair in _previous)
-        {
-            Environment.SetEnvironmentVariable(pair.Key, pair.Value);
-        }
+        Environment.SetEnvironmentVariable(ResourceKeyName, _previous);
     }
 
     [TestMethod]
