@@ -25,13 +25,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace FiftyOne.Common.Tests;
 
 /// <summary>
 /// Every environment variable name this repository reads or sets is in
-/// environment-variables.md at the root. A name 51Degrees defines starts
+/// environment-variables.md at the root, apart from the version property of
+/// each package, which ci/packages.json names. A name 51Degrees defines starts
 /// with an underscore and _51DEGREES_, because a POSIX shell cannot set a
 /// name that starts with a digit, and any other name is one that another
 /// tool defines, listed in the last table of that file. A workflow reads
@@ -57,6 +59,12 @@ public class EnvironmentVariableNamesTests
     /// The file that lists the names, relative to the repository root.
     /// </summary>
     private const string NamesFile = "environment-variables.md";
+
+    /// <summary>
+    /// The file that names each package's version property, relative to the
+    /// repository root.
+    /// </summary>
+    private const string PackagesFile = "ci/packages.json";
 
     /// <summary>
     /// The heading in <see cref="NamesFile"/> of the table of names other
@@ -383,6 +391,20 @@ public class EnvironmentVariableNamesTests
                 Path.Combine(Repository.Root(), NamesFile))));
 
     /// <summary>
+    /// The version property of each package in <see cref="PackagesFile"/>.
+    /// </summary>
+    private static readonly Lazy<HashSet<string>> VersionProperties =
+        new Lazy<HashSet<string>>(() =>
+        {
+            using var packages = JsonDocument.Parse(File.ReadAllText(
+                Path.Combine(Repository.Root(), PackagesFile)));
+            return new HashSet<string>(
+                packages.RootElement.EnumerateArray()
+                    .Select(p => p.GetProperty("Property").GetString()),
+                StringComparer.Ordinal);
+        });
+
+    /// <summary>
     /// Each name the code reads or sets, with where.
     /// </summary>
     private static List<(string Where, string Name)> CodeNames()
@@ -550,9 +572,10 @@ public class EnvironmentVariableNamesTests
     public void EveryNameTheCodeReadsIsListed()
     {
         var (ours, other) = Listed.Value;
+        var versions = VersionProperties.Value;
         var found = CodeNames()
             .Where(n => n.Name.StartsWith(Prefix, StringComparison.Ordinal)
-                ? !ours.Contains(n.Name)
+                ? !ours.Contains(n.Name) && !versions.Contains(n.Name)
                 : !other.Contains(n.Name))
             .Select(n => $"{n.Where}: {n.Name}")
             .ToList();
