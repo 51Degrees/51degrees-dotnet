@@ -42,8 +42,9 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
     /// the expected IP Intelligence results for a known IP address.
     /// </summary>
     /// <remarks>
-    /// Requires the <c>_51DEGREES_RESOURCE_KEY</c> environment variable to
-    /// be set. It also
+    /// Requires the <c>_51DEGREES_RESOURCE_KEY_BESPOKE</c> environment
+    /// variable to be set, and gives the example that key in
+    /// <c>_51DEGREES_RESOURCE_KEY</c> for the test. It also
     /// requires a trusted HTTPS development certificate, because the example
     /// binds its configured HTTPS endpoints on start-up (run
     /// <c>dotnet dev-certs https --trust</c> once if start-up fails with a
@@ -78,17 +79,13 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
         private string _originalCurrentDirectory;
         private CancellationTokenSource _cts;
         private Task _serverTask;
+        private ExampleResourceKey _key;
 
         [TestInitialize]
         public void Init()
         {
-            var resourceKey = ExampleUtils.GetResourceKeyFromEnv();
-
-            Assert.IsFalse(
-                string.IsNullOrWhiteSpace(resourceKey),
-                $"Environment variable '{ExampleUtils.RESOURCE_KEY_ENV_VAR}' " +
-                $"is not set. Obtain a resource key at " +
-                $"https://51degrees.com/configure and export it to run this test.");
+            // The example reads its key from the environment when it starts.
+            _key = ExampleResourceKey.Set();
         }
 
         [TestCleanup]
@@ -108,6 +105,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
                 Directory.SetCurrentDirectory(_originalCurrentDirectory);
             }
             _cts?.Dispose();
+            _key?.Dispose();
         }
 
         /// <summary>

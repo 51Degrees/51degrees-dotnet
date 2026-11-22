@@ -43,7 +43,9 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud;
 /// combined-results layout.
 /// </summary>
 /// <remarks>
-/// Requires the <c>_51DEGREES_RESOURCE_KEY</c> environment variable to be set. 
+/// Requires the <c>_51DEGREES_RESOURCE_KEY_BESPOKE</c> environment variable to
+/// be set, and gives the example that key in <c>_51DEGREES_RESOURCE_KEY</c>
+/// for the test.
 /// As with the other web example tests it binds the example's configured 
 /// HTTP/HTTPS endpoints on start-up, so a trusted HTTPS development 
 /// certificate must be present. The page is queried over plain HTTP, because
@@ -74,17 +76,13 @@ public class TestCloudMixedWebExample
     private string _originalCurrentDirectory;
     private CancellationTokenSource _cts;
     private Task _serverTask;
+    private ExampleResourceKey _key;
 
     [TestInitialize]
     public void Init()
     {
-        var resourceKey = ExampleUtils.GetResourceKeyFromEnv();
-
-        Assert.IsFalse(
-            string.IsNullOrWhiteSpace(resourceKey),
-            $"Environment variable '{ExampleUtils.RESOURCE_KEY_ENV_VAR}' " +
-            $"is not set. Obtain a resource key at " +
-            $"https://51degrees.com/configure and export it to run this test.");
+        // The example reads its key from the environment when it starts.
+        _key = ExampleResourceKey.Set();
     }
 
     [TestCleanup]
@@ -104,6 +102,7 @@ public class TestCloudMixedWebExample
             Directory.SetCurrentDirectory(_originalCurrentDirectory);
         }
         _cts?.Dispose();
+        _key?.Dispose();
     }
 
     /// <summary>

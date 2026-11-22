@@ -27,10 +27,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
     public class GettingStartedSeleniumTest : GettingStartedSeleniumTestBase
     {
         /// <summary>
-        /// Starts the Program with the cancellation token provided.
+        /// Starts the Program with the cancellation token provided, and the
+        /// resource key the example reads from the environment.
         /// </summary>
         public GettingStartedSeleniumTest() : base(
-            (t) => Program.Run(new string[] { }, t))
+            (t) => ExampleResourceKey.Serve(
+                (stop) => Program.Run(new string[] { }, stop), t))
         {
         }
     }

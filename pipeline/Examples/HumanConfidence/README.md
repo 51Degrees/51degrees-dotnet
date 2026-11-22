@@ -113,7 +113,6 @@ is one more, made once.
 
 `../../Tests/HumanConfidence.Examples.Tests` runs the example with no
 Resource Key, reads these files for the rules every Human Confidence web
-example keeps, and, with a key in `_51DEGREES_RESOURCE_KEY` or
-`_51DEGREES_RESOURCE_KEY_BESPOKE`, asks the live cloud whether the key
-carries `HumanConfidence` and for a passive level. Without a key the live
-tests skip and name the variables.
+example keeps, and, with a key in `_51DEGREES_RESOURCE_KEY_BESPOKE`, asks the
+live cloud whether the key carries `HumanConfidence` and for a passive
+level. Without that key the live tests skip and name the variable.

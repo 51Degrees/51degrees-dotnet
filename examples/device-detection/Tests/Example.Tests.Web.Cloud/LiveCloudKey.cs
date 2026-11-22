@@ -21,36 +21,31 @@
  * ********************************************************************* */
 
 using System;
-using System.Linq;
 
 namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud;
 
 /// <summary>
 /// The resource key for the tests that run the cloud web examples against
 /// the live cloud service, and the message they skip with when there is
-/// none. A skipped test names the variables, and never passes, because a
+/// none. A skipped test names the variable, and never passes, because a
 /// cloud test that passes without calling the cloud has proved nothing.
+/// The tests give the key to an example the way the example takes one.
 /// </summary>
 internal static class LiveCloudKey
 {
     /// <summary>
-    /// The environment variables the key is read from, in the order tried.
+    /// The environment variable the key is read from, which holds the key
+    /// that carries every property.
     /// </summary>
-    internal static readonly string[] Names =
-    {
-        "_51DEGREES_RESOURCE_KEY",
-        "_51DEGREES_RESOURCE_KEY_BESPOKE",
-    };
+    internal const string Name = "_51DEGREES_RESOURCE_KEY_BESPOKE";
 
     /// <summary>
-    /// The key from the first of <see cref="Names"/> that is set, or null
-    /// when none is.
+    /// The key from <see cref="Name"/>, or null when it is not set.
     /// </summary>
     private static string FromEnvironment()
     {
-        return Names
-            .Select(n => Environment.GetEnvironmentVariable(n))
-            .FirstOrDefault(v => string.IsNullOrWhiteSpace(v) == false);
+        var value = Environment.GetEnvironmentVariable(Name);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     private const string AccessiblePropertiesUrl =
@@ -60,7 +55,7 @@ internal static class LiveCloudKey
         "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-tests-example.tests.web.cloud-livecloudkey.cs&utm_term=resource-key";
 
     /// <summary>
-    /// The first key set, or null when none of <see cref="Names"/> is.
+    /// The key, or null when <see cref="Name"/> is not set.
     /// </summary>
     internal static string Find() => FromEnvironment();
 
@@ -71,8 +66,8 @@ internal static class LiveCloudKey
     /// <param name="asksFor">What the tests ask the service for.</param>
     internal static string NoKey(string product, string asksFor) =>
         "These tests call the live 51Degrees cloud service, so they need a " +
-        "resource key and there is nothing to fall back on. None of " +
-        $"{string.Join(", ", Names)} is set, tried in that order. The key " +
+        "resource key and there is nothing to fall back on. " +
+        $"{Name} is not set. The key " +
         $"has to carry the {product} product, because these tests ask the " +
         $"service for {asksFor}. To see the products a key carries, open " +
         $"{AccessiblePropertiesUrl}. Create a key at {ConfigureUrl}.";
