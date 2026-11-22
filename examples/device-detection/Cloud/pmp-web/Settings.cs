@@ -24,15 +24,7 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
 {
     /// <summary>
     /// The input data, read from the environment variable names every
-    /// language's copy of this demo reads.
-    /// <para>
-    /// Each value is read from its runtime name first, being the name a
-    /// developer sets in their own shell. Only the resource key has a
-    /// second name, the one continuous integration sets. That name starts
-    /// with an underscore, because a shell cannot export a name that starts
-    /// with a digit, and ends with the product this demo needs, being the
-    /// 51Did.
-    /// </para>
+    /// language's copy of this demo reads, each value under one name.
     /// <para>
     /// Neither value is ever written to the console or a log, because a
     /// resource key is not for publishing and an endpoint can name a host
@@ -42,17 +34,9 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
     public sealed class Settings
     {
         /// <summary>
-        /// The resource key the pages and the pipeline use. Read first.
+        /// The resource key the pages and the pipeline use.
         /// </summary>
         public const string RESOURCE_KEY_VARIABLE = "_51DEGREES_RESOURCE_KEY";
-
-        /// <summary>
-        /// The name continuous integration sets a resource key carrying the
-        /// 51Did product in, read only when
-        /// <see cref="RESOURCE_KEY_VARIABLE"/> is not set.
-        /// </summary>
-        public const string CI_RESOURCE_KEY_ENV_VAR =
-            "_51DEGREES_RESOURCE_KEY_51DID";
 
         /// <summary>
         /// The cloud the pages load the PMP and the client script from,
@@ -109,9 +93,7 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public static string MissingKeyMessage =>
             $"No resource key is set. Set the environment variable " +
             $"'{RESOURCE_KEY_VARIABLE}' to a 51Degrees resource key " +
-            "that includes the 51Did properties. The name " +
-            $"'{CI_RESOURCE_KEY_ENV_VAR}' is read when it is not " +
-            "set. A resource key can be " +
+            "that includes the 51Did properties. A resource key can be " +
             "created at https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-settings.cs&utm_term=resource-key-required";
 
         /// <summary>
@@ -125,23 +107,22 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         /// </exception>
         public static Settings? FromEnvironment()
         {
-            var (keyVariable, key) = First(
-                RESOURCE_KEY_VARIABLE, CI_RESOURCE_KEY_ENV_VAR);
+            var key = Read(RESOURCE_KEY_VARIABLE);
             if (key == null)
             {
                 return null;
             }
 
-            var (endpointVariable, endpoint) = First(CLOUD_ENDPOINT_VARIABLE);
+            var endpoint = Read(CLOUD_ENDPOINT_VARIABLE);
             return new Settings(
                 key,
-                keyVariable!,
+                RESOURCE_KEY_VARIABLE,
                 endpoint == null
                     ? DEFAULT_CLOUD_ENDPOINT
-                    : CloudBase(endpoint, endpointVariable!),
-                endpointVariable == null
+                    : CloudBase(endpoint, CLOUD_ENDPOINT_VARIABLE),
+                endpoint == null
                     ? $"the default, {DEFAULT_CLOUD_ENDPOINT}"
-                    : $"read from '{endpointVariable}'");
+                    : $"read from '{CLOUD_ENDPOINT_VARIABLE}'");
         }
 
         /// <summary>
@@ -176,17 +157,9 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         /// are the ones in wwwroot/templates and README.md, and every
         /// language's copy of this demo fills the same ones.
         /// </summary>
-        /// <remarks>
-        /// RESOURCE_KEY and CLOUD_ENDPOINT are still filled although no
-        /// template here uses them any longer, because the set of names is
-        /// shared with the other languages' copies of this demo. Dropping
-        /// them is a change to make in all of them at once.
-        /// </remarks>
         public IReadOnlyDictionary<string, string> CloudPlaceholders() =>
             new Dictionary<string, string>
             {
-                ["RESOURCE_KEY"] = ResourceKey,
-                ["CLOUD_ENDPOINT"] = CloudEndpoint,
                 ["PMP_SCRIPT_URL"] = PmpScriptUrl,
                 ["CLIENT_SCRIPT_URL"] = CloudClientScriptUrl
             };
@@ -205,8 +178,6 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public IReadOnlyDictionary<string, string> PipelinePlaceholders() =>
             new Dictionary<string, string>
             {
-                ["RESOURCE_KEY"] = ResourceKey,
-                ["CLOUD_ENDPOINT"] = CloudEndpoint,
                 ["PMP_SCRIPT_URL"] = PmpScriptUrl,
                 ["CLIENT_SCRIPT_URL"] = PIPELINE_CLIENT_SCRIPT_PATH
             };
@@ -229,21 +200,13 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
             };
 
         /// <summary>
-        /// The first variable, in the order given, that holds a value that
-        /// is not blank, with its name, or two nulls where none does.
+        /// The variable's value without surrounding spaces, or null when it
+        /// is not set or is blank.
         /// </summary>
-        private static (string? Name, string? Value) First(
-            params string[] names)
+        private static string? Read(string name)
         {
-            foreach (var name in names)
-            {
-                var value = Environment.GetEnvironmentVariable(name);
-                if (string.IsNullOrWhiteSpace(value) == false)
-                {
-                    return (name, value.Trim());
-                }
-            }
-            return (null, null);
+            var value = Environment.GetEnvironmentVariable(name);
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         }
 
         /// <summary>
