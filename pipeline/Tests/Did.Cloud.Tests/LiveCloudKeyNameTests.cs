@@ -22,57 +22,93 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
 
 namespace FiftyOne.Did.Cloud.Tests;
 
 /// <summary>
-/// A live cloud test with no resource key skips, naming every variable it
-/// reads the key from, and never fails. The tests change the environment
-/// of the whole process, so they run apart from the others.
+/// Each row of the live cloud test reads its resource key from the one
+/// variable it names, and skips, naming that variable, when it is not set.
+/// '_51DEGREES_RESOURCE_KEY', the name a person running an example sets,
+/// is never read. The tests change the environment of the whole process,
+/// so they run apart from the others.
 /// </summary>
 [TestClass]
 [DoNotParallelize]
 public class LiveCloudKeyNameTests
 {
-    private readonly Dictionary<string, string?> _saved =
-        new Dictionary<string, string?>();
+    private const string ExampleName = "_51DEGREES_RESOURCE_KEY";
 
-    [TestInitialize]
-    public void Init()
+    private string? _savedName;
+    private string? _savedExampleName;
+    private string _name = null!;
+
+    private void Clear(string name)
     {
-        foreach (var name in LiveCloudKey.Names)
-        {
-            _saved[name] = Environment.GetEnvironmentVariable(name);
-            Environment.SetEnvironmentVariable(name, null);
-        }
+        _name = name;
+        _savedName = Environment.GetEnvironmentVariable(name);
+        _savedExampleName = Environment.GetEnvironmentVariable(ExampleName);
+        Environment.SetEnvironmentVariable(name, null);
+        Environment.SetEnvironmentVariable(ExampleName, null);
     }
 
     [TestCleanup]
     public void Cleanup()
     {
-        foreach (var saved in _saved)
+        if (_name != null)
         {
-            Environment.SetEnvironmentVariable(saved.Key, saved.Value);
+            Environment.SetEnvironmentVariable(_name, _savedName);
+            Environment.SetEnvironmentVariable(ExampleName, _savedExampleName);
+        }
+    }
+
+    /// <summary>
+    /// The message the read skipped with, or null when it returned.
+    /// </summary>
+    private static string? Skipped(string name)
+    {
+        try
+        {
+            LiveCloudKey.Require(name, "a 51Did");
+            return null;
+        }
+        catch (AssertInconclusiveException ex)
+        {
+            return ex.Message;
         }
     }
 
     [TestMethod]
-    public void WithoutAKeyTheTestIsSkippedNamingTheVariables()
+    [DataRow("_51DEGREES_RESOURCE_KEY_BASIC")]
+    [DataRow("_51DEGREES_RESOURCE_KEY_BESPOKE")]
+    [DataRow("_51DEGREES_RESOURCE_KEY_51DID")]
+    public void TheKeyIsReadFromItsName(string name)
     {
-        string? message = null;
-        try
-        {
-            LiveCloudKey.Require("a 51Did");
-        }
-        catch (AssertInconclusiveException ex)
-        {
-            message = ex.Message;
-        }
+        Clear(name);
+        Environment.SetEnvironmentVariable(name, "key");
+        Assert.AreEqual("key", LiveCloudKey.Require(name, "a 51Did"));
+    }
+
+    [TestMethod]
+    [DataRow("_51DEGREES_RESOURCE_KEY_BASIC")]
+    [DataRow("_51DEGREES_RESOURCE_KEY_BESPOKE")]
+    [DataRow("_51DEGREES_RESOURCE_KEY_51DID")]
+    public void WithoutItsNameTheRowIsSkippedNamingIt(string name)
+    {
+        Clear(name);
+        var message = Skipped(name);
         Assert.IsNotNull(message, "The test was not skipped.");
-        foreach (var name in LiveCloudKey.Names)
-        {
-            StringAssert.Contains(message, name);
-        }
+        StringAssert.Contains(message, name);
+    }
+
+    [TestMethod]
+    [DataRow("_51DEGREES_RESOURCE_KEY_BASIC")]
+    [DataRow("_51DEGREES_RESOURCE_KEY_BESPOKE")]
+    [DataRow("_51DEGREES_RESOURCE_KEY_51DID")]
+    public void TheExampleNameIsNotRead(string name)
+    {
+        Clear(name);
+        Environment.SetEnvironmentVariable(ExampleName, "key");
+        Assert.IsNotNull(Skipped(name),
+            $"The row read its key from {ExampleName}.");
     }
 }
