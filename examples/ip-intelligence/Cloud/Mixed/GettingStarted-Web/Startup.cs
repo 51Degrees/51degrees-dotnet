@@ -89,6 +89,9 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.Cloud.GettingStartedWeb
             // the current HTTP session.
             // The IFlowDataAccessor provides an easy way to retrieve this data. See HomeController
             // for an example of this.
+            // A Flow Data cannot be used by two threads at once. Work handed
+            // to another thread or task gets the values it needs, read on the
+            // request's thread, not the Flow Data.
             app.UseFiftyOne();
 
             app.UseStaticFiles();

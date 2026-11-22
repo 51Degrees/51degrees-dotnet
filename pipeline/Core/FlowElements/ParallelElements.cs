@@ -26,7 +26,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.Core.FlowElements
@@ -55,11 +54,11 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// <summary>
         /// A filter that will only include the evidence keys that can 
         /// be used by at least one <see cref="IFlowElement"/> within 
-        /// this pipeline.
-        /// (Will only be populated after the <see cref="EvidenceKeyFilter"/>
-        /// property is used.)
+        /// this group. Created with the group. It asks each child element
+        /// for its own filter when it is used and keeps none of them, so
+        /// every thread can use it with no lock.
         /// </summary>
-        private EvidenceKeyFilterAggregator _evidenceKeyFilter;
+        private readonly PipelineEvidenceKeyFilter _evidenceKeyFilter;
 
 
         public override string ElementDataKey
@@ -79,20 +78,21 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// <summary>
         /// Get a filter that will only include the evidence keys that can 
         /// be used by at least one <see cref="IFlowElement"/> within 
-        /// this pipeline.
+        /// this group. The same object on every read. It asks each child
+        /// element for its own filter when it is used.
         /// </summary>
+        /// <remarks>
+        /// Reading it asks each child element for its filter, and keeps
+        /// none of them. So a child whose filter is not yet available, such
+        /// as a Cloud Request Engine still recovering from a failure at
+        /// start-up, throws here, as it does in a Pipeline on its own, and
+        /// is asked again on the next read.
+        /// </remarks>
         public override IEvidenceKeyFilter EvidenceKeyFilter
         {
             get
             {
-                if (_evidenceKeyFilter == null)
-                {
-                    _evidenceKeyFilter = new EvidenceKeyFilterAggregator();
-                    foreach (var filter in _flowElements.Select(e => e.EvidenceKeyFilter))
-                    {
-                        _evidenceKeyFilter.AddFilter(filter);
-                    }
-                }
+                _evidenceKeyFilter.AskEachElement();
                 return _evidenceKeyFilter;
             }
         }
@@ -114,6 +114,7 @@ namespace FiftyOne.Pipeline.Core.FlowElements
             params IFlowElement[] flowElements) : base(logger)
         {
             _flowElements = new List<IFlowElement>(flowElements);
+            _evidenceKeyFilter = new PipelineEvidenceKeyFilter(_flowElements);
         }
 
         /// <summary>
@@ -126,12 +127,17 @@ namespace FiftyOne.Pipeline.Core.FlowElements
         /// </param>
         protected override void ProcessInternal(IFlowData data)
         {
-            List<Task> allTasks = new List<Task>();
-            foreach (var element in _flowElements)
+            // While the group runs, members add their own errors and
+            // warnings under the Flow Data's lock.
+            var flowData = data as FlowData;
+            flowData?.GroupStarted();
+            var allTasks = new List<Task>(_flowElements.Count);
+            try
             {
-                allTasks.Add(
+                foreach (var element in _flowElements)
+                {
                     // Run each element on a new thread.
-                    Task.Run(() =>
+                    allTasks.Add(Task.Run(() =>
                     {
                         var activity = ElementTracing.StartElement(element);
                         try
@@ -150,37 +156,52 @@ namespace FiftyOne.Pipeline.Core.FlowElements
                         {
                             activity?.Dispose();
                         }
-                    }).ContinueWith(t =>
-                    {
-                        // If any exceptions occurred then add them to the 
-                        // flow data.
-                        if (t.Exception != null)
-                        {
-                            // As in Pipeline.Process, error level logging is
-                            // skipped when the pipeline suppresses process
-                            // exceptions. The error remains available through
-                            // IFlowData.Errors and is logged at debug level.
-                            // Pipeline is never null on a flow data created by
-                            // a pipeline, but stub implementations can leave it
-                            // unset, so treat that as 'do not suppress'.
-                            var suppress =
-                                data.Pipeline?.SuppressProcessExceptions ?? false;
-                            foreach (var innerException in t.Exception.InnerExceptions)
-                            {
-                                data.AddError(innerException, element, true, !suppress);
-                                if (suppress && Logger.IsEnabled(LogLevel.Debug))
-                                {
-                                    Logger.LogDebug(innerException,
-                                        "Suppressed error during processing of " +
-                                        $"'{element?.GetType().Name}'.");
-                                }
-                            }
-                        }
-                    }, TaskScheduler.Default));
+                    }));
+                }
+
+                // Wait until every member has stopped. The exceptions are
+                // read from each task below.
+                try
+                {
+                    Task.WaitAll(allTasks.ToArray());
+                }
+                catch (AggregateException)
+                {
+                }
+            }
+            finally
+            {
+                flowData?.GroupFinished();
             }
 
-            // Wait until all tasks have completed.
-            Task.WhenAll(allTasks).Wait();
+            // Add the exceptions the members threw, on this thread, in the
+            // order of the members. As in Pipeline.Process, error level
+            // logging is skipped when the pipeline suppresses process
+            // exceptions. The error remains available through
+            // IFlowData.Errors and is logged at debug level. Pipeline is
+            // never null on a flow data created by a pipeline, but stub
+            // implementations can leave it unset, so treat that as 'do not
+            // suppress'.
+            var suppress = data.Pipeline?.SuppressProcessExceptions ?? false;
+            for (var i = 0; i < allTasks.Count; i++)
+            {
+                var exception = allTasks[i].Exception;
+                if (exception == null)
+                {
+                    continue;
+                }
+                var element = _flowElements[i];
+                foreach (var innerException in exception.InnerExceptions)
+                {
+                    data.AddError(innerException, element, true, !suppress);
+                    if (suppress && Logger.IsEnabled(LogLevel.Debug))
+                    {
+                        Logger.LogDebug(innerException,
+                            "Suppressed error during processing of " +
+                            $"'{element?.GetType().Name}'.");
+                    }
+                }
+            }
         }
 
         protected override void ManagedResourcesCleanup()

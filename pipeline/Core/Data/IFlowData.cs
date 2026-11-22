@@ -31,6 +31,14 @@ namespace FiftyOne.Pipeline.Core.Data
     /// The IFlowData represents the data that is used within a pipeline.
     /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/conceptual-overview.md#flow-data">Specification</see>
     /// </summary>
+    /// <remarks>
+    /// A Flow Data is not safe to use from several threads at once, and the
+    /// caller is responsible for any locking. It may pass from one thread to
+    /// another, as an asynchronous continuation does, but a Flow Data cannot
+    /// be used by two threads at once. Work handed to another thread or task
+    /// gets the values it needs, read from the Flow Data first, not the Flow
+    /// Data.
+    /// </remarks>
     public interface IFlowData : IDisposable
     {
         /// <summary>

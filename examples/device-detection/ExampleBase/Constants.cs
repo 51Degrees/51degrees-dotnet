@@ -44,10 +44,18 @@ namespace FiftyOne.DeviceDetection.Examples
         public const string YAML_EVIDENCE_FILE_NAME = "20000 Evidence Records.yml";
 
         /// <summary>
-        /// Environment variable key for the license key file to use for the
-        /// tests.
+        /// An old environment variable for the licence key the data file
+        /// update example uses. It is no longer read.
         /// </summary>
+        [System.Obsolete("Use DATA_UPDATE_LICENSE_KEY_ENV_VAR, which names the environment " +
+            "variable that replaces this one.")]
         public const string LICENSE_KEY_ENV_VAR = "DEVICEDETECTIONLICENSEKEY_DOTNET";
+
+        /// <summary>
+        /// Environment variable key for the licence key the data file update
+        /// example and its test use.
+        /// </summary>
+        public const string DATA_UPDATE_LICENSE_KEY_ENV_VAR = "_51DEGREES_LICENSE_KEY";
 
         /// <summary>
         /// Environment variable key used to supply an explicit path to the
@@ -57,8 +65,7 @@ namespace FiftyOne.DeviceDetection.Examples
 
         /// <summary>
         /// An old environment variable for the path to the device detection
-        /// data file, read only when
-        /// <see cref="DEVICE_DETECTION_DATA_FILE_ENV_VAR"/> is not set.
+        /// data file. It is no longer read.
         /// </summary>
         [System.Obsolete("Use DEVICE_DETECTION_DATA_FILE_ENV_VAR, which names the environment " +
             "variable that replaces this one.")]
@@ -66,26 +73,20 @@ namespace FiftyOne.DeviceDetection.Examples
 
         /// <summary>
         /// An old environment variable for the path to the device detection
-        /// data file, read only when
-        /// <see cref="DEVICE_DETECTION_DATA_FILE_ENV_VAR"/> is not set.
+        /// data file. It is no longer read.
         /// </summary>
         [System.Obsolete("Use DEVICE_DETECTION_DATA_FILE_ENV_VAR, which names the environment " +
             "variable that replaces this one.")]
         public const string LEGACY_DEVICE_DETECTION_DATA_FILE_ENV_VAR = "DEVICEDETECTIONDATAFILE";
 
-#pragma warning disable CS0618 // The old names are listed to be read.
         /// <summary>
         /// Every environment variable that can supply an explicit path to the
-        /// device detection data file, in the order they are checked. The
-        /// first is the name to use and the rest are its old names.
+        /// device detection data file.
         /// </summary>
         public static readonly string[] DATA_FILE_ENV_VARS = new string[]
         {
-            DEVICE_DETECTION_DATA_FILE_ENV_VAR,
-            DD_PATH_ENV_VAR,
-            LEGACY_DEVICE_DETECTION_DATA_FILE_ENV_VAR
+            DEVICE_DETECTION_DATA_FILE_ENV_VAR
         };
-#pragma warning restore CS0618
 
         /// <summary>
         /// Environment variable key for the evidence file to use for the tests.
@@ -98,7 +99,7 @@ namespace FiftyOne.DeviceDetection.Examples
         /// _51DEGREES_EXAMPLE_HTTPS_PORTS to other ports, comma separated.
         /// </summary>
         public static readonly int[] LOCALHOST_HTTP_PORTS =
-            PortsFromEnvironment("_51DEGREES_EXAMPLE_HTTP_PORTS", new int[] { 5101 });
+            PortsFromEnvironment("_51DEGREES_EXAMPLE_HTTP_PORTS", new int[] { 5151 });
         public static readonly int[] LOCALHOST_HTTPS_PORTS =
             PortsFromEnvironment("_51DEGREES_EXAMPLE_HTTPS_PORTS", new int[] { 5001, 5002 });
 

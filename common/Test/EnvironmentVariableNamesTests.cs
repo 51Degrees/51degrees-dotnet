@@ -22,7 +22,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -32,11 +31,12 @@ namespace FiftyOne.Common.Tests;
 /// <summary>
 /// Every 51Degrees environment variable name in this repository starts with
 /// an underscore, because a POSIX shell cannot set a name that starts with a
-/// digit. A name a release read is still read when the new name is not set,
-/// in the files listed in <see cref="OldNameFiles"/>. The tests read every
-/// file git tracks, which leaves out build output and the submodules, and
-/// fail on any name that starts with the digit and on any old name that is
-/// read or set anywhere else.
+/// digit, and no old name is read. The tests read every file git tracks,
+/// which leaves out build output and the submodules, and fail on any name
+/// that starts with the digit and on any old name that is read or set,
+/// apart from the obsolete constants that still hold an old name. The old
+/// key names count too: a key is read only under its _51DEGREES_ name, and
+/// a workflow passes only the _51DEGREES_ secrets.
 /// </summary>
 [TestClass]
 public class EnvironmentVariableNamesTests
@@ -46,64 +46,6 @@ public class EnvironmentVariableNamesTests
     /// this file does not match itself.
     /// </summary>
     private const string DigitInitial = "5" + "1DEGREES_";
-
-    /// <summary>
-    /// How long git is given to list the tracked files.
-    /// </summary>
-    private const int GitTimeoutSeconds = 120;
-
-    /// <summary>
-    /// The repository root, being the first folder at or above the test
-    /// assembly that holds a .git entry.
-    /// </summary>
-    private static string RepositoryRoot()
-    {
-        var folder = new DirectoryInfo(AppContext.BaseDirectory);
-        while (folder != null)
-        {
-            if (Directory.Exists(Path.Combine(folder.FullName, ".git")) ||
-                File.Exists(Path.Combine(folder.FullName, ".git")))
-            {
-                return folder.FullName;
-            }
-            folder = folder.Parent;
-        }
-        throw new InvalidOperationException(
-            $"No folder at or above '{AppContext.BaseDirectory}' holds .git.");
-    }
-
-    /// <summary>
-    /// The files git tracks, as paths relative to the repository root.
-    /// </summary>
-    private static List<string> TrackedFiles(string root)
-    {
-        var start = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = root,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        start.ArgumentList.Add("ls-files");
-        start.ArgumentList.Add("-z");
-        using var process = Process.Start(start)
-            ?? throw new InvalidOperationException("git did not start.");
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        Assert.IsTrue(
-            process.WaitForExit(GitTimeoutSeconds * 1000),
-            "git ls-files did not finish in time.");
-        Assert.AreEqual(0, process.ExitCode, $"git ls-files failed: {error}");
-        var paths = new List<string>();
-        foreach (var path in output.Split('\0'))
-        {
-            if (path.Length > 0)
-            {
-                paths.Add(path);
-            }
-        }
-        return paths;
-    }
 
     /// <summary>
     /// True when the character can be part of an environment variable name.
@@ -169,7 +111,11 @@ public class EnvironmentVariableNamesTests
         "(?:RESOURCE_KEY|SUPER_RESOURCE_KEY|LICENSE_KEY|" +
         "DEVICEDETECTIONDATAFILE|IPINTELLIGENCEDATAFILE|FOD_CLOUD_API_URL|" +
         "FIFTYONE_CLOUD_ENDPOINT|FIFTYONE_TEST_FILTER|" +
-        "51D_RESOURCE_KEY|51D_CLOUD_ENDPOINT)" +
+        "51D_RESOURCE_KEY|51D_CLOUD_ENDPOINT|" +
+        "DEVICEDETECTIONLICENSEKEY_DOTNET|IPINTELLIGENCELICENSEKEY_DOTNET|" +
+        "RESOURCE_KEY_CLOUD_V5_BESPOKE|PAID_RESOURCE_KEY|" +
+        "ACCEPTCH_BROWSER_KEY|ACCEPTCH_HARDWARE_KEY|" +
+        "ACCEPTCH_PLATFORM_KEY|ACCEPTCH_NONE_KEY)" +
         "(?![A-Za-z0-9_])|" +
         @"\bLEGACY_[A-Z_]*ENV_VARS?\b",
         RegexOptions.CultureInvariant);
@@ -181,8 +127,8 @@ public class EnvironmentVariableNamesTests
 
     /// <summary>
     /// The only files that may hold <see cref="OldEndpointName"/>, being
-    /// the two packages that read it when the new name is unset or empty,
-    /// and the tests of that read.
+    /// the two packages that keep an obsolete constant holding it, and the
+    /// tests of those constants.
     /// </summary>
     private static readonly HashSet<string> OldEndpointNameFiles =
         new HashSet<string>(StringComparer.Ordinal)
@@ -203,57 +149,99 @@ public class EnvironmentVariableNamesTests
         match == "\"" + OldEndpointName;
 
     /// <summary>
-    /// The only files that may hold the other old names, being the code
-    /// that reads an old name when the new one is not set, and the tests of
-    /// that read.
+    /// The example files that keep obsolete constants holding the other old
+    /// names. The examples no longer read those names.
     /// </summary>
-    private static readonly HashSet<string> OldNameFiles =
+    private static readonly HashSet<string> ObsoleteConstantFiles =
         new HashSet<string>(StringComparer.Ordinal)
         {
-            "ci/test-filter.ps1",
-            "common/Test/TestFilterScriptTests.cs",
-            "device-detection/Tests/Cloud.Tests/LiveCloudKey.cs",
-            "device-detection/Tests/Cloud.Tests/" +
-                "LiveCloudKeyOldNamesTests.cs",
             "examples/device-detection/Cloud/pmp-web/Settings.cs",
             "examples/device-detection/ExampleBase/Constants.cs",
             "examples/device-detection/ExampleBase/ExampleUtils.cs",
-            "examples/device-detection/Tests/Example.Tests.Cloud/" +
-                "OldEnvironmentNamesTests.cs",
-            "examples/device-detection/Tests/Example.Tests.Web.Cloud/" +
-                "LiveCloudKey.cs",
-            "examples/device-detection/Tests/Example.Tests.Web.Cloud/" +
-                "LiveCloudKeyOldNamesTests.cs",
             "examples/ip-intelligence/Examples/Constants.cs",
             "examples/ip-intelligence/Examples/ExampleUtils.cs",
-            "examples/ip-intelligence/Tests/Example.Tests.Cloud/" +
-                "OldEnvironmentNamesTests.cs",
-            "ip-intelligence/Tests/CloudTests/LiveCloudKey.cs",
-            "ip-intelligence/Tests/CloudTests/LiveCloudKeyOldNamesTests.cs",
-            "location/Tests/Example.Tests/OldResourceKeyNameTests.cs",
-            "location/Tests/Example.Tests/TestAllExamples.cs",
-            "location/Tests/GeoLocation.Tests/Constants.cs",
-            "location/Tests/GeoLocation.Tests/OldResourceKeyNameTests.cs",
-            "pipeline/Examples/CloudRequestEngine/GettingStarted/Program.cs",
-            "pipeline/Examples/Did/CreatorContextWeb/Program.cs",
-            "pipeline/Tests/CloudRequestEngine.Examples.Tests/" +
-                "GettingStartedOldNamesTests.cs",
-            "pipeline/Tests/Did.Cloud.Tests/LiveCloudKey.cs",
-            "pipeline/Tests/Did.Cloud.Tests/LiveCloudKeyOldNamesTests.cs",
-            "pipeline/Tests/Did.Examples.Tests/EnvironmentSettingTests.cs",
-            "pipeline/Tests/Did.Tests/CloudDidClientTests.cs",
-            "pipeline/Tests/Did.Tests/LiveCloudKey.cs",
-            "pipeline/Tests/Did.Tests/LiveCloudKeyOldNamesTests.cs",
-            "pipeline/Tests/Did.Tests/OldLicenceKeyNameTests.cs",
         };
 
     /// <summary>
-    /// True when the file may hold the match, as one of the files that
-    /// read old names or as the cloud endpoint's old name where it is kept.
+    /// The tests that set an old licence key name to show that it is not
+    /// read.
+    /// </summary>
+    private static readonly HashSet<string> OldNameTestFiles =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "examples/device-detection/Tests/Example.Tests.OnPremise/" +
+                "LicenceKeyNameTests.cs",
+            "examples/ip-intelligence/Tests/Example.Tests.OnPremise/" +
+                "LicenceKeyNameTests.cs",
+        };
+
+    /// <summary>
+    /// The name the external Selenium contract suite reads its resource
+    /// key from. That suite is another repository, so the script that runs
+    /// it sets the name, from _51DEGREES_RESOURCE_KEY, until the suite
+    /// reads a _51DEGREES_ name.
+    /// </summary>
+    private const string ContractSuiteKeyName = "PAID_RESOURCE_KEY";
+
+    /// <summary>
+    /// The script that runs the external Selenium contract suite.
+    /// </summary>
+    private const string ContractSuiteScript = "ci/run-integration-tests.ps1";
+
+    /// <summary>
+    /// True when the file may hold the match, as one of the example files
+    /// that keep obsolete constants, as the cloud endpoint's old name where
+    /// it is kept, as a test that shows an old licence key name is not
+    /// read, or as the contract suite's key name where that suite is run.
     /// </summary>
     private static bool IsKeptOldName(string relative, string match) =>
-        OldNameFiles.Contains(relative) ||
-        IsKeptOldEndpointName(relative, match);
+        ObsoleteConstantFiles.Contains(relative) ||
+        IsKeptOldEndpointName(relative, match) ||
+        OldNameTestFiles.Contains(relative) ||
+        (relative == ContractSuiteScript &&
+            match.EndsWith(ContractSuiteKeyName, StringComparison.Ordinal));
+
+    /// <summary>
+    /// The secrets a workflow may name that do not start _51DEGREES_: the
+    /// token a workflow acts with.
+    /// </summary>
+    private static readonly HashSet<string> OtherSecrets =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "ACCESS_TOKEN",
+            "GITHUB_TOKEN",
+        };
+
+    /// <summary>
+    /// A secret or repository variable a workflow names.
+    /// </summary>
+    private static readonly Regex WorkflowName = new Regex(
+        @"(?<![A-Za-z0-9_])(?:secrets|vars)[.](?<name>[A-Za-z0-9_]+)",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Each secret the line names that is not a _51DEGREES_ secret or one
+    /// of <see cref="OtherSecrets"/>, and each repository variable it
+    /// names, because a key is a secret.
+    /// </summary>
+    private static List<string> OtherWorkflowNames(string line)
+    {
+        var names = new List<string>();
+        foreach (Match match in WorkflowName.Matches(line))
+        {
+            var name = match.Groups["name"].Value;
+            var isVariable = match.Value.StartsWith(
+                "vars.", StringComparison.Ordinal);
+            if (isVariable ||
+                (name.StartsWith("_51DEGREES_", StringComparison.Ordinal)
+                    == false &&
+                 OtherSecrets.Contains(name) == false))
+            {
+                names.Add(match.Value);
+            }
+        }
+        return names;
+    }
 
     /// <summary>
     /// Each old name the line reads, sets or holds.
@@ -278,9 +266,9 @@ public class EnvironmentVariableNamesTests
         string skip,
         Func<string, string, bool> allow = null)
     {
-        var root = RepositoryRoot();
+        var root = Repository.Root();
         var found = new List<string>();
-        foreach (var relative in TrackedFiles(root))
+        foreach (var relative in Repository.TrackedFiles(root))
         {
             if (relative == skip)
             {
@@ -351,7 +339,7 @@ public class EnvironmentVariableNamesTests
     }
 
     [TestMethod]
-    public void TheOldEndpointNameIsKeptOnlyInTheFilesThatReadIt()
+    public void TheOldEndpointNameIsKeptOnlyInTheFilesThatHoldItsConstant()
     {
         var quoted = "\"" + OldEndpointName;
         foreach (var file in OldEndpointNameFiles)
@@ -371,19 +359,6 @@ public class EnvironmentVariableNamesTests
     }
 
     [TestMethod]
-    public void OtherOldNamesAreKeptOnlyInTheFilesThatReadThem()
-    {
-        foreach (var file in OldNameFiles)
-        {
-            Assert.IsTrue(IsKeptOldName(file, "\"SUPER_RESOURCE_KEY"), file);
-        }
-        Assert.IsFalse(IsKeptOldName(
-            "pipeline/CloudRequestEngine/Constants.cs",
-            "\"SUPER_RESOURCE_KEY"));
-        Assert.IsFalse(IsKeptOldName(ThisFile, "\"SUPER_RESOURCE_KEY"));
-    }
-
-    [TestMethod]
     public void NoFileNamesAVariableThatStartsWithADigit()
     {
         var found = FindInTrackedFiles(
@@ -397,6 +372,145 @@ public class EnvironmentVariableNamesTests
     }
 
     [TestMethod]
+    public void TheOldKeyNamesAreFound()
+    {
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "$env:ACCEPTCH_BROWSER_KEY",
+                "\"DEVICEDETECTIONLICENSEKEY_DOTNET",
+                "\"RESOURCE_KEY_CLOUD_V5_BESPOKE",
+                "$env:PAID_RESOURCE_KEY",
+            },
+            OldNames(
+                "$env:ACCEPTCH_BROWSER_KEY = 1 " +
+                "GetEnvironmentVariable(\"DEVICEDETECTIONLICENSEKEY_DOTNET\") " +
+                "{ \"RESOURCE_KEY_CLOUD_V5_BESPOKE\", " +
+                "$env:PAID_RESOURCE_KEY = 2"));
+        Assert.IsTrue(IsKeptOldName(
+            ContractSuiteScript, "$env:" + ContractSuiteKeyName));
+        Assert.IsFalse(IsKeptOldName(
+            ContractSuiteScript, "$env:ACCEPTCH_NONE_KEY"));
+    }
+
+    [TestMethod]
+    public void TheWorkflowNameMatcherFindsOnlyOtherNames()
+    {
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "secrets.DEVICE_DETECTION_KEY",
+                "vars._51DEGREES_RESOURCE_KEY_BASIC",
+            },
+            OtherWorkflowNames(
+                "${{ secrets.DEVICE_DETECTION_KEY }} " +
+                "${{ vars._51DEGREES_RESOURCE_KEY_BASIC }} " +
+                "${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }} " +
+                "${{ secrets.ACCESS_TOKEN }} secrets: inherit"));
+    }
+
+    [TestMethod]
+    public void NoWorkflowNamesAnotherSecretOrAVariable()
+    {
+        var found = FindInTrackedFiles(
+            line => OtherWorkflowNames(line),
+            ThisFile,
+            (relative, _) => relative.StartsWith(
+                ".github/", StringComparison.Ordinal) == false);
+        Assert.AreEqual(
+            0,
+            found.Count,
+            $"{found.Count} secrets or variables named in the workflows " +
+            "do not start _51DEGREES_, so each must be a _51DEGREES_ " +
+            "secret:\n" + string.Join("\n", found));
+    }
+
+    /// <summary>
+    /// A 51Did or Basic key that a workflow fills from a secret. A 51Did
+    /// license key reads only a sealed result made with a resource key of
+    /// its own account, and the Basic tier tests need a key on CloudV5Basic
+    /// alone, so each is filled from the secret of its own name and never
+    /// from another key.
+    /// </summary>
+    private static readonly Regex DidKeyFill = new Regex(
+        @"(?<![A-Za-z0-9_])(?<name>_51DEGREES_[A-Z_]*_51DID|" +
+        @"_51DEGREES_RESOURCE_KEY_BASIC)\s*:\s*" +
+        @"\$\{\{\s*secrets[.](?<secret>[A-Za-z0-9_]+)\s*\}\}",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Each 51Did or Basic key the line fills from a secret of another name.
+    /// </summary>
+    private static List<string> DidKeysFilledFromAnotherSecret(string line)
+    {
+        var fills = new List<string>();
+        foreach (Match match in DidKeyFill.Matches(line))
+        {
+            if (match.Groups["name"].Value != match.Groups["secret"].Value)
+            {
+                fills.Add(match.Value);
+            }
+        }
+        return fills;
+    }
+
+    [TestMethod]
+    public void TheDidKeyFillMatcherFindsOnlyAnotherSecret()
+    {
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "_51DEGREES_RESOURCE_KEY_51DID: " +
+                    "${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}",
+            },
+            DidKeysFilledFromAnotherSecret(
+                "_51DEGREES_RESOURCE_KEY_51DID: " +
+                    "${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}"));
+        CollectionAssert.AreEqual(
+            Array.Empty<string>(),
+            DidKeysFilledFromAnotherSecret(
+                "_51DEGREES_RESOURCE_KEY_51DID: " +
+                    "${{ secrets._51DEGREES_RESOURCE_KEY_51DID }}"));
+        CollectionAssert.AreEqual(
+            Array.Empty<string>(),
+            DidKeysFilledFromAnotherSecret(
+                "_51DEGREES_LICENSE_KEY_51DID: " +
+                    "${{ secrets._51DEGREES_LICENSE_KEY_51DID }}"));
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "_51DEGREES_RESOURCE_KEY_BASIC: " +
+                    "${{ secrets._51DEGREES_RESOURCE_KEY_FREE }}",
+            },
+            DidKeysFilledFromAnotherSecret(
+                "_51DEGREES_RESOURCE_KEY_BASIC: " +
+                    "${{ secrets._51DEGREES_RESOURCE_KEY_FREE }}"));
+        CollectionAssert.AreEqual(
+            Array.Empty<string>(),
+            DidKeysFilledFromAnotherSecret(
+                "_51DEGREES_RESOURCE_KEY_BASIC: " +
+                    "${{ secrets._51DEGREES_RESOURCE_KEY_BASIC }}"));
+    }
+
+    [TestMethod]
+    public void EveryWorkflowFillsADidKeyFromTheSecretOfItsName()
+    {
+        var found = FindInTrackedFiles(
+            DidKeysFilledFromAnotherSecret,
+            ThisFile,
+            (relative, _) => relative.StartsWith(
+                ".github/", StringComparison.Ordinal) == false);
+        Assert.AreEqual(
+            0,
+            found.Count,
+            $"{found.Count} 51Did or Basic keys are filled from another " +
+            "secret. A 51Did license key reads only a result sealed with " +
+            "the 51Did resource key, and the Basic tier tests need a key " +
+            "on CloudV5Basic alone, so each must be filled from the secret " +
+            "of its own name:\n" + string.Join("\n", found));
+    }
+
+    [TestMethod]
     public void NoFileReadsAnOldName()
     {
         var found = FindInTrackedFiles(
@@ -404,9 +518,8 @@ public class EnvironmentVariableNamesTests
         Assert.AreEqual(
             0,
             found.Count,
-            $"{found.Count} old names are still read, set or held to fall " +
-            "back to outside the files that keep them, so each must use " +
-            "its _51DEGREES_ name alone:\n" +
+            $"{found.Count} old names are still read, set or held, so " +
+            "each must use its _51DEGREES_ name alone:\n" +
             string.Join("\n", found));
     }
 }

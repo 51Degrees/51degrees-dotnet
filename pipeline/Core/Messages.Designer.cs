@@ -97,6 +97,15 @@ namespace FiftyOne.Pipeline.Core {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to An entry for &apos;{0}&apos; is already present..
+        /// </summary>
+        internal static string ExceptionKeyAlreadyPresent {
+            get {
+                return ResourceManager.GetString("ExceptionKeyAlreadyPresent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Key name cannot be null.
         /// </summary>
         internal static string ExceptionKeyNameNull {
@@ -120,6 +129,15 @@ namespace FiftyOne.Pipeline.Core {
         internal static string ExceptionParallelElementsNoDataKey {
             get {
                 return ResourceManager.GetString("ExceptionParallelElementsNoDataKey", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The usage sharing element must be the last Flow Element in the Pipeline and outside any parallel group, so that it shares the evidence every other Flow Element adds. Add it after every other Flow Element, on its own..
+        /// </summary>
+        internal static string ExceptionUsageSharingNotLast {
+            get {
+                return ResourceManager.GetString("ExceptionUsageSharingNotLast", resourceCulture);
             }
         }
         

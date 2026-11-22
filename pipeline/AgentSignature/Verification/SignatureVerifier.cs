@@ -21,8 +21,14 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.AgentSignature.Keys;
+using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Crypto.Signers;
+#if NETSTANDARD2_0
+using Org.BouncyCastle.Crypto.Digests;
+using Org.BouncyCastle.Crypto.Engines;
+using Org.BouncyCastle.Math;
+#endif
 using System;
 using System.Security.Cryptography;
 
@@ -66,7 +72,9 @@ namespace FiftyOne.Pipeline.AgentSignature.Verification
     /// </summary>
     /// <remarks>
     /// Ed25519 is not in the .NET base library, so it comes from
-    /// BouncyCastle. RSA-PSS and ECDSA use the base library.
+    /// BouncyCastle. ECDSA uses the base library, and so does RSA-PSS apart
+    /// from in the netstandard2.0 build, which uses BouncyCastle because
+    /// RSA.Create() on .NET Framework cannot verify PSS padding.
     /// </remarks>
     internal static class SignatureVerifier
     {
@@ -185,6 +193,12 @@ namespace FiftyOne.Pipeline.AgentSignature.Verification
             {
                 return false;
             }
+            catch (CryptoException)
+            {
+                // BouncyCastle's report of a signature it cannot read, such
+                // as one longer than the key.
+                return false;
+            }
         }
 
         private static string FromKey(JsonWebKey key)
@@ -264,6 +278,21 @@ namespace FiftyOne.Pipeline.AgentSignature.Verification
             {
                 return false;
             }
+#if NETSTANDARD2_0
+            // .NET Framework loads this build, and there RSA.Create() gives
+            // RSACryptoServiceProvider, which cannot verify PSS padding.
+            // RFC 9421 section 3.3.1 specifies SHA-512 for both the hash and
+            // MGF1, and a salt of 64 bytes, the length of the hash.
+            var digest = new Sha512Digest();
+            var signer = new PssSigner(
+                new RsaEngine(), digest, digest.GetDigestSize());
+            signer.Init(false, new RsaKeyParameters(
+                false,
+                new BigInteger(1, modulus),
+                new BigInteger(1, exponent)));
+            signer.BlockUpdate(signatureBase, 0, signatureBase.Length);
+            return signer.VerifySignature(signature);
+#else
             using (var rsa = RSA.Create())
             {
                 rsa.ImportParameters(new RSAParameters
@@ -279,6 +308,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Verification
                     HashAlgorithmName.SHA512,
                     RSASignaturePadding.Pss);
             }
+#endif
         }
 
         private static bool VerifyEcdsa(

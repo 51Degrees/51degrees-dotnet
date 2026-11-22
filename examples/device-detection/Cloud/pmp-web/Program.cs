@@ -62,6 +62,13 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
             // Read before anything starts, so a missing resource key stops
             // the demo with a message rather than serving broken pages.
             var settings = Settings.FromEnvironment();
+            if (settings == null)
+            {
+                // There is no resource key, so the message says where to
+                // create one and the demo ends without a server.
+                Console.WriteLine(Settings.MissingKeyMessage);
+                return Task.CompletedTask;
+            }
 
             // The content root is the build output, where wwwroot is copied,
             // so the pages are found whichever directory the demo is started
@@ -93,6 +100,13 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
             // requests their client script makes, being the script itself
             // and the JSON it posts evidence to, so a page under /cloud/
             // never makes this server call the cloud as well.
+            //
+            // The web integration makes one Flow Data for each request and
+            // disposes of it when the request ends. A Flow Data cannot be
+            // used by two threads at once. Work handed to another thread or
+            // task gets the values it needs, read on the request's thread,
+            // not the Flow Data. These pages read the results in the
+            // browser, so no code here reads the Flow Data.
             app.UseWhen(
                 context => IsForThePipeline(context.Request.Path),
                 pipeline => pipeline.UseFiftyOne());

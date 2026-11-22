@@ -107,6 +107,14 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// <exception cref="ArgumentNullException">
         /// Thrown when the configuration is null.
         /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when a period in the configuration is negative or longer
+        /// than a year.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown when a registry address in the configuration is not HTTPS,
+        /// carries user information or is written as a private address.
+        /// </exception>
         public AgentSignatureElement(
             ILogger<AgentSignatureElement> logger,
             Func<IPipeline,
@@ -119,6 +127,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             {
                 throw new ArgumentNullException(nameof(configuration));
             }
+            configuration.Check(nameof(configuration));
             _configuration = configuration;
 
             _evidenceKeyFilter = new AgentSignatureEvidenceKeyFilter(
@@ -166,8 +175,13 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 configuration.WaitBudget,
                 configuration.FetchTimeout,
                 configuration.Concurrency);
+            // The read is queued on the thread pool. Lazy runs this inside
+            // its lock, and starting a network request can block, so the
+            // read starts on another thread and no request waits on the
+            // lock for it.
             _cardsByKeyUrl =
-                new Lazy<Task<IDictionary<string, AgentCard>>>(LoadCards);
+                new Lazy<Task<IDictionary<string, AgentCard>>>(
+                    () => Task.Run(LoadCards));
             _createData = CreateElementData;
             StartReachabilityCheck();
         }
@@ -288,16 +302,25 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             {
                 throw new ArgumentNullException(nameof(data));
             }
+            // Nearly every request has no signature at all, so test for
+            // the headers before anything is parsed or allocated, with keys
+            // built once. That case is answered in the request's own
+            // Element Data from values that never change.
+            var fromQuery = FindSource(data);
+            var hasSignature = HasSignatureHeaders(data, fromQuery);
+
             var elementData = data.GetOrAdd(
                 ElementDataKeyTyped, _createData) as AgentSignatureData;
             if (elementData == null)
             {
                 return;
             }
+            if (hasSignature == false)
+            {
+                ApplyAbsent(elementData);
+                return;
+            }
 
-            // Nearly every request has no signature at all, so answer that
-            // case before anything is parsed or allocated.
-            //
             // Where the signature came from decides where everything else
             // comes from. A caller's own Pipeline forwards its evidence
             // with the prefix taken off, so a forwarded signature sits
@@ -308,22 +331,19 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             // no request line reports that a component was unavailable,
             // which says the check could not be made, rather than
             // reporting a mismatch, which would say the agent was lying.
-            var source = FindSource(data);
-            var hasSignature = TryGetBySource(
+            var source = fromQuery
+                ? Core.Constants.EVIDENCE_QUERY_PREFIX
+                : Core.Constants.EVIDENCE_HTTPHEADER_PREFIX;
+            TryGetBySource(
                 data,
                 source,
                 Constants.EVIDENCE_SIGNATURE_NAME,
                 out var signatureValue);
-            var hasInput = TryGetBySource(
+            TryGetBySource(
                 data,
                 source,
                 Constants.EVIDENCE_SIGNATURE_INPUT_NAME,
                 out var inputValue);
-            if (hasSignature == false && hasInput == false)
-            {
-                ApplyAbsent(elementData);
-                return;
-            }
 
             var outcome = Evaluate(data, source, signatureValue, inputValue);
             Apply(outcome, elementData);
@@ -342,8 +362,11 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// both would be a base no agent ever signed.
         /// </remarks>
         /// <param name="data">The flow data.</param>
-        /// <returns>The prefix to read this request from.</returns>
-        private string FindSource(IFlowData data)
+        /// <returns>
+        /// True to read this request from the query prefix, or false to
+        /// read it from the header prefix.
+        /// </returns>
+        private bool FindSource(IFlowData data)
         {
             // Without this, a visitor could put a signature, a host and a
             // path in the address bar of an ordinary page, have the web
@@ -362,16 +385,51 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                     data.TryGetEvidence<object>(
                         QuerySignatureInputKey, out _)))
             {
-                return Core.Constants.EVIDENCE_QUERY_PREFIX;
+                return true;
             }
-            return Core.Constants.EVIDENCE_HTTPHEADER_PREFIX;
+            return false;
         }
 
         /// <summary>
-        /// The two keys that say a request's evidence was forwarded,
-        /// built once rather than on every request, because this runs
+        /// Whether the prefix the signature would come from carries either
+        /// of the two signature headers, read with keys built once so that
+        /// the test allocates nothing.
+        /// </summary>
+        /// <param name="data">The flow data.</param>
+        /// <param name="fromQuery">
+        /// True to read the query prefix, false the header prefix.
+        /// </param>
+        /// <returns>True where either header is present.</returns>
+        private static bool HasSignatureHeaders(IFlowData data, bool fromQuery)
+        {
+            return HasValue(data, fromQuery
+                    ? QuerySignatureKey
+                    : HeaderSignatureKey) ||
+                HasValue(data, fromQuery
+                    ? QuerySignatureInputKey
+                    : HeaderSignatureInputKey);
+        }
+
+        private static bool HasValue(IFlowData data, string key)
+        {
+            return data.TryGetEvidence(key, out object raw) && raw != null;
+        }
+
+        /// <summary>
+        /// The keys of the two signature headers under each prefix, built
+        /// once rather than on every request, because they are read
         /// whether or not a request carries a signature at all.
         /// </summary>
+        private static readonly string HeaderSignatureKey =
+            Core.Constants.EVIDENCE_HTTPHEADER_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR +
+            Constants.EVIDENCE_SIGNATURE_NAME;
+
+        private static readonly string HeaderSignatureInputKey =
+            Core.Constants.EVIDENCE_HTTPHEADER_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR +
+            Constants.EVIDENCE_SIGNATURE_INPUT_NAME;
+
         private static readonly string QuerySignatureKey =
             Core.Constants.EVIDENCE_QUERY_PREFIX +
             Core.Constants.EVIDENCE_SEPERATOR +
@@ -776,7 +834,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// <summary>
         /// Whether the signature covers something that ties it to the
         /// request it arrived on. The protocol draft has an agent cover
-        /// '&#64;authority' or '&#64;target-uri', and a signature covering neither
+        /// '\@authority' or '\@target-uri', and a signature covering neither
         /// would check out against a request sent to any other site, so
         /// one captured elsewhere could be replayed here.
         /// </summary>
@@ -1165,8 +1223,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// derived components are built from the accepted headers and from
         /// the request line, being the method, the path and the query
         /// string. Where an integration supplies no request line, a
-        /// signature covering '&#64;target-uri', '&#64;method', '&#64;path' or
-        /// '&#64;query' cannot be rebuilt and reads Unverified with the
+        /// signature covering '\@target-uri', '\@method', '\@path' or
+        /// '\@query' cannot be rebuilt and reads Unverified with the
         /// ComponentUnavailable reason.
         /// See the <see href="https://github.com/51Degrees/specifications/blob/4612778babd00c032a69ad41608e5c6fed38dc33/pipeline-specification/pipeline-elements/agent-signature-element.md#rebuilding-the-signature-base">Specification</see>
         /// </remarks>
@@ -1323,7 +1381,7 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             }
 
             /// <summary>
-            /// Build the '&#64;target-uri' component from the parts that make
+            /// Build the '\@target-uri' component from the parts that make
             /// it up. Every part has to be there, because a target address
             /// missing its path or its query is a different address and
             /// would produce a signature base the agent never signed.
@@ -1481,9 +1539,9 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
         /// </summary>
         /// <remarks>
         /// The element accepts the three signature headers, the host and
-        /// the protocol, which '&#64;authority' and '&#64;scheme' are built
-        /// from, and the three request line values, which '&#64;method',
-        /// '&#64;path', '&#64;query' and '&#64;target-uri' are built from. A
+        /// the protocol, which '\@authority' and '\@scheme' are built
+        /// from, and the three request line values, which '\@method',
+        /// '\@path', '\@query' and '\@target-uri' are built from. A
         /// pipeline's accepted evidence decides its cache keys, the ETag and
         /// the Vary header, so only evidence that can change the result is
         /// accepted. Any other header a signature covers is read without
@@ -1520,8 +1578,8 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
                 Core.Constants.EVIDENCE_SEPERATOR;
 
             /// <summary>
-            /// The keys carrying the request line, which '&#64;method',
-            /// '&#64;path', '&#64;query' and '&#64;target-uri' are built from.
+            /// The keys carrying the request line, which '\@method',
+            /// '\@path', '\@query' and '\@target-uri' are built from.
             /// </summary>
             private static readonly string[] RequestLineKeys = new[]
             {
@@ -1585,11 +1643,11 @@ namespace FiftyOne.Pipeline.AgentSignature.FlowElement
             /// or not that caller uses this element and whether or not it
             /// is entitled to. Leaving them out is not the answer either:
             /// a forwarded request would then arrive carrying no path and
-            /// no query, and a signature covering '&#64;path', '&#64;query' or
-            /// '&#64;target-uri' could not be rebuilt at all, which is the
+            /// no query, and a signature covering '\@path', '\@query' or
+            /// '\@target-uri' could not be rebuilt at all, which is the
             /// greater part of what this element is for on the cloud
             /// path. Narrowing what is sent is not open either, because
-            /// '&#64;query' is defined as the whole query string.
+            /// '\@query' is defined as the whole query string.
             /// </para>
             /// <para>
             /// Holding the cost to the callers who need it therefore

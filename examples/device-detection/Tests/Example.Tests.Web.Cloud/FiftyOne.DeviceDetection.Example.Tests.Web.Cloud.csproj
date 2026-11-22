@@ -47,6 +47,8 @@
              Link="TestDiscoveryGuard.cs" />
     <Compile Include="..\Shared\SeleniumProcessCleanup.cs"
              Link="SeleniumProcessCleanup.cs" />
+    <Compile Include="..\Example.Tests.Cloud\ExampleWithoutKey.cs"
+             Link="ExampleWithoutKey.cs" />
   </ItemGroup>
 
 </Project>

@@ -75,6 +75,9 @@ namespace Example_Framework_Website.Controllers
     {
         public ActionResult Index()
         {
+            // A Flow Data cannot be used by two threads at once. Work handed to
+            // another thread or task gets the values it needs, read here on the
+            // request's thread, not the Flow Data.
             ViewData["Message"] =
                 Request.Browser["math.operation"] +
                 " = " +

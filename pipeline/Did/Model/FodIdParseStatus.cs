@@ -124,7 +124,10 @@ namespace FiftyOne.Did.Model
         /// <summary>
         /// The envelope is a valid OWID but its payload is shorter than the
         /// five byte 51Did header (one byte of flags and a four byte
-        /// licence id), so the identifier type cannot be read.
+        /// licence id), so the identifier type cannot be read. A payload
+        /// whose flags byte names a version other than 0 is refused with
+        /// <see cref="UnsupportedPayloadVersion"/> instead, whatever its
+        /// length.
         /// </summary>
         PayloadTooShort = 100,
 

@@ -86,7 +86,7 @@ namespace AspNetCore
                      resourceKey.ToString().StartsWith("!!")))
                 {
                     throw new Exception("You need to create a resource key at " +
-                        "https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-aspnetcore-startup.cs&utm_term=resource-key-required and paste it into the " +
+                        "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-aspnetcore-startup.cs&utm_term=resource-key-required and paste it into the " +
                         "appsettings.json file in this example.");
                 }
             }
@@ -120,6 +120,9 @@ namespace AspNetCore
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
+            // A Flow Data cannot be used by two threads at once. Work handed
+            // to another thread or task gets the values it needs, read on the
+            // request's thread, not the Flow Data.
             app.UseFiftyOne();
             app.UseHttpsRedirection();
             app.UseStaticFiles();

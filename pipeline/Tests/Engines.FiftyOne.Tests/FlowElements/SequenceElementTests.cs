@@ -133,6 +133,7 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
         [DataRow("")]
         [DataRow(" 3")]
         [DataRow("-1")]
+        [DataRow("+5")]
         [DataRow("1.5")]
         [DataRow("\u0663")]
         [DataRow(1.5)]
@@ -145,6 +146,33 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
             {
                 data.AddEvidence(Constants.EVIDENCE_SESSIONID, session);
                 data.AddEvidence(Constants.EVIDENCE_SEQUENCE, sequence);
+                data.Process();
+
+                AssertOutputs(data, session, 1);
+                Assert.IsEmpty(data.Errors ?? Enumerable.Empty<IFlowError>().ToList());
+            }
+        }
+
+        /// <summary>
+        /// A string with NUL characters after its digits is not made only
+        /// of the digits 0 to 9, so it counts as absent and the sequence is
+        /// 1. The NUL characters are added here, because a test name that
+        /// holds one cannot be written to every test results format.
+        /// </summary>
+        [TestMethod]
+        [DataRow("5", 1)]
+        [DataRow("5", 3)]
+        [DataRow("2147483646", 1)]
+        public void SequenceElement_DigitsThenNul_TreatedAsAbsent(
+            string digits, int nuls)
+        {
+            var session = Guid.NewGuid().ToString();
+            using (var data = _pipeline.CreateFlowData())
+            {
+                data.AddEvidence(Constants.EVIDENCE_SESSIONID, session);
+                data.AddEvidence(
+                    Constants.EVIDENCE_SEQUENCE,
+                    digits + new string('\0', nuls));
                 data.Process();
 
                 AssertOutputs(data, session, 1);
@@ -178,6 +206,83 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
                 data.Process();
 
                 AssertOutputs(data, session, expected);
+            }
+        }
+
+        /// <summary>
+        /// A sequence held in any of the C# integer types counts, from 1
+        /// up to one less than the largest int, and a value outside that
+        /// range counts as absent whatever its type.
+        /// </summary>
+        [TestMethod]
+        [DataRow((sbyte)3, 4)]
+        [DataRow((byte)3, 4)]
+        [DataRow((short)3, 4)]
+        [DataRow((ushort)3, 4)]
+        [DataRow(3, 4)]
+        [DataRow(3u, 4)]
+        [DataRow(3L, 4)]
+        [DataRow(3UL, 4)]
+        [DataRow(sbyte.MaxValue, 128)]
+        [DataRow(ushort.MaxValue, 65536)]
+        [DataRow(2147483646UL, int.MaxValue)]
+        [DataRow(2147483647UL, 1)]
+        [DataRow(ulong.MaxValue, 1)]
+        [DataRow((sbyte)-1, 1)]
+        [DataRow((sbyte)0, 1)]
+        [DataRow((ushort)0, 1)]
+        [DataRow(0UL, 1)]
+        public void SequenceElement_EveryIntegerType_Counts(
+            object sequence, int expected)
+        {
+            AssertSequenceCounts(sequence, expected);
+        }
+
+        /// <summary>
+        /// A sequence held in nint or nuint, the native sized integer
+        /// types, counts as one held in the other integer types. Neither
+        /// type can be a data row argument, so the cases are written out,
+        /// and the two that need 64 bits run only where a native integer
+        /// holds them.
+        /// </summary>
+        [TestMethod]
+        public void SequenceElement_NativeSizedIntegerType_Counts()
+        {
+            AssertSequenceCounts((IntPtr)3, 4);
+            AssertSequenceCounts((UIntPtr)3u, 4);
+            AssertSequenceCounts((IntPtr)2147483646, int.MaxValue);
+            AssertSequenceCounts((UIntPtr)2147483646u, int.MaxValue);
+            AssertSequenceCounts((IntPtr)2147483647, 1);
+            AssertSequenceCounts((UIntPtr)2147483647u, 1);
+            AssertSequenceCounts((IntPtr)(-1), 1);
+            AssertSequenceCounts((IntPtr)0, 1);
+            AssertSequenceCounts((UIntPtr)0u, 1);
+            if (IntPtr.Size == 8)
+            {
+                // Read from a variable, because a constant above the
+                // range of an int cannot be cast to a native integer.
+                long signed = long.MaxValue;
+                ulong unsigned = ulong.MaxValue;
+                AssertSequenceCounts((IntPtr)signed, 1);
+                AssertSequenceCounts((UIntPtr)unsigned, 1);
+            }
+        }
+
+        /// <summary>
+        /// Processes the sequence as evidence and checks the evidence and
+        /// the element data hold the sequence expected, with no error.
+        /// </summary>
+        private void AssertSequenceCounts(object sequence, int expected)
+        {
+            var session = Guid.NewGuid().ToString();
+            using (var data = _pipeline.CreateFlowData())
+            {
+                data.AddEvidence(Constants.EVIDENCE_SESSIONID, session);
+                data.AddEvidence(Constants.EVIDENCE_SEQUENCE, sequence);
+                data.Process();
+
+                AssertOutputs(data, session, expected);
+                Assert.IsEmpty(data.Errors ?? Enumerable.Empty<IFlowError>().ToList());
             }
         }
 

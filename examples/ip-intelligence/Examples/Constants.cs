@@ -59,10 +59,18 @@ namespace FiftyOne.IpIntelligence.Examples
         public const string GEOIP_COMPARISON_EVIDENCE_FILE_NAME = "geoip_comparison_evidence.csv";
 
         /// <summary>
-        /// Environment variable key for the license key file to use for the 
-        /// tests.
+        /// An old environment variable for the licence key the data file
+        /// update example uses. It is no longer read.
         /// </summary>
+        [System.Obsolete("Use DATA_UPDATE_LICENSE_KEY_ENV_VAR, which names the environment " +
+            "variable that replaces this one.")]
         public const string LICENSE_KEY_ENV_VAR = "IPINTELLIGENCELICENSEKEY_DOTNET";
+
+        /// <summary>
+        /// Environment variable key for the licence key the data file update
+        /// example and its test use.
+        /// </summary>
+        public const string DATA_UPDATE_LICENSE_KEY_ENV_VAR = "_51DEGREES_LICENSE_KEY";
 
         /// <summary>
         /// Environment variable key used to supply an explicit path to the
@@ -72,8 +80,7 @@ namespace FiftyOne.IpIntelligence.Examples
 
         /// <summary>
         /// An old environment variable for the path to the IP Intelligence
-        /// data file, read only when <see cref="IPI_PATH_ENV_VAR"/> is not
-        /// set.
+        /// data file. It is no longer read.
         /// </summary>
         [System.Obsolete("Use IPI_PATH_ENV_VAR, which names the environment " +
             "variable that replaces this one.")]
@@ -81,25 +88,24 @@ namespace FiftyOne.IpIntelligence.Examples
 
         /// <summary>
         /// An old environment variable for the path to the IP Intelligence
-        /// data file, read only when <see cref="IPI_PATH_ENV_VAR"/> is not
-        /// set.
+        /// data file. It is no longer read.
         /// </summary>
         [System.Obsolete("Use IPI_PATH_ENV_VAR, which names the environment " +
             "variable that replaces this one.")]
         public const string LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "IPINTELLIGENCEDATAFILE";
 
-#pragma warning disable CS0618 // The old names are listed to be read.
         /// <summary>
-        /// The old names of
-        /// <see cref="IPI_PATH_ENV_VAR"/>,
-        /// read in this order only when that variable is not set.
+        /// The free Device Detection data file, which the mixed examples
+        /// use by default. The data repository links it, and the examples
+        /// download it when it is missing.
         /// </summary>
-        public static readonly string[] OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS = new string[]
-        {
-            IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
-            LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR,
-        };
-#pragma warning restore CS0618
+        public const string LITE_HASH_DATA_FILE_NAME = "51Degrees-LiteV4.1.hash";
+
+        /// <summary>
+        /// Environment variable key used to supply an explicit path to the
+        /// Device Detection data file that the mixed examples use.
+        /// </summary>
+        public const string DD_PATH_ENV_VAR = "_51DEGREES_DD_PATH";
 
         /// <summary>
         /// Environment variable key for the evidence file to use for the tests.
@@ -118,7 +124,7 @@ namespace FiftyOne.IpIntelligence.Examples
         /// _51DEGREES_EXAMPLE_HTTPS_PORTS to other ports, comma separated.
         /// </summary>
         public static readonly int[] LOCALHOST_HTTP_PORTS =
-            PortsFromEnvironment("_51DEGREES_EXAMPLE_HTTP_PORTS", new int[] { 5101 });
+            PortsFromEnvironment("_51DEGREES_EXAMPLE_HTTP_PORTS", new int[] { 5151 });
         public static readonly int[] LOCALHOST_HTTPS_PORTS =
             PortsFromEnvironment("_51DEGREES_EXAMPLE_HTTPS_PORTS", new int[] { 5001, 5002 });
 

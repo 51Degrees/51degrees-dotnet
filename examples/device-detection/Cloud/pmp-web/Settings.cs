@@ -47,9 +47,8 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public const string RESOURCE_KEY_VARIABLE = "_51DEGREES_RESOURCE_KEY";
 
         /// <summary>
-        /// The old name of <see cref="RESOURCE_KEY_VARIABLE"/>, read only
-        /// when neither that variable nor
-        /// <see cref="CI_RESOURCE_KEY_ENV_VAR"/> is set.
+        /// The old name of <see cref="RESOURCE_KEY_VARIABLE"/>. It is no
+        /// longer read.
         /// </summary>
         [System.Obsolete("Use RESOURCE_KEY_VARIABLE, which names the environment " +
             "variable that replaces this one.")]
@@ -70,8 +69,8 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public const string CLOUD_ENDPOINT_VARIABLE = "_51DEGREES_CLOUD_ENDPOINT";
 
         /// <summary>
-        /// The old name of <see cref="CLOUD_ENDPOINT_VARIABLE"/>, read only
-        /// when that variable is not set.
+        /// The old name of <see cref="CLOUD_ENDPOINT_VARIABLE"/>. It is no
+        /// longer read.
         /// </summary>
         [System.Obsolete("Use CLOUD_ENDPOINT_VARIABLE, which names the environment " +
             "variable that replaces this one.")]
@@ -121,42 +120,35 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
         public string CloudEndpointVariable { get; }
 
         /// <summary>
+        /// What the demo writes when no resource key is set.
+        /// </summary>
+        public static string MissingKeyMessage =>
+            $"No resource key is set. Set the environment variable " +
+            $"'{RESOURCE_KEY_VARIABLE}' to a 51Degrees resource key " +
+            "that includes the 51Did properties. The name " +
+            $"'{CI_RESOURCE_KEY_ENV_VAR}' is read when it is not " +
+            "set. A resource key can be " +
+            "created at https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-settings.cs&utm_term=resource-key-required";
+
+        /// <summary>
         /// Reads both values from the environment.
         /// </summary>
+        /// <returns>
+        /// The settings, or null when no resource key is set.
+        /// </returns>
         /// <exception cref="InvalidOperationException">
-        /// No resource key is set, or the endpoint is not an absolute http
-        /// or https address.
+        /// The endpoint is not an absolute http or https address.
         /// </exception>
-        public static Settings FromEnvironment()
+        public static Settings? FromEnvironment()
         {
             var (keyVariable, key) = First(
                 RESOURCE_KEY_VARIABLE, CI_RESOURCE_KEY_ENV_VAR);
             if (key == null)
             {
-#pragma warning disable CS0618 // The old name is the one read here.
-                (keyVariable, key) = FirstOld(
-                    RESOURCE_KEY_VARIABLE, RESOURCE_KEY_ENV_VAR);
-#pragma warning restore CS0618
-            }
-            if (key == null)
-            {
-                throw new InvalidOperationException(
-                    $"No resource key is set. Set the environment variable " +
-                    $"'{RESOURCE_KEY_VARIABLE}' to a 51Degrees resource key " +
-                    "that includes the 51Did properties. The name " +
-                    $"'{CI_RESOURCE_KEY_ENV_VAR}' is read when it is not " +
-                    "set. A resource key can be " +
-                    "created at https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-settings.cs&utm_term=resource-key-required");
+                return null;
             }
 
             var (endpointVariable, endpoint) = First(CLOUD_ENDPOINT_VARIABLE);
-            if (endpoint == null)
-            {
-#pragma warning disable CS0618 // The old name is the one read here.
-                (endpointVariable, endpoint) = FirstOld(
-                    CLOUD_ENDPOINT_VARIABLE, CLOUD_ENDPOINT_ENV_VAR);
-#pragma warning restore CS0618
-            }
             return new Settings(
                 key,
                 keyVariable!,
@@ -268,26 +260,6 @@ namespace FiftyOne.Examples.Cloud.PmpWeb
                 }
             }
             return (null, null);
-        }
-
-        /// <summary>
-        /// The old name with its value where it holds one that is not
-        /// blank, reported on the error stream as deprecated, or two nulls
-        /// where it does not.
-        /// </summary>
-        private static (string? Name, string? Value) FirstOld(
-            string newName,
-            string oldName)
-        {
-            var (name, value) = First(oldName);
-            if (value != null)
-            {
-                Console.Error.WriteLine(
-                    $"The environment variable {oldName} is deprecated " +
-                    $"and {newName} replaces it. Set {newName} to the " +
-                    "same value instead.");
-            }
-            return (name, value);
         }
 
         /// <summary>

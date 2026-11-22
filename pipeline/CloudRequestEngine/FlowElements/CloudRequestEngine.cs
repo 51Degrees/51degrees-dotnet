@@ -37,6 +37,8 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.ExceptionServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FiftyOne.Pipeline.Core.Exceptions;
@@ -93,7 +95,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             /// A resource key encapsulates details such as any license keys,
             /// the properties that should be returned and the domains that
             /// requests are permitted from. A new resource key can be
-            /// generated for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.cloudrequestengine-flowelements-cloudrequestengine.cs&amp;utm_term=resourcekey
+            /// generated for free at https://51degrees.com/configure?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.cloudrequestengine-flowelements-cloudrequestengine.cs&amp;utm_term=resourcekey
             /// </summary>
             public string ResourceKey;
 
@@ -170,7 +172,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// A resource key encapsulates details such as any license keys,
         /// the properties that should be returned and the domains that
         /// requests are permitted from. A new resource key can be
-        /// generated for free at https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.cloudrequestengine-flowelements-cloudrequestengine.cs&amp;utm_term=cloudrequestengine
+        /// generated for free at https://51degrees.com/configure?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.pipeline.cloudrequestengine-flowelements-cloudrequestengine.cs&amp;utm_term=cloudrequestengine
         /// </param>
         /// <param name="dataEndpoint">
         /// The URL for the cloud endpoint that will take the supplied
@@ -509,6 +511,134 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     "transient error. The engine will retry the discovery " +
                     "requests when it is first used.");
             }
+        }
+
+        /// <summary>
+        /// The discovery results, being the accessible properties and the
+        /// accepted Evidence keys, as JSON. They depend only on the keys and
+        /// the endpoints, hold no key, and can be stored. Give them to
+        /// <see cref="CloudRequestEngineBuilder.SetDiscoveryResults"/> to
+        /// build an engine with the same keys and endpoints without asking
+        /// the cloud service.
+        /// </summary>
+        /// <returns>
+        /// The results, or null until both have been obtained.
+        /// </returns>
+        public string GetDiscoveryResults()
+        {
+            var keys = _lazyEvidenceKeyFilter.IsValueCreated
+                ? _lazyEvidenceKeyFilter.Value as EvidenceKeyFilterWhitelist
+                : null;
+            if (keys == null ||
+                _lazyPublicProperties.IsValueCreated == false ||
+                _lazyPublicProperties.Value == null)
+            {
+                return null;
+            }
+            return JsonConvert.SerializeObject(new DiscoveryResults
+            {
+                Credentials = CredentialsHash(),
+                EvidenceKeys = keys.Whitelist.Keys
+                    .OrderBy(k => k, StringComparer.Ordinal)
+                    .ToList(),
+                AccessibleProperties = _lazyPublicProperties.Value
+                    .ToDictionary(p => p.Key, p => p.Value),
+            });
+        }
+
+        /// <summary>
+        /// Uses discovery results that <see cref="GetDiscoveryResults"/>
+        /// gave, in place of asking the cloud service.
+        /// </summary>
+        /// <exception cref="PipelineConfigurationException">
+        /// The results are not a copy of what
+        /// <see cref="GetDiscoveryResults"/> gives, or were made for other
+        /// keys or endpoints.
+        /// </exception>
+        internal void UseDiscoveryResults(string discoveryResults)
+        {
+            DiscoveryResults results;
+            try
+            {
+                results = JsonConvert.DeserializeObject<DiscoveryResults>(
+                    discoveryResults);
+            }
+            catch (JsonException ex)
+            {
+                throw new PipelineConfigurationException(
+                    DiscoveryResultsNotACopy, ex);
+            }
+            if (results?.Credentials == null ||
+                results.EvidenceKeys == null ||
+                results.AccessibleProperties == null)
+            {
+                throw new PipelineConfigurationException(
+                    DiscoveryResultsNotACopy);
+            }
+            if (string.Equals(
+                results.Credentials,
+                CredentialsHash(),
+                StringComparison.Ordinal) == false)
+            {
+                throw new PipelineConfigurationException(
+                    "The discovery results were made for other keys or " +
+                    "endpoints, so the engine cannot use them.");
+            }
+            IEvidenceKeyFilter filter =
+                new EvidenceKeyFilterWhitelist(results.EvidenceKeys);
+            IReadOnlyDictionary<string, ProductMetaData> properties =
+                results.AccessibleProperties;
+            _lazyEvidenceKeyFilter = new Lazy<IEvidenceKeyFilter>(
+                () => filter);
+            _lazyPublicProperties =
+                new Lazy<IReadOnlyDictionary<string, ProductMetaData>>(
+                    () => properties);
+            _ = _lazyEvidenceKeyFilter.Value;
+            _ = _lazyPublicProperties.Value;
+        }
+
+        private const string DiscoveryResultsNotACopy =
+            "The discovery results are not what GetDiscoveryResults gives, " +
+            "so the engine cannot use them.";
+
+        /// <summary>
+        /// Stands for the endpoints and keys the discovery results were made
+        /// with, so that results made for others are refused, without
+        /// holding a key.
+        /// </summary>
+        private string CredentialsHash()
+        {
+            var text = string.Join("\n",
+                _endpointsAndKeys.PropertiesEndpoint,
+                _endpointsAndKeys.EvidenceKeysEndpoint,
+                _endpointsAndKeys.ResourceKey,
+                _endpointsAndKeys.LicenseKey);
+            using (var sha256 = SHA256.Create())
+            {
+                var hex = new StringBuilder();
+                foreach (var b in sha256.ComputeHash(
+                    Encoding.UTF8.GetBytes(text)))
+                {
+                    hex.Append(b.ToString("x2", CultureInfo.InvariantCulture));
+                }
+                return hex.ToString();
+            }
+        }
+
+        /// <summary>
+        /// The discovery results as they are stored.
+        /// </summary>
+        private sealed class DiscoveryResults
+        {
+            [JsonProperty("credentials")]
+            public string Credentials { get; set; }
+
+            [JsonProperty("evidenceKeys")]
+            public List<string> EvidenceKeys { get; set; }
+
+            [JsonProperty("accessibleProperties")]
+            public Dictionary<string, ProductMetaData> AccessibleProperties
+            { get; set; }
         }
 
         /// <summary>

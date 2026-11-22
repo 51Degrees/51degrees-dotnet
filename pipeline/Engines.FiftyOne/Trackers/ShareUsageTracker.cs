@@ -228,8 +228,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Trackers
                 throw new ArgumentNullException(nameof(data));
             }
             var evidence = data.GetEvidence()?.AsDictionary();
-            if (evidence == null || evidence.ContainsKey(
-                Core.Constants.EVIDENCE_HTTPREQUEST_KEY) == false)
+            if (evidence == null ||
+                ShareUsageEvidence.HasRequest(evidence) == false)
             {
                 return base.GenerateKey(data);
             }

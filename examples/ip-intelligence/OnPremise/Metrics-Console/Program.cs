@@ -894,6 +894,11 @@ public class Program
         Configuration configuration)
         : BackgroundService
     {
+        /// <summary>
+        /// The exit code the process ends with when the run fails.
+        /// </summary>
+        private const int FailedExitCode = 1;
+
         protected override async Task ExecuteAsync(
             CancellationToken stoppingToken)
         {
@@ -915,10 +920,12 @@ public class Program
             {
                 // The metrics have already been written by this point. Report
                 // the failure rather than leaving it unhandled, which would
-                // end the process without the summary below.
+                // end the process without the summary below, and end with a
+                // failure exit code so that a script or a test can tell.
                 configuration.LoggerFactory
                     .CreateLogger<Worker>()
                     .LogError(ex, "The metrics run did not complete");
+                Environment.ExitCode = FailedExitCode;
             }
             finally
             {
@@ -1496,5 +1503,14 @@ public class Program
 
         // Dispose the logger to ensure any messages get flushed
         configuration.LoggerFactory.Dispose();
+
+        Examples.ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
     }
+
+    /// <summary>
+    /// This file as a lower case slug, which tags the links in the
+    /// closing section.
+    /// </summary>
+    private const string ContentSlug =
+        "examples-ip-intelligence-onpremise-metrics-console-program.cs";
 }

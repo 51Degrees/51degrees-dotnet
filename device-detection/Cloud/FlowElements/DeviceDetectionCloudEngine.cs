@@ -106,13 +106,21 @@ namespace FiftyOne.DeviceDetection.Cloud.FlowElements
 
             // Extract data from JSON to the aspectData instance.
             var dictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
-            var propertyValues = JsonConvert.DeserializeObject<Dictionary<string, object>>(dictionary["device"].ToString(),
+            // A response with no section for this engine leaves its data
+            // without values.
+            if (dictionary.TryGetValue("device", out var section) == false ||
+                section == null)
+            {
+                return;
+            }
+            var propertyValues = JsonConvert.DeserializeObject<Dictionary<string, object>>(section.ToString(),
                 new JsonSerializerSettings()
                 {
                     Converters = JSON_CONVERTERS,
                 });
 
-            var device = CreateAPVDictionary(propertyValues, Properties.ToList());
+            var device = CreateAPVDictionary(
+                propertyValues, PropertiesForResponse.ToList());
             aspectData.PopulateFrom(device);
         }
 

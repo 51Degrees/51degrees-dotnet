@@ -231,9 +231,10 @@ namespace FiftyOne.Pipeline.Engines.Configuration
         /// <param name="enabled">
         /// If true, the engine will update it's data file with no manual 
         /// intervention.
-        /// If false, the engine will never update it's data file unless 
-        /// the manual update method is called on 
-        /// <see cref="IDataUpdateService"/>
+        /// If false, the engine never checks for or downloads a new data
+        /// file unless the manual update method is called on 
+        /// <see cref="IDataUpdateService"/>. A new file put in place is
+        /// still applied when the file system watcher is enabled.
         /// </param>
         /// <returns>
         /// This builder instance.
@@ -252,8 +253,9 @@ namespace FiftyOne.Pipeline.Engines.Configuration
         /// This setting enables/disables that feature.
         /// </summary>
         /// <remarks>
-        /// The AutoUpdate feature must also be enabled in order for the file 
-        /// system watcher to work.
+        /// The file system watcher runs on this setting alone. It needs no
+        /// license key, and it works whether automatic updates are enabled
+        /// or not.
         /// If the engine is built from a byte[] then this setting does nothing.
         /// </remarks>
         /// <param name="enabled">

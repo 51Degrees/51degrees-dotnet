@@ -138,6 +138,9 @@ namespace AspNetCore_Example
 
             // Call UseFiftyOne to add the Middleware component that will send any
             // requests through the 51Degrees pipeline. 
+            // A Flow Data cannot be used by two threads at once. Work handed
+            // to another thread or task gets the values it needs, read on the
+            // request's thread, not the Flow Data.
             app.UseFiftyOne();
 
             app.UseHttpsRedirection();

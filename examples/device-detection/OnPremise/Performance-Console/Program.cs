@@ -332,7 +332,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Performance
             }
         }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             // Use the supplied path for the data file or find the lite file that is included
             // in the repository.
@@ -379,7 +379,16 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.Performance
                     }
                 }
             }
+
+            ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-device-detection-onpremise-performance-console-program.cs";
 
     }
 }

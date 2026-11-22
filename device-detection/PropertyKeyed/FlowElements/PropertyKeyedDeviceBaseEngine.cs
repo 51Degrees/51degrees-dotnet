@@ -30,6 +30,7 @@ using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace FiftyOne.DeviceDetection.PropertyKeyed.FlowElements
 {
@@ -38,6 +39,13 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.FlowElements
     /// lookups against a <see cref="DeviceDetectionHashEngine"/>.
     /// Can be configured to validate input and use any property as the key.
     /// </summary>
+    /// <remarks>
+    /// Build the Hash engine in code and name the key property with
+    /// <c>SetIndexedProperties</c> on its builder, for example
+    /// <c>SetIndexedProperties("NativeModel", "TAC")</c>. Without the index
+    /// each lookup reads every profile in the data file, and a warning is
+    /// logged once when the Pipeline is built.
+    /// </remarks>
     public abstract class PropertyKeyedDeviceBaseEngine :
         PropertyKeyedEngine<IMultiDeviceData, IDeviceData>
     {
@@ -49,11 +57,9 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.FlowElements
         private volatile bool _isDataSetInitialized;
 
         /// <summary>
-        /// The Hash engine whose data set indexes some properties itself,
-        /// and the names of those properties.
+        /// The Hash engine whose native lookup finds the profiles.
         /// </summary>
         private DeviceDetectionHashEngine _hashEngine;
-        private HashSet<string> _nativelyIndexed;
 
         /// <inheritdoc/>
         public override string ElementDataKey => _elementDataKeyValue;
@@ -160,11 +166,9 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.FlowElements
                     if (_isDataSetInitialized == false)
                     {
                         _hashEngine = pipeline.GetDeviceDetectionHashEngine();
-                        _nativelyIndexed = new HashSet<string>(
-                            _hashEngine.IndexedProperties,
-                            StringComparer.Ordinal);
+                        WarnIfNotIndexed();
                         DataSet = _dataSetService.BuildDataSet(
-                            this, 
+                            this,
                             pipeline);
                         _isDataSetInitialized = true;
                     }
@@ -173,10 +177,34 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.FlowElements
         }
 
         /// <summary>
-        /// Get the profiles from the Hash engine's data set when it indexes
-        /// the property, because that index is built when the data set loads
-        /// and again when it refreshes. Otherwise get them from the index the
-        /// data set service built.
+        /// Logs one warning, when the Pipeline is built, if the Hash engine
+        /// does not index the property this engine is keyed on. Such a
+        /// lookup still works but reads every profile, and the
+        /// specification only recommends the index, so the configuration
+        /// is allowed rather than refused.
+        /// </summary>
+        private void WarnIfNotIndexed()
+        {
+            if (_hashEngine.IndexedProperties.Contains(
+                _keyProperty, StringComparer.Ordinal) == false)
+            {
+                Logger.LogWarning(
+                    Messages.PropertyNotIndexed,
+                    GetType().Name,
+                    _keyProperty);
+            }
+        }
+
+        /// <summary>
+        /// Get the profiles from the Hash engine's native lookup, for every
+        /// property. It matches the value exactly as the data file holds
+        /// it and gives each profile once, in ascending profile id. It uses
+        /// the data set's own index for a property the Hash engine's builder
+        /// named with SetIndexedProperties, which is built when the data set
+        /// loads and again when it refreshes, and reads every profile for
+        /// any other, which gives the same profiles more slowly. Keeping an
+        /// index here instead would match differently from every other
+        /// language.
         /// </summary>
         protected override IEnumerable<uint> GetProfileIds(
             PropertyKeyedIndex propertyIndex,
@@ -186,10 +214,9 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.FlowElements
             {
                 throw new ArgumentNullException(nameof(propertyIndex));
             }
-            var name = propertyIndex.MetaData.Name;
-            return _nativelyIndexed != null && _nativelyIndexed.Contains(name)
-                ? _hashEngine.GetProfileIdsForPropertyValue(name, value)
-                : base.GetProfileIds(propertyIndex, value);
+            return _hashEngine.GetProfileIdsForPropertyValue(
+                propertyIndex.MetaData.Name,
+                value);
         }
 
         /// <inheritdoc/>

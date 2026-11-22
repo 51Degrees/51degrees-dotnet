@@ -25,11 +25,13 @@ the concepts and design of this API.
 
 Visual Studio 2022 or later is recommended. Although Visual Studio Code can be used for working with most of the projects.
 
-The Pipeline projects are written in C# and target .NET Standard 2.0.3
-The Web integration multi-targets the following:
-    - .NET Core 3.1
-    - .NET Core 8.0
-    - .NET Framework 4.6.2
+The Pipeline packages are written in C# and target .NET Standard 2.0 and .NET 10. `FiftyOne.Pipeline.Engines` and `FiftyOne.Pipeline.AgentSignature` also target .NET 8, and `FiftyOne.Did` targets .NET 8 and .NET 10 only.
+
+The Web integration targets the following:
+    - .NET 8 and .NET 10, in `FiftyOne.Pipeline.Web`
+    - .NET Framework 4.6.2, in `FiftyOne.Pipeline.Web.Framework`
+
+The tests run under .NET 8 and .NET 10.
 
 The [tested versions](https://51degrees.com/documentation/_product_summaries__tested_versions.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=dependencies) page shows the .NET versions that we currently test against. The software may run fine against other versions, but additional caution should be applied.
 
@@ -109,9 +111,52 @@ If you want examples that demonstrate how to use 51Degrees products such as devi
 | Did\CreatorContextWeb                     | A demo web server for the 51Did creator context flow, run the way production does, with the browser verifying and the server redeeming. See Examples\Did\README.md. |
 | HumanConfidence\HumanConfidenceWeb        | A demo web server for Human Confidence: the passive level from the request, the browser tests, and the sealed active level redeemed by the server. See Examples\HumanConfidence\README.md. |
 
-The CloudRequestEngine\GettingStarted example requires a resource key. It reads the `_51DEGREES_RESOURCE_KEY` environment variable. A resource key with the free properties used by the examples can be created at https://configure.51degrees.com/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=pipeline-examples.
+The CloudRequestEngine\GettingStarted example requires a resource key. It reads the `_51DEGREES_RESOURCE_KEY` environment variable. A resource key with the free properties used by the examples can be created at https://51degrees.com/configure/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.pipeline&utm_term=pipeline-examples.
 
 Every example that calls the 51Degrees cloud (CloudRequestEngine\GettingStarted, Did\CreatorContextWeb, and HumanConfidence\HumanConfidenceWeb) reads the service to call from the `_51DEGREES_CLOUD_ENDPOINT` environment variable, which is the API base including the `/api/v4/` segment and defaults to `https://cloud.51degrees.com/api/v4/`. This is the same variable the `CloudRequestEngineBuilder` honours when no endpoint is set. A host other than `cloud.51degrees.com` would be used to (a) use an on premise web server, or (b) use a privately hosted version of the 51Degrees cloud for performance reasons. This is the private hosting option of the cloud service. Both run the same service, so the examples work unchanged against either. The CustomFlowElement\4. Cloud Engine tutorial calls the star sign example service built for that tutorial rather than the 51Degrees cloud, so its endpoint is fixed.
+
+## Web integration
+
+`FiftyOne.Pipeline.Web` provides `FiftyOneMiddleware` for ASP.NET Core, and
+`FiftyOne.Pipeline.Web.Framework` provides `PipelineModule` for ASP.NET on
+.NET Framework. Each creates one Flow Data for each request, processes it,
+and disposes of it when the request ends. Application code reads it through
+`IFlowDataProvider` in ASP.NET Core, or through `PipelineCapabilities` from
+`Request.Browser` on .NET Framework.
+
+### Flow Data and threads
+
+A Flow Data cannot be used by two threads at once. A controller handles each
+request one step at a time, so reading the Flow Data there is safe. An
+application that hands work from a request to another thread or task reads
+the values that work needs from the Flow Data on the request's thread, into
+its own variables, and passes those values, not the Flow Data. The Flow Data
+is disposed of when the request ends, so work that outlives the request must
+not keep it either. A Flow Data is not safe to use from several threads at
+once, and an application that shares one across threads is responsible for
+any locking.
+
+This controller, based on the NetCore example, hands values to another task.
+
+```csharp
+// _statistics is a service of the application's own, which the controller
+// is given in its constructor.
+public IActionResult Index()
+{
+    var math = _flow.GetFlowData()?.Get(MathElement.math);
+    if (math == null)
+    {
+        return View();
+    }
+    // Read on the request's thread, into variables of its own.
+    var operation = math.Operation;
+    var result = math.Result;
+    // Hand the values, not the Flow Data, to the other task.
+    _ = Task.Run(() => _statistics.Count(operation, result));
+    ViewData["Message"] = $"{operation} = {result}";
+    return View();
+}
+```
 
 ## Cancelling processing
 

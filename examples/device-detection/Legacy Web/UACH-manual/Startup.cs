@@ -127,6 +127,10 @@ using Microsoft.Extensions.DependencyInjection;
 ///     ...
 /// ```
 /// 
+/// A Flow Data cannot be used by two threads at once. Read the values that
+/// work on another thread or task needs from the Flow Data on the
+/// request's thread, and hand it those values, not the Flow Data.
+/// 
 /// 5. Display device details in the view.
 /// ```{cs}
 /// @model FiftyOne.Pipeline.Core.Data.IFlowData
@@ -217,9 +221,11 @@ namespace Client_Hints_Not_Integrated
                         throw new Exception($"No data file found at " +
                             $"'{dataFilePath}'. This location can be set " +
                             $"using the 'DataFile' entry in the " +
-                            $"appsettings.json file. Also, note that the " +
-                            $"free 'lite' data file is insufficient to run " +
-                            $"this example.");
+                            $"appsettings.json file or the " +
+                            $"'_51DEGREES_DD_PATH' environment variable. " +
+                            $"The free Lite data file is downloaded when " +
+                            $"the submodules have been fetched with " +
+                            $"'git submodule update --init --recursive'.");
                     }
                 }
             }

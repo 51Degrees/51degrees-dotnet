@@ -47,9 +47,11 @@ public class GeneratorService(RobotsTxtModel _dataSet)
     /// <see cref="Constants.NotApplicableUsage"/> is among them.
     /// </param>
     /// <param name="tdls">
-    /// Terms Document Locator URIs, written exactly as given. When
-    /// non-empty, each URI is emitted as a TDL line (with a "# Terms ..."
-    /// comment) inside the wildcard Allow block. When empty or null, the
+    /// Terms Document Locator URIs. Each is written as given, except that
+    /// the scheme and host of a URI are written in lower case, as RFC 3986
+    /// sections 3.1 and 3.2.2 ask. When non-empty, each URI is emitted as
+    /// a TDL line (with a "# Terms ..." comment) inside the wildcard Allow
+    /// block. When empty or null, the
     /// wildcard Allow block is emitted with no TDL lines.
     /// </param>
     /// <param name="annotations">
@@ -111,8 +113,9 @@ public class GeneratorService(RobotsTxtModel _dataSet)
     /// <summary>
     /// Builds a robots.txt as the overload taking strings does, with the
     /// Terms Document Locators as <see cref="Uri"/> values. Each is written
-    /// as it was given (<see cref="Uri.OriginalString"/>), never normalised.
-    /// This overload keeps the earlier public signature working.
+    /// from the text it was given (<see cref="Uri.OriginalString"/>), as the
+    /// overload taking strings writes it. This overload keeps the earlier
+    /// public signature working.
     /// </summary>
     /// <param name="writer">
     /// Text writer to send the robots.txt content to.
@@ -163,10 +166,11 @@ public class GeneratorService(RobotsTxtModel _dataSet)
         {
             foreach (var tdl in tdls)
             {
+                var written = Rfc3986.LowerCaseSchemeAndHost(tdl);
                 writer.Write("# Terms ");
-                writer.WriteLine(tdl);
+                writer.WriteLine(written);
                 writer.Write("TDL: ");
-                writer.WriteLine(tdl);
+                writer.WriteLine(written);
             }
         }
 

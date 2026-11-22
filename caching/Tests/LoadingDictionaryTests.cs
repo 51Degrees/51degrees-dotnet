@@ -27,6 +27,7 @@ using Moq;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -41,6 +42,57 @@ namespace FiftyOne.Caching.Tests
         private CancellationTokenSource _token;
 
         private Mock<ILogger<LoadingDictionary<string, string>>> _logger;
+
+        /// <summary>
+        /// How long the unresponsive load tests wait for a get once its
+        /// token is cancelled. On the slowest runner measured, macOS on
+        /// Intel, the get ended within about two seconds of the cancel, so
+        /// this fails only a get that never ends. The build log has the
+        /// time each run took.
+        /// </summary>
+        private const int CANCELLED_GET_TIMEOUT_MS = 60000;
+
+        /// <summary>
+        /// How long a held load waits to be let go. A test makes its
+        /// assertions while the load is held, so the wait runs out only
+        /// if a read waited for the load.
+        /// </summary>
+        private const int HELD_LOAD_TIMEOUT_MS = 60000;
+
+        /// <summary>
+        /// Holds each load the loader starts, after any handler added
+        /// before it has run, until the HeldLoad is disposed, so that what
+        /// a test asserts about a read that ended early does not depend on
+        /// how long the load takes or how long the runner takes to get
+        /// there. A test holds it with using, so the load is let go however
+        /// the test ends.
+        /// </summary>
+        private static HeldLoad HoldLoad(ReturnKeyLoader<string> loader)
+        {
+            var load = new HeldLoad();
+            loader.OnTaskStarted += _ =>
+            {
+                load.Started.Set();
+                load.Release.Wait(HELD_LOAD_TIMEOUT_MS);
+            };
+            return load;
+        }
+
+        /// <summary>
+        /// A load held by HoldLoad. Disposing it lets the load go. The two
+        /// events are left to the garbage collector, because the load may
+        /// still be waking from its wait when the test ends.
+        /// </summary>
+        private sealed class HeldLoad : IDisposable
+        {
+            public ManualResetEventSlim Started { get; } =
+                new ManualResetEventSlim(false);
+
+            public ManualResetEventSlim Release { get; } =
+                new ManualResetEventSlim(false);
+
+            public void Dispose() => Release.Set();
+        }
 
         [TestInitialize]
         public void Init()
@@ -228,7 +280,13 @@ namespace FiftyOne.Caching.Tests
 
             const int loadTimeMS = 10;
             var value = "teststring";
-            const int GATE_TIMEOUT_MS = 5000;
+            // How long each gate in the handler waits for another thread,
+            // and the test thread waits twice this for the handler. Each
+            // thread reaches its gate within milliseconds, so this is far
+            // above what a busy runner takes, and fails only a test whose
+            // thread never gets there. The build log has the time each run
+            // took.
+            const int GATE_TIMEOUT_MS = 60000;
             var sourceForLoader = new CancellationTokenSource();
             Func<CancellationToken, CancellationToken> tokenOverride = _ => sourceForLoader.Token;
             var loader = new ReturnKeyLoader<string>(loadTimeMS, tokenOverride, tokenOverride);
@@ -280,12 +338,18 @@ namespace FiftyOne.Caching.Tests
                 firstSource.Cancel();
                 firstTokenCancelled.Set();
                 Console.WriteLine("First reader task cancelled.");
+                var sinceCancelled = Stopwatch.StartNew();
 
                 // Hold the load until the first reader has finished, because
                 // Task.Wait returns a completed task's value without checking
                 // the token, so a load that finished first would give the
                 // first reader its value.
                 firstReaderDone.Wait(GATE_TIMEOUT_MS);
+                Console.WriteLine(
+                    "Build log: LoadingDictionary_GetConcurrentHits_MidLoad, " +
+                    "the first reader ended " +
+                    $"{sinceCancelled.ElapsedMilliseconds} ms after its " +
+                    "token was cancelled.");
                 Assert.IsTrue(
                     firstReaderDone.IsSet,
                     $"{nameof(firstReaderDone)} still not set.");
@@ -514,6 +578,7 @@ namespace FiftyOne.Caching.Tests
             // Act
 
             loader.OnTaskStarted += _ => _token.Cancel();
+            using var load = HoldLoad(loader);
             var getter = Task.Run(() => dict[value, _token.Token]);
             try
             {
@@ -552,10 +617,12 @@ namespace FiftyOne.Caching.Tests
             var loader = new ReturnKeyLoader<string>(millis, true);
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
             OperationCanceledException exception = null;
+            using var load = HoldLoad(loader);
 
             // Act
 
             _token.Cancel();
+            var read = Stopwatch.StartNew();
             try
             {
                 _ = dict[value, _token.Token];
@@ -564,8 +631,14 @@ namespace FiftyOne.Caching.Tests
             {
                 exception = e;
             }
+            Console.WriteLine(
+                "Build log: LoadingDictionary_GetAlreadyCancelled, the read ended " +
+                $"{read.ElapsedMilliseconds} ms after it started.");
 
             // Assert
+
+            Assert.IsTrue(load.Started.Wait(HELD_LOAD_TIMEOUT_MS),
+                "The load should have started.");
 
             Assert.AreEqual(1, loader.Calls);
             Assert.AreEqual(1, loader.TaskCalls);
@@ -593,6 +666,7 @@ namespace FiftyOne.Caching.Tests
             // Act
 
             loader.OnTaskStarted += _ => _token.Cancel();
+            using var load = HoldLoad(loader);
             var getter = Task.Run(() => dict.TryGet(value, _token.Token, out _));
             try
             {
@@ -632,10 +706,12 @@ namespace FiftyOne.Caching.Tests
             var loader = new ReturnKeyLoader<string>(millis, true);
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
             OperationCanceledException exception = null;
+            using var load = HoldLoad(loader);
 
             // Act
 
             _token.Cancel();
+            var read = Stopwatch.StartNew();
             try
             {
                 _ = dict.TryGet(value, _token.Token, out _);
@@ -644,8 +720,14 @@ namespace FiftyOne.Caching.Tests
             {
                 exception = e;
             }
+            Console.WriteLine(
+                "Build log: LoadingDictionary_TryGetAlreadyCancelled, the read ended " +
+                $"{read.ElapsedMilliseconds} ms after it started.");
 
             // Assert
+
+            Assert.IsTrue(load.Started.Wait(HELD_LOAD_TIMEOUT_MS),
+                "The load should have started.");
 
             Assert.AreEqual(1, loader.Calls);
             Assert.AreEqual(0, loader.CompleteWaits);
@@ -941,22 +1023,35 @@ namespace FiftyOne.Caching.Tests
             var value = "testvalue";
             var loader = new UnresponsiveLoader<string>();
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
+            Stopwatch sinceCancelled = null;
 
             // Act
 
-            loader.OnTaskStarted += _ => _token.Cancel();
+            loader.OnTaskStarted += _ =>
+            {
+                sinceCancelled = Stopwatch.StartNew();
+                _token.Cancel();
+            };
             var getter = Task.Run(() => dict[value, _token.Token]);
             try
             {
-                getter.Wait(1000);
+                var ended = getter.Wait(CANCELLED_GET_TIMEOUT_MS);
                 Assert.IsTrue(
                     _token.IsCancellationRequested,
                     $"{nameof(loader.OnTaskStarted)} has not cancelled the token source.");
+                Assert.IsTrue(
+                    ended,
+                    $"The get had not ended {CANCELLED_GET_TIMEOUT_MS} ms " +
+                    "after it started, although its token was cancelled.");
                 Assert.Fail(
                     "The prior cancel of the token should prevent getting here");
             }
             catch (AggregateException ex)
             {
+                Console.WriteLine(
+                    "Build log: LoadingDictionary_GetUnresponsive, the get ended " +
+                    $"{sinceCancelled?.ElapsedMilliseconds} ms after its " +
+                    "token was cancelled.");
                 Assert.IsTrue(ex.InnerExceptions.Count == 1);
                 Assert.IsTrue(typeof(TaskCanceledException) == ex.InnerException.GetType());
             }
@@ -982,22 +1077,35 @@ namespace FiftyOne.Caching.Tests
             var value = "testvalue";
             var loader = new UnresponsiveLoader<string>();
             var dict = new LoadingDictionary<string, string>(_logger.Object, loader);
+            Stopwatch sinceCancelled = null;
 
             // Act
 
-            loader.OnTaskStarted += _ => _token.Cancel();
+            loader.OnTaskStarted += _ =>
+            {
+                sinceCancelled = Stopwatch.StartNew();
+                _token.Cancel();
+            };
             var getter = Task.Run(() => dict.TryGet(value, _token.Token, out _));
             try
             {
-                getter.Wait(1000);
+                var ended = getter.Wait(CANCELLED_GET_TIMEOUT_MS);
                 Assert.IsTrue(
                     _token.IsCancellationRequested, 
                     $"{nameof(loader.OnTaskStarted)} has not cancelled the token source.");
+                Assert.IsTrue(
+                    ended,
+                    $"The get had not ended {CANCELLED_GET_TIMEOUT_MS} ms " +
+                    "after it started, although its token was cancelled.");
                 Assert.Fail(
                     "The prior cancel of the token should prevent getting here");
             }
             catch (AggregateException ex)
             {
+                Console.WriteLine(
+                    "Build log: LoadingDictionary_TryGetUnresponsive, the get ended " +
+                    $"{sinceCancelled?.ElapsedMilliseconds} ms after its " +
+                    "token was cancelled.");
                 Assert.IsTrue(ex.InnerExceptions.Count == 1);
                 Assert.IsTrue(typeof(TaskCanceledException) == ex.InnerException.GetType());
             }

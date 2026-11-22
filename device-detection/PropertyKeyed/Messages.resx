@@ -129,4 +129,7 @@
   <data name="IncorrectNativeEvidence" xml:space="preserve">
     <value>The NativeModel value '{0}' is not valid. A NativeModel must be at least two characters.</value>
   </data>
+  <data name="PropertyNotIndexed" xml:space="preserve">
+    <value>The {0} engine is keyed on the &apos;{1}&apos; property, which the Device Detection Hash engine does not index, so each lookup reads every profile in the data file. To index it, build the Hash engine in code and pass the property to SetIndexedProperties on its builder.</value>
+  </data>
 </root>

@@ -60,7 +60,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
                 string.IsNullOrWhiteSpace(_resourceKey),
                 $"Environment variable '{ExampleUtils.RESOURCE_KEY_ENV_VAR}' " +
                 $"is not set. Obtain a resource key at " +
-                $"https://configure.51degrees.com and export it to run this test.");
+                $"https://51degrees.com/configure and export it to run this test.");
         }
 
         private static readonly string RepoRootPath =
@@ -233,9 +233,8 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
                 CreateNoWindow = true,
             };
             startInfo.Environment[ExampleUtils.RESOURCE_KEY_ENV_VAR] = _resourceKey;
-            var endPoint = ExampleUtils.FromEnvironment(
-                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
-                ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
+            var endPoint = Environment.GetEnvironmentVariable(
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR);
             if (string.IsNullOrWhiteSpace(endPoint) == false)
             {
                 startInfo.Environment[ExampleUtils.CLOUD_ENDPOINT_ENV_VAR] = endPoint;

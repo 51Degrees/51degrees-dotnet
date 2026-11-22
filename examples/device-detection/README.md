@@ -15,9 +15,9 @@ The cloud property tiers changed in May 2026. The examples and this
 documentation now reflect what is free and what needs a paid subscription.
 
 A free resource key that selects the free tier properties can be created
-[here](https://configure.51degrees.com/Wkqxf3Bs?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud-resource-keys). A resource key that also
+[here](https://51degrees.com/configure/Wkqxf3Bs?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud-resource-keys). A resource key that also
 includes the paid properties used by the examples can be created
-[here](https://configure.51degrees.com/hYzn3TV3?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud-resource-keys). See
+[here](https://51degrees.com/configure/hYzn3TV3?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud-resource-keys). See
 https://51degrees.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=cloud-resource-keys to get a paid subscription with more properties.
 
 Of the properties the examples display, the free tier includes:
@@ -106,3 +106,13 @@ The tables below describe the examples available in this repository.
 | ClientHints                | Legacy example. Retained for the associated automated tests. See GettingStarted-Web instead.                                                                                                                                     |
 | ClientHints Not Integrated | Legacy example. Our ASP.NET integration will automatically set the `Accept-CH` header that is used to request User-Agent Client Hints headers. This example demonstrates how to do this without using the integration component. |
 | Framework-Web              | How to use the 51Degrees on-premise service to determine details about a device as part of a simple ASP Framework website using System.Web.                                                                                      |
+
+## Flow Data and threads
+
+A Flow Data cannot be used by two threads at once. The web examples handle
+each request one step at a time, and read the Flow Data there. An application
+that hands work from a request to another thread or task reads the values that
+work needs from the Flow Data on the request's thread, into its own variables,
+and passes those values, not the Flow Data. The Flow Data is disposed of when
+the request ends, so work that outlives the request must not keep it either.
+The [pipeline README](../../pipeline/README.md#flow-data-and-threads) shows such a hand-off.

@@ -28,12 +28,12 @@ using FiftyOne.IpIntelligence.Translation.Data;
 using FiftyOne.Pipeline.CloudRequestEngine.Data;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.Data;
-using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FlowElements;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -181,19 +181,68 @@ public class CloudCountriesTranslationEngineTests
     }
 
     /// <summary>
-    /// When the resource key does not grant the translation properties the cloud
-    /// returns no metadata for them. Like IpiCloudEngine and
-    /// DeviceDetectionCloudEngine, the engine must then fail fast at pipeline
-    /// build time with a clear PipelineException rather than starting and
-    /// failing later per request.
+    /// When the resource key does not grant the translation properties the
+    /// cloud returns no metadata for them, and no section for them in the
+    /// response. Like IpiCloudEngine and DeviceDetectionCloudEngine, the
+    /// pipeline still builds, the engine has no properties, and a request
+    /// is processed without the engine reading the missing section.
     /// </summary>
     [TestMethod]
-    public void Build_WithoutTranslationProperties_FailsFast()
+    public void Build_WithoutTranslationProperties_BuildsAndReadsNothing()
     {
-        var ex = Assert.ThrowsExactly<PipelineException>(() =>
-            BuildPipeline("{}", new Dictionary<string, ProductMetaData>()));
+        using var pipeline = BuildPipeline(
+            "{}", new Dictionary<string, ProductMetaData>());
+        var engine = pipeline.GetElement<CloudCountriesTranslationEngine>();
 
-        StringAssert.Contains(ex.Message, Constants.CountryNamesTranslatedKey);
+        Assert.AreEqual(0, engine.Properties.Count);
+        using var data = pipeline.CreateFlowData();
+        data.Process();
+        Assert.IsFalse(data.Errors?.Any() == true,
+            "a key without the product is not an error on each request");
+    }
+
+    /// <summary>
+    /// A response with no countrynamestranslated section, from a key whose
+    /// product list has it, leaves the data without values and raises no
+    /// error.
+    /// </summary>
+    [TestMethod]
+    public void Process_ResponseWithNoTranslatedSection_LeavesDataWithoutValues()
+    {
+        using var pipeline = BuildPipeline(
+            @"{ ""ip"": { ""asnname"": ""Example Networks"" } }",
+            CountriesPublicProperties());
+        using var data = pipeline.CreateFlowData();
+
+        data.Process();
+
+        Assert.IsEmpty(data.Errors ?? new List<IFlowError>(),
+            "A response with no section for the engine is not an error.");
+        Assert.IsEmpty(data.Get<ICountriesTranslationData>().AsDictionary(),
+            "The engine's data has no values.");
+    }
+
+    /// <summary>
+    /// A response that arrives while the property list cannot be read, as
+    /// before discovery has completed, is still read, each value keeping the
+    /// type it has in the response.
+    /// </summary>
+    [TestMethod]
+    public void Process_ResponseBeforeDiscovery_KeepsItsValues()
+    {
+        using var pipeline = BuildPipeline(
+            @"{ ""countrynamestranslated"": { ""countrycodesgeographicalall"": [ ""GB"" ] } }",
+            null);
+        using var data = pipeline.CreateFlowData();
+
+        data.Process();
+
+        Assert.IsEmpty(data.Errors ?? new List<IFlowError>(),
+            "A response read before discovery is not an error.");
+        var names = data.Get<ICountriesTranslationData>().AsDictionary()
+            .Keys.Select(k => k.ToLowerInvariant()).ToList();
+        CollectionAssert.Contains(names, "countrycodesgeographicalall",
+            "The engine's data holds the value from the response.");
     }
 
     /// <summary>
@@ -264,7 +313,7 @@ public class CloudCountriesTranslationEngineTests
             : base(new LoggerFactory().CreateLogger<StubRequestEngine>(), CreateData)
         {
             _json = json;
-            PublicProperties = publicProperties;
+            _publicProperties = publicProperties;
         }
 
         private static CloudRequestData CreateData(
@@ -272,8 +321,16 @@ public class CloudCountriesTranslationEngineTests
             FlowElementBase<CloudRequestData, IAspectPropertyMetaData> element) =>
             new CloudRequestData(null, pipeline, element as IAspectEngine);
 
-        public IReadOnlyDictionary<string, ProductMetaData> PublicProperties
-        { get; }
+        private readonly IReadOnlyDictionary<string, ProductMetaData>
+            _publicProperties;
+
+        /// <summary>
+        /// The property list given or, when none is given, a failed read of
+        /// it, as before the cloud request engine's discovery has completed.
+        /// </summary>
+        public IReadOnlyDictionary<string, ProductMetaData> PublicProperties =>
+            _publicProperties ?? throw new FiftyOne.Pipeline.CloudRequestEngine.CloudRequestException(
+                "The property list has not been read yet.");
 
         public override string DataSourceTier => "";
         public override string ElementDataKey => "cloud";

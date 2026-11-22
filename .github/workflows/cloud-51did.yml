@@ -2,7 +2,10 @@ name: Cloud 51Did Tests
 
 # Runs the live cloud 51Did tests once for every _51DEGREES_RESOURCE_KEY*
 # key passed in below. Each run sets _51DEGREES_RESOURCE_KEY, the first name
-# every one of the tests reads, to that key. A run with no key fails, because
+# DidCloudEngineLiveEntitlementTests reads, and _51DEGREES_RESOURCE_KEY_51DID,
+# the name CloudFodIdTests and CloudDidClientTests read, to that key. A test
+# with no key skips and names the variable, so a job with no key at all
+# fails here, because
 # a cloud test that passes without calling the cloud has proved nothing.
 #
 # The Basic tier key gets a 51Did for the non-marketing usage only, so it runs
@@ -36,16 +39,13 @@ on:
   # Nightly as well, because a pull_request run only ever checks the package
   # against the cloud as it stood that day. A released package is not checked
   # again, so a field the cloud starts writing, stops writing or changes goes
-  # unnoticed until a customer finds it. That is what happened when the cloud service began
-  # writing the Terms byte. The six 51Did packages are
-  # staggered ten minutes apart so they do not all ask production at once.
-  # Off until this repository takes over from the separate repositories it
-  # replaces. Their schedules are turned off then, so the same jobs never run
-  # in both.
-  # schedule:
-  #   - cron: '0 5 * * *'
+  # unnoticed until a customer finds it. The six 51Did packages are staggered
+  # ten minutes apart so they do not all ask production at once, and this one
+  # runs at 05:00 UTC.
+  schedule:
+    - cron: '0 5 * * *'
   pull_request:
-    branches: [main]
+    branches: [main, rc]
     paths:
       - 'pipeline/Did/**'
       - 'pipeline/Did.Cloud/**'
@@ -73,10 +73,15 @@ jobs:
             10.0.x
       - name: Cloud 51Did test for each resource key secret
         shell: pwsh
+        # The basic tier comes from the secret _51DEGREES_RESOURCE_KEY_BASIC.
+        # The 51Did pass comes from the secret _51DEGREES_RESOURCE_KEY_51DID,
+        # because _51DEGREES_LICENSE_KEY_51DID reads only a result sealed with
+        # that key. With the bespoke key instead, the redeem test gets
+        # Unreadable.
         env:
-          _51DEGREES_RESOURCE_KEY_BASIC: ${{ vars._51DEGREES_RESOURCE_KEY_BASIC }}
+          _51DEGREES_RESOURCE_KEY_BASIC: ${{ secrets._51DEGREES_RESOURCE_KEY_BASIC }}
           _51DEGREES_RESOURCE_KEY_BESPOKE: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
-          _51DEGREES_RESOURCE_KEY_51DID: ${{ vars._51DEGREES_RESOURCE_KEY_51DID }}
+          _51DEGREES_RESOURCE_KEY_51DID: ${{ secrets._51DEGREES_RESOURCE_KEY_51DID }}
           _51DEGREES_LICENSE_KEY_51DID: ${{ secrets._51DEGREES_LICENSE_KEY_51DID }}
         run: |
           $runs = @(
@@ -93,6 +98,19 @@ jobs:
             Write-Host '::error::No _51DEGREES_RESOURCE_KEY* secret reached this job. The tests need a key that carries the FODid product, and the CloudV5FODiD product for the marketing usages.'
             exit 1
           }
+          # A license key whose resource key is empty means that secret is
+          # missing. Its pass would be left out and the job would pass on
+          # the other keys alone, so the step fails naming the secret.
+          $missing = @(Get-ChildItem env: |
+            Where-Object { $_.Name -like '_51DEGREES_LICENSE_KEY*' -and $_.Value } |
+            ForEach-Object {
+              $resourceName = $_.Name -replace '^_51DEGREES_LICENSE_KEY', '_51DEGREES_RESOURCE_KEY'
+              if (-not [Environment]::GetEnvironmentVariable($resourceName)) {
+                Write-Host "::error::$($_.Name) has a value but $resourceName is empty, so the licensed tests would not run. Add the secret $resourceName."
+                $resourceName
+              }
+            })
+          if ($missing) { exit 1 }
           foreach ($run in $runs) {
             dotnet build $run.Project -c Release --nologo
             if ($LASTEXITCODE -ne 0) { exit 1 }
@@ -107,6 +125,7 @@ jobs:
           $failed = $false
           foreach ($k in $keys) {
             $env:_51DEGREES_RESOURCE_KEY = $k.Value
+            $env:_51DEGREES_RESOURCE_KEY_51DID = $k.Value
             $licenseName = $k.Name -replace '^_51DEGREES_RESOURCE_KEY', '_51DEGREES_LICENSE_KEY'
             if ($licenses.ContainsKey($licenseName)) {
               Set-Item "env:$licenseName" $licenses[$licenseName]
