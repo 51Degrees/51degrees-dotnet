@@ -40,30 +40,6 @@ public static class ExampleUtils
     public const string RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
 
     /// <summary>
-    /// An old environment variable for the resource key. It is no longer
-    /// read.
-    /// </summary>
-    [System.Obsolete("Use RESOURCE_KEY_ENV_VAR, which names the environment " +
-        "variable that replaces this one.")]
-    public const string CLOUD_RESOURCE_KEY_ENV_VAR = "51DEGREES_RESOURCE_KEY";
-
-    /// <summary>
-    /// An old environment variable for the resource key. It is no longer
-    /// read.
-    /// </summary>
-    [System.Obsolete("Use RESOURCE_KEY_ENV_VAR, which names the environment " +
-        "variable that replaces this one.")]
-    public const string LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR = "RESOURCE_KEY";
-
-    /// <summary>
-    /// An old environment variable for the resource key. It is no longer
-    /// read.
-    /// </summary>
-    [System.Obsolete("Use RESOURCE_KEY_ENV_VAR, which names the environment " +
-        "variable that replaces this one.")]
-    public const string LEGACY_SUPER_RESOURCE_KEY_ENV_VAR = "SUPER_RESOURCE_KEY";
-
-    /// <summary>
     /// The default environment variable key used to get the end point URL
     /// to use when running cloud examples. Can be used to override the
     /// appsettings.json configuration for testing custom end points.
@@ -71,70 +47,12 @@ public static class ExampleUtils
     public const string CLOUD_ENDPOINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
     /// <summary>
-    /// An old environment variable for the end point URL. It is no longer
-    /// read.
-    /// </summary>
-    [System.Obsolete("Use CLOUD_ENDPOINT_ENV_VAR, which names the environment " +
-        "variable that replaces this one.")]
-    public const string CLOUD_END_POINT_ENV_VAR = "51D_CLOUD_ENDPOINT";
-
-    private static readonly HashSet<string> _oldNamesReported =
-        new HashSet<string>();
-
-    /// <summary>
-    /// The value of an environment variable. When it is not set, the value
-    /// of the first of its old names that is set, with each old name
-    /// reported once on the error stream as deprecated.
+    /// The value of an environment variable.
     /// </summary>
     /// <param name="name">The variable's name.</param>
-    /// <param name="oldNames">
-    /// The names the variable had before, in the order they are tried.
-    /// </param>
-    /// <returns>
-    /// The value, or what <paramref name="name"/> holds when no old name
-    /// is set either.
-    /// </returns>
-    public static string FromEnvironment(
-        string name,
-        params string[] oldNames)
-    {
-        var value = Environment.GetEnvironmentVariable(name);
-        if (string.IsNullOrWhiteSpace(value) == false)
-        {
-            return value;
-        }
-        foreach (var oldName in oldNames)
-        {
-            var oldValue = Environment.GetEnvironmentVariable(oldName);
-            if (string.IsNullOrWhiteSpace(oldValue) == false)
-            {
-                ReportOldName(oldName, name);
-                return oldValue;
-            }
-        }
-        return value;
-    }
-
-    /// <summary>
-    /// Say once on the error stream that an old environment variable name
-    /// supplied a value, and which name replaces it.
-    /// </summary>
-    /// <param name="oldName">The old name that was read.</param>
-    /// <param name="newName">The name that replaces it.</param>
-    public static void ReportOldName(string oldName, string newName)
-    {
-        lock (_oldNamesReported)
-        {
-            if (_oldNamesReported.Add(oldName) == false)
-            {
-                return;
-            }
-        }
-        Console.Error.WriteLine(
-            $"The environment variable {oldName} is deprecated and " +
-            $"{newName} replaces it. Set {newName} to the same value " +
-            "instead.");
-    }
+    /// <returns>The value, or null when the variable is not set.</returns>
+    public static string FromEnvironment(string name) =>
+        Environment.GetEnvironmentVariable(name);
 
     /// <summary>
     /// Timeout used when searching for files.

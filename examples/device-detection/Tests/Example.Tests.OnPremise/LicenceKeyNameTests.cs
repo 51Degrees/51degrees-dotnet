@@ -28,34 +28,28 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise;
 
 /// <summary>
 /// The data file update example reads its licence key from
-/// '_51DEGREES_LICENSE_KEY' only. The name it read before is not read,
-/// even when the new one is not set. The tests change the environment of the whole process,
-/// so they run apart from the tests that read it.
+/// '_51DEGREES_LICENSE_KEY'. The tests change the environment of the whole
+/// process, so they run apart from the tests that read it.
 /// </summary>
 [TestClass]
 [DoNotParallelize]
 public class LicenceKeyNameTests
 {
     private const string Name = "_51DEGREES_LICENSE_KEY";
-    private const string OldName = "DEVICEDETECTIONLICENSEKEY_DOTNET";
 
     private string _savedName;
-    private string _savedOldName;
 
     [TestInitialize]
     public void Init()
     {
         _savedName = Environment.GetEnvironmentVariable(Name);
-        _savedOldName = Environment.GetEnvironmentVariable(OldName);
         Environment.SetEnvironmentVariable(Name, null);
-        Environment.SetEnvironmentVariable(OldName, null);
     }
 
     [TestCleanup]
     public void Cleanup()
     {
         Environment.SetEnvironmentVariable(Name, _savedName);
-        Environment.SetEnvironmentVariable(OldName, _savedOldName);
     }
 
     /// <summary>
@@ -80,22 +74,7 @@ public class LicenceKeyNameTests
     }
 
     [TestMethod]
-    public void TheNameIsReadBeforeTheOldName()
-    {
-        Environment.SetEnvironmentVariable(Name, "new");
-        Environment.SetEnvironmentVariable(OldName, "old");
-        Assert.AreEqual("new", LicenseKey());
-    }
-
-    [TestMethod]
-    public void TheOldNameIsNotReadWhenTheNameIsNotSet()
-    {
-        Environment.SetEnvironmentVariable(OldName, "old");
-        Assert.IsNull(LicenseKey());
-    }
-
-    [TestMethod]
-    public void NoKeyIsReadWhenNeitherIsSet()
+    public void NoKeyIsReadWhenTheNameIsNotSet()
     {
         Assert.IsNull(LicenseKey());
     }

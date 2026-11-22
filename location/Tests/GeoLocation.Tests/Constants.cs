@@ -59,13 +59,23 @@ namespace FiftyOne.GeoLocation.Tests
         internal const string TEST_LAT = "51.4578261";
         internal const string TEST_LON = "-0.975922996290084";
 
-        internal const string RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
+        /// <summary>
+        /// The environment variable the live cloud tests read their resource
+        /// key from, which holds the key that carries every property.
+        /// </summary>
+        internal const string RESOURCE_KEY_ENV_VAR =
+            "_51DEGREES_RESOURCE_KEY_BESPOKE";
 
         /// <summary>
-        /// The resource key from <see cref="RESOURCE_KEY_ENV_VAR"/>.
+        /// The resource key from <see cref="RESOURCE_KEY_ENV_VAR"/>, or null
+        /// when it is not set.
         /// </summary>
-        internal static string ResourceKeyFromEnvironment() =>
-            System.Environment.GetEnvironmentVariable(RESOURCE_KEY_ENV_VAR);
+        internal static string ResourceKeyFromEnvironment()
+        {
+            var value = System.Environment.GetEnvironmentVariable(
+                RESOURCE_KEY_ENV_VAR);
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
 
         /// <summary>
         /// Seconds a request to the cloud service may take. The default of

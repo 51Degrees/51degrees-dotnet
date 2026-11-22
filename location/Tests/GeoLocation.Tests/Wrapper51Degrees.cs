@@ -27,6 +27,7 @@ using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FlowElements;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Net.Http;
 
@@ -47,12 +48,19 @@ namespace FiftyOne.GeoLocation.Tests
         /// <summary>
         /// Constructor. Create a Cloud Request engine and a Geo-Location engine 
         /// and add these to a pipeline. Gets the resource key for the Cloud 
-        /// Request engine from environment variables.
+        /// Request engine from <see cref="Constants.RESOURCE_KEY_ENV_VAR"/>,
+        /// and skips the test when it is not set.
         /// </summary>
         public Wrapper51Degrees()
         {
-            var resourceKey = Constants.ResourceKeyFromEnvironment()
-                ?? "AQQNX4o8_wxDhi_U2Eg";
+            var resourceKey = Constants.ResourceKeyFromEnvironment();
+            if (resourceKey == null)
+            {
+                Assert.Inconclusive(
+                    "This test calls the live 51Degrees cloud service, so " +
+                    $"it needs a resource key, and " +
+                    $"{Constants.RESOURCE_KEY_ENV_VAR} is not set.");
+            }
 
             RequestEngine = new CloudRequestEngineBuilder(_logger, new HttpClient())
                 .SetResourceKey(resourceKey)

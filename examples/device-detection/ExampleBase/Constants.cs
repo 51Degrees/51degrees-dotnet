@@ -44,14 +44,6 @@ namespace FiftyOne.DeviceDetection.Examples
         public const string YAML_EVIDENCE_FILE_NAME = "20000 Evidence Records.yml";
 
         /// <summary>
-        /// An old environment variable for the licence key the data file
-        /// update example uses. It is no longer read.
-        /// </summary>
-        [System.Obsolete("Use DATA_UPDATE_LICENSE_KEY_ENV_VAR, which names the environment " +
-            "variable that replaces this one.")]
-        public const string LICENSE_KEY_ENV_VAR = "DEVICEDETECTIONLICENSEKEY_DOTNET";
-
-        /// <summary>
         /// Environment variable key for the licence key the data file update
         /// example and its test use.
         /// </summary>
@@ -64,34 +56,10 @@ namespace FiftyOne.DeviceDetection.Examples
         public const string DEVICE_DETECTION_DATA_FILE_ENV_VAR = "_51DEGREES_DD_PATH";
 
         /// <summary>
-        /// An old environment variable for the path to the device detection
-        /// data file. It is no longer read.
+        /// Environment variable key for the YAML evidence file to use for the
+        /// tests.
         /// </summary>
-        [System.Obsolete("Use DEVICE_DETECTION_DATA_FILE_ENV_VAR, which names the environment " +
-            "variable that replaces this one.")]
-        public const string DD_PATH_ENV_VAR = "51DEGREES_DD_PATH";
-
-        /// <summary>
-        /// An old environment variable for the path to the device detection
-        /// data file. It is no longer read.
-        /// </summary>
-        [System.Obsolete("Use DEVICE_DETECTION_DATA_FILE_ENV_VAR, which names the environment " +
-            "variable that replaces this one.")]
-        public const string LEGACY_DEVICE_DETECTION_DATA_FILE_ENV_VAR = "DEVICEDETECTIONDATAFILE";
-
-        /// <summary>
-        /// Every environment variable that can supply an explicit path to the
-        /// device detection data file.
-        /// </summary>
-        public static readonly string[] DATA_FILE_ENV_VARS = new string[]
-        {
-            DEVICE_DETECTION_DATA_FILE_ENV_VAR
-        };
-
-        /// <summary>
-        /// Environment variable key for the evidence file to use for the tests.
-        /// </summary>
-        public const string EVIDENCE_FILE_ENV_VAR = "EVIDENCEFILE";
+        public const string EVIDENCE_FILE_ENV_VAR = "_51DEGREES_EVIDENCE_YAML";
 
         /// <summary>
         /// Ports used for running web examples and their tests. When these

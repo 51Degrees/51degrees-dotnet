@@ -49,12 +49,6 @@ internal static class ExampleWithoutKey
     /// </summary>
     private const string KeyVariable = "_51DEGREES_RESOURCE_KEY";
 
-    /// <summary>
-    /// A variable is taken out when its name, with an underscore before it,
-    /// holds this. That covers the variable, its tier names and the older
-    /// names some examples still read a resource key from.
-    /// </summary>
-    private const string KeyNamePart = "_RESOURCE_KEY";
 
     /// <summary>
     /// A link to where a resource key is created, tagged as example output.
@@ -111,14 +105,7 @@ internal static class ExampleWithoutKey
         {
             start.ArgumentList.Add(dll);
         }
-        foreach (var name in start.Environment.Keys.ToList())
-        {
-            if (("_" + name).Contains(
-                KeyNamePart, StringComparison.OrdinalIgnoreCase))
-            {
-                start.Environment.Remove(name);
-            }
-        }
+        start.Environment.Remove(KeyVariable);
 
         var output = new StringBuilder();
         using var process = new Process { StartInfo = start };

@@ -37,7 +37,7 @@ namespace FiftyOne.HumanConfidence.Examples.Tests;
 /// does before it serves its page, and the second asks for the passive
 /// level the way the example asks, with the evidence passed on as it is,
 /// and reads the result. Nothing here says how the cloud reaches the
-/// level. With no key the tests skip and name the variables, and never
+/// level. With no key the tests skip and name the variable, and never
 /// pass, because a cloud test that passes without calling the cloud has
 /// proved nothing. The key is never printed.
 /// </summary>
@@ -47,15 +47,10 @@ public class LiveCloudTests
     public TestContext TestContext { get; set; } = null!;
 
     /// <summary>
-    /// The variables the key is read from, in the order tried. The first
-    /// is the name the example reads. The second is the CI secret that
-    /// carries the most properties, HumanConfidence among them.
+    /// The variable the key is read from, which holds the key that carries
+    /// every property, HumanConfidence among them.
     /// </summary>
-    internal static readonly string[] KeyNames =
-    {
-        "_51DEGREES_RESOURCE_KEY",
-        "_51DEGREES_RESOURCE_KEY_BESPOKE",
-    };
+    internal const string KeyName = "_51DEGREES_RESOURCE_KEY_BESPOKE";
 
     private const string EndpointVariable = "_51DEGREES_CLOUD_ENDPOINT";
     private const string DefaultEndpoint = "https://cloud.51degrees.com/api/v4/";
@@ -77,17 +72,14 @@ public class LiveCloudTests
 
     private static string RequireKey()
     {
-        var key = KeyNames
-            .Select(n => Environment.GetEnvironmentVariable(n))
-            .FirstOrDefault(v => string.IsNullOrWhiteSpace(v) == false);
-        if (key == null)
+        var key = Environment.GetEnvironmentVariable(KeyName);
+        if (string.IsNullOrWhiteSpace(key))
         {
             Assert.Inconclusive(
                 "This test calls the live 51Degrees cloud service, so it " +
                 "needs a resource key that carries HumanConfidence and " +
-                $"there is nothing to fall back on. None of " +
-                $"{string.Join(", ", KeyNames)} is set, tried in that " +
-                $"order. {EndpointVariable} names the service, and " +
+                $"there is nothing to fall back on. {KeyName} is not " +
+                $"set. {EndpointVariable} names the service, and " +
                 $"defaults to {DefaultEndpoint}. Create a key at " +
                 $"{ConfigureUrl}.");
         }
@@ -136,8 +128,8 @@ public class LiveCloudTests
         TestContext.WriteLine($"The key carries {names.Count} properties.");
         CollectionAssert.Contains(names, "HumanConfidence",
             "The key does not carry HumanConfidence, so the example would " +
-            "show its contact us link rather than a level. Set one of " +
-            $"{string.Join(", ", KeyNames)} to a key that carries it.");
+            $"show its contact us link rather than a level. Set {KeyName} " +
+            "to a key that carries it.");
         CollectionAssert.Contains(names, "HumanConfidenceSource",
             "The key does not carry HumanConfidenceSource, which the " +
             "example reads to tell passive from active.");

@@ -93,14 +93,6 @@ namespace FiftyOne.Did.Client
             "_51DEGREES_CLOUD_ENDPOINT";
 
         /// <summary>
-        /// The old environment variable for the API base. It is no longer
-        /// read. Use <see cref="CloudEndpointEnvironmentVariable"/>.
-        /// </summary>
-        [Obsolete("Use CloudEndpointEnvironmentVariable, which names the " +
-            "environment variable that replaces this one.")]
-        public const string EndpointEnvironmentVariable = "FOD_CLOUD_API_URL";
-
-        /// <summary>
         /// How old the whole key list may be before a lookup fetches all of
         /// it again. A key may be replaced before its scheduled end, and the
         /// client picks up the replacement on the first signature that fails

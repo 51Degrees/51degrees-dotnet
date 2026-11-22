@@ -60,8 +60,8 @@ redeems it.
 | --- | --- |
 | `_51DEGREES_RESOURCE_KEY` | The Resource Key. Required, and it has to carry `HumanConfidence`. |
 | `_51DEGREES_LICENSE_KEY` | A License Key of the same account. Server side only. Needed to redeem. |
-| `_51DEGREES_CLOUD_ENDPOINT` | Optional. The API base including the `/api/v4/` segment. It defaults to `https://cloud.51degrees.com/api/v4/`. Set it to `https://cloud-staging.51degrees.com/api/v4/` for staging. |
-| `PORT` | The port to listen on. It defaults to `5151`. |
+| `_51DEGREES_CLOUD_ENDPOINT` | Optional. The API base including the `/api/v4/` segment. It defaults to `https://cloud.51degrees.com/api/v4/`. |
+| `_51DEGREES_EXAMPLE_HTTP_PORTS` | The ports to listen on, comma separated. It defaults to `5151`. |
 
 ## How to run
 
@@ -81,9 +81,9 @@ export _51DEGREES_LICENSE_KEY="your License Key"
 dotnet run
 ```
 
-Then open `http://localhost:5151/` in a browser. To use staging, also set
-`_51DEGREES_CLOUD_ENDPOINT` to `https://cloud-staging.51degrees.com/api/v4/`
-before `dotnet run`.
+Then open `http://localhost:5151/` in a browser. To use another copy of the
+cloud service, also set `_51DEGREES_CLOUD_ENDPOINT` to its API base before
+`dotnet run`.
 
 ## What you should see
 
@@ -113,7 +113,6 @@ is one more, made once.
 
 `../../Tests/HumanConfidence.Examples.Tests` runs the example with no
 Resource Key, reads these files for the rules every Human Confidence web
-example keeps, and, with a key in `_51DEGREES_RESOURCE_KEY` or
-`_51DEGREES_RESOURCE_KEY_BESPOKE`, asks the live cloud whether the key
-carries `HumanConfidence` and for a passive level. Without a key the live
-tests skip and name the variables.
+example keeps, and, with a key in `_51DEGREES_RESOURCE_KEY_BESPOKE`, asks the
+live cloud whether the key carries `HumanConfidence` and for a passive
+level. Without that key the live tests skip and name the variable.

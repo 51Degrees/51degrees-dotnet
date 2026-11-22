@@ -22,57 +22,82 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
 
 namespace FiftyOne.IpIntelligence.CloudTests;
 
 /// <summary>
-/// A live cloud test with no resource key skips, naming every variable it
-/// reads the key from, and never fails. The tests change the environment
-/// of the whole process, so they run apart from the others.
+/// The live cloud tests read their resource key from
+/// '_51DEGREES_RESOURCE_KEY_BESPOKE' alone, and skip, naming it, when it is
+/// not set. The tests change the environment of the whole process, so they
+/// run apart from the others.
 /// </summary>
 [TestClass]
 [DoNotParallelize]
 public class LiveCloudKeyNameTests
 {
-    private readonly Dictionary<string, string> _saved =
-        new Dictionary<string, string>();
+    private const string Name = "_51DEGREES_RESOURCE_KEY_BESPOKE";
+
+    /// <summary>
+    /// The name a person running an example sets, which these tests do not
+    /// read.
+    /// </summary>
+    private const string ExampleName = "_51DEGREES_RESOURCE_KEY";
+
+    private string _savedName;
+    private string _savedExampleName;
 
     [TestInitialize]
     public void Init()
     {
-        foreach (var name in LiveCloudKey.Names)
-        {
-            _saved[name] = Environment.GetEnvironmentVariable(name);
-            Environment.SetEnvironmentVariable(name, null);
-        }
+        _savedName = Environment.GetEnvironmentVariable(Name);
+        _savedExampleName = Environment.GetEnvironmentVariable(ExampleName);
+        Environment.SetEnvironmentVariable(Name, null);
+        Environment.SetEnvironmentVariable(ExampleName, null);
     }
 
     [TestCleanup]
     public void Cleanup()
     {
-        foreach (var saved in _saved)
-        {
-            Environment.SetEnvironmentVariable(saved.Key, saved.Value);
-        }
+        Environment.SetEnvironmentVariable(Name, _savedName);
+        Environment.SetEnvironmentVariable(ExampleName, _savedExampleName);
     }
 
-    [TestMethod]
-    public void WithoutAKeyTheTestIsSkippedNamingTheVariables()
+    /// <summary>
+    /// The message the test is skipped with, or null when it is not.
+    /// </summary>
+    private static string SkipMessage()
     {
-        string message = null;
         try
         {
             LiveCloudKey.Require("ip", "an address");
         }
         catch (AssertInconclusiveException ex)
         {
-            message = ex.Message;
+            return ex.Message;
         }
+        return null;
+    }
+
+    [TestMethod]
+    public void TheNameIsRead()
+    {
+        Environment.SetEnvironmentVariable(Name, "key");
+        Assert.AreEqual("key", LiveCloudKey.Require("ip", "an address"));
+    }
+
+    [TestMethod]
+    public void WithoutTheNameTheTestIsSkippedNamingIt()
+    {
+        var message = SkipMessage();
         Assert.IsNotNull(message, "The test was not skipped.");
-        foreach (var name in LiveCloudKey.Names)
-        {
-            StringAssert.Contains(message, name);
-        }
+        StringAssert.Contains(message, Name);
+    }
+
+    [TestMethod]
+    public void TheExampleNameIsNotRead()
+    {
+        Environment.SetEnvironmentVariable(ExampleName, "key");
+        Assert.IsNotNull(SkipMessage(),
+            $"The test read its key from {ExampleName}.");
     }
 }

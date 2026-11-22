@@ -65,8 +65,9 @@ Longitude. A resource key selecting only the free tier properties can be
 used by the examples. See our [pricing page](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon) to get a paid
 subscription with more properties.
 
-Examples and tests read the resource key from an environment variable called
-"_51DEGREES_RESOURCE_KEY".
+Examples read the resource key from an environment variable called
+"_51DEGREES_RESOURCE_KEY". The tests that call the live cloud read a key that
+carries every property from "_51DEGREES_RESOURCE_KEY_BESPOKE".
 
 ## Solutions and projects
 

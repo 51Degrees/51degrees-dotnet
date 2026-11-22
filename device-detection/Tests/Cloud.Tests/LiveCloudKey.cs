@@ -22,7 +22,6 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Linq;
 
 namespace FiftyOne.DeviceDetection.Cloud.Tests;
 
@@ -30,29 +29,24 @@ namespace FiftyOne.DeviceDetection.Cloud.Tests;
 /// The resource key for the tests that call the live cloud service, the
 /// message they skip with when there is no key, and the messages they fail
 /// with when the cloud answers without what a test asked for. A skipped
-/// test names the variables, and never passes, because a cloud test that
+/// test names the variable, and never passes, because a cloud test that
 /// passes without calling the cloud has proved nothing.
 /// </summary>
 internal static class LiveCloudKey
 {
     /// <summary>
-    /// The environment variables the key is read from, in the order tried.
+    /// The environment variable the key is read from, which holds the key
+    /// that carries every property.
     /// </summary>
-    internal static readonly string[] Names =
-    {
-        "_51DEGREES_RESOURCE_KEY",
-        "_51DEGREES_RESOURCE_KEY_BESPOKE",
-    };
+    internal const string Name = "_51DEGREES_RESOURCE_KEY_BESPOKE";
 
     /// <summary>
-    /// The key from the first of <see cref="Names"/> that is set, or null
-    /// when none is.
+    /// The key from <see cref="Name"/>, or null when it is not set.
     /// </summary>
     private static string FromEnvironment()
     {
-        return Names
-            .Select(n => Environment.GetEnvironmentVariable(n))
-            .FirstOrDefault(v => string.IsNullOrWhiteSpace(v) == false);
+        var value = Environment.GetEnvironmentVariable(Name);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     private const string AccessiblePropertiesUrl =
@@ -62,7 +56,7 @@ internal static class LiveCloudKey
         "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=device-detection-tests-cloud.tests-livecloudkey.cs&utm_term=resource-key";
 
     /// <summary>
-    /// The key, skipping the test when none of <see cref="Names"/> is set.
+    /// The key, skipping the test when <see cref="Name"/> is not set.
     /// </summary>
     /// <param name="product">The product the key has to carry.</param>
     /// <param name="asksFor">What the test asks the service for.</param>
@@ -74,8 +68,8 @@ internal static class LiveCloudKey
             Assert.Inconclusive(
                 "This test calls the live 51Degrees cloud service, so it " +
                 "needs a resource key and there is nothing to fall back " +
-                $"on. None of {string.Join(", ", Names)} is set, tried in " +
-                $"that order. The key has to carry the {product} product, " +
+                $"on. {Name} is not set. " +
+                $"The key has to carry the {product} product, " +
                 $"because the test asks the service for {asksFor}. To see " +
                 "the products a key carries, open " +
                 $"{AccessiblePropertiesUrl}. Create a key at " +

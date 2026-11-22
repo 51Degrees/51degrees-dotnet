@@ -52,7 +52,9 @@
 //   _51DEGREES_CLOUD_ENDPOINT  the API base including the /api/v4/
 //                              segment, defaults to
 //                              https://cloud.51degrees.com/api/v4/
-//   PORT                       the port to listen on, defaults to 5151
+//   _51DEGREES_EXAMPLE_HTTP_PORTS
+//                              the ports to listen on, comma separated,
+//                              defaults to 5151
 //
 // See ../README.md for the steps and what to expect.
 using Examples.HumanConfidence.HumanConfidenceWeb;
@@ -80,7 +82,15 @@ var endpoint = Environment.GetEnvironmentVariable("_51DEGREES_CLOUD_ENDPOINT");
 var api = string.IsNullOrWhiteSpace(endpoint)
     ? "https://cloud.51degrees.com/api/v4/"
     : endpoint;
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5151";
+// The ports to listen on, read as the other 51Degrees web examples read
+// them.
+var portsSetting = Environment.GetEnvironmentVariable("_51DEGREES_EXAMPLE_HTTP_PORTS");
+var ports = string.IsNullOrWhiteSpace(portsSetting)
+    ? new[] { 5151 }
+    : portsSetting.Split(',')
+        .Select(p => int.Parse(
+            p.Trim(), System.Globalization.CultureInfo.InvariantCulture))
+        .ToArray();
 
 // One client for the process, with a short limit, so a slow cloud can't
 // hang the demo.
@@ -114,7 +124,7 @@ byte[] ReadCss() => File.ReadAllBytes(
     Path.Combine(AppContext.BaseDirectory, "examples-main.min.css"));
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls($"http://localhost:{port}");
+builder.WebHost.UseUrls(ports.Select(p => $"http://localhost:{p}").ToArray());
 var app = builder.Build();
 
 app.MapGet("/", (HttpResponse response) =>
@@ -172,6 +182,6 @@ app.MapPost("/redeem", async (HttpRequest request) =>
     return Results.Content(answer.Body, "application/json", statusCode: answer.StatusCode);
 });
 
-Console.WriteLine($"Human Confidence demo on http://localhost:{port}/, using {api}");
+Console.WriteLine($"Human Confidence demo on http://localhost:{ports[0]}/, using {api}");
 app.Run();
 return 0;

@@ -47,7 +47,6 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Cloud.Tests
     public class RobotsTxtCloudEngineTests
     {
         private ILoggerFactory _lf;
-        private const string _resource_key_env_variable = "_51DEGREES_RESOURCE_KEY";
 
         [TestInitialize]
         public void Init()

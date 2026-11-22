@@ -91,9 +91,11 @@ public class GettingStartedWebWithoutSettingsTest
         // current directory, and chooses its data file before its server
         // starts.
         var currentDirectory = Directory.GetCurrentDirectory();
-        var names = Constants.DATA_FILE_ENV_VARS
-            .Append("ASPNETCORE_URLS")
-            .ToArray();
+        var names = new[]
+        {
+            Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR,
+            "ASPNETCORE_URLS"
+        };
         var saved = names.ToDictionary(
             name => name,
             Environment.GetEnvironmentVariable);
