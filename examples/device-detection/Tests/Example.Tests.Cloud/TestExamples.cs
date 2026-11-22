@@ -42,30 +42,33 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
     [TestClass]
     public class TestExamples
     {
+        /// <summary>
+        /// The environment variable the tests read their resource key from,
+        /// which holds the key that carries every property. Each example is
+        /// given the key the way it takes one, as an argument or in its
+        /// options.
+        /// </summary>
+        private const string KeyVariable = "_51DEGREES_RESOURCE_KEY_BESPOKE";
+
         private string ResourceKey;
-        
+
         private string CloudEndPoint;
 
         /// <summary>
-        /// Init method. Specify Resource Key to run examples here or 
-        /// set a Resource Key in an environment variable called 'ResourceKey'.
-        /// Get cloud endpoint url from environment variables or use default.
+        /// Reads the resource key from <see cref="KeyVariable"/>, skipping
+        /// the test when it is not set, and the cloud endpoint from its
+        /// environment variable, or the default when that is not set.
         /// </summary>
         [TestInitialize]
         public void Init()
         {
-            var resourceKey = ExampleUtils.GetResourceKeyFromEnv();
-            ResourceKey = string.IsNullOrWhiteSpace(resourceKey) == false ?
-                resourceKey : "!!YOUR_RESOURCE_KEY!!";
-
-            if (string.IsNullOrWhiteSpace(ResourceKey) == true ||
-                ResourceKey.StartsWith("!!") == true)
+            ResourceKey = Environment.GetEnvironmentVariable(KeyVariable);
+            if (string.IsNullOrWhiteSpace(ResourceKey))
             {
-                Assert.Fail(
-                    "A resource key is needed to run this test. Set one " +
-                    "of these environment variables: " +
-                    ExampleUtils
-                        .CLOUD_RESOURCE_KEY_ENV_VAR_DESCRIPTION + ".");
+                Assert.Inconclusive(
+                    "These tests call the live 51Degrees cloud service, so " +
+                    $"they need a resource key, and {KeyVariable} is not " +
+                    "set.");
             }
 
             var cloudEndPoint = Environment.GetEnvironmentVariable(

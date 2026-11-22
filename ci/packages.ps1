@@ -3,15 +3,12 @@
 
 # Which packages a publish releases, and at which version, is worked out by
 # common-ci's steps/release-plan.ps1 from packages.json. common-ci runs these
-# scripts from its own root, with this repository checked out inside it. A
-# checkout of common-ci beside this repository is found too, or one elsewhere
-# can be named with COMMON_CI. Only the publish asks for the plan, so a build
-# or a test runs without it.
+# scripts from its own root, with this repository checked out inside it, and
+# a checkout of common-ci beside this repository is found too. Only the
+# publish asks for the plan, so a build or a test runs without it.
 $releasePlan = @(
-    $env:COMMON_CI,
     (Join-Path $PSScriptRoot '..' '..'),
     (Join-Path $PSScriptRoot '..' '..' 'common-ci')) |
-    Where-Object { $_ } |
     ForEach-Object { Join-Path $_ 'steps' 'release-plan.ps1' } |
     Where-Object { Test-Path $_ } |
     Select-Object -First 1
@@ -124,7 +121,7 @@ function Get-PackageVersions {
     param ([Parameter(Mandatory)][string]$RepoName)
     if (-not (Get-Command Get-ReleasePlan -ErrorAction SilentlyContinue)) {
         throw "common-ci's steps/release-plan.ps1 was not found, so the " +
-            "release cannot be planned. Set COMMON_CI to a checkout of common-ci."
+            "release cannot be planned. Check out common-ci beside this repository."
     }
     Add-FamilyStartTags -RepoPath $RepoName -Packages $PackageList
     $plan = @(Get-ReleasePlan $RepoName $PackageList)

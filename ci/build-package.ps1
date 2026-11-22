@@ -1,12 +1,23 @@
 param (
     [Parameter(Mandatory)][string]$RepoName,
     [Parameter(Mandatory)][string]$Version,
-    [Parameter(Mandatory)][hashtable]$Keys,
     [string]$Name = "Release_x64",
     [string]$Configuration = "Release"
 )
 $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
+
+# The job that signs the packages has the signing secrets under these names,
+# and nothing is packed unless every one is set.
+foreach ($name in '_51DEGREES_SIGN_STRONG_NAME_KEY_BASE64',
+    '_51DEGREES_SIGN_KEY_VAULT_URL', '_51DEGREES_SIGN_KEY_VAULT_CLIENT_ID',
+    '_51DEGREES_SIGN_KEY_VAULT_TENANT_ID',
+    '_51DEGREES_SIGN_KEY_VAULT_CLIENT_SECRET',
+    '_51DEGREES_SIGN_KEY_VAULT_CERTIFICATE_NAME') {
+    if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+        throw "$name is not set, so the packages cannot be signed."
+    }
+}
 
 . "$PSScriptRoot/packages.ps1"
 
@@ -14,7 +25,7 @@ $RepoPath = [IO.Path]::Combine($pwd, $RepoName)
 $PackagesFolder = New-Item -ItemType Directory -Force "$pwd/package"
 
 # The strong name key, so the assemblies are fully signed.
-[IO.File]::WriteAllBytes("$RepoPath/51Degrees.snk", [Convert]::FromBase64String($Keys.StrongNameKeyBase64))
+[IO.File]::WriteAllBytes("$RepoPath/51Degrees.snk", [Convert]::FromBase64String($env:_51DEGREES_SIGN_STRONG_NAME_KEY_BASE64))
 
 # The native libraries every platform built, which the engine projects pack
 # from <product>/<os>/<arch>/ as runtimes.
@@ -35,8 +46,8 @@ $properties = Get-VersionProperties -Versions $versions
 $packArgs = @(
     "--output=$PackagesFolder"
     "--configuration=$Configuration"
-    "-p:FiftyOneReferences=Project"
-    "-p:BuiltOnCI=true"
+    "-p:_51DEGREES_REFERENCES=Project"
+    "-p:_51DEGREES_BUILT_ON_CI=true"
     "-p:ContinuousIntegrationBuild=true"
 ) + $properties
 
@@ -78,8 +89,8 @@ try {
             continue
         }
         Write-Host "::group::Packing $($package.Nuspec) $($v.Next)"
-        dotnet build $package.Projects[0] -c $Configuration -p:FiftyOneReferences=Project -p:BuiltOnCI=true @properties
-        msbuild $package.Solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=Any CPU" "-p:FiftyOneReferences=Project" "-p:BuiltOnCI=true" @properties
+        dotnet build $package.Projects[0] -c $Configuration -p:_51DEGREES_REFERENCES=Project -p:_51DEGREES_BUILT_ON_CI=true @properties
+        msbuild $package.Solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=Any CPU" "-p:_51DEGREES_REFERENCES=Project" "-p:_51DEGREES_BUILT_ON_CI=true" @properties
         nuget pack $package.Nuspec -NonInteractive -OutputDirectory $PackagesFolder -Properties ($nuspecProperties -join ';') -version $v.Next
         Write-Host "::endgroup::"
     }
@@ -108,11 +119,11 @@ foreach ($package in $packages) {
         --file-digest sha256 `
         --timestamp-digest sha256 `
         --timestamp-rfc3161 http://rfc3161timestamp.globalsign.com/advanced `
-        --azure-key-vault-url $Keys.CodeSigningKeyVaultUrl `
-        --azure-key-vault-client-id $Keys.CodeSigningKeyVaultClientId `
-        --azure-key-vault-tenant-id $Keys.CodeSigningKeyVaultTenantId `
-        --azure-key-vault-client-secret $Keys.CodeSigningKeyVaultClientSecret `
-        --azure-key-vault-certificate $Keys.CodeSigningKeyVaultCertificateName
+        --azure-key-vault-url $env:_51DEGREES_SIGN_KEY_VAULT_URL `
+        --azure-key-vault-client-id $env:_51DEGREES_SIGN_KEY_VAULT_CLIENT_ID `
+        --azure-key-vault-tenant-id $env:_51DEGREES_SIGN_KEY_VAULT_TENANT_ID `
+        --azure-key-vault-client-secret $env:_51DEGREES_SIGN_KEY_VAULT_CLIENT_SECRET `
+        --azure-key-vault-certificate $env:_51DEGREES_SIGN_KEY_VAULT_CERTIFICATE_NAME
 }
 foreach ($package in $packages) {
     dotnet nuget verify $package.FullName

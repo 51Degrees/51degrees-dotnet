@@ -134,7 +134,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\common\Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
+    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\common\Common\FiftyOne.Common.csproj" Version="$(_51DEGREES_COMMON_VERSION)" />
     <PackageReference Include="Microsoft.AspNet.Mvc">
       <Version>5.2.9</Version>
     </PackageReference>

@@ -62,19 +62,20 @@ jobs:
         with:
           user: jwrosewell
 
+      # The scripts read the automation token and the NuGet key from the
+      # environment, under the names common-ci's own Package job uses.
       - name: Package
         env:
-          API_KEY: ${{ steps.nuget.outputs.NUGET_API_KEY }}
+          _51DEGREES_ACCESS_TOKEN: ${{ secrets._51DEGREES_ACCESS_TOKEN }}
+          _51DEGREES_PUBLISH_NUGET_API_KEY: ${{ steps.nuget.outputs.NUGET_API_KEY }}
         run: |
           $DryRun = [bool]::Parse( "${{ inputs.dryrun || false }}" )
           $Options = @{}
-          $Options.Add("Keys", @{ ApiKey = $env:API_KEY })
           $Options.Add("Version", "${{ needs.Publish.outputs.version }}")
           ./nightly-publish.package.ps1 `
           -RepoName ${{ github.event.repository.name }} `
           -OrgName ${{ github.event.repository.owner.login }} `
           -Branch ${{ github.ref_name }} `
-          -GitHubToken ${{ secrets.ACCESS_TOKEN }} `
           -Options $Options `
           -GitHubUser Automation51D `
           -GitHubEmail 51DCI@51Degrees.com `

@@ -32,7 +32,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(FiftyOnePipelineEnginesFiftyOneVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.Engines.FiftyOne" ProjectPath="..\..\..\pipeline\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" Version="$(_51DEGREES_PIPELINE_ENGINES_FIFTYONE_VERSION)" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="System.CodeDom" Version="6.0.0" />
   </ItemGroup>

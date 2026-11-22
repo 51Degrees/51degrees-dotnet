@@ -16,14 +16,14 @@ $summary = New-Item -ItemType Directory -Force "$RepoPath/test-results/performan
 # put in the local feed, at the versions being published. Without the
 # version properties they would restore the last published versions from
 # nuget.org instead.
-$references = $Version ? (Get-VersionProperties -Versions (Get-PackageVersions -RepoName $RepoName)) : @("-p:FiftyOneReferences=Project")
+$references = $Version ? (Get-VersionProperties -Versions (Get-PackageVersions -RepoName $RepoName)) : @("-p:_51DEGREES_REFERENCES=Project")
 $runConfiguration = $Configuration.Contains("Release") ? "Release" : "Debug"
 # The console examples are built one project at a time. They reach some
 # projects through references with different settings, so those projects
 # are built more than once, and with OutDir set every build of a project
 # writes to the same output folder. Built in parallel, two builds can try to
 # write the same file at once and the build fails.
-$console = @("-p:OutDir=output", "-p:BuiltOnCI=true", "-m:1")
+$console = @("-p:OutDir=output", "-p:_51DEGREES_BUILT_ON_CI=true", "-m:1")
 
 # The device detection console example, with the TAC file and the evidence
 # records. Its result is the one the shared performance comparison reads.
@@ -73,22 +73,22 @@ if (Test-Path $ipiFile) {
 }
 
 # The web overhead of the pipeline, measured with the shared httpbench script
-# against the device detection performance site. More than 200 ms a request
-# fails the run.
-if ($env:SKIP_WEB_PERFORMANCE -eq 'true') {
-    Write-Host "Skipping the web performance test (SKIP_WEB_PERFORMANCE)."
-    return
-}
+# against the device detection performance site, which reads its data file
+# from _51DEGREES_DD_PATH. httpbench sends the User-Agents of a file with one
+# on each line, so those of the evidence records are written to one. More
+# than 200 ms a request fails the run.
 Write-Host "::group::Web performance"
 $webProject = "$RepoPath/device-detection/performance-tests"
-$env:PipelineOptions__Elements__0__BuildParameters__DataFile = $env:_51DEGREES_DD_PATH
 dotnet build $webProject -c $Configuration "-p:Platform=$Arch" @references
+$userAgents = Join-Path ([IO.Path]::GetTempPath()) "user-agents-$([Guid]::NewGuid()).txt"
+& "$PSScriptRoot/evidence-user-agents.ps1" -EvidencePath $evidence -OutputPath $userAgents
 try {
     $server = dotnet "$webProject/bin/$Arch/$Configuration/net8.0/performance_tests.dll" &
-    $results = ./scripts/httpbench.ps1 -HostPort '127.0.0.1:5000' -Endpoint '/process' -CalibrateEndpoint '/calibrate' -UaFile 'assets/20000 User Agents.csv'
+    $results = ./scripts/httpbench.ps1 -HostPort '127.0.0.1:5000' -Endpoint '/process' -CalibrateEndpoint '/calibrate' -UaFile $userAgents
 } finally {
     Receive-Job $server
     Stop-Job $server
+    Remove-Item -LiteralPath $userAgents -ErrorAction SilentlyContinue
 }
 if ($results.overhead_ms -gt 200) {
     throw "Unacceptable request overhead: $($results.overhead_ms) ms"

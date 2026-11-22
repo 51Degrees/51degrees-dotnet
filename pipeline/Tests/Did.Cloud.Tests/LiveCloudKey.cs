@@ -22,39 +22,25 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Linq;
 
 namespace FiftyOne.Did.Cloud.Tests;
 
 /// <summary>
-/// The resource key for the test that calls the live cloud service, and
-/// the message it skips with when there is none. A skipped test names the
-/// variables, and never passes, because a cloud test that passes without
-/// calling the cloud has proved nothing.
+/// The resource key for a test that calls the live cloud service, read from
+/// the one environment variable the test names, and the message it skips
+/// with when that variable is not set. A skipped test names the variable,
+/// and never passes, because a cloud test that passes without calling the
+/// cloud has proved nothing.
 /// </summary>
 internal static class LiveCloudKey
 {
     /// <summary>
-    /// The environment variables the key is read from, in the order tried.
-    /// The 51Did workflow sets the first to each key in turn, so it has to
-    /// come first for every pass to use its own key.
+    /// The key from the variable, or null when it is not set.
     /// </summary>
-    internal static readonly string[] Names =
+    private static string? FromEnvironment(string name)
     {
-        "_51DEGREES_RESOURCE_KEY",
-        "_51DEGREES_RESOURCE_KEY_BESPOKE",
-        "_51DEGREES_RESOURCE_KEY_51DID",
-    };
-
-    /// <summary>
-    /// The key from the first of <see cref="Names"/> that is set, or null
-    /// when none is.
-    /// </summary>
-    private static string? FromEnvironment()
-    {
-        return Names
-            .Select(n => Environment.GetEnvironmentVariable(n))
-            .FirstOrDefault(v => string.IsNullOrWhiteSpace(v) == false);
+        var value = Environment.GetEnvironmentVariable(name);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     private const string AccessiblePropertiesUrl =
@@ -64,22 +50,22 @@ internal static class LiveCloudKey
         "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=pipeline-tests-did.cloud.tests-livecloudkey.cs&utm_term=resource-key";
 
     /// <summary>
-    /// The key, skipping the test when none of <see cref="Names"/> is set.
-    /// The test checks the pipeline against whatever the key carries, so
-    /// the message asks for no particular product.
+    /// The key, skipping the test when the variable is not set. The test
+    /// checks the pipeline against whatever the key carries, so the message
+    /// asks for no particular product.
     /// </summary>
+    /// <param name="name">The variable the key is read from.</param>
     /// <param name="asksFor">What the test asks the service for.</param>
-    internal static string Require(string asksFor)
+    internal static string Require(string name, string asksFor)
     {
-        var key = FromEnvironment();
+        var key = FromEnvironment(name);
         if (key == null)
         {
             Assert.Inconclusive(
                 "This test calls the live 51Degrees cloud service, so it " +
                 "needs a resource key and there is nothing to fall back " +
-                $"on. None of {string.Join(", ", Names)} is set, tried in " +
-                "that order. Any key will do, because the test asks the " +
-                $"service for {asksFor}. To see the products a key " +
+                $"on. {name} is not set. Any key will do, because the " +
+                $"test asks the service for {asksFor}. To see the products a key " +
                 $"carries, open {AccessiblePropertiesUrl}. Create a key at " +
                 $"{ConfigureUrl}.");
         }

@@ -88,11 +88,11 @@ if ($IsLinux -and $Arch -eq 'arm64') {
     Write-Host "::warning title=Selenium skipped::No selenium-manager build for linux-arm64. The contract runs on x64 and macOS."
     return
 }
-# The resource key is _51DEGREES_RESOURCE_KEY, which the shared workflows
-# export.
-$resourceKey = $env:_51DEGREES_RESOURCE_KEY
+# The contract needs every property, so the cloud example runs with the key
+# that carries them all, which it reads as _51DEGREES_RESOURCE_KEY.
+$resourceKey = $env:_51DEGREES_RESOURCE_KEY_BESPOKE
 if (-not $resourceKey) {
-    Write-Host "::warning title=No Resource Key::_51DEGREES_RESOURCE_KEY is not set, so the Selenium contract is not run."
+    Write-Host "::warning title=No Resource Key::_51DEGREES_RESOURCE_KEY_BESPOKE is not set, so the Selenium contract is not run."
     return
 }
 if (-not (Test-Path selenium-api-tests)) {
@@ -119,14 +119,11 @@ function Invoke-ContractTests {
             $previous[$variable] = [Environment]::GetEnvironmentVariable($variable)
             Set-Item -Path "Env:$variable" -Value $ExampleEnv[$variable]
         }
-        $env:PORT = $Port
         $env:ASPNETCORE_URLS = "http://localhost:$Port"
         $example = dotnet run --no-build --project $Project @BuildArgs --no-launch-profile 2>&1 &
         curl -sS -o $(if ($IsWindows) { 'NUL' } else { '/dev/null' }) --retry 60 --retry-delay 2 --retry-connrefused "http://localhost:$Port"
-        $env:CLOUD_ROOT_URL = "https://cloud.51degrees.com/"
-        # The external suite reads its key from PAID_RESOURCE_KEY, so it is
-        # set for that suite only, and removed after it.
-        $env:PAID_RESOURCE_KEY = $resourceKey
+        # The suite reads the address and language of the running example
+        # under the names it defines.
         $env:EXAMPLE_URL = "http://localhost:$Port"
         $env:EXAMPLE_LANG = 'dotnet'
         dotnet test selenium-api-tests -c Release --filter TestCategory=Contract
@@ -135,7 +132,7 @@ function Invoke-ContractTests {
         throw
     } finally {
         if ($example) { Remove-Job -Force $example }
-        Remove-Item Env:ASPNETCORE_URLS, Env:PORT, Env:EXAMPLE_URL -ErrorAction SilentlyContinue
+        Remove-Item Env:ASPNETCORE_URLS, Env:EXAMPLE_URL -ErrorAction SilentlyContinue
         foreach ($variable in $previous.Keys) {
             if ($null -eq $previous[$variable]) {
                 Remove-Item -Path "Env:$variable" -ErrorAction SilentlyContinue
@@ -151,14 +148,14 @@ function Invoke-ContractTests {
 # has already built, so nothing is rebuilt here. Building the cloud example
 # as Release on a Debug job rebuilt the pipeline projects in Release while
 # an MSBuild node from the earlier build still held their output.
-$references = $Version ? @() : @("-p:FiftyOneReferences=Project")
+$references = $Version ? @() : @("-p:_51DEGREES_REFERENCES=Project")
 $failed = @()
 $cloudProject = "$RepoName/examples/device-detection/Cloud/GettingStarted-Web"
 $onPremiseProject = "$RepoName/examples/device-detection/OnPremise/GettingStarted-Web"
 try {
     Invoke-ContractTests -Label 'cloud' -Project $cloudProject -Port 8095 `
         -BuildArgs (@('-c', $Configuration) + $references) `
-        -ExampleEnv @{ _51DEGREES_CLOUD_ENDPOINT = "https://cloud.51degrees.com/api/v4/" }
+        -ExampleEnv @{ _51DEGREES_RESOURCE_KEY = $resourceKey }
 } catch {
     Write-Host "::error title=Selenium contract (cloud)::$_"
     $failed += 'cloud'
@@ -178,7 +175,7 @@ if ($Arch -eq 'x86') {
         $failed += 'on-premise'
     }
 }
-Remove-Item Env:CLOUD_ROOT_URL, Env:PAID_RESOURCE_KEY, Env:EXAMPLE_LANG -ErrorAction SilentlyContinue
+Remove-Item Env:EXAMPLE_LANG -ErrorAction SilentlyContinue
 if ($failed) {
     throw "The Selenium contract failed against the $($failed -join ' and ') example."
 }

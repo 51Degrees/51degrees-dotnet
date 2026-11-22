@@ -168,15 +168,15 @@ dotnet pack [Project] -o "[PackagesFolder]" /p:PackageVersion=0.0.0 -c [Configur
 and add to the packaging command:
 
 ```text
-/p:BuiltOnCI=true
+/p:_51DEGREES_BUILT_ON_CI=true
 ```
 
 related CI scripts:
 
-- `BuiltOnCI` var:
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-core.ps1]
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-package-nuget.ps1]
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-framework.ps1]
+- `_51DEGREES_BUILT_ON_CI`, which these scripts set:
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-project.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/install-package.ps1]
   - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/run-performance-tests.ps1]
 - Copying native binaries:
   - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]
@@ -221,7 +221,7 @@ an 'inconclusive' result if these resources are not provided.
         the expected file name.
 -   Tests using the cloud service require resource keys with specific properties
     to be provided using environment variables:
-    -   The `_51DEGREES_RESOURCE_KEY` environment variable should be populated
+    -   The `_51DEGREES_RESOURCE_KEY_BESPOKE` environment variable should be populated
         with a key that includes all properties. A
         [license](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=tests-2) is required in order to access
         some properties.

@@ -2,9 +2,9 @@
 # runs the live cloud 51Did tests, run with Pester 5 or later.
 #
 # The step's script is read from the workflow and run in a child PowerShell
-# with dotnet replaced by a function that records each call, so no build or
-# test runs and no key is needed. A child process is used because the script
-# ends with exit, which would end the test run itself.
+# with dotnet replaced by a function that records each call and the keys it
+# sees, so no build or test runs and no real key is needed. A child process is
+# used because the script ends with exit, which would end the test run itself.
 
 BeforeAll {
     $workflow = Join-Path $PSScriptRoot '..' '.github' 'workflows' 'cloud-51did.yml'
@@ -21,9 +21,14 @@ BeforeAll {
     New-Item -ItemType Directory -Path $Root | Out-Null
     $script:Calls = Join-Path $Root 'calls.txt'
     $script:Step = Join-Path $Root 'step.ps1'
+    # Each call is recorded with the value of every _51DEGREES_ name the
+    # tests would see, so a test can check that no key was copied.
+    $callsLiteral = "'" + ($Calls -replace "'", "''") + "'"
     Set-Content -LiteralPath $Step -Value (@(
         'function dotnet {'
-        '  Add-Content -LiteralPath $env:CLOUD_51DID_CALLS -Value ($args -join " ")'
+        '  $keys = @(Get-ChildItem env: | Where-Object Name -like "_51DEGREES_*" |'
+        '    Sort-Object Name | ForEach-Object { "$($_.Name)=$($_.Value)" })'
+        "  Add-Content -LiteralPath $callsLiteral -Value ((`$args -join ' ') + ' | ' + (`$keys -join ' '))"
         '  $global:LASTEXITCODE = 0'
         '}'
     ) + $body)
@@ -50,7 +55,6 @@ Describe 'the Cloud 51Did step' {
             Where-Object { $_.Name -like '_51DEGREES_*' })
         $script:Saved | ForEach-Object { Remove-Item "Env:$($_.Name)" }
         Remove-Item -LiteralPath $script:Calls -ErrorAction SilentlyContinue
-        $env:CLOUD_51DID_CALLS = $script:Calls
         $env:_51DEGREES_RESOURCE_KEY_BASIC = 'resource-basic'
         $env:_51DEGREES_RESOURCE_KEY_BESPOKE = 'resource-bespoke'
         $env:_51DEGREES_RESOURCE_KEY_51DID = 'resource-51did'
@@ -60,21 +64,35 @@ Describe 'the Cloud 51Did step' {
     AfterEach {
         Get-ChildItem env: | Where-Object { $_.Name -like '_51DEGREES_*' } |
             ForEach-Object { Remove-Item "Env:$($_.Name)" }
-        Remove-Item Env:CLOUD_51DID_CALLS -ErrorAction SilentlyContinue
         $script:Saved | ForEach-Object { Set-Item "Env:$($_.Name)" $_.Value }
     }
 
-    It 'runs the tests when every license key has its resource key' {
+    It 'runs each test project once' {
         $result = Invoke-Step
 
         $result.ExitCode | Should -Be 0
-        $result.Output | Should -Match 'License key for _51DEGREES_RESOURCE_KEY_51DID: _51DEGREES_LICENSE_KEY_51DID'
-        $result.Calls | Where-Object { $_ -like 'test *' } | Should -Not -BeNullOrEmpty
+        $tests = @($result.Calls | Where-Object { $_ -like 'test *' })
+        $tests.Count | Should -Be 2
+        $tests | Where-Object { $_ -like '*FiftyOne.Did.Tests.csproj*' } |
+            Should -HaveCount 1
+        $tests | Where-Object { $_ -like '*FiftyOne.Did.Cloud.Tests.csproj*' } |
+            Should -HaveCount 1
     }
 
-    # With the resource key missing, the pass that redeems with the license
-    # key would be left out and the job would pass on the other keys alone.
-    It 'fails naming _51DEGREES_RESOURCE_KEY_51DID when the license key has a value and it is empty' {
+    It 'gives the tests each key under its own name only' {
+        $result = Invoke-Step
+
+        $expected = '_51DEGREES_LICENSE_KEY_51DID=license-51did ' +
+            '_51DEGREES_RESOURCE_KEY_51DID=resource-51did ' +
+            '_51DEGREES_RESOURCE_KEY_BASIC=resource-basic ' +
+            '_51DEGREES_RESOURCE_KEY_BESPOKE=resource-bespoke'
+        $tests = @($result.Calls | Where-Object { $_ -like 'test *' })
+        foreach ($call in $tests) {
+            ($call -split ' \| ', 2)[1] | Should -Be $expected
+        }
+    }
+
+    It 'fails naming the 51Did resource key when its license key has a value and it is empty' {
         $env:_51DEGREES_RESOURCE_KEY_51DID = ''
 
         $result = Invoke-Step
@@ -84,9 +102,21 @@ Describe 'the Cloud 51Did step' {
         $result.Calls | Should -BeNullOrEmpty
     }
 
-    # A deployment without 51Did has neither secret. Its other keys must
-    # still run and pass, with no 51Did pass and no error.
-    It 'runs the other keys with no 51Did pass when both 51Did keys are empty' {
+    It 'fails when no resource key reached the job' {
+        $env:_51DEGREES_RESOURCE_KEY_BASIC = ''
+        $env:_51DEGREES_RESOURCE_KEY_BESPOKE = ''
+        $env:_51DEGREES_RESOURCE_KEY_51DID = ''
+        $env:_51DEGREES_LICENSE_KEY_51DID = ''
+
+        $result = Invoke-Step
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match '_51DEGREES_RESOURCE_KEY_BESPOKE'
+        $result.Calls | Should -BeNullOrEmpty
+    }
+
+    # Without 51Did keys the rows for them skip, and the other keys still run.
+    It 'runs the tests when both 51Did keys are empty' {
         $env:_51DEGREES_RESOURCE_KEY_51DID = ''
         $env:_51DEGREES_LICENSE_KEY_51DID = ''
 
@@ -94,9 +124,6 @@ Describe 'the Cloud 51Did step' {
 
         $result.ExitCode | Should -Be 0
         $result.Output | Should -Not -Match '::error::'
-        $result.Output | Should -Not -Match 'with _51DEGREES_RESOURCE_KEY_51DID'
-        $result.Output | Should -Match 'with _51DEGREES_RESOURCE_KEY_BASIC'
-        $result.Output | Should -Match 'with _51DEGREES_RESOURCE_KEY_BESPOKE'
-        $result.Calls | Where-Object { $_ -like 'test *' } | Should -Not -BeNullOrEmpty
+        @($result.Calls | Where-Object { $_ -like 'test *' }).Count | Should -Be 2
     }
 }

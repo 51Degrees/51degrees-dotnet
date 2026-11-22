@@ -3,7 +3,7 @@
 # The first tests read this repository's project files and check that each
 # NuGet package has its own entry, dependencies and version property. The
 # last tests run common-ci's release plan on a throwaway git repository, when
-# COMMON_CI names a checkout of common-ci that has steps/release-plan.ps1.
+# a checkout of common-ci beside this repository has steps/release-plan.ps1.
 
 BeforeAll {
     $script:Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).ProviderPath
@@ -106,7 +106,7 @@ Describe 'packages.json' {
     It 'gives the root Directory.Build.props one version per package and nothing else' {
         $props = Get-ProjectXml 'Directory.Build.props'
         $defined = @($props.SelectNodes("//*[local-name()='PropertyGroup']/*") |
-            Where-Object { $_.LocalName -match '^FiftyOne.*Version$' } |
+            Where-Object { $_.LocalName -match '^_51DEGREES_.*_VERSION$' } |
             ForEach-Object LocalName)
         ($defined | Sort-Object) | Should -Be (@($PackageList.Property) | Sort-Object)
     }
@@ -160,12 +160,12 @@ Describe 'packages.json' {
 
 Describe 'A release planned per package' {
     BeforeDiscovery {
-        $step = $env:COMMON_CI ? (Join-Path $env:COMMON_CI 'steps' 'release-plan.ps1') : $null
+        $step = Join-Path $PSScriptRoot '..' '..' 'common-ci' 'steps' 'release-plan.ps1'
         $script:HasStep = $step -and (Test-Path $step)
     }
 
     BeforeAll {
-        $step = $env:COMMON_CI ? (Join-Path $env:COMMON_CI 'steps' 'release-plan.ps1') : $null
+        $step = Join-Path $PSScriptRoot '..' '..' 'common-ci' 'steps' 'release-plan.ps1'
         if ($step -and (Test-Path $step)) {
             . $step
         }

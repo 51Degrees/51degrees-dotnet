@@ -15,7 +15,7 @@ to show, because its data file is about 35 MB. IP Intelligence's on-premise
 about 460 MB, so run it second.
 
 The examples build against the published NuGet packages unless
-`FiftyOneReferences` is set to `Project` (see
+`_51DEGREES_REFERENCES` is set to `Project` (see
 [References between the folders](#references-between-the-folders)). Those
 packages carry the native engines, so running an example needs no C or C++
 compiler and no CMake.
@@ -184,7 +184,7 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   find a device detection data file` and asks for
   `git submodule update --init --recursive`, which fetches them. A zip
   download of the repository has no submodules, so clone with Git.
-- **Project references.** `-p:FiftyOneReferences=Project`, which CI uses,
+- **Project references.** `-p:_51DEGREES_REFERENCES=Project`, which CI uses,
   builds the native engines from `cxx`. That needs CMake 3.24 or later, a
   C++17 compiler, PowerShell 7 and a platform such as `-p:Platform=x64`, as
   the README says. It is not needed to run the examples.
@@ -211,26 +211,22 @@ a paid subscription. The IP Intelligence cloud example reads its key from
 
 ## Environment variable names
 
-[common-ci's list of environment variable names](https://github.com/51Degrees/common-ci/blob/d8a9c596eabf69dd5581a08e9360cdd1c9b3d9e8/environment-variables.md)
-holds every environment variable name that the packages, tests, examples and
-CI scripts of every language read, with what each name holds and the
-deprecated names each replaced. The list decides. Use the names it gives, and
-when a change needs a new name, or reads an old name again, change
-[`environment-variables.json`](https://github.com/51Degrees/common-ci/blob/d8a9c596eabf69dd5581a08e9360cdd1c9b3d9e8/environment-variables.json)
-in common-ci in the same piece of work. This repository's own name
-check, [`common/Test/EnvironmentVariableNamesTests.cs`](common/Test/EnvironmentVariableNamesTests.cs), still keeps a
-list of its own. Where the two differ, common-ci's list is the one to
-follow.
-
+[`environment-variables.md`](environment-variables.md) lists every
+environment variable name that the packages, tests, examples and CI scripts
+read, with what each holds. Use those names. A name 51Degrees defines starts
+with `_51DEGREES_` and holds one thing, and no name is filled from another. A
+change that needs a new name adds it to the list in the same piece of work,
+because [`common/Test/EnvironmentVariableNamesTests.cs`](common/Test/EnvironmentVariableNamesTests.cs)
+fails on a name the list does not have.
 ## References between the folders
 
 A project that uses a package built in another folder declares a
 `FiftyOneReference` item, not a `PackageReference` or a `ProjectReference`.
 The root `Directory.Build.targets` turns it into one or the other from the
-`FiftyOneReferences` property, which defaults to `Package`. CI builds and
+`_51DEGREES_REFERENCES` property, which defaults to `Package`. CI builds and
 tests with `Project`, so a change that crosses folders is tested together.
 When a package's dependency changes, change the item, and when a version
-changes, change the package's `FiftyOne*Version` property in the root
+changes, change the package's `_51DEGREES_*_VERSION` property in the root
 `Directory.Build.props`. A package that starts to reference another package
 also needs it in its own `DependsOn` in `ci/packages.json`, or a release of the
 package it references leaves it at the old requirement.

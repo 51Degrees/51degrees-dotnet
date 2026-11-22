@@ -65,8 +65,9 @@ Longitude. A resource key selecting only the free tier properties can be
 used by the examples. See our [pricing page](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon) to get a paid
 subscription with more properties.
 
-Examples and tests read the resource key from an environment variable called
-"_51DEGREES_RESOURCE_KEY".
+Examples read the resource key from an environment variable called
+"_51DEGREES_RESOURCE_KEY". The tests that call the live cloud read a key that
+carries every property from "_51DEGREES_RESOURCE_KEY_BESPOKE".
 
 ## Solutions and projects
 
@@ -138,15 +139,15 @@ dotnet pack [Project] -o "[PackagesFolder]" /p:PackageVersion=0.0.0 -c [Configur
 and add to the packaging command:
 
 ```text
-/p:BuiltOnCI=true
+/p:_51DEGREES_BUILT_ON_CI=true
 ```
 
 related CI scripts:
 
-- `BuiltOnCI` var:
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-core.ps1]
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-package-nuget.ps1]
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-framework.ps1]
+- `_51DEGREES_BUILT_ON_CI`, which these scripts set:
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-project.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/install-package.ps1]
   - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/run-performance-tests.ps1]
 - Copying native binaries:
   - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]

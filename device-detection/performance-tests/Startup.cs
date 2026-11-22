@@ -26,11 +26,20 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
+using FiftyOne.Pipeline.Core.Configuration;
+using System;
+using System.Collections.Generic;
 
 namespace performance_tests
 {
     public class Startup
     {
+        /// <summary>
+        /// The environment variable that names a data file to use in place
+        /// of the one in appsettings.json, as in the examples.
+        /// </summary>
+        private const string DataFileVariable = "_51DEGREES_DD_PATH";
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -48,7 +57,34 @@ namespace performance_tests
             // Call AddFiftyOne to add all the things the Pipeline will need
             // to the services collection and create it based on the supplied
             // configuration.
-            services.AddFiftyOne(Configuration);
+            services.AddFiftyOne(WithDataFileFromEnvironment(Configuration));
+        }
+
+        /// <summary>
+        /// The configuration with the device detection engine's data file
+        /// replaced by the one <see cref="DataFileVariable"/> names, when it
+        /// is set.
+        /// </summary>
+        private static IConfiguration WithDataFileFromEnvironment(
+            IConfiguration configuration)
+        {
+            var dataFile = Environment.GetEnvironmentVariable(DataFileVariable);
+            if (string.IsNullOrWhiteSpace(dataFile))
+            {
+                return configuration;
+            }
+            var options = new PipelineOptions();
+            configuration.GetSection("PipelineOptions").Bind(options);
+            var index = options.Elements.IndexOf(
+                options.GetElementConfig(nameof(DeviceDetectionHashEngine)));
+            return new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    [$"PipelineOptions:Elements:{index}:BuildParameters:DataFile"] =
+                        dataFile
+                })
+                .Build();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

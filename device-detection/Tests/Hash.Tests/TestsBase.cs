@@ -101,7 +101,7 @@ namespace FiftyOne.DeviceDetection.Hash.Tests
                     profile.Value);
             }
             UserAgents = new UserAgentGenerator(
-                TestHelpers.Utils.GetFilePath(Constants.UA_FILE_NAME));
+                TestHelpers.Utils.GetFilePath(Constants.EVIDENCE_FILE_NAME));
         }
     }
 }

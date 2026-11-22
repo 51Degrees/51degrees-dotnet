@@ -37,18 +37,14 @@ namespace FiftyOne.Did.Cloud.Tests;
 
 /// <summary>
 /// The live half of the entitlement change. A customer style pipeline is
-/// built against the real cloud with the resource key the environment
-/// supplies, and the outcome has to match what that key is actually
-/// entitled to.
+/// built against the real cloud with a resource key from the environment,
+/// and the outcome has to match what that key is actually entitled to.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The test reads one resource key, found by <see cref="LiveCloudKey"/>.
-/// The workflow that runs the live 51Did tests sets
-/// <c>_51DEGREES_RESOURCE_KEY</c>, the first name it reads, once per key
-/// secret. Running it for both an entitled key and an unentitled one is
-/// therefore a matter of the workflow looping rather than of this test
-/// naming two keys. With no key set it fails.
+/// Each row reads one tier's resource key under its own name, so one run
+/// covers a key with the 51Did product and keys without it. A row whose
+/// key is not set is skipped, naming the variable.
 /// </para>
 /// <para>
 /// Whether the key carries the product is not taken from the engine under
@@ -70,8 +66,27 @@ public class DidCloudEngineLiveEntitlementTests
     /// </summary>
     public TestContext TestContext { get; set; } = null!;
 
-    private const string AccessiblePropertiesUrl =
-        "https://cloud.51degrees.com/api/v4/accessibleproperties";
+    /// <summary>
+    /// The environment variable that names the cloud, read as the cloud
+    /// request engine reads it.
+    /// </summary>
+    private const string EndpointVariable = "_51DEGREES_CLOUD_ENDPOINT";
+
+    /// <summary>
+    /// The cloud used when <see cref="EndpointVariable"/> is not set.
+    /// </summary>
+    private const string DefaultEndpoint = "https://cloud.51degrees.com/api/v4/";
+
+    /// <summary>
+    /// The accessible properties address of the cloud the pipeline asks.
+    /// </summary>
+    private static string AccessiblePropertiesUrl()
+    {
+        var endpoint = Environment.GetEnvironmentVariable(EndpointVariable);
+        return (string.IsNullOrWhiteSpace(endpoint)
+            ? DefaultEndpoint : endpoint.Trim()).TrimEnd('/') +
+            "/accessibleproperties";
+    }
 
     /// <summary>
     /// Seconds a request to the cloud service may take. The default of
@@ -89,7 +104,7 @@ public class DidCloudEngineLiveEntitlementTests
     {
         using var client = new HttpClient();
         var json = await client.GetStringAsync(
-            $"{AccessiblePropertiesUrl}?resource={key}");
+            $"{AccessiblePropertiesUrl()}?resource={key}");
         using var document = JsonDocument.Parse(json);
         if (document.RootElement.TryGetProperty("Products", out var products)
             == false)
@@ -130,11 +145,17 @@ public class DidCloudEngineLiveEntitlementTests
     /// listed. An unentitled one builds and reports nothing, so the
     /// pipeline offers no 51Did property and no identifier is promised.
     /// </summary>
+    /// <param name="keyName">The variable the row's key is read from.</param>
     [TestMethod]
+    [DataRow("_51DEGREES_RESOURCE_KEY_BASIC")]
+    [DataRow("_51DEGREES_RESOURCE_KEY_BESPOKE")]
+    [DataRow("_51DEGREES_RESOURCE_KEY_51DID")]
     [Timeout(180_000)]
-    public async Task ACustomerPipelineMatchesWhatTheKeyIsEntitledTo()
+    public async Task ACustomerPipelineMatchesWhatTheKeyIsEntitledTo(
+        string keyName)
     {
         var key = LiveCloudKey.Require(
+            keyName,
             "the FODid properties the key carries, and checks that the " +
             "pipeline offers exactly those, or nothing when there " +
             "are none");
@@ -173,7 +194,8 @@ public class DidCloudEngineLiveEntitlementTests
                 "data key, so the JavaScript builder leaves the user " +
                 "prompt block out");
             TestContext.WriteLine(
-                "The key carries no 51Did entitlement, and the pipeline " +
+                $"The key in {keyName} carries no 51Did entitlement, and " +
+                "the pipeline " +
                 "builds offering nothing under " +
                 DidBaseEnginePropertiesBuilder.ComponentName + ".");
             return;
@@ -190,7 +212,7 @@ public class DidCloudEngineLiveEntitlementTests
             "key, because that is what the JavaScript builder reads to " +
             "decide whether to render the user prompt block");
         TestContext.WriteLine(
-            "The key is entitled and the pipeline offers " +
+            $"The key in {keyName} is entitled and the pipeline offers " +
             $"[{string.Join(", ", reported)}] under " +
             DidBaseEnginePropertiesBuilder.ComponentName + ".");
     }

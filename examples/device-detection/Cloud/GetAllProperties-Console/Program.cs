@@ -152,21 +152,18 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GetAllProperties
         static void Main(string[] args)
         {
             // Use the command line args to get the resource key if present.
-            // Otherwise, get it from the environment, following the same
-            // convention as the other cloud examples so that a key set once
-            // works for all of them.
-            string resourceKeySource = null;
+            // Otherwise, get it from the environment variable the other
+            // cloud examples read, so that a key set once works for all of
+            // them.
             string resourceKey = args.Length > 0 ? args[0] :
-                ExampleUtils.GetResourceKeyFromEnv(out resourceKeySource);
+                ExampleUtils.GetResourceKeyFromEnv();
 
             if (string.IsNullOrWhiteSpace(resourceKey))
             {
                 Console.WriteLine(
                     "No resource key was supplied. Pass one as the first " +
-                    "command line argument, or set one of these " +
-                    "environment variables: " +
-                    ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR_DESCRIPTION +
-                    ".");
+                    "command line argument, or set the environment " +
+                    $"variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'.");
                 Console.WriteLine(
                     "The 51Degrees cloud service is accessed with a " +
                     "resource key. A free key can be created at " +
@@ -184,7 +181,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GetAllProperties
                 {
                     Console.WriteLine(
                         $"Using the resource key from " +
-                        $"'{resourceKeySource}'.");
+                        $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'.");
                 }
                 new Example().Run(resourceKey);
             }

@@ -37,6 +37,13 @@ namespace FiftyOne.GeoLocation.Example.Tests
     [TestClass]
     public class TestAllExamples
     {
+        /// <summary>
+        /// The environment variable the tests read their resource key from,
+        /// which holds the key that carries every property. Each example is
+        /// given the key as the argument its Run method takes.
+        /// </summary>
+        private const string KeyVariable = "_51DEGREES_RESOURCE_KEY_BESPOKE";
+
         private string ResourceKey;
 
         /// <summary>
@@ -49,21 +56,19 @@ namespace FiftyOne.GeoLocation.Example.Tests
         private const int CloudRequestTimeoutSeconds = 30;
 
         /// <summary>
-        /// Init method - specify Resource Key to run examples here or 
-        /// set a Resource Key in an environment variable called 'ResourceKey'.
+        /// Reads the resource key from <see cref="KeyVariable"/>, skipping
+        /// the test when it is not set.
         /// </summary>
         [TestInitialize]
         public void Init()
         {
-            var resourceKey = Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
-            ResourceKey = string.IsNullOrWhiteSpace(resourceKey) == false ? 
-                resourceKey : "!!YOUR_RESOURCE_KEY!!";
-
-            if (string.IsNullOrWhiteSpace(ResourceKey) == true ||
-                ResourceKey.StartsWith("!!") == true)
+            ResourceKey = Environment.GetEnvironmentVariable(KeyVariable);
+            if (string.IsNullOrWhiteSpace(ResourceKey))
             {
-                Assert.Fail("ResourceKey must be specified in the Init method" +
-                    " or as an Environment variable");
+                Assert.Inconclusive(
+                    "These tests call the live 51Degrees cloud service, so " +
+                    $"they need a resource key, and {KeyVariable} is not " +
+                    "set.");
             }
         }
 

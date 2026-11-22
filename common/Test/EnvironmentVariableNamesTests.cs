@@ -23,29 +23,163 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace FiftyOne.Common.Tests;
 
 /// <summary>
-/// Every 51Degrees environment variable name in this repository starts with
-/// an underscore, because a POSIX shell cannot set a name that starts with a
-/// digit, and no old name is read. The tests read every file git tracks,
-/// which leaves out build output and the submodules, and fail on any name
-/// that starts with the digit and on any old name that is read or set,
-/// apart from the obsolete constants that still hold an old name. The old
-/// key names count too: a key is read only under its _51DEGREES_ name, and
-/// a workflow passes only the _51DEGREES_ secrets.
+/// Every environment variable name this repository reads or sets is in
+/// environment-variables.md at the root, apart from the version property of
+/// each package, which ci/packages.json names. A name 51Degrees defines starts
+/// with an underscore and _51DEGREES_, because a POSIX shell cannot set a
+/// name that starts with a digit, and any other name is one that another
+/// tool defines, listed in the last table of that file. A workflow reads
+/// only _51DEGREES_ secrets and variables, and no _51DEGREES_ name is filled
+/// from another. The tests read every file git tracks, which leaves out
+/// build output and the submodules.
 /// </summary>
 [TestClass]
 public class EnvironmentVariableNamesTests
 {
     /// <summary>
+    /// The start of every name 51Degrees defines.
+    /// </summary>
+    private const string Prefix = "_51DEGREES_";
+
+    /// <summary>
     /// The start of a name that a shell cannot set, joined at run time so
     /// this file does not match itself.
     /// </summary>
     private const string DigitInitial = "5" + "1DEGREES_";
+
+    /// <summary>
+    /// The file that lists the names, relative to the repository root.
+    /// </summary>
+    private const string NamesFile = "environment-variables.md";
+
+    /// <summary>
+    /// The file that names each package's version property, relative to the
+    /// repository root.
+    /// </summary>
+    private const string PackagesFile = "ci/packages.json";
+
+    /// <summary>
+    /// The heading in <see cref="NamesFile"/> of the table of names other
+    /// tools define.
+    /// </summary>
+    private const string OtherToolsHeading = "## Names other tools define";
+
+    /// <summary>
+    /// This file, whose tests use made up names.
+    /// </summary>
+    private const string ThisFile =
+        "common/Test/EnvironmentVariableNamesTests.cs";
+
+    /// <summary>
+    /// The secret GitHub gives every workflow, which it may name.
+    /// </summary>
+    private const string GitHubToken = "GITHUB_TOKEN";
+
+    /// <summary>
+    /// The extensions of the files that hold code or build settings, where
+    /// a name is read or set. Documentation may name anything.
+    /// </summary>
+    private static readonly HashSet<string> CodeExtensions =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".cs", ".cshtml", ".aspx", ".asax", ".config", ".ps1", ".psm1",
+            ".sh", ".yml", ".yaml", ".json", ".props", ".targets",
+            ".csproj", ".cmake", ".nuspec",
+        };
+
+    /// <summary>
+    /// The ways code reads or sets a variable by a name written in it, with
+    /// the name in the group 'name'.
+    /// </summary>
+    private static readonly Regex[] NameReads =
+    {
+        // C# and PowerShell calls of the .NET methods.
+        new Regex(
+            @"(?:Get|Set)EnvironmentVariable\(\s*[""'](?<name>[A-Za-z_][A-Za-z0-9_]*)[""']",
+            RegexOptions.CultureInvariant),
+        // A child process's environment in C#.
+        new Regex(
+            @"Environment(?:Variables)?\s*(?:\[\s*|\.Remove\(\s*|\.Add\(\s*)""(?<name>[A-Za-z_][A-Za-z0-9_]*)""",
+            RegexOptions.CultureInvariant),
+        // A C# constant whose name says it holds a variable's name.
+        new Regex(
+            @"const\s+string\s+\w*(?:ENV_VAR|EnvVar|Variable|VARIABLE)\w*\s*=\s*""(?<name>[A-Za-z_][A-Za-z0-9_]*)""",
+            RegexOptions.CultureInvariant),
+        // PowerShell, as $env:NAME and ${env:NAME}.
+        new Regex(
+            @"(?<![A-Za-z0-9_])\$\{?env:(?<name>[A-Za-z_][A-Za-z0-9_]*)",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase),
+        // PowerShell's environment drive, as in Remove-Item Env:NAME.
+        new Regex(
+            @"(?<![A-Za-z0-9_${])Env:(?<name>[A-Za-z_][A-Za-z0-9_]*)",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase),
+        // A workflow expression.
+        new Regex(
+            @"\$\{\{[^}]*?(?<![A-Za-z0-9_.])env\.(?<name>[A-Za-z_][A-Za-z0-9_]*)",
+            RegexOptions.CultureInvariant),
+        // CMake.
+        new Regex(
+            @"\$ENV\{(?<name>[A-Za-z_][A-Za-z0-9_]*)\}",
+            RegexOptions.CultureInvariant),
+    };
+
+    /// <summary>
+    /// A _51DEGREES_ name anywhere in a line.
+    /// </summary>
+    private static readonly Regex PrefixedName = new Regex(
+        @"(?<![A-Za-z0-9_])_51DEGREES_[A-Za-z0-9_]*[A-Za-z0-9]",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// A secret or variable a workflow reads.
+    /// </summary>
+    private static readonly Regex WorkflowName = new Regex(
+        @"(?<![A-Za-z0-9_])(?:secrets|vars)\.(?<name>[A-Za-z0-9_]+)",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// A _51DEGREES_ name set from a workflow secret or variable, or from
+    /// another variable in PowerShell, with the source in 'from'.
+    /// </summary>
+    private static readonly Regex[] Fills =
+    {
+        new Regex(
+            @"(?<![A-Za-z0-9_])(?<name>_51DEGREES_[A-Za-z0-9_]+)\s*:\s*\$\{\{\s*(?:secrets|vars)\.(?<from>[A-Za-z0-9_]+)\s*\}\}",
+            RegexOptions.CultureInvariant),
+        new Regex(
+            @"\$env:(?<name>_51DEGREES_[A-Za-z0-9_]+)\s*=\s*\$env:(?<from>[A-Za-z0-9_]+)",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase),
+    };
+
+    /// <summary>
+    /// The key of a line in a workflow's env block.
+    /// </summary>
+    private static readonly Regex EnvKey = new Regex(
+        @"^(?<indent>\s*)(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*:",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// A line that opens a workflow's env block.
+    /// </summary>
+    private static readonly Regex EnvBlock = new Regex(
+        @"^(?<indent>\s*)env:\s*$",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// A name in the first column of a table row of
+    /// <see cref="NamesFile"/>.
+    /// </summary>
+    private static readonly Regex ListedName = new Regex(
+        @"^\|\s*`(?<name>[A-Za-z_][A-Za-z0-9_]*)`\s*\|",
+        RegexOptions.CultureInvariant);
 
     /// <summary>
     /// True when the character can be part of an environment variable name.
@@ -92,137 +226,60 @@ public class EnvironmentVariableNamesTests
     }
 
     /// <summary>
-    /// This file, which names every old name on purpose.
+    /// The names read or set by name in the line.
     /// </summary>
-    private const string ThisFile =
-        "common/Test/EnvironmentVariableNamesTests.cs";
-
-    /// <summary>
-    /// An old name read or set as an environment variable, or a constant
-    /// held to fall back to one. A .NET read takes the name as a string, so
-    /// a quoted name is matched, along with the forms the PowerShell scripts
-    /// use. A quoted name inside brackets is a dictionary key, such as a
-    /// page template's placeholder, and is left alone. The names keep their
-    /// case, because the cloud's query string parameter resource_key is not
-    /// an environment variable.
-    /// </summary>
-    private static readonly Regex OldName = new Regex(
-        @"(?:(?<!\[)[""']|\$env:|\$\{env:|Env:|@\{\s*|;\s*)" +
-        "(?:RESOURCE_KEY|SUPER_RESOURCE_KEY|LICENSE_KEY|" +
-        "DEVICEDETECTIONDATAFILE|IPINTELLIGENCEDATAFILE|FOD_CLOUD_API_URL|" +
-        "FIFTYONE_CLOUD_ENDPOINT|FIFTYONE_TEST_FILTER|" +
-        "51D_RESOURCE_KEY|51D_CLOUD_ENDPOINT|" +
-        "DEVICEDETECTIONLICENSEKEY_DOTNET|IPINTELLIGENCELICENSEKEY_DOTNET|" +
-        "RESOURCE_KEY_CLOUD_V5_BESPOKE|PAID_RESOURCE_KEY|" +
-        "ACCEPTCH_BROWSER_KEY|ACCEPTCH_HARDWARE_KEY|" +
-        "ACCEPTCH_PLATFORM_KEY|ACCEPTCH_NONE_KEY)" +
-        "(?![A-Za-z0-9_])|" +
-        @"\bLEGACY_[A-Z_]*ENV_VARS?\b",
-        RegexOptions.CultureInvariant);
-
-    /// <summary>
-    /// The cloud endpoint's old name.
-    /// </summary>
-    private const string OldEndpointName = "FOD_CLOUD_API_URL";
-
-    /// <summary>
-    /// The only files that may hold <see cref="OldEndpointName"/>, being
-    /// the two packages that keep an obsolete constant holding it, and the
-    /// tests of those constants.
-    /// </summary>
-    private static readonly HashSet<string> OldEndpointNameFiles =
-        new HashSet<string>(StringComparer.Ordinal)
+    private static List<string> NamesRead(string line)
+    {
+        var names = new List<string>();
+        foreach (var read in NameReads)
         {
-            "pipeline/CloudRequestEngine/Constants.cs",
-            "pipeline/Did/Client/DidClient.cs",
-            "pipeline/Tests/CloudRequestEngine.Tests/" +
-                "CloudRequestEngineOldEndpointNameTests.cs",
-            "pipeline/Tests/Did.Tests/DidClientOldEndpointNameTests.cs",
-        };
+            foreach (Match match in read.Matches(line))
+            {
+                names.Add(match.Groups["name"].Value);
+            }
+        }
+        return names;
+    }
 
     /// <summary>
-    /// True when <paramref name="match"/> is the cloud endpoint's old name
-    /// as a quoted string in one of the files that may hold it.
+    /// The keys of the env blocks of a workflow, one entry for each line
+    /// that holds one, with its index.
     /// </summary>
-    private static bool IsKeptOldEndpointName(string relative, string match) =>
-        OldEndpointNameFiles.Contains(relative) &&
-        match == "\"" + OldEndpointName;
-
-    /// <summary>
-    /// The example files that keep obsolete constants holding the other old
-    /// names. The examples no longer read those names.
-    /// </summary>
-    private static readonly HashSet<string> ObsoleteConstantFiles =
-        new HashSet<string>(StringComparer.Ordinal)
+    private static List<(int Index, string Name)> EnvBlockKeys(
+        IReadOnlyList<string> lines)
+    {
+        var keys = new List<(int, string)>();
+        int? blockIndent = null;
+        for (var index = 0; index < lines.Count; index++)
         {
-            "examples/device-detection/Cloud/pmp-web/Settings.cs",
-            "examples/device-detection/ExampleBase/Constants.cs",
-            "examples/device-detection/ExampleBase/ExampleUtils.cs",
-            "examples/ip-intelligence/Examples/Constants.cs",
-            "examples/ip-intelligence/Examples/ExampleUtils.cs",
-        };
+            var line = lines[index].TrimEnd('\r');
+            if (blockIndent != null)
+            {
+                var key = EnvKey.Match(line);
+                if (key.Success &&
+                    key.Groups["indent"].Value.Length > blockIndent)
+                {
+                    keys.Add((index, key.Groups["name"].Value));
+                    continue;
+                }
+                if (line.Trim().Length > 0 &&
+                    line.Length - line.TrimStart().Length <= blockIndent)
+                {
+                    blockIndent = null;
+                }
+            }
+            var block = EnvBlock.Match(line);
+            if (block.Success)
+            {
+                blockIndent = block.Groups["indent"].Value.Length;
+            }
+        }
+        return keys;
+    }
 
     /// <summary>
-    /// The tests that set an old licence key name to show that it is not
-    /// read.
-    /// </summary>
-    private static readonly HashSet<string> OldNameTestFiles =
-        new HashSet<string>(StringComparer.Ordinal)
-        {
-            "examples/device-detection/Tests/Example.Tests.OnPremise/" +
-                "LicenceKeyNameTests.cs",
-            "examples/ip-intelligence/Tests/Example.Tests.OnPremise/" +
-                "LicenceKeyNameTests.cs",
-        };
-
-    /// <summary>
-    /// The name the external Selenium contract suite reads its resource
-    /// key from. That suite is another repository, so the script that runs
-    /// it sets the name, from _51DEGREES_RESOURCE_KEY, until the suite
-    /// reads a _51DEGREES_ name.
-    /// </summary>
-    private const string ContractSuiteKeyName = "PAID_RESOURCE_KEY";
-
-    /// <summary>
-    /// The script that runs the external Selenium contract suite.
-    /// </summary>
-    private const string ContractSuiteScript = "ci/run-integration-tests.ps1";
-
-    /// <summary>
-    /// True when the file may hold the match, as one of the example files
-    /// that keep obsolete constants, as the cloud endpoint's old name where
-    /// it is kept, as a test that shows an old licence key name is not
-    /// read, or as the contract suite's key name where that suite is run.
-    /// </summary>
-    private static bool IsKeptOldName(string relative, string match) =>
-        ObsoleteConstantFiles.Contains(relative) ||
-        IsKeptOldEndpointName(relative, match) ||
-        OldNameTestFiles.Contains(relative) ||
-        (relative == ContractSuiteScript &&
-            match.EndsWith(ContractSuiteKeyName, StringComparison.Ordinal));
-
-    /// <summary>
-    /// The secrets a workflow may name that do not start _51DEGREES_: the
-    /// token a workflow acts with.
-    /// </summary>
-    private static readonly HashSet<string> OtherSecrets =
-        new HashSet<string>(StringComparer.Ordinal)
-        {
-            "ACCESS_TOKEN",
-            "GITHUB_TOKEN",
-        };
-
-    /// <summary>
-    /// A secret or repository variable a workflow names.
-    /// </summary>
-    private static readonly Regex WorkflowName = new Regex(
-        @"(?<![A-Za-z0-9_])(?:secrets|vars)[.](?<name>[A-Za-z0-9_]+)",
-        RegexOptions.CultureInvariant);
-
-    /// <summary>
-    /// Each secret the line names that is not a _51DEGREES_ secret or one
-    /// of <see cref="OtherSecrets"/>, and each repository variable it
-    /// names, because a key is a secret.
+    /// The secrets and variables a workflow line reads that it may not:
+    /// any without the prefix, apart from GitHub's own token.
     /// </summary>
     private static List<string> OtherWorkflowNames(string line)
     {
@@ -230,12 +287,8 @@ public class EnvironmentVariableNamesTests
         foreach (Match match in WorkflowName.Matches(line))
         {
             var name = match.Groups["name"].Value;
-            var isVariable = match.Value.StartsWith(
-                "vars.", StringComparison.Ordinal);
-            if (isVariable ||
-                (name.StartsWith("_51DEGREES_", StringComparison.Ordinal)
-                    == false &&
-                 OtherSecrets.Contains(name) == false))
+            if (!name.StartsWith(Prefix, StringComparison.Ordinal) &&
+                name != GitHubToken)
             {
                 names.Add(match.Value);
             }
@@ -244,125 +297,269 @@ public class EnvironmentVariableNamesTests
     }
 
     /// <summary>
-    /// Each old name the line reads, sets or holds.
+    /// Each place in the line where a _51DEGREES_ name is set from a source
+    /// of another name.
     /// </summary>
-    private static List<string> OldNames(string line)
+    private static List<string> FillsFromAnotherName(string line)
     {
-        var names = new List<string>();
-        foreach (Match match in OldName.Matches(line))
+        var fills = new List<string>();
+        foreach (var fill in Fills)
         {
-            names.Add(match.Value);
+            foreach (Match match in fill.Matches(line))
+            {
+                if (!string.Equals(
+                    match.Groups["name"].Value,
+                    match.Groups["from"].Value,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    fills.Add(match.Value);
+                }
+            }
+        }
+        return fills;
+    }
+
+    /// <summary>
+    /// The names <see cref="NamesFile"/> lists, as the 51Degrees names and
+    /// the names other tools define.
+    /// </summary>
+    private static (HashSet<string> Ours, HashSet<string> OtherTools)
+        ListedNames(IEnumerable<string> lines)
+    {
+        var ours = new HashSet<string>(StringComparer.Ordinal);
+        var other = new HashSet<string>(StringComparer.Ordinal);
+        var inOther = false;
+        foreach (var raw in lines)
+        {
+            var line = raw.TrimEnd('\r');
+            if (line.StartsWith("## ", StringComparison.Ordinal))
+            {
+                inOther = line == OtherToolsHeading;
+            }
+            var listed = ListedName.Match(line);
+            if (listed.Success)
+            {
+                (inOther ? other : ours).Add(listed.Groups["name"].Value);
+            }
+        }
+        return (ours, other);
+    }
+
+    /// <summary>
+    /// A tracked file, as its path relative to the root and its lines.
+    /// </summary>
+    private sealed record TrackedFile(string Relative, string[] Lines)
+    {
+        public bool IsCode =>
+            CodeExtensions.Contains(Path.GetExtension(Relative)) ||
+            Path.GetFileName(Relative) == "CMakeLists.txt";
+
+        public bool IsWorkflow =>
+            Relative.StartsWith(".github/", StringComparison.Ordinal) &&
+            (Relative.EndsWith(".yml", StringComparison.Ordinal) ||
+             Relative.EndsWith(".yaml", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Every file git tracks that is a file of this repository. A submodule
+    /// is tracked as a folder, and its files belong to another repository.
+    /// </summary>
+    private static List<TrackedFile> TrackedFiles()
+    {
+        var root = Repository.Root();
+        var files = new List<TrackedFile>();
+        foreach (var relative in Repository.TrackedFiles(root))
+        {
+            var path = Path.Combine(
+                root, relative.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(path))
+            {
+                files.Add(new TrackedFile(
+                    relative,
+                    File.ReadAllText(path, Encoding.UTF8).Split('\n')));
+            }
+        }
+        return files;
+    }
+
+    private static readonly Lazy<List<TrackedFile>> Files =
+        new Lazy<List<TrackedFile>>(TrackedFiles);
+
+    private static readonly Lazy<(HashSet<string> Ours, HashSet<string> OtherTools)>
+        Listed = new Lazy<(HashSet<string>, HashSet<string>)>(() =>
+            ListedNames(File.ReadAllLines(
+                Path.Combine(Repository.Root(), NamesFile))));
+
+    /// <summary>
+    /// The version property of each package in <see cref="PackagesFile"/>.
+    /// </summary>
+    private static readonly Lazy<HashSet<string>> VersionProperties =
+        new Lazy<HashSet<string>>(() =>
+        {
+            using var packages = JsonDocument.Parse(File.ReadAllText(
+                Path.Combine(Repository.Root(), PackagesFile)));
+            return new HashSet<string>(
+                packages.RootElement.EnumerateArray()
+                    .Select(p => p.GetProperty("Property").GetString()),
+                StringComparer.Ordinal);
+        });
+
+    /// <summary>
+    /// Each name the code reads or sets, with where.
+    /// </summary>
+    private static List<(string Where, string Name)> CodeNames()
+    {
+        var names = new List<(string, string)>();
+        foreach (var file in Files.Value.Where(f =>
+            f.IsCode && f.Relative != ThisFile))
+        {
+            for (var index = 0; index < file.Lines.Length; index++)
+            {
+                foreach (var name in NamesRead(file.Lines[index]))
+                {
+                    names.Add(($"{file.Relative}:{index + 1}", name));
+                }
+                foreach (Match match in PrefixedName.Matches(file.Lines[index]))
+                {
+                    names.Add(($"{file.Relative}:{index + 1}", match.Value));
+                }
+            }
+            if (file.IsWorkflow)
+            {
+                foreach (var (index, name) in EnvBlockKeys(file.Lines))
+                {
+                    names.Add(($"{file.Relative}:{index + 1}", name));
+                }
+            }
         }
         return names;
     }
 
-    /// <summary>
-    /// Every match in the tracked files apart from <paramref name="skip"/>
-    /// and the matches <paramref name="allow"/> accepts for a path, as the
-    /// path, the line number and the text matched.
-    /// </summary>
-    private static List<string> FindInTrackedFiles(
-        Func<string, List<string>> find,
-        string skip,
-        Func<string, string, bool> allow = null)
-    {
-        var root = Repository.Root();
-        var found = new List<string>();
-        foreach (var relative in Repository.TrackedFiles(root))
-        {
-            if (relative == skip)
-            {
-                continue;
-            }
-            var path = Path.Combine(
-                root, relative.Replace('/', Path.DirectorySeparatorChar));
-            // A submodule is tracked as a directory, and its files belong to
-            // another repository.
-            if (!File.Exists(path))
-            {
-                continue;
-            }
-            var text = File.ReadAllText(path, Encoding.UTF8);
-            var lines = text.Split('\n');
-            for (var index = 0; index < lines.Length; index++)
-            {
-                foreach (var name in find(lines[index]))
-                {
-                    if (allow != null && allow(relative, name))
-                    {
-                        continue;
-                    }
-                    found.Add($"{relative}:{index + 1}: {name}");
-                }
-            }
-        }
-        return found;
-    }
-
     [TestMethod]
-    public void TheNameMatcherFindsOnlyNamesThatStartWithTheDigit()
+    public void TheReadMatcherFindsANameInEachLanguage()
     {
-        var digitInitial = DigitInitial + "DD_PATH";
-        var lower = digitInitial.ToLowerInvariant();
-        var line =
-            $"export {digitInitial}=a _{digitInitial}=b X{digitInitial} " +
-            $"{lower}=c";
+        CollectionAssert.AreEquivalent(
+            new[]
+            {
+                "MADE_UP_ONE", "MADE_UP_TWO", "MADE_UP_THREE",
+                "MADE_UP_FOUR", "MADE_UP_FIVE", "MADE_UP_SIX",
+                "MADE_UP_SEVEN", "MADE_UP_EIGHT", "MADE_UP_NINE",
+            },
+            NamesRead(
+                "Environment.GetEnvironmentVariable(\"MADE_UP_ONE\") " +
+                "[Environment]::SetEnvironmentVariable('MADE_UP_TWO', 1) " +
+                "start.Environment[\"MADE_UP_THREE\"] = key; " +
+                "const string KeyVariable = \"MADE_UP_FOUR\"; " +
+                "$env:MADE_UP_FIVE = 1; ${env:MADE_UP_SIX} " +
+                "Remove-Item Env:MADE_UP_SEVEN " +
+                "${{ env.MADE_UP_EIGHT }} $ENV{MADE_UP_NINE}"));
         CollectionAssert.AreEqual(
-            new[] { digitInitial, lower },
-            DigitInitialNames(line));
+            Array.Empty<string>(),
+            NamesRead(
+                "const string Header = \"MADE_UP\"; env: " +
+                "\"Env:$variable\" GetEnvironmentVariable(name)"));
     }
 
     [TestMethod]
-    public void TheOldNameMatcherFindsReadsAndSetsOnly()
+    public void TheEnvBlockKeysOfAWorkflowAreFound()
     {
+        var keys = EnvBlockKeys(new[]
+        {
+            "    steps:",
+            "      - name: A step",
+            "        env:",
+            "          MADE_UP_ONE: ${{ secrets.MADE_UP_ONE }}",
+            "          MADE_UP_TWO: value",
+            "        run: |",
+            "          echo done",
+            "        with:",
+            "          not-a-name: value",
+        });
+        CollectionAssert.AreEqual(
+            new[] { "MADE_UP_ONE", "MADE_UP_TWO" },
+            keys.Select(k => k.Name).ToArray());
+    }
+
+    [TestMethod]
+    public void TheFillMatcherFindsOnlyANameSetFromAnother()
+    {
+        var made = Prefix + "MADE_UP";
+        var other = Prefix + "OTHER";
         CollectionAssert.AreEqual(
             new[]
             {
-                "\"SUPER_RESOURCE_KEY",
-                "\"51D_RESOURCE_KEY",
-                "$env:FIFTYONE_TEST_FILTER",
-                "@{ FIFTYONE_CLOUD_ENDPOINT",
-                "LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR",
+                $"{made}: ${{{{ secrets.{other} }}}}",
+                $"{made}: ${{{{ vars.MADE_UP }}}}",
+                $"$env:{made} = $env:{other}",
             },
-            OldNames(
-                "GetEnvironmentVariable(\"SUPER_RESOURCE_KEY\") " +
-                "{ \"51D_RESOURCE_KEY\", " +
-                "$env:FIFTYONE_TEST_FILTER " +
-                "-ExampleEnv @{ FIFTYONE_CLOUD_ENDPOINT = 'x' } " +
-                "LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR"));
+            FillsFromAnotherName(
+                $"{made}: ${{{{ secrets.{other} }}}} " +
+                $"{made}: ${{{{ vars.MADE_UP }}}} " +
+                $"$env:{made} = $env:{other}"));
         CollectionAssert.AreEqual(
             Array.Empty<string>(),
-            OldNames(
-                "[\"RESOURCE_KEY\"] = ResourceKey {{RESOURCE_KEY}} " +
-                "\"_51DEGREES_RESOURCE_KEY\" \"RESOURCE_KEYS\" " +
-                "LICENSE_KEY_ENV_VAR resource_key=abc"));
+            FillsFromAnotherName(
+                $"{made}: ${{{{ secrets.{made} }}}} " +
+                $"{made}: ${{{{ vars.{made} }}}} " +
+                $"{made}: ${{{{ steps.login.outputs.KEY }}}} " +
+                $"TOOL_TOKEN: ${{{{ secrets.{made} }}}}"));
     }
 
     [TestMethod]
-    public void TheOldEndpointNameIsKeptOnlyInTheFilesThatHoldItsConstant()
+    public void TheWorkflowNameMatcherFindsOnlyNamesWithoutThePrefix()
     {
-        var quoted = "\"" + OldEndpointName;
-        foreach (var file in OldEndpointNameFiles)
+        CollectionAssert.AreEqual(
+            new[] { "secrets.MADE_UP", "vars.MADE_UP" },
+            OtherWorkflowNames(
+                "${{ secrets.MADE_UP }} ${{ vars.MADE_UP }} " +
+                $"${{{{ secrets.{Prefix}MADE_UP }}}} " +
+                $"${{{{ vars.{Prefix}MADE_UP }}}} " +
+                "${{ secrets.GITHUB_TOKEN }} secrets: inherit"));
+    }
+
+    [TestMethod]
+    public void TheNamesFileListsBothKinds()
+    {
+        var (ours, other) = ListedNames(new[]
         {
-            Assert.IsTrue(IsKeptOldEndpointName(file, quoted), file);
-            Assert.IsFalse(
-                IsKeptOldEndpointName(file, "\"RESOURCE_KEY"), file);
-            Assert.IsFalse(
-                IsKeptOldEndpointName(file, "$env:" + OldEndpointName),
-                file);
-        }
-        Assert.IsFalse(IsKeptOldEndpointName(
-            "pipeline/CloudRequestEngine/FlowElements/" +
-                "CloudRequestEngineBuilder.cs",
-            quoted));
-        Assert.IsFalse(IsKeptOldEndpointName(ThisFile, quoted));
+            "## Keys",
+            $"| `{Prefix}MADE_UP` | A key | Tests |",
+            "| Name | What it holds | Read by |",
+            OtherToolsHeading,
+            "| `MADE_UP` | A tool |",
+        });
+        CollectionAssert.AreEqual(new[] { Prefix + "MADE_UP" }, ours.ToArray());
+        CollectionAssert.AreEqual(new[] { "MADE_UP" }, other.ToArray());
+
+        var (listedOurs, listedOther) = Listed.Value;
+        Assert.IsTrue(listedOurs.Count > 0, "No 51Degrees name is listed.");
+        Assert.IsTrue(listedOther.Count > 0, "No other tool's name is listed.");
+        var wrongTable = listedOurs
+            .Where(n => !n.StartsWith(Prefix, StringComparison.Ordinal))
+            .Concat(listedOther
+                .Where(n => n.StartsWith(Prefix, StringComparison.Ordinal)))
+            .ToList();
+        Assert.AreEqual(
+            0,
+            wrongTable.Count,
+            $"These are in the wrong table of {NamesFile}: " +
+            string.Join(", ", wrongTable));
     }
 
     [TestMethod]
     public void NoFileNamesAVariableThatStartsWithADigit()
     {
-        var found = FindInTrackedFiles(
-            DigitInitialNames, null, IsKeptOldName);
+        var found = new List<string>();
+        foreach (var file in Files.Value)
+        {
+            for (var index = 0; index < file.Lines.Length; index++)
+            {
+                foreach (var name in DigitInitialNames(file.Lines[index]))
+                {
+                    found.Add($"{file.Relative}:{index + 1}: {name}");
+                }
+            }
+        }
         Assert.AreEqual(
             0,
             found.Count,
@@ -372,154 +569,80 @@ public class EnvironmentVariableNamesTests
     }
 
     [TestMethod]
-    public void TheOldKeyNamesAreFound()
+    public void EveryNameTheCodeReadsIsListed()
     {
-        CollectionAssert.AreEqual(
-            new[]
-            {
-                "$env:ACCEPTCH_BROWSER_KEY",
-                "\"DEVICEDETECTIONLICENSEKEY_DOTNET",
-                "\"RESOURCE_KEY_CLOUD_V5_BESPOKE",
-                "$env:PAID_RESOURCE_KEY",
-            },
-            OldNames(
-                "$env:ACCEPTCH_BROWSER_KEY = 1 " +
-                "GetEnvironmentVariable(\"DEVICEDETECTIONLICENSEKEY_DOTNET\") " +
-                "{ \"RESOURCE_KEY_CLOUD_V5_BESPOKE\", " +
-                "$env:PAID_RESOURCE_KEY = 2"));
-        Assert.IsTrue(IsKeptOldName(
-            ContractSuiteScript, "$env:" + ContractSuiteKeyName));
-        Assert.IsFalse(IsKeptOldName(
-            ContractSuiteScript, "$env:ACCEPTCH_NONE_KEY"));
+        var (ours, other) = Listed.Value;
+        var versions = VersionProperties.Value;
+        var found = CodeNames()
+            .Where(n => n.Name.StartsWith(Prefix, StringComparison.Ordinal)
+                ? !ours.Contains(n.Name) && !versions.Contains(n.Name)
+                : !other.Contains(n.Name))
+            .Select(n => $"{n.Where}: {n.Name}")
+            .ToList();
+        Assert.AreEqual(
+            0,
+            found.Count,
+            $"{found.Count} names are read or set that {NamesFile} does " +
+            $"not list. A name 51Degrees defines starts {Prefix} and is " +
+            "listed with what it holds, and another tool's name is listed " +
+            "in its last table:\n" + string.Join("\n", found));
     }
 
     [TestMethod]
-    public void TheWorkflowNameMatcherFindsOnlyOtherNames()
+    public void EveryListedNameIsUsed()
     {
-        CollectionAssert.AreEqual(
-            new[]
-            {
-                "secrets.DEVICE_DETECTION_KEY",
-                "vars._51DEGREES_RESOURCE_KEY_BASIC",
-            },
-            OtherWorkflowNames(
-                "${{ secrets.DEVICE_DETECTION_KEY }} " +
-                "${{ vars._51DEGREES_RESOURCE_KEY_BASIC }} " +
-                "${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }} " +
-                "${{ secrets.ACCESS_TOKEN }} secrets: inherit"));
+        var (ours, other) = Listed.Value;
+        var used = new HashSet<string>(
+            CodeNames().Select(n => n.Name), StringComparer.Ordinal);
+        var unused = ours.Concat(other).Where(n => !used.Contains(n)).ToList();
+        Assert.AreEqual(
+            0,
+            unused.Count,
+            $"{NamesFile} lists names nothing reads or sets, so each must " +
+            "go from the list: " + string.Join(", ", unused));
     }
 
     [TestMethod]
-    public void NoWorkflowNamesAnotherSecretOrAVariable()
+    public void EveryWorkflowReadsOnlyPrefixedSecretsAndVariables()
     {
-        var found = FindInTrackedFiles(
-            line => OtherWorkflowNames(line),
-            ThisFile,
-            (relative, _) => relative.StartsWith(
-                ".github/", StringComparison.Ordinal) == false);
+        var found = new List<string>();
+        foreach (var file in Files.Value.Where(f => f.IsWorkflow))
+        {
+            for (var index = 0; index < file.Lines.Length; index++)
+            {
+                foreach (var name in OtherWorkflowNames(file.Lines[index]))
+                {
+                    found.Add($"{file.Relative}:{index + 1}: {name}");
+                }
+            }
+        }
         Assert.AreEqual(
             0,
             found.Count,
             $"{found.Count} secrets or variables named in the workflows " +
-            "do not start _51DEGREES_, so each must be a _51DEGREES_ " +
-            "secret:\n" + string.Join("\n", found));
+            $"do not start {Prefix}:\n" + string.Join("\n", found));
     }
 
-    /// <summary>
-    /// A 51Did or Basic key that a workflow fills from a secret. A 51Did
-    /// license key reads only a sealed result made with a resource key of
-    /// its own account, and the Basic tier tests need a key on CloudV5Basic
-    /// alone, so each is filled from the secret of its own name and never
-    /// from another key.
-    /// </summary>
-    private static readonly Regex DidKeyFill = new Regex(
-        @"(?<![A-Za-z0-9_])(?<name>_51DEGREES_[A-Z_]*_51DID|" +
-        @"_51DEGREES_RESOURCE_KEY_BASIC)\s*:\s*" +
-        @"\$\{\{\s*secrets[.](?<secret>[A-Za-z0-9_]+)\s*\}\}",
-        RegexOptions.CultureInvariant);
-
-    /// <summary>
-    /// Each 51Did or Basic key the line fills from a secret of another name.
-    /// </summary>
-    private static List<string> DidKeysFilledFromAnotherSecret(string line)
+    [TestMethod]
+    public void NoNameIsFilledFromAnother()
     {
-        var fills = new List<string>();
-        foreach (Match match in DidKeyFill.Matches(line))
+        var found = new List<string>();
+        foreach (var file in Files.Value.Where(f =>
+            f.IsCode && f.Relative != ThisFile))
         {
-            if (match.Groups["name"].Value != match.Groups["secret"].Value)
+            for (var index = 0; index < file.Lines.Length; index++)
             {
-                fills.Add(match.Value);
+                foreach (var fill in FillsFromAnotherName(file.Lines[index]))
+                {
+                    found.Add($"{file.Relative}:{index + 1}: {fill}");
+                }
             }
         }
-        return fills;
-    }
-
-    [TestMethod]
-    public void TheDidKeyFillMatcherFindsOnlyAnotherSecret()
-    {
-        CollectionAssert.AreEqual(
-            new[]
-            {
-                "_51DEGREES_RESOURCE_KEY_51DID: " +
-                    "${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}",
-            },
-            DidKeysFilledFromAnotherSecret(
-                "_51DEGREES_RESOURCE_KEY_51DID: " +
-                    "${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}"));
-        CollectionAssert.AreEqual(
-            Array.Empty<string>(),
-            DidKeysFilledFromAnotherSecret(
-                "_51DEGREES_RESOURCE_KEY_51DID: " +
-                    "${{ secrets._51DEGREES_RESOURCE_KEY_51DID }}"));
-        CollectionAssert.AreEqual(
-            Array.Empty<string>(),
-            DidKeysFilledFromAnotherSecret(
-                "_51DEGREES_LICENSE_KEY_51DID: " +
-                    "${{ secrets._51DEGREES_LICENSE_KEY_51DID }}"));
-        CollectionAssert.AreEqual(
-            new[]
-            {
-                "_51DEGREES_RESOURCE_KEY_BASIC: " +
-                    "${{ secrets._51DEGREES_RESOURCE_KEY_FREE }}",
-            },
-            DidKeysFilledFromAnotherSecret(
-                "_51DEGREES_RESOURCE_KEY_BASIC: " +
-                    "${{ secrets._51DEGREES_RESOURCE_KEY_FREE }}"));
-        CollectionAssert.AreEqual(
-            Array.Empty<string>(),
-            DidKeysFilledFromAnotherSecret(
-                "_51DEGREES_RESOURCE_KEY_BASIC: " +
-                    "${{ secrets._51DEGREES_RESOURCE_KEY_BASIC }}"));
-    }
-
-    [TestMethod]
-    public void EveryWorkflowFillsADidKeyFromTheSecretOfItsName()
-    {
-        var found = FindInTrackedFiles(
-            DidKeysFilledFromAnotherSecret,
-            ThisFile,
-            (relative, _) => relative.StartsWith(
-                ".github/", StringComparison.Ordinal) == false);
         Assert.AreEqual(
             0,
             found.Count,
-            $"{found.Count} 51Did or Basic keys are filled from another " +
-            "secret. A 51Did license key reads only a result sealed with " +
-            "the 51Did resource key, and the Basic tier tests need a key " +
-            "on CloudV5Basic alone, so each must be filled from the secret " +
-            "of its own name:\n" + string.Join("\n", found));
-    }
-
-    [TestMethod]
-    public void NoFileReadsAnOldName()
-    {
-        var found = FindInTrackedFiles(
-            OldNames, ThisFile, IsKeptOldName);
-        Assert.AreEqual(
-            0,
-            found.Count,
-            $"{found.Count} old names are still read, set or held, so " +
-            "each must use its _51DEGREES_ name alone:\n" +
-            string.Join("\n", found));
+            $"{found.Count} {Prefix} names are filled from a secret, " +
+            "variable or environment variable of another name, where each " +
+            "must come from its own:\n" + string.Join("\n", found));
     }
 }

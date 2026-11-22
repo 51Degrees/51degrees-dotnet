@@ -12,7 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonTestHelpersVersion)" />
+    <!-- Reads the YAML evidence file, as the examples do. -->
+    <PackageReference Include="YamlDotNet" Version="16.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(_51DEGREES_COMMON_TEST_HELPERS_VERSION)" />
   </ItemGroup>
 
 </Project>

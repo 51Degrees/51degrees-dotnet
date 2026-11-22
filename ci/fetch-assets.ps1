@@ -15,7 +15,7 @@ $data = "$PSScriptRoot/../cxx/data"
 $deviceDetectionData = "$data/device-detection"
 $ipIntelligenceData = "$data/ip-intelligence"
 
-$assets = @("51Degrees-LiteV4.1.hash", "20000 Evidence Records.yml", "20000 User Agents.csv", "TAC-HashV41.hash")
+$assets = @("51Degrees-LiteV4.1.hash", "20000 Evidence Records.yml", "TAC-HashV41.hash")
 ./steps/fetch-assets.ps1 -Assets $assets
 foreach ($asset in $assets) {
     Copy-Item "assets/$asset" $deviceDetectionData
@@ -37,11 +37,10 @@ Copy-Item "assets/$asn" $ipIntelligenceData
 # the data repository saves it as.
 New-Item -ItemType SymbolicLink -Force -Target "$PWD/assets/$lite" -Path "$ipIntelligenceData/51Degrees-LiteV41.ipi"
 
-# The evidence files the IP Intelligence tests and examples read.
+# The evidence file the IP Intelligence tests and examples read.
 Push-Location $ipIntelligenceData
 try {
     ./evidence-gen.ps1 -v4 10000 -v6 10000
-    ./evidence-gen.ps1 -v4 10000 -v6 10000 -csv -path "evidence.csv"
 } finally {
     Pop-Location
 }

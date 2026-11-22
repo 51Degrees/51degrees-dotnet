@@ -84,18 +84,18 @@ foreach ($file in $FreeFiles) {
     Write-Host "Build log: $file is at $($found.FullName)"
 }
 
-# No settings means no resource key and no data file path, so every variable
-# a cloud site could read a key from, and every variable an on-premise site
-# could read a data file path from, is taken out for the sites and put back
-# after. Each on-premise site then finds the free data file beside the
-# repository, as it does from a fresh clone, and says what a paid file adds.
-$WithoutSettings = @('*RESOURCE_KEY*', '*DD_PATH*', '*IPI_PATH*', '*DATAFILE*')
+# No settings means no resource key and no data file path, so the variables
+# the sites read them from are taken out for the sites and put back after.
+# Each on-premise site then finds the free data file beside the repository,
+# as it does from a fresh clone, and says what a paid file adds.
+$WithoutSettings = @('_51DEGREES_RESOURCE_KEY', '_51DEGREES_DD_PATH', '_51DEGREES_IPI_PATH')
 $saved = @{}
-foreach ($variable in Get-ChildItem env: | Where-Object {
-        $name = $_.Name
-        @($WithoutSettings | Where-Object { $name -like $_ }).Count -gt 0 }) {
-    $saved[$variable.Name] = $variable.Value
-    Remove-Item "env:$($variable.Name)"
+foreach ($name in $WithoutSettings) {
+    $value = [Environment]::GetEnvironmentVariable($name)
+    if ($null -ne $value) {
+        $saved[$name] = $value
+        Remove-Item "env:$name"
+    }
 }
 
 $failed = @()

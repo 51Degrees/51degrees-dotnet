@@ -3,8 +3,8 @@
 #
 # Each test makes a folder holding empty files named as two example test
 # assemblies, puts a stand-in for dotnet first on the path that writes each
-# command line it is given to a file of its own, runs the script and reads
-# those files. The script runs assemblies in parallel, and on Windows two
+# command line it is given to a file of its own, named in the stand-in, runs
+# the script and reads those files. The script runs assemblies in parallel, and on Windows two
 # writers appending to one file can collide, which loses a command line.
 
 BeforeAll {
@@ -26,13 +26,13 @@ BeforeAll {
         # A PowerShell script rather than a batch file, because cmd would read
         # the '|' in a test filter as a pipe.
         Set-Content -LiteralPath (Join-Path $Tools 'dotnet.ps1') -Value (@(
-            'Set-Content -LiteralPath ($env:DOTNET_CALLS + "." + [Guid]::NewGuid()) -Value ($args -join " ")',
+            "Set-Content -LiteralPath ('$($Calls -replace "'", "''")' + '.' + [Guid]::NewGuid()) -Value (`$args -join ' ')",
             'exit 0') -join "`r`n")
     } else {
         $dotnet = Join-Path $Tools 'dotnet'
         Set-Content -LiteralPath $dotnet -Value (@(
             '#!/bin/sh',
-            'echo "$*" > "$DOTNET_CALLS.$$"',
+            "echo `"`$*`" > '$Calls'.`$`$",
             'exit 0') -join "`n")
         chmod +x $dotnet
     }
@@ -40,7 +40,6 @@ BeforeAll {
     $script:SavedPath = $env:PATH
     $script:SavedTestFilter = $env:_51DEGREES_TEST_FILTER
     $env:PATH = $Tools + [IO.Path]::PathSeparator + $env:PATH
-    $env:DOTNET_CALLS = $Calls
     Remove-Item Env:_51DEGREES_TEST_FILTER -ErrorAction SilentlyContinue
 
     # The command lines dotnet was given for the assembly named, none when
@@ -62,7 +61,6 @@ BeforeAll {
 AfterAll {
     $env:PATH = $SavedPath
     $env:_51DEGREES_TEST_FILTER = $SavedTestFilter
-    Remove-Item Env:DOTNET_CALLS -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force -LiteralPath $Root -ErrorAction SilentlyContinue
 }
 
@@ -96,18 +94,31 @@ Describe 'run-integration-tests.ps1' {
         $calls[0] | Should -Not -Match '--filter'
     }
 
-    It 'skips the Selenium contract naming _51DEGREES_RESOURCE_KEY when it is not set' {
-        $saved = $env:_51DEGREES_RESOURCE_KEY
-        Remove-Item Env:_51DEGREES_RESOURCE_KEY -ErrorAction SilentlyContinue
+    # The contract runs the cloud example with the key that carries every
+    # property, which the example reads as _51DEGREES_RESOURCE_KEY.
+    It 'skips the Selenium contract naming _51DEGREES_RESOURCE_KEY_BESPOKE when it is not set' {
+        $saved = $env:_51DEGREES_RESOURCE_KEY_BESPOKE
+        Remove-Item Env:_51DEGREES_RESOURCE_KEY_BESPOKE -ErrorAction SilentlyContinue
+        $env:_51DEGREES_RESOURCE_KEY = 'a customer key the contract must not use'
         Push-Location $Root
         try {
             $output = & $Script -RepoName $Repo -Depth 'standard' -SeleniumContract $true *>&1 |
                 Out-String
         } finally {
             Pop-Location
-            if ($null -ne $saved) { $env:_51DEGREES_RESOURCE_KEY = $saved }
+            Remove-Item Env:_51DEGREES_RESOURCE_KEY -ErrorAction SilentlyContinue
+            if ($null -ne $saved) { $env:_51DEGREES_RESOURCE_KEY_BESPOKE = $saved }
         }
 
-        $output | Should -Match '_51DEGREES_RESOURCE_KEY is not set'
+        $output | Should -Match '_51DEGREES_RESOURCE_KEY_BESPOKE is not set'
+    }
+
+    # The example takes the cloud address from the job, so a run against
+    # another cloud tests that cloud.
+    It 'leaves the cloud address of the example to the job' {
+        $text = Get-Content -Raw -LiteralPath $Script
+
+        $text | Should -Not -Match '_51DEGREES_CLOUD_ENDPOINT\s*='
+        $text | Should -Not -Match 'cloud\.51degrees\.com'
     }
 }

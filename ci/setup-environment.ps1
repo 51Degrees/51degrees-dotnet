@@ -3,8 +3,7 @@ param (
     [string]$Name = "Release_x64",
     [string]$Arch = "x64",
     [string]$Configuration = "Release",
-    [string]$BuildMethod = "dotnet",
-    [string]$StrongNameKeyBase64
+    [string]$BuildMethod = "dotnet"
 )
 $ErrorActionPreference = "Stop"
 
@@ -29,18 +28,12 @@ dotnet dev-certs https
 $env:_51DEGREES_DD_PATH = "$RepoPath/cxx/data/device-detection/TAC-HashV41.hash"
 $env:_51DEGREES_IPI_PATH = "$RepoPath/cxx/data/ip-intelligence/51Degrees-EnterpriseIpiV41.ipi"
 
-# The keys the tests and examples read are not set here. The shared
-# set-resource-keys step exports each one under its _51DEGREES_ name before
-# this script runs, _51DEGREES_RESOURCE_KEY and _51DEGREES_LICENSE_KEY among
-# them, and setting one here from an option would replace or clear it.
+# The keys are not set here. The shared workflow exports each secret under
+# its own _51DEGREES_ name before this script runs, and each test reads the
+# key it needs by that name.
 
 # A chromedriver on PATH is used even when it no longer matches the installed
 # Chrome, and the images ship ones that lag behind. Skipping PATH makes
 # Selenium Manager fetch a matching driver for the browser tests.
 $env:SE_SKIP_DRIVER_IN_PATH = "true"
 $env:SE_BROWSER_VERSION = "stable"
-
-# The strong name key, which the assemblies are signed with on CI.
-if ($StrongNameKeyBase64) {
-    [IO.File]::WriteAllBytes("$RepoPath/51Degrees.snk", [Convert]::FromBase64String($StrongNameKeyBase64))
-}

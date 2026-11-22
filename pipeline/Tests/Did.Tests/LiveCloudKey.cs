@@ -22,37 +22,37 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Linq;
 using System.Text.Json;
 
 namespace FiftyOne.Did.Tests;
 
 /// <summary>
-/// The 51Did resource key for the tests that call the live cloud service,
-/// the message they skip with when there is no key, and the messages they
-/// fail with when the cloud answers without what a test asked for. A
-/// skipped test names the variable, and never passes, because a cloud test
-/// that passes without calling the cloud has proved nothing.
+/// The resource key for the tests that call the live cloud service, read
+/// from the one environment variable a test names, the message they skip
+/// with when that variable is not set, and the messages they fail with
+/// when the cloud answers without what a test asked for. A skipped test
+/// names the variable, and never passes, because a cloud test that passes
+/// without calling the cloud has proved nothing.
 /// </summary>
 internal static class LiveCloudKey
 {
     /// <summary>
-    /// The environment variable the key is read from, the 51Did resource
-    /// key. The 51Did workflow sets it to each key in turn.
+    /// The 51Did resource key.
     /// </summary>
-    internal static readonly string[] Names =
-    {
-        "_51DEGREES_RESOURCE_KEY_51DID",
-    };
+    internal const string DidName = "_51DEGREES_RESOURCE_KEY_51DID";
 
     /// <summary>
-    /// The key from <see cref="Names"/>, or null when it is not set.
+    /// The resource key that carries every property.
     /// </summary>
-    private static string? FromEnvironment()
+    internal const string BespokeName = "_51DEGREES_RESOURCE_KEY_BESPOKE";
+
+    /// <summary>
+    /// The key from the variable, or null when it is not set.
+    /// </summary>
+    private static string? FromEnvironment(string name)
     {
-        return Names
-            .Select(n => Environment.GetEnvironmentVariable(n))
-            .FirstOrDefault(v => string.IsNullOrWhiteSpace(v) == false);
+        var value = Environment.GetEnvironmentVariable(name);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     private const string AccessiblePropertiesUrl =
@@ -62,19 +62,23 @@ internal static class LiveCloudKey
         "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=pipeline-tests-did.tests-livecloudkey.cs&utm_term=resource-key";
 
     /// <summary>
-    /// The key, skipping the test when <see cref="Names"/> is not set.
+    /// The key, skipping the test when the variable is not set.
     /// </summary>
+    /// <param name="name">The variable the key is read from.</param>
     /// <param name="product">The product the key has to carry.</param>
     /// <param name="asksFor">What the tests ask the service for.</param>
-    internal static string Require(string product, string asksFor)
+    internal static string Require(
+        string name,
+        string product,
+        string asksFor)
     {
-        var key = FromEnvironment();
+        var key = FromEnvironment(name);
         if (key == null)
         {
             Assert.Inconclusive(
                 "These tests call the live 51Degrees cloud service, so they " +
                 "need a resource key and there is nothing to fall back " +
-                $"on. {string.Join(", ", Names)} is not set. " +
+                $"on. {name} is not set. " +
                 $"The key has to carry the {product} product, " +
                 $"because these tests ask the service for {asksFor}. To see " +
                 "the products a key carries, open " +

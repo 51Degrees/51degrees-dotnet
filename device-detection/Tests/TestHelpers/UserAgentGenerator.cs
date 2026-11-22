@@ -26,18 +26,63 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using YamlDotNet.Core;
+using YamlDotNet.Core.Events;
+using YamlDotNet.Serialization;
 
 namespace FiftyOne.DeviceDetection.TestHelpers
 {
+    /// <summary>
+    /// User-Agents for the tests, read from a YAML evidence file such as
+    /// "20000 Evidence Records.yml".
+    /// </summary>
     public class UserAgentGenerator
     {
+        /// <summary>
+        /// The evidence key of a record's User-Agent.
+        /// </summary>
+        private const string UserAgentKey = "header.user-agent";
+
         private readonly string[] _userAgents;
 
         private Random _random = new Random();
 
-        public UserAgentGenerator(FileInfo userAgentFile)
+        /// <summary>
+        /// Reads the User-Agent of every record in the evidence file.
+        /// </summary>
+        /// <param name="evidenceFile">
+        /// A YAML file holding one record of evidence per document.
+        /// </param>
+        public UserAgentGenerator(FileInfo evidenceFile)
         {
-            _userAgents = File.ReadAllLines(userAgentFile.FullName);
+            _userAgents = ReadUserAgents(evidenceFile).ToArray();
+        }
+
+        /// <summary>
+        /// The User-Agent of each record, in the order of the file. A record
+        /// without one is left out.
+        /// </summary>
+        private static IEnumerable<string> ReadUserAgents(FileInfo evidenceFile)
+        {
+            var deserializer = new Deserializer();
+            using (var reader = File.OpenText(evidenceFile.FullName))
+            {
+                var parser = new Parser(reader);
+                parser.Consume<StreamStart>();
+                while (parser.TryConsume<DocumentStart>(out _))
+                {
+                    var record = deserializer
+                        .Deserialize<Dictionary<string, object>>(parser);
+                    if (record != null &&
+                        record.TryGetValue(UserAgentKey, out var value) &&
+                        value is string userAgent &&
+                        string.IsNullOrEmpty(userAgent) == false)
+                    {
+                        yield return userAgent;
+                    }
+                    parser.TryConsume<DocumentEnd>(out _);
+                }
+            }
         }
 
         /// <summary>

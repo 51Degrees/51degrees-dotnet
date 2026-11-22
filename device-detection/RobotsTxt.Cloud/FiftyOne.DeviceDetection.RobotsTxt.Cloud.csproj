@@ -24,7 +24,7 @@
     <NeutralLanguage>en</NeutralLanguage>
     <Configurations>Debug;Release</Configurations>
     <!-- GitHub CI -->
-    <BuiltOnCI>false</BuiltOnCI>
+    <_51DEGREES_BUILT_ON_CI>false</_51DEGREES_BUILT_ON_CI>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
@@ -45,7 +45,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineCloudRequestEngineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(_51DEGREES_PIPELINE_CLOUD_REQUEST_ENGINE_VERSION)" />
     <ProjectReference Include="..\RobotsTxt\FiftyOne.DeviceDetection.RobotsTxt.csproj" />
   </ItemGroup>
 

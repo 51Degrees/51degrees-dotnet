@@ -1,7 +1,8 @@
 name: CI script tests
 
 # Runs the Pester tests of the scripts in ci on Linux and Windows, where the
-# builds run them, with common-ci checked out for the release plan tests.
+# builds run them, with common-ci checked out beside the repository for the
+# release plan tests, which is where ci/packages.ps1 finds it.
 
 on:
   pull_request:
@@ -32,6 +33,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          path: repository
           fetch-depth: 0
           persist-credentials: false
 
@@ -39,13 +41,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: 51Degrees/common-ci
-          path: common-ci-checkout
+          path: common-ci
           persist-credentials: false
 
       - name: Run the tests
         shell: pwsh
-        env:
-          COMMON_CI: ${{ github.workspace }}/common-ci-checkout
+        working-directory: repository
         run: |
           $tests = Get-ChildItem ./ci -Filter *.Tests.ps1
           Invoke-Pester -Path $tests.FullName -CI -Output Detailed

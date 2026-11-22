@@ -20,43 +20,40 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+
 using FiftyOne.Did.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Reflection;
 
 namespace FiftyOne.Did.Tests
 {
     /// <summary>
     /// Tests that <see cref="DidClient"/> reads the cloud endpoint from its
-    /// environment variable, and that the old constant keeps its name and
-    /// value although the variable it names is no longer read. Nothing here
-    /// touches the network.
+    /// environment variable when it is given none. Nothing here touches the
+    /// network.
     /// </summary>
     [TestClass]
-    public class DidClientOldEndpointNameTests
+    public class DidClientEndpointTests
     {
         private const string Resource = "AQAAAresourcekey";
-        private const string NewName = "_51DEGREES_CLOUD_ENDPOINT";
-        private const string OldName = "FOD_CLOUD_API_URL";
-        private const string NewConstant = "CloudEndpointEnvironmentVariable";
-        private const string NewUrl = "https://new.example/api/v4/";
+        private const string Name = "_51DEGREES_CLOUD_ENDPOINT";
+        private const string Url = "https://new.example/api/v4/";
 
         private FakeHttpHandler _handler = null!;
-        private string? _previousNew;
+        private string? _previous;
 
         [TestInitialize]
         public void TestInitialize()
         {
             _handler = new FakeHttpHandler();
-            _previousNew = Environment.GetEnvironmentVariable(NewName);
-            Environment.SetEnvironmentVariable(NewName, null);
+            _previous = Environment.GetEnvironmentVariable(Name);
+            Environment.SetEnvironmentVariable(Name, null);
         }
 
         [TestCleanup]
         public void TestCleanup()
         {
-            Environment.SetEnvironmentVariable(NewName, _previousNew);
+            Environment.SetEnvironmentVariable(Name, _previous);
         }
 
         /// <summary>
@@ -67,22 +64,22 @@ namespace FiftyOne.Did.Tests
             new DidClient(Resource, null, null, _handler.Client);
 
         [TestMethod]
-        public void NewNameSet_GivesThatEndpoint()
+        public void NameSet_GivesThatEndpoint()
         {
-            Environment.SetEnvironmentVariable(NewName, NewUrl);
+            Environment.SetEnvironmentVariable(Name, Url);
 
             using var client = NewClient();
 
-            Assert.AreEqual(NewUrl, client.Endpoint);
+            Assert.AreEqual(Url, client.Endpoint);
         }
 
 #if NET9_0_OR_GREATER
         // .NET 8 deletes a variable that is set to an empty value, so an
         // empty value can only be set up from .NET 9.
         [TestMethod]
-        public void NewNameEmpty_GivesTheDefault()
+        public void NameEmpty_GivesTheDefault()
         {
-            Environment.SetEnvironmentVariable(NewName, string.Empty);
+            Environment.SetEnvironmentVariable(Name, string.Empty);
 
             using var client = NewClient();
 
@@ -91,7 +88,7 @@ namespace FiftyOne.Did.Tests
 #endif
 
         [TestMethod]
-        public void NewNameNotSet_GivesTheDefault()
+        public void NameNotSet_GivesTheDefault()
         {
             using var client = NewClient();
 
@@ -99,47 +96,15 @@ namespace FiftyOne.Did.Tests
         }
 
         [TestMethod]
-        public void EndpointGiven_WinsOverTheNewName()
+        public void EndpointGiven_WinsOverTheName()
         {
-            Environment.SetEnvironmentVariable(NewName, NewUrl);
+            Environment.SetEnvironmentVariable(Name, Url);
 
             using var client = new DidClient(
                 Resource, null, "https://given.example/api/v4/",
                 _handler.Client);
 
             Assert.AreEqual("https://given.example/api/v4/", client.Endpoint);
-        }
-
-        [TestMethod]
-        public void OldConstant_HoldsTheOldName()
-        {
-#pragma warning disable CS0618 // The deprecated constant is the subject.
-            Assert.AreEqual(OldName, DidClient.EndpointEnvironmentVariable);
-#pragma warning restore CS0618
-        }
-
-        [TestMethod]
-        public void NewConstant_HoldsTheNewName()
-        {
-            var field = typeof(DidClient).GetField(NewConstant);
-
-            Assert.IsNotNull(field, $"DidClient has no {NewConstant}.");
-            Assert.AreEqual(NewName, field.GetRawConstantValue());
-        }
-
-        [TestMethod]
-        public void OldConstant_IsObsoleteAndPointsAtTheNewOne()
-        {
-            var obsolete = typeof(DidClient)
-                .GetField("EndpointEnvironmentVariable")!
-                .GetCustomAttribute<ObsoleteAttribute>();
-
-            Assert.IsNotNull(
-                obsolete, "EndpointEnvironmentVariable is not obsolete.");
-            Assert.IsFalse(
-                obsolete.IsError,
-                "Code that uses the old constant must still compile.");
-            StringAssert.Contains(obsolete.Message, NewConstant);
         }
     }
 }

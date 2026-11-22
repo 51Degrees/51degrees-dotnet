@@ -197,9 +197,12 @@ Most runnable examples have an associated test. The exceptions, and why:
 
 The example tests are integration tests and need the same inputs the examples do:
 
-- **Cloud example tests** require a resource key in the `_51DEGREES_RESOURCE_KEY`
-  environment variable (see the [Cloud](#cloud) section). Without it these tests
-  fail with a message explaining how to obtain one.
+- **Cloud example tests** require a resource key that carries every property
+  in the `_51DEGREES_RESOURCE_KEY_BESPOKE` environment variable, and give it
+  to each example the way the example takes a key, as
+  `_51DEGREES_RESOURCE_KEY` for the examples that read the environment (see
+  the [Cloud](#cloud) section). Without it these tests are skipped, naming
+  the variable.
 - **On-premise example tests** require the enterprise IP Intelligence data file
   (located automatically, or via `_51DEGREES_IPI_PATH`) and the **Mixed** examples
   additionally require a device detection data file. When a required data file is

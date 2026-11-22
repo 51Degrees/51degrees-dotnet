@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 # package has its own version, see packages.ps1. Every package about to be
 # published goes through the shared steps/check-version-bump.ps1, run from the
 # common-ci root, which refuses a major or minor move unless
-# ALLOW_VERSION_BUMP is 'true'.
+# _51DEGREES_ALLOW_VERSION_BUMP is 'true'.
 #
 # A tagged package is compared with its own tags, which include the tag a
 # package continuing from its family's version is given in this checkout. A

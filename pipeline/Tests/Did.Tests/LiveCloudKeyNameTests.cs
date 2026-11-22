@@ -28,10 +28,10 @@ using System.Reflection;
 namespace FiftyOne.Did.Tests;
 
 /// <summary>
-/// The live 51Did tests read the 51Did resource key and the 51Did licence
-/// key by their own names, and nothing else. Without the resource key they
-/// skip, naming the variable, rather than fail. The tests change the
-/// environment of the whole process, so they run apart from the others.
+/// The live 51Did tests read each resource key and the 51Did licence key
+/// by their own names, and nothing else. Without the resource key a test
+/// names they skip, naming the variable, rather than fail. The tests change
+/// the environment of the whole process, so they run apart from the others.
 /// </summary>
 [TestClass]
 [DoNotParallelize]
@@ -84,6 +84,12 @@ public class LiveCloudKeyNameTests
     }
 
     /// <summary>
+    /// The 51Did resource key as the live tests read it.
+    /// </summary>
+    private static string Require() =>
+        LiveCloudKey.Require(ResourceKeyName, "FODid", "a 51Did");
+
+    /// <summary>
     /// The licence key as the redeem tests read it. The method is called
     /// by name, so a change to it fails this test and not the build.
     /// </summary>
@@ -99,7 +105,16 @@ public class LiveCloudKeyNameTests
     public void TheResourceKeyIsReadFromItsName()
     {
         Environment.SetEnvironmentVariable(ResourceKeyName, "51did");
-        Assert.AreEqual("51did", LiveCloudKey.Require("FODid", "a 51Did"));
+        Assert.AreEqual("51did", Require());
+    }
+
+    [TestMethod]
+    public void TheBespokeKeyIsReadFromItsName()
+    {
+        Environment.SetEnvironmentVariable(
+            "_51DEGREES_RESOURCE_KEY_BESPOKE", "bespoke");
+        Assert.AreEqual("bespoke", LiveCloudKey.Require(
+            "_51DEGREES_RESOURCE_KEY_BESPOKE", "FODid", "a 51Did"));
     }
 
     [TestMethod]
@@ -109,7 +124,7 @@ public class LiveCloudKeyNameTests
         {
             Environment.SetEnvironmentVariable(name, "other");
         }
-        var message = Skipped(() => LiveCloudKey.Require("FODid", "a 51Did"));
+        var message = Skipped(() => Require());
         Assert.IsNotNull(
             message,
             "A resource key under another name was used.");
@@ -118,7 +133,7 @@ public class LiveCloudKeyNameTests
     [TestMethod]
     public void WithoutTheResourceKeyTheTestIsSkippedNamingIt()
     {
-        var message = Skipped(() => LiveCloudKey.Require("FODid", "a 51Did"));
+        var message = Skipped(() => Require());
         Assert.IsNotNull(message, "The test was not skipped.");
         StringAssert.Contains(message, ResourceKeyName);
     }
