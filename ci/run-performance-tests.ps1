@@ -73,22 +73,22 @@ if (Test-Path $ipiFile) {
 }
 
 # The web overhead of the pipeline, measured with the shared httpbench script
-# against the device detection performance site. More than 200 ms a request
-# fails the run.
-if ($env:SKIP_WEB_PERFORMANCE -eq 'true') {
-    Write-Host "Skipping the web performance test (SKIP_WEB_PERFORMANCE)."
-    return
-}
+# against the device detection performance site, which reads its data file
+# from _51DEGREES_DD_PATH. httpbench sends the User-Agents of a file with one
+# on each line, so those of the evidence records are written to one. More
+# than 200 ms a request fails the run.
 Write-Host "::group::Web performance"
 $webProject = "$RepoPath/device-detection/performance-tests"
-$env:PipelineOptions__Elements__0__BuildParameters__DataFile = $env:_51DEGREES_DD_PATH
 dotnet build $webProject -c $Configuration "-p:Platform=$Arch" @references
+$userAgents = Join-Path ([IO.Path]::GetTempPath()) "user-agents-$([Guid]::NewGuid()).txt"
+& "$PSScriptRoot/evidence-user-agents.ps1" -EvidencePath $evidence -OutputPath $userAgents
 try {
     $server = dotnet "$webProject/bin/$Arch/$Configuration/net8.0/performance_tests.dll" &
-    $results = ./scripts/httpbench.ps1 -HostPort '127.0.0.1:5000' -Endpoint '/process' -CalibrateEndpoint '/calibrate' -UaFile 'assets/20000 User Agents.csv'
+    $results = ./scripts/httpbench.ps1 -HostPort '127.0.0.1:5000' -Endpoint '/process' -CalibrateEndpoint '/calibrate' -UaFile $userAgents
 } finally {
     Receive-Job $server
     Stop-Job $server
+    Remove-Item -LiteralPath $userAgents -ErrorAction SilentlyContinue
 }
 if ($results.overhead_ms -gt 200) {
     throw "Unacceptable request overhead: $($results.overhead_ms) ms"
