@@ -37,10 +37,9 @@ The scripts only ever move the patch number. A major or minor version moves
 only by a tag pushed by hand, such as `FiftyOne.Pipeline.Core/4.6.0`, after
 which the patch numbers follow it.
 
-`packages.Tests.ps1` checks `packages.json` and the version properties against the project files, and runs common-ci's release plan on a throwaway repository. It needs Pester 5 or later and, for the plan, a checkout of common-ci named by `COMMON_CI`, without which those tests are skipped. From the repository root:
+`packages.Tests.ps1` checks `packages.json` and the version properties against the project files, and runs common-ci's release plan on a throwaway repository. It needs Pester 5 or later and, for the plan, a checkout of common-ci in a folder named `common-ci` beside this repository, without which those tests are skipped. From the repository root:
 
 ```
-$env:COMMON_CI = '<a checkout of common-ci>'
 Invoke-Pester ci/packages.Tests.ps1, ci/release-plan-filter.Tests.ps1
 ```
 

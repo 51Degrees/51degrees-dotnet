@@ -3,7 +3,7 @@
 # Each test commits a change to a project file or nuspec in a throwaway git
 # repository tagged as a released package, and asks the filter which files
 # count. The last tests run common-ci's release plan with the filter, when
-# COMMON_CI names a checkout of common-ci that has steps/release-plan.ps1.
+# a checkout of common-ci beside this repository has steps/release-plan.ps1.
 
 BeforeAll {
     $script:Filter = Join-Path $PSScriptRoot 'release-plan-filter.ps1'
@@ -283,13 +283,13 @@ Describe 'A nuspec' {
 Describe 'With common-ci''s release plan' {
     BeforeDiscovery {
         # Only a release plan that calls a filter script can test this one.
-        $step = $env:COMMON_CI ? (Join-Path $env:COMMON_CI 'steps' 'release-plan.ps1') : $null
+        $step = Join-Path $PSScriptRoot '..' '..' 'common-ci' 'steps' 'release-plan.ps1'
         $script:HasStep = $step -and (Test-Path $step) -and
             (Select-String -Path $step -Pattern 'release-plan-filter.ps1' -Quiet)
     }
 
     BeforeAll {
-        $step = $env:COMMON_CI ? (Join-Path $env:COMMON_CI 'steps' 'release-plan.ps1') : $null
+        $step = Join-Path $PSScriptRoot '..' '..' 'common-ci' 'steps' 'release-plan.ps1'
         if ($step -and (Test-Path $step)) {
             . $step
         }
