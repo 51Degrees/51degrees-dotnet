@@ -492,8 +492,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
 
         /// <summary>
         /// The licence key from the environment, which is the value of
-        /// '_51DEGREES_LICENSE_KEY'. The name this example read before is not
-        /// read.
+        /// '_51DEGREES_LICENSE_KEY'.
         /// </summary>
         public static string LicenseKeyFromEnvironment()
         {
