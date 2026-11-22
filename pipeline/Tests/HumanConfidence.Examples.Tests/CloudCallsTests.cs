@@ -165,6 +165,25 @@ public class CloudCallsTests
     }
 
     [TestMethod]
+    public async Task Passive_ForAKeyOutsideBespoke_ReportsNoSourceRatherThanOne()
+    {
+        _handler.Enqueue(HttpStatusCode.OK,
+            "{\"derived\":{\"humanconfidence\":null," +
+            "\"humanconfidencenullreason\":\"HumanConfidence is a paid feature.\"," +
+            "\"humanconfidencesource\":null," +
+            "\"humanconfidencesourcenullreason\":" +
+            "\"HumanConfidenceSource is a paid feature.\"}}");
+
+        var answer = await _cloud.PassiveAsync(new Dictionary<string, string>());
+
+        Assert.IsNull(answer.Error);
+        Assert.IsNull(answer.Source,
+            "A key outside the Bespoke product gets no source, and none " +
+            "is made up.");
+        Assert.IsNull(answer.HumanConfidence);
+    }
+
+    [TestMethod]
     public async Task Passive_WithAnErrorStatus_ReportsTheStatus()
     {
         _handler.Enqueue(HttpStatusCode.Forbidden, "{\"errors\":[\"refused\"]}");
