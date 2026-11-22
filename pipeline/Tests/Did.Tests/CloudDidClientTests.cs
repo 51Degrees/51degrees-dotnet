@@ -41,8 +41,9 @@ namespace FiftyOne.Did.Tests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The resource key is found by <see cref="LiveCloudKey"/>, which skips
-    /// the tests when it is not set, and has to carry the FODid product.
+    /// The resource key is read from <c>_51DEGREES_RESOURCE_KEY_51DID</c>
+    /// by <see cref="LiveCloudKey"/>, which skips the tests when it is not
+    /// set, and has to carry the FODid product.
     /// <c>_51DEGREES_LICENSE_KEY_51DID</c> alone is read for the license
     /// key and is optional. When one is set it must belong to
     /// the resource key's account and carry the 51Did product, because a
@@ -100,6 +101,7 @@ namespace FiftyOne.Did.Tests
         private static DidClient Client() =>
             new DidClient(
                 LiveCloudKey.Require(
+                    LiveCloudKey.DidName,
                     "FODid",
                     "a non-marketing 51Did, which they verify and redeem"),
                 LicenceKey());
