@@ -6,10 +6,13 @@
     <Version Condition="'$(Version)' == ''">$(FiftyOneCachingVersion)</Version>
     <AssemblyVersion>4.5.0.0</AssemblyVersion>
 
+    <!-- The private key signs the assemblies when the key file is there,
+         which is only in the job that builds the packages. Every other
+         build public signs with the committed public key. -->
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile Condition="'$(BuiltOnCI)' != 'true'">$(FiftyOneRoot)51Degrees.publickey</AssemblyOriginatorKeyFile>
-    <AssemblyOriginatorKeyFile Condition="'$(BuiltOnCI)' == 'true'">$(FiftyOneRoot)51Degrees.snk</AssemblyOriginatorKeyFile>
-    <PublicSign Condition="'$(BuiltOnCI)' != 'true'">true</PublicSign>
-    <PublicSign Condition="'$(BuiltOnCI)' == 'true'">false</PublicSign>
+    <AssemblyOriginatorKeyFile Condition="!Exists('$(FiftyOneRoot)51Degrees.snk')">$(FiftyOneRoot)51Degrees.publickey</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile Condition="Exists('$(FiftyOneRoot)51Degrees.snk')">$(FiftyOneRoot)51Degrees.snk</AssemblyOriginatorKeyFile>
+    <PublicSign Condition="!Exists('$(FiftyOneRoot)51Degrees.snk')">true</PublicSign>
+    <PublicSign Condition="Exists('$(FiftyOneRoot)51Degrees.snk')">false</PublicSign>
   </PropertyGroup>
 </Project>
