@@ -71,7 +71,9 @@
 //                            defaults to https://cloud.51degrees.com/api/v4/
 //                            and is the same variable the cloud request
 //                            engine and DidClient honour
-//   PORT                     the port to listen on, defaults to 5151
+//   _51DEGREES_EXAMPLE_HTTP_PORTS
+//                            the ports to listen on, comma separated,
+//                            defaults to 5151
 //
 // See ../README.md for the flow and the copy-and-paste proof.
 using System.Security.Cryptography;
@@ -91,7 +93,15 @@ if (string.IsNullOrEmpty(resource))
     return 0;
 }
 var licence = Environment.GetEnvironmentVariable("_51DEGREES_LICENSE_KEY");
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5151";
+// The ports to listen on, read as the other 51Degrees web examples read
+// them.
+var portsSetting = Environment.GetEnvironmentVariable("_51DEGREES_EXAMPLE_HTTP_PORTS");
+var ports = string.IsNullOrWhiteSpace(portsSetting)
+    ? new[] { 5151 }
+    : portsSetting.Split(',')
+        .Select(p => int.Parse(
+            p.Trim(), System.Globalization.CultureInfo.InvariantCulture))
+        .ToArray();
 if (string.IsNullOrEmpty(licence))
 {
     // Only an account that holds licence keys needs one to redeem,
@@ -132,7 +142,7 @@ byte[] ReadCss() => File.ReadAllBytes(
 var builder = WebApplication.CreateBuilder(args);
 // The wildcard binding lets a second device open the copied link, which
 // is the demonstration that matters.
-builder.WebHost.UseUrls($"http://*:{port}");
+builder.WebHost.UseUrls(ports.Select(p => $"http://*:{p}").ToArray());
 var app = builder.Build();
 
 app.MapGet("/", () =>
@@ -161,6 +171,6 @@ app.MapGet("/redeem", async (
         answer.Body, answer.ContentType, statusCode: answer.StatusCode);
 });
 
-Console.WriteLine($"51Did demo on http://localhost:{port}/");
+Console.WriteLine($"51Did demo on http://localhost:{ports[0]}/");
 app.Run();
 return 0;
