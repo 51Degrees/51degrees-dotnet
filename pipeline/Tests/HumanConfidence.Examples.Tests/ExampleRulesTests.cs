@@ -57,6 +57,11 @@ public class ExampleRulesTests
     private const string Port = "5151";
 
     /// <summary>
+    /// The variable every web example reads the ports it listens on from.
+    /// </summary>
+    private const string PortsVariable = "_51DEGREES_EXAMPLE_HTTP_PORTS";
+
+    /// <summary>
     /// The port the example listened on before the rule.
     /// </summary>
     private const string OldPort = "5110";
@@ -137,11 +142,23 @@ public class ExampleRulesTests
     [TestMethod]
     public void TheServerListensOn5151ByDefault()
     {
+        var program = Text(Program);
         Assert.IsTrue(
-            Text(Program).Contains($"?? \"{Port}\"", StringComparison.Ordinal),
-            $"{Program} should listen on port {Port} when PORT is not set.");
+            program.Contains(
+                $"GetEnvironmentVariable(\"{PortsVariable}\")",
+                StringComparison.Ordinal),
+            $"{Program} should read the ports it listens on from " +
+            $"{PortsVariable}.");
         Assert.IsTrue(
-            Text(ReadMe).Contains($"localhost:{Port}", StringComparison.Ordinal),
+            program.Contains($"{{ {Port} }}", StringComparison.Ordinal),
+            $"{Program} should listen on port {Port} when {PortsVariable} " +
+            "is not set.");
+        var readMe = Text(ReadMe);
+        Assert.IsTrue(
+            readMe.Contains(PortsVariable, StringComparison.Ordinal),
+            $"{ReadMe} should document {PortsVariable}.");
+        Assert.IsTrue(
+            readMe.Contains($"localhost:{Port}", StringComparison.Ordinal),
             $"{ReadMe} should say the page is at localhost:{Port}.");
         var stale = SourceFiles()
             .Where(f => Text(f).Contains(OldPort, StringComparison.Ordinal))
