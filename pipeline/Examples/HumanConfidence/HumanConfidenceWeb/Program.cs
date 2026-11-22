@@ -26,6 +26,7 @@
 // Human Confidence says how likely it is that a person is looking at the
 // page. It comes in two ways, and this demo shows both. The cloud gives
 // the level, and this server only passes the evidence on and reads it.
+// The calls themselves are in HumanConfidenceCloud.cs.
 //
 // 1. Passive. This server asks the cloud itself, sending the visitor's
 //    request headers and IP address. HumanConfidenceSource is Passive and
@@ -54,8 +55,7 @@
 //   PORT                       the port to listen on, defaults to 5151
 //
 // See ../README.md for the steps and what to expect.
-using System.Net;
-using System.Text.Json;
+using Examples.HumanConfidence.HumanConfidenceWeb;
 
 var resource = Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
 if (string.IsNullOrWhiteSpace(resource))
@@ -77,14 +77,16 @@ if (string.IsNullOrWhiteSpace(license))
         + "without one, so the redeemed level will be unreadable.");
 }
 var endpoint = Environment.GetEnvironmentVariable("_51DEGREES_CLOUD_ENDPOINT");
-var api = (string.IsNullOrWhiteSpace(endpoint)
+var api = string.IsNullOrWhiteSpace(endpoint)
     ? "https://cloud.51degrees.com/api/v4/"
-    : endpoint.Trim()).TrimEnd('/') + "/";
+    : endpoint;
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5151";
 
 // One client for the process, with a short limit, so a slow cloud can't
 // hang the demo.
 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+var cloud = new HumanConfidenceCloud(http, api, resource, license);
+api = cloud.Api;
 
 // Whether the key carries HumanConfidence, asked once of the cloud's
 // accessibleproperties. A key without it gets no level, so the page says
@@ -93,47 +95,16 @@ using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
 // be asked, and the page is told which.
 const string ContactUs =
     "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-humanconfidence-humanconfidenceweb-program.cs&utm_term=human-confidence-not-in-key";
-string carries;
-try
+var carries = await cloud.CarriesHumanConfidenceAsync();
+if (carries == "unknown")
 {
-    using var properties = JsonDocument.Parse(await http.GetStringAsync(
-        api + "accessibleproperties?resource=" + resource));
-    var names = properties.RootElement.TryGetProperty("Products", out var products)
-        ? products.EnumerateObject()
-            .Where(p => p.Value.TryGetProperty("Properties", out _))
-            .SelectMany(p => p.Value.GetProperty("Properties").EnumerateArray())
-            .Select(p => Read(p, "Name"))
-        : [];
-    carries = names.Contains("HumanConfidence", StringComparer.OrdinalIgnoreCase)
-        ? "yes" : "no";
-}
-catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
-{
-    Console.WriteLine($"Couldn't check the Resource Key with {api}accessibleproperties: {ex.Message}");
-    carries = "unknown";
+    Console.WriteLine($"Couldn't check the Resource Key with {api}accessibleproperties.");
 }
 if (carries == "no")
 {
     Console.WriteLine(
         "The Resource Key doesn't carry HumanConfidence, so the page will "
         + "show no level. To add it, talk to 51Degrees at " + ContactUs);
-}
-
-// The request headers the cloud reads, from its own list, fetched once.
-// Only these are passed on, so headers such as Authorization stay here.
-HashSet<string>? headerNames = null;
-async Task<HashSet<string>> CloudHeaders()
-{
-    if (headerNames == null)
-    {
-        var keys = JsonSerializer.Deserialize<string[]>(
-            await http.GetStringAsync(api + "evidencekeys")) ?? [];
-        headerNames = keys
-            .Where(k => k.StartsWith("header.", StringComparison.OrdinalIgnoreCase))
-            .Select(k => k[7..].ToLowerInvariant())
-            .ToHashSet();
-    }
-    return headerNames;
 }
 
 // Read per request, so an edit to the page shows on the next load.
@@ -164,40 +135,26 @@ app.MapGet("/passive", async (HttpContext context) =>
 {
     try
     {
-        var names = await CloudHeaders();
-        var evidence = new Dictionary<string, string>();
-        foreach (var (name, value) in context.Request.Headers)
-        {
-            if (names.Contains(name.ToLowerInvariant()))
-            {
-                evidence[name.ToLowerInvariant()] = value.ToString();
-            }
-        }
         // Behind a load balancer or CDN, use the visitor's address it
-        // passes on. Set last, so no header can replace it.
-        var ip = context.Connection.RemoteIpAddress;
-        if (ip != null)
+        // passes on.
+        var evidence = await cloud.EvidenceAsync(
+            context.Request.Headers.Select(h =>
+                new KeyValuePair<string, string>(h.Key, h.Value.ToString())),
+            context.Connection.RemoteIpAddress);
+        var answer = await cloud.PassiveAsync(evidence);
+        if (answer.Error != null)
         {
-            evidence["client-ip"] = (ip.IsIPv4MappedToIPv6
-                ? ip.MapToIPv4() : ip).ToString();
+            return Results.Json(new { error = answer.Error });
         }
-        using var answer = await http.PostAsync(
-            api + resource + ".json", new FormUrlEncodedContent(evidence));
-        var body = await answer.Content.ReadAsStringAsync();
-        if (answer.IsSuccessStatusCode == false)
-        {
-            return Results.Json(new { error = $"HTTP {(int)answer.StatusCode}: {Trim(body)}" });
-        }
-        using var json = JsonDocument.Parse(body);
-        var derived = json.RootElement.TryGetProperty("derived", out var d) ? d : default;
         return Results.Json(new
         {
-            source = Read(derived, "humanconfidencesource"),
-            humanConfidence = Read(derived, "humanconfidence"),
+            source = answer.Source,
+            humanConfidence = answer.HumanConfidence,
         });
     }
-    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
     {
+        // The cloud's header list couldn't be read.
         return Results.Json(new { error = ex.Message });
     }
 });
@@ -207,37 +164,14 @@ app.MapGet("/passive", async (HttpContext context) =>
 app.MapPost("/redeem", async (HttpRequest request) =>
 {
     var form = await request.ReadFormAsync();
-    var value = form["value"].ToString();
-    var fields = new Dictionary<string, string> { ["value"] = value };
-    if (string.IsNullOrWhiteSpace(license) == false)
+    var answer = await cloud.RedeemAsync(form["value"].ToString());
+    if (answer.Error != null)
     {
-        fields["license"] = license;
+        return Results.Json(new { error = answer.Error }, statusCode: answer.StatusCode);
     }
-    try
-    {
-        using var answer = await http.PostAsync(
-            api + "hc/redeem", new FormUrlEncodedContent(fields));
-        var body = await answer.Content.ReadAsStringAsync();
-        if (answer.StatusCode == HttpStatusCode.NotFound)
-        {
-            return Results.Json(new { error = $"The service at {api} doesn't redeem Human Confidence." });
-        }
-        return Results.Content(body, "application/json", statusCode: (int)answer.StatusCode);
-    }
-    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-    {
-        return Results.Json(new { error = ex.Message }, statusCode: 502);
-    }
+    return Results.Content(answer.Body, "application/json", statusCode: answer.StatusCode);
 });
 
 Console.WriteLine($"Human Confidence demo on http://localhost:{port}/, using {api}");
 app.Run();
 return 0;
-
-static string? Read(JsonElement parent, string name) =>
-    parent.ValueKind == JsonValueKind.Object
-        && parent.TryGetProperty(name, out var value)
-        && value.ValueKind == JsonValueKind.String
-        ? value.GetString() : null;
-
-static string Trim(string text) => text.Length > 200 ? text[..200] : text;
