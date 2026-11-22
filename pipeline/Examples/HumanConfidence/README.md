@@ -12,15 +12,16 @@ browser.
 
 ## The flow
 
-The page shows three rows, one for each step.
+The page shows three rows, one for each step. At every step the cloud
+gives the level and the demo reads it. The demo passes the evidence on as
+it is and never works a level out itself.
 
 1. **Passive.** The server asks the cloud itself, sending the visitor's
    request headers and IP address. `HumanConfidenceSource` is `Passive` and
-   `HumanConfidence` is a plain level, `High`, `Medium`, or `Low`, worked
-   out from the request alone. On a first visit it's `Medium` at most,
-   because nothing has run in the browser yet. The server asks for it
-   rather than reading it from the page, because a level sent by a browser
-   can be forged.
+   `HumanConfidence` is a plain level, `High`, `Medium`, or `Low`, for the
+   request alone. On a first visit it's `Medium` at most, because nothing
+   has run in the browser yet. The server asks for it rather than reading
+   it from the page, because a level sent by a browser can be forged.
 2. **Active.** The page loads the 51Degrees client script. It runs the
    browser tests, which take a few seconds, and sends the answers to the
    cloud. When the script completes, `HumanConfidenceSource` is `Active` and
@@ -29,8 +30,8 @@ The page shows three rows, one for each step.
 3. **Redeem.** The page hands the sealed value to the server, which sends
    it to the cloud's `hc/redeem` with the account's License Key and gets the
    true level back. A sealed value redeems once, within ten seconds of the
-   tests. The page then offers to redeem the same value again, which
-   answers `replayed`.
+   tests. A later redeem answers `expired`. The page then offers to redeem
+   the same value again, which answers `replayed`.
 
 This is the same two-step pattern as the 51Did creator context check in
 `../Did`: the browser carries a result it can't read, and your server
@@ -41,7 +42,11 @@ redeems it.
 - **A Resource Key** for an account on the Pro or Bespoke plan (CloudV5Pro
   or CloudV5Bespoke), with the properties `HumanConfidence` and
   `HumanConfidenceSource`. The browser tests script comes with
-  `HumanConfidence` by itself, so you don't select it.
+  `HumanConfidence` by itself, so you don't select it. The server checks
+  the key with the cloud's `accessibleproperties` when it starts. A key
+  that doesn't carry `HumanConfidence` gets no level, so the page says so
+  and links to [contact us](https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-humanconfidence-readme.md&utm_term=human-confidence-not-in-key)
+  rather than asking the cloud for what the key doesn't carry.
 - **Leave the Resource Key's domain list empty,** or include `localhost`
   and the server's own address. The server calls the cloud with the same
   key, and a call from a server has no `Origin` header, so a key limited to
@@ -53,10 +58,10 @@ redeems it.
 
 | Variable | Meaning |
 | --- | --- |
-| `_51DEGREES_RESOURCE_KEY` | The Resource Key. Required. |
+| `_51DEGREES_RESOURCE_KEY` | The Resource Key. Required, and it has to carry `HumanConfidence`. |
 | `_51DEGREES_LICENSE_KEY` | A License Key of the same account. Server side only. Needed to redeem. |
 | `_51DEGREES_CLOUD_ENDPOINT` | Optional. The API base including the `/api/v4/` segment. It defaults to `https://cloud.51degrees.com/api/v4/`. Set it to `https://cloud-staging.51degrees.com/api/v4/` for staging. |
-| `PORT` | The port to listen on. It defaults to `5110`. |
+| `PORT` | The port to listen on. It defaults to `5151`. |
 
 ## How to run
 
@@ -76,36 +81,39 @@ export _51DEGREES_LICENSE_KEY="your License Key"
 dotnet run
 ```
 
-Then open `http://localhost:5110/` in a browser. To use staging, also set
+Then open `http://localhost:5151/` in a browser. To use staging, also set
 `_51DEGREES_CLOUD_ENDPOINT` to `https://cloud-staging.51degrees.com/api/v4/`
 before `dotnet run`.
 
 ## What you should see
 
-In a current Chrome or Edge on a genuine computer or phone:
+In a current browser:
 
 1. The first row shows `Passive` and a level, `Medium` at most.
 2. After a few seconds, the second row shows `Active` and a sealed value.
-3. The third row shows the level the server redeemed, usually `High`.
+3. The third row shows the level the server redeemed.
 4. **Redeem the same value again** shows `replayed`.
 
 If the second row stays `Passive`, the browser tests didn't run. The cloud
 you're using may not have the tests yet, or the Resource Key may not
 include `HumanConfidenceSource`.
 
-## What changes the result
-
-- **The browser.** Current Chrome and Edge on a genuine device reach `High`.
-  Firefox often gets `Medium`.
-- **TLS inspection.** Some antivirus software and corporate networks
-  inspect TLS and replace the browser's own connection details. That stops
-  `High`, so expect `Medium` from such a computer.
-- **Headless and automated browsers** get `Low`.
-- **Waiting.** A sealed value redeemed more than ten seconds after the tests
-  answers `expired`.
+If the page says the Resource Key doesn't carry Human Confidence, the
+cloud lists no such property for the key. The page links to contact us,
+where 51Degrees can add it to the account.
 
 ## What a run costs
 
 Every call to the cloud is one use against the subscription behind the
 keys. A page load makes several: the server's passive call, the client
-script's calls, and the redeem.
+script's calls, and the redeem. The server's check of the key at start-up
+is one more, made once.
+
+## Tests
+
+`../../Tests/HumanConfidence.Examples.Tests` runs the example with no
+Resource Key, reads these files for the rules every Human Confidence web
+example keeps, and, with a key in `_51DEGREES_RESOURCE_KEY` or
+`_51DEGREES_RESOURCE_KEY_BESPOKE`, asks the live cloud whether the key
+carries `HumanConfidence` and for a passive level. Without a key the live
+tests skip and name the variables.

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <!-- Human Confidence demo page.
      Served by the small server beside this file, which puts in the
-     Resource Key and the cloud address, and holds the License Key server
-     side. Styling is the 51Degrees example design system, vendored beside
-     this page as the 51Did demo vendors it. -->
+     Resource Key, the cloud address and whether the key carries Human
+     Confidence, and holds the License Key server side. Styling is the
+     51Degrees example design system, vendored beside this page as the
+     51Did demo vendors it. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -18,6 +19,12 @@
   person is looking at it. The server asks the cloud from the request
   alone first. Then your browser runs the 51Degrees browser tests, and the
   server redeems the sealed result. The License Key stays on the server.</p>
+
+  <p class="c-eg-page__lead" id="no-property" style="display: none">
+    The Resource Key this page runs with does not carry Human Confidence,
+    so the cloud gives it no level and the steps below are not asked.
+    <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-humanconfidence-humanconfidenceweb-page.html&amp;utm_term=human-confidence-not-in-key">Talk to 51Degrees about adding Human Confidence to your account</a>.
+  </p>
 
   <table class="c-eg-table">
     <thead class="c-eg-table__head">
@@ -59,6 +66,18 @@
   </p>
 
   <p class="c-eg-page__lead" id="note"></p>
+
+  <hr>
+  <h3 class="c-eg-page__heading">Find out more</h3>
+  <ul>
+    <li><a href="https://51degrees.com/documentation/_human_confidence__index.html?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-humanconfidence-humanconfidenceweb-page.html&amp;utm_term=find-out-more">What Human Confidence is, and how a site uses the passive and active levels</a></li>
+    <li><a href="https://51degrees.com/bots-and-humans?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-humanconfidence-humanconfidenceweb-page.html&amp;utm_term=find-out-more">Telling bots and humans apart with 51Degrees</a></li>
+    <li><a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-humanconfidence-humanconfidenceweb-page.html&amp;utm_term=find-out-more">Talk to 51Degrees about using Human Confidence</a></li>
+  </ul>
+  <p class="c-eg-page__lead">The source of this demo and of the code it runs on.</p>
+  <ul>
+    <li><a href="https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline">https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline</a></li>
+  </ul>
 </div>
 
 <script>
@@ -67,6 +86,9 @@
   var RESOURCE = "__RESOURCE__";
   // The cloud API base ending in /api/v4/, as the server read it.
   var API = "__API__";
+  // Whether the key carries Human Confidence, as the server checked it
+  // with accessibleproperties: "yes", "no", or "unknown".
+  var CARRIES = "__CARRIES__";
 
   var PASS = "c-eg-status c-eg-status--pass";
   var FAIL = "c-eg-status c-eg-status--fail";
@@ -82,6 +104,17 @@
   function levelClass(level) {
     return level === "High" ? PASS : level === "Low" ? FAIL
       : level === "Medium" ? PART : NONE;
+  }
+
+  // A key without the property gets no level, so the page says so, links
+  // to contact us, and asks the cloud for nothing.
+  if (CARRIES === "no") {
+    document.getElementById("no-property").style.display = "";
+    ["passive-source", "passive-level", "active-source", "active-value",
+      "redeem-detail", "redeem-level"].forEach(function (id) {
+      show(id, "not asked", NONE);
+    });
+    return;
   }
 
   var started = Date.now();

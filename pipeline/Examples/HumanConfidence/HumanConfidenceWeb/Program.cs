@@ -21,16 +21,17 @@
  * ********************************************************************* */
 
 // Human Confidence demo server. ASP.NET Core minimal API. Run:
-//   dotnet run    then open http://localhost:5110/
+//   dotnet run    then open http://localhost:5151/
 //
 // Human Confidence says how likely it is that a person is looking at the
-// page. It comes in two ways, and this demo shows both.
+// page. It comes in two ways, and this demo shows both. The cloud gives
+// the level, and this server only passes the evidence on and reads it.
 //
 // 1. Passive. This server asks the cloud itself, sending the visitor's
 //    request headers and IP address. HumanConfidenceSource is Passive and
-//    HumanConfidence is a plain level, worked out from the request alone.
-//    The server asks for it rather than reading it from the page, because
-//    a level a browser sends can be forged.
+//    HumanConfidence is a plain level for the request alone. The server
+//    asks for it rather than reading it from the page, because a level a
+//    browser sends can be forged.
 // 2. Active. The page loads the 51Degrees client script, which runs the
 //    browser tests and sends the answers to the cloud. When the script
 //    completes, HumanConfidenceSource is Active and HumanConfidence holds
@@ -42,13 +43,15 @@
 //    never sees.
 //
 // Environment variables:
-//   _51DEGREES_RESOURCE_KEY    the Resource Key, required
+//   _51DEGREES_RESOURCE_KEY    the Resource Key, required. It has to carry
+//                              HumanConfidence, which this server checks
+//                              with accessibleproperties at start-up.
 //   _51DEGREES_LICENSE_KEY     a License Key of the same account, required
 //                              to redeem
 //   _51DEGREES_CLOUD_ENDPOINT  the API base including the /api/v4/
 //                              segment, defaults to
 //                              https://cloud.51degrees.com/api/v4/
-//   PORT                       the port to listen on, defaults to 5110
+//   PORT                       the port to listen on, defaults to 5151
 //
 // See ../README.md for the steps and what to expect.
 using System.Net;
@@ -57,9 +60,13 @@ using System.Text.Json;
 var resource = Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
 if (string.IsNullOrWhiteSpace(resource))
 {
-    Console.Error.WriteLine(
-        "Set _51DEGREES_RESOURCE_KEY to the Resource Key of the page.");
-    return 1;
+    // A fresh clone has no key, so this says where to create one and
+    // ends without a server.
+    Console.WriteLine(
+        "Set _51DEGREES_RESOURCE_KEY to the Resource Key of the page. "
+        + "A resource key can be created at "
+        + "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-humanconfidence-humanconfidenceweb-program.cs&utm_term=resource-key-required");
+    return 0;
 }
 var license = Environment.GetEnvironmentVariable("_51DEGREES_LICENSE_KEY");
 if (string.IsNullOrWhiteSpace(license))
@@ -73,11 +80,44 @@ var endpoint = Environment.GetEnvironmentVariable("_51DEGREES_CLOUD_ENDPOINT");
 var api = (string.IsNullOrWhiteSpace(endpoint)
     ? "https://cloud.51degrees.com/api/v4/"
     : endpoint.Trim()).TrimEnd('/') + "/";
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5110";
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5151";
 
 // One client for the process, with a short limit, so a slow cloud can't
 // hang the demo.
 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+
+// Whether the key carries HumanConfidence, asked once of the cloud's
+// accessibleproperties. A key without it gets no level, so the page says
+// so and links to contact us rather than asking for what the key doesn't
+// carry. The answer is "yes", "no", or "unknown" when the cloud couldn't
+// be asked, and the page is told which.
+const string ContactUs =
+    "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-humanconfidence-humanconfidenceweb-program.cs&utm_term=human-confidence-not-in-key";
+string carries;
+try
+{
+    using var properties = JsonDocument.Parse(await http.GetStringAsync(
+        api + "accessibleproperties?resource=" + resource));
+    var names = properties.RootElement.TryGetProperty("Products", out var products)
+        ? products.EnumerateObject()
+            .Where(p => p.Value.TryGetProperty("Properties", out _))
+            .SelectMany(p => p.Value.GetProperty("Properties").EnumerateArray())
+            .Select(p => Read(p, "Name"))
+        : [];
+    carries = names.Contains("HumanConfidence", StringComparer.OrdinalIgnoreCase)
+        ? "yes" : "no";
+}
+catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+{
+    Console.WriteLine($"Couldn't check the Resource Key with {api}accessibleproperties: {ex.Message}");
+    carries = "unknown";
+}
+if (carries == "no")
+{
+    Console.WriteLine(
+        "The Resource Key doesn't carry HumanConfidence, so the page will "
+        + "show no level. To add it, talk to 51Degrees at " + ContactUs);
+}
 
 // The request headers the cloud reads, from its own list, fetched once.
 // Only these are passed on, so headers such as Authorization stay here.
@@ -111,7 +151,8 @@ app.MapGet("/", (HttpResponse response) =>
     // The page must never come from a cache, as each load runs the tests.
     response.Headers.CacheControl = "no-store";
     return Results.Content(
-        ReadPage().Replace("__RESOURCE__", resource).Replace("__API__", api),
+        ReadPage().Replace("__RESOURCE__", resource).Replace("__API__", api)
+            .Replace("__CARRIES__", carries),
         "text/html; charset=utf-8");
 });
 
