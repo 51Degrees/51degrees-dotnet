@@ -111,7 +111,7 @@ A project here that uses a package built in another folder of this repository,
 for example Device Detection using `FiftyOne.Pipeline.Engines`, declares that
 once as a `FiftyOneReference` item, and a property chooses what it becomes:
 
-| `FiftyOneReferences` | The reference | When |
+| `_51DEGREES_REFERENCES` | The reference | When |
 | --- | --- | --- |
 | `Package` | A `PackageReference` to the published package, at the version in `Directory.Build.props` | The default, so a checkout builds the way a consumer's project does, and the examples show how the packages are used |
 | `Project` | A `ProjectReference` to the project next to it | A change that crosses packages, which is how CI builds and tests the repository |
@@ -119,7 +119,7 @@ once as a `FiftyOneReference` item, and a property chooses what it becomes:
 Choose project references with any of these, the first that is set wins:
 
 ```
-dotnet build FiftyOne.slnx -p:FiftyOneReferences=Project
+dotnet build FiftyOne.slnx -p:_51DEGREES_REFERENCES=Project
 ```
 
 a `Directory.Build.local.props` file next to this README, which is not
@@ -128,12 +128,12 @@ committed:
 ```xml
 <Project>
   <PropertyGroup>
-    <FiftyOneReferences>Project</FiftyOneReferences>
+    <_51DEGREES_REFERENCES>Project</_51DEGREES_REFERENCES>
   </PropertyGroup>
 </Project>
 ```
 
-or the `FiftyOneReferences` environment variable. `Directory.Build.props` and
+or the `_51DEGREES_REFERENCES` environment variable. `Directory.Build.props` and
 `Directory.Build.targets` at the root hold the rule.
 
 ## Tests

@@ -43,9 +43,9 @@ try {
         $solution = ($BuildMethod -eq "msbuild") ? $examples.Framework : $examples.Path
         Write-Host "::group::Building $solution against the packages"
         if ($BuildMethod -eq "msbuild") {
-            msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$(Get-SolutionPlatform $examples $Arch)" "-p:FiftyOneReferences=Package" "-p:BuiltOnCI=true" @properties
+            msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$(Get-SolutionPlatform $examples $Arch)" "-p:_51DEGREES_REFERENCES=Package" "-p:BuiltOnCI=true" @properties
         } else {
-            dotnet build $solution -c $Configuration -p:FiftyOneReferences=Package -p:BuiltOnCI=true @properties @platform
+            dotnet build $solution -c $Configuration -p:_51DEGREES_REFERENCES=Package -p:BuiltOnCI=true @properties @platform
         }
         Write-Host "::endgroup::"
     }

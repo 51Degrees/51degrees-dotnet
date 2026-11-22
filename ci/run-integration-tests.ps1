@@ -148,7 +148,7 @@ function Invoke-ContractTests {
 # has already built, so nothing is rebuilt here. Building the cloud example
 # as Release on a Debug job rebuilt the pipeline projects in Release while
 # an MSBuild node from the earlier build still held their output.
-$references = $Version ? @() : @("-p:FiftyOneReferences=Project")
+$references = $Version ? @() : @("-p:_51DEGREES_REFERENCES=Project")
 $failed = @()
 $cloudProject = "$RepoName/examples/device-detection/Cloud/GettingStarted-Web"
 $onPremiseProject = "$RepoName/examples/device-detection/OnPremise/GettingStarted-Web"

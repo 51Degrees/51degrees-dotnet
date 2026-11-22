@@ -13,7 +13,7 @@ $PSNativeCommandUseErrorActionPreference = $true
 # Every folder is built against the projects next to it, so a change that
 # crosses packages is built and tested together. Package mode is what a
 # checkout and the examples use, and what install-package.ps1 tests.
-$common = @("-p:FiftyOneReferences=Project", "-p:BuiltOnCI=true", "-c", $Configuration)
+$common = @("-p:_51DEGREES_REFERENCES=Project", "-p:BuiltOnCI=true", "-c", $Configuration)
 
 Push-Location $RepoName
 try {
@@ -32,7 +32,7 @@ try {
         if ($BuildMethod -eq "msbuild" -and $family.Framework) {
             foreach ($solution in $family.Framework) {
                 Write-Host "::group::Building $solution with msbuild"
-                msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$(Get-SolutionPlatform $family $Arch)" "-p:FiftyOneReferences=Project" "-p:BuiltOnCI=true"
+                msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$(Get-SolutionPlatform $family $Arch)" "-p:_51DEGREES_REFERENCES=Project" "-p:BuiltOnCI=true"
                 Write-Host "::endgroup::"
             }
         }
@@ -46,7 +46,7 @@ try {
         $solution = ($BuildMethod -eq "msbuild") ? $examples.Framework : $examples.Path
         Write-Host "::group::Building $solution"
         if ($BuildMethod -eq "msbuild") {
-            msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$(Get-SolutionPlatform $examples $Arch)" "-p:FiftyOneReferences=Project" "-p:BuiltOnCI=true"
+            msbuild $solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=$(Get-SolutionPlatform $examples $Arch)" "-p:_51DEGREES_REFERENCES=Project" "-p:BuiltOnCI=true"
         } else {
             dotnet build $solution @common @platform
         }

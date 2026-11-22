@@ -34,6 +34,17 @@ that is read or set and is not in the last table.
 | `_51DEGREES_TEST_FILTER` | A pattern of the test assemblies the CI scripts run | Every test assembly |
 | `_51DEGREES_ALLOW_VERSION_BUMP` | `true` to let a publish move a package's major or minor number, read by common-ci's version check | The move is refused |
 
+## Build options
+
+MSBuild reads these as properties, given as `-p:<name>=<value>`, in a
+`Directory.Build.local.props` file beside the root `Directory.Build.props`, or
+as environment variables. Each package's version is a build option too, named
+`_51DEGREES_<package>_VERSION` in the root `Directory.Build.props` and listed
+in `ci/packages.json`.
+
+| Name | What it holds | Default when it is not set |
+| --- | --- | --- |
+| `_51DEGREES_REFERENCES` | `Project` to build against the projects of the other folders, `Package` to build against the published packages | `Package` |
 ## Secrets only CI reads
 
 | Name | What it holds | Read by |

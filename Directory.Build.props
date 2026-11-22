@@ -32,13 +32,13 @@
 
     Choose with any of these, the first that is set wins:
 
-      dotnet build -p:FiftyOneReferences=Project
+      dotnet build -p:_51DEGREES_REFERENCES=Project
       a Directory.Build.local.props file next to this one holding
-        <Project><PropertyGroup><FiftyOneReferences>Project</FiftyOneReferences></PropertyGroup></Project>
-      the FiftyOneReferences environment variable
+        <Project><PropertyGroup><_51DEGREES_REFERENCES>Project</_51DEGREES_REFERENCES></PropertyGroup></Project>
+      the _51DEGREES_REFERENCES environment variable
   -->
   <PropertyGroup>
-    <FiftyOneReferences Condition="'$(FiftyOneReferences)' == ''">Package</FiftyOneReferences>
+    <_51DEGREES_REFERENCES Condition="'$(_51DEGREES_REFERENCES)' == ''">Package</_51DEGREES_REFERENCES>
   </PropertyGroup>
 
   <!--

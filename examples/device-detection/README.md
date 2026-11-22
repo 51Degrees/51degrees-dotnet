@@ -63,13 +63,13 @@ packages in this repository and then use these examples to observe the
 results of the change.
 
 By default, the examples use the packages published to NuGet. To build them
-against the projects in this repository instead, set `FiftyOneReferences`
+against the projects in this repository instead, set `_51DEGREES_REFERENCES`
 to `Project`, as the
 [root README](../../README.md#package-and-project-references) describes,
 for example from the root of the repository:
 
 ```
-dotnet build FiftyOne.slnx -p:FiftyOneReferences=Project
+dotnet build FiftyOne.slnx -p:_51DEGREES_REFERENCES=Project
 ```
 
 The tables below describe the examples available in this repository.

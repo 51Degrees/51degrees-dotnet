@@ -15,7 +15,7 @@ to show, because its data file is about 35 MB. IP Intelligence's on-premise
 about 460 MB, so run it second.
 
 The examples build against the published NuGet packages unless
-`FiftyOneReferences` is set to `Project` (see
+`_51DEGREES_REFERENCES` is set to `Project` (see
 [References between the folders](#references-between-the-folders)). Those
 packages carry the native engines, so running an example needs no C or C++
 compiler and no CMake.
@@ -184,7 +184,7 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   find a device detection data file` and asks for
   `git submodule update --init --recursive`, which fetches them. A zip
   download of the repository has no submodules, so clone with Git.
-- **Project references.** `-p:FiftyOneReferences=Project`, which CI uses,
+- **Project references.** `-p:_51DEGREES_REFERENCES=Project`, which CI uses,
   builds the native engines from `cxx`. That needs CMake 3.24 or later, a
   C++17 compiler, PowerShell 7 and a platform such as `-p:Platform=x64`, as
   the README says. It is not needed to run the examples.
@@ -223,7 +223,7 @@ fails on a name the list does not have.
 A project that uses a package built in another folder declares a
 `FiftyOneReference` item, not a `PackageReference` or a `ProjectReference`.
 The root `Directory.Build.targets` turns it into one or the other from the
-`FiftyOneReferences` property, which defaults to `Package`. CI builds and
+`_51DEGREES_REFERENCES` property, which defaults to `Package`. CI builds and
 tests with `Project`, so a change that crosses folders is tested together.
 When a package's dependency changes, change the item, and when a version
 changes, change the package's `FiftyOne*Version` property in the root

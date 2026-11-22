@@ -118,7 +118,7 @@
     mode each is declared here as well. In Package mode NuGet brings them
     in already, and declaring them again conflicts with those versions.
   -->
-  <ItemGroup Condition="'$(FiftyOneReferences)' == 'Project'">
+  <ItemGroup Condition="'$(_51DEGREES_REFERENCES)' == 'Project'">
     <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\..\caching\Caching\FiftyOne.Caching.csproj" Version="$(FiftyOneCachingVersion)" />
     <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\..\common\Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
     <FiftyOneReference Include="FiftyOne.Common.TestHelpers" ProjectPath="..\..\..\common\TestHelpers\FiftyOne.Common.TestHelpers.csproj" Version="$(FiftyOneCommonTestHelpersVersion)" />
