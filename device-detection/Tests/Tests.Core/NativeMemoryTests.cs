@@ -59,7 +59,7 @@ public class NativeMemoryTests
     private const int UserAgentCount = 100;
 
     private static readonly string[] UserAgents = new UserAgentGenerator(
-            TestHelpers.Utils.GetFilePath(Constants.UA_FILE_NAME))
+            TestHelpers.Utils.GetFilePath(Constants.EVIDENCE_FILE_NAME))
         .GetRandomUserAgents(UserAgentCount)
         .ToArray();
 

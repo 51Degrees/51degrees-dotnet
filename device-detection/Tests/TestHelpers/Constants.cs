@@ -28,7 +28,10 @@ namespace FiftyOne.DeviceDetection.TestHelpers
         public const string TAC_HASH_DATA_FILE_NAME = "TAC-HashV41.hash";
         public const string ENTERPRISE_HASH_DATA_FILE_NAME = "Enterprise-HashV41.hash";
         public const string LITE_HASH_DATA_FILE_NAME = "51Degrees-LiteV4.1.hash";
-        public const string UA_FILE_NAME = "20000 User Agents.csv";
+        /// <summary>
+        /// The YAML evidence file the tests read their User-Agents from.
+        /// </summary>
+        public const string EVIDENCE_FILE_NAME = "20000 Evidence Records.yml";
 
         public static string[] ExcludedProperties = { "JavascriptImageOptimiser" };
 
