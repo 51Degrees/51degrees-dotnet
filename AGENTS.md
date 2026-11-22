@@ -211,17 +211,13 @@ a paid subscription. The IP Intelligence cloud example reads its key from
 
 ## Environment variable names
 
-[common-ci's list of environment variable names](https://github.com/51Degrees/common-ci/blob/d8a9c596eabf69dd5581a08e9360cdd1c9b3d9e8/environment-variables.md)
-holds every environment variable name that the packages, tests, examples and
-CI scripts of every language read, with what each name holds and the
-deprecated names each replaced. The list decides. Use the names it gives, and
-when a change needs a new name, or reads an old name again, change
-[`environment-variables.json`](https://github.com/51Degrees/common-ci/blob/d8a9c596eabf69dd5581a08e9360cdd1c9b3d9e8/environment-variables.json)
-in common-ci in the same piece of work. This repository's own name
-check, [`common/Test/EnvironmentVariableNamesTests.cs`](common/Test/EnvironmentVariableNamesTests.cs), still keeps a
-list of its own. Where the two differ, common-ci's list is the one to
-follow.
-
+[`environment-variables.md`](environment-variables.md) lists every
+environment variable name that the packages, tests, examples and CI scripts
+read, with what each holds. Use those names. A name 51Degrees defines starts
+with `_51DEGREES_` and holds one thing, and no name is filled from another. A
+change that needs a new name adds it to the list in the same piece of work,
+because [`common/Test/EnvironmentVariableNamesTests.cs`](common/Test/EnvironmentVariableNamesTests.cs)
+fails on a name the list does not have.
 ## References between the folders
 
 A project that uses a package built in another folder declares a
