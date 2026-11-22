@@ -45,6 +45,7 @@ in `ci/packages.json`.
 | Name | What it holds | Default when it is not set |
 | --- | --- | --- |
 | `_51DEGREES_REFERENCES` | `Project` to build against the projects of the other folders, `Package` to build against the published packages | `Package` |
+| `_51DEGREES_BUILT_ON_CI` | `true` when CI builds, so that an on-premise engine package packs the native library of every platform | `false` |
 ## Secrets only CI reads
 
 | Name | What it holds | Read by |

@@ -139,15 +139,15 @@ dotnet pack [Project] -o "[PackagesFolder]" /p:PackageVersion=0.0.0 -c [Configur
 and add to the packaging command:
 
 ```text
-/p:BuiltOnCI=true
+/p:_51DEGREES_BUILT_ON_CI=true
 ```
 
 related CI scripts:
 
-- `BuiltOnCI` var:
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-core.ps1]
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-package-nuget.ps1]
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-framework.ps1]
+- `_51DEGREES_BUILT_ON_CI`, which these scripts set:
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-project.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/install-package.ps1]
   - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/run-performance-tests.ps1]
 - Copying native binaries:
   - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]

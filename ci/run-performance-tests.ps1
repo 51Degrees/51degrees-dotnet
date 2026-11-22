@@ -23,7 +23,7 @@ $runConfiguration = $Configuration.Contains("Release") ? "Release" : "Debug"
 # are built more than once, and with OutDir set every build of a project
 # writes to the same output folder. Built in parallel, two builds can try to
 # write the same file at once and the build fails.
-$console = @("-p:OutDir=output", "-p:BuiltOnCI=true", "-m:1")
+$console = @("-p:OutDir=output", "-p:_51DEGREES_BUILT_ON_CI=true", "-m:1")
 
 # The device detection console example, with the TAC file and the evidence
 # records. Its result is the one the shared performance comparison reads.

@@ -47,7 +47,7 @@ $packArgs = @(
     "--output=$PackagesFolder"
     "--configuration=$Configuration"
     "-p:_51DEGREES_REFERENCES=Project"
-    "-p:BuiltOnCI=true"
+    "-p:_51DEGREES_BUILT_ON_CI=true"
     "-p:ContinuousIntegrationBuild=true"
 ) + $properties
 
@@ -89,8 +89,8 @@ try {
             continue
         }
         Write-Host "::group::Packing $($package.Nuspec) $($v.Next)"
-        dotnet build $package.Projects[0] -c $Configuration -p:_51DEGREES_REFERENCES=Project -p:BuiltOnCI=true @properties
-        msbuild $package.Solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=Any CPU" "-p:_51DEGREES_REFERENCES=Project" "-p:BuiltOnCI=true" @properties
+        dotnet build $package.Projects[0] -c $Configuration -p:_51DEGREES_REFERENCES=Project -p:_51DEGREES_BUILT_ON_CI=true @properties
+        msbuild $package.Solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=Any CPU" "-p:_51DEGREES_REFERENCES=Project" "-p:_51DEGREES_BUILT_ON_CI=true" @properties
         nuget pack $package.Nuspec -NonInteractive -OutputDirectory $PackagesFolder -Properties ($nuspecProperties -join ';') -version $v.Next
         Write-Host "::endgroup::"
     }

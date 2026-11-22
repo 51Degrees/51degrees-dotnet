@@ -24,7 +24,7 @@
     <NeutralLanguage>en</NeutralLanguage>
     <Configurations>Debug;Release</Configurations>
     <!-- GitHub CI -->
-    <BuiltOnCI>false</BuiltOnCI>
+    <_51DEGREES_BUILT_ON_CI>false</_51DEGREES_BUILT_ON_CI>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 

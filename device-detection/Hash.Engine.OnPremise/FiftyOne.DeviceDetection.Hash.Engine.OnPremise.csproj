@@ -26,7 +26,7 @@
     <Configurations>Debug;Release</Configurations>
 
     <!-- GitHub CI -->
-    <BuiltOnCI>false</BuiltOnCI>
+    <_51DEGREES_BUILT_ON_CI>false</_51DEGREES_BUILT_ON_CI>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
@@ -117,63 +117,63 @@
 
     <!-- GitHub CI -->
     <!-- Copy the Windows x64 native DLL -->
-    <_PackageFiles Include="..\windows\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)">
+    <_PackageFiles Include="..\windows\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\win-x64\native</PackagePath>
     </_PackageFiles>
     <!-- Copy the Windows x86 native DLL -->
-    <_PackageFiles Include="..\windows\x86\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)">
+    <_PackageFiles Include="..\windows\x86\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\win-x86\native</PackagePath>
     </_PackageFiles>
     <!-- Copy the Linux x64 native DLL -->
-    <_PackageFiles Include="..\linux\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)">
+    <_PackageFiles Include="..\linux\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\linux-x64\native</PackagePath>
     </_PackageFiles>
     <!-- Copy the Linux x86 native DLL -->
-    <!-- <_PackageFiles Include="..\linux\x86\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)"> -->
+    <!-- <_PackageFiles Include="..\linux\x86\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)"> -->
       <!-- <BuildAction>None</BuildAction> -->
       <!-- <PackagePath>runtimes\linux-x86\native</PackagePath> -->
     <!-- </_PackageFiles> -->
     <!-- Copy the Linux arm64 native DLL -->
-    <_PackageFiles Include="..\linux\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)">
+    <_PackageFiles Include="..\linux\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\linux-arm64\native</PackagePath>
     </_PackageFiles>
     <!-- Copy the Mac x64 native DLL -->
-    <_PackageFiles Include="..\macos\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)">
+    <_PackageFiles Include="..\macos\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\osx-x64\native</PackagePath>
     </_PackageFiles>
     <!-- Copy the Mac arm64 native DLL -->
-    <_PackageFiles Include="..\macos\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)">
+    <_PackageFiles Include="..\macos\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\osx-arm64\native</PackagePath>
     </_PackageFiles>
 
     <!-- Direct pack -->
-    <_PackageFiles Include="..\windows\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(BuiltOnCI) and Exists('..\windows\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
+    <_PackageFiles Include="..\windows\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(_51DEGREES_BUILT_ON_CI) and Exists('..\windows\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\win-x64\native</PackagePath>
     </_PackageFiles>
-    <_PackageFiles Include="..\windows\x86\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(BuiltOnCI) and Exists('..\windows\x86\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
+    <_PackageFiles Include="..\windows\x86\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(_51DEGREES_BUILT_ON_CI) and Exists('..\windows\x86\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\win-x86\native</PackagePath>
     </_PackageFiles>
-    <_PackageFiles Include="..\linux\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(BuiltOnCI) and Exists('..\linux\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
+    <_PackageFiles Include="..\linux\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(_51DEGREES_BUILT_ON_CI) and Exists('..\linux\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\linux-x64\native</PackagePath>
     </_PackageFiles>
-    <_PackageFiles Include="..\linux\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(BuiltOnCI) and Exists('..\linux\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
+    <_PackageFiles Include="..\linux\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(_51DEGREES_BUILT_ON_CI) and Exists('..\linux\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\linux-arm64\native</PackagePath>
     </_PackageFiles>
-    <_PackageFiles Include="..\macos\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(BuiltOnCI) and Exists('..\macos\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
+    <_PackageFiles Include="..\macos\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(_51DEGREES_BUILT_ON_CI) and Exists('..\macos\x64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\osx-x64\native</PackagePath>
     </_PackageFiles>
-    <_PackageFiles Include="..\macos\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(BuiltOnCI) and Exists('..\macos\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
+    <_PackageFiles Include="..\macos\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll" Condition="!$(_51DEGREES_BUILT_ON_CI) and Exists('..\macos\arm64\FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll')">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\osx-arm64\native</PackagePath>
     </_PackageFiles>
