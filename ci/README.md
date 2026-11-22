@@ -50,7 +50,7 @@ Invoke-Pester ci/packages.Tests.ps1, ci/release-plan-filter.Tests.ps1
 | Script | Pull request | Publish |
 | --- | --- | --- |
 | `fetch-assets.ps1` | Data files into the `cxx` data submodules | Same |
-| `setup-environment.ps1` | Keys, paths and the strong name key | Same |
+| `setup-environment.ps1` | The data file paths, the https certificate and the browser driver settings | Same |
 | `build-project.ps1` | Every family and the examples, Project mode, and on the x64 msbuild job the pages of the .NET Framework sites | |
 | `run-unit-tests.ps1` | The library tests | |
 | `get-next-package-version.ps1` | | Prints the plan, each package's last and next version and why it is or is not released |
@@ -61,7 +61,7 @@ Invoke-Pester ci/packages.Tests.ps1, ci/release-plan-filter.Tests.ps1
 | `build-package.ps1` | | Packs the packages the plan releases, signs once |
 | `install-package.ps1` | | Rebuilds the examples against the packages |
 | `run-integration-tests.ps1` | The example tests and the Selenium contract | Same, against the packages |
-| `run-performance-tests.ps1` | The console examples and the web overhead | Same |
+| `run-performance-tests.ps1` | The console examples, and the web overhead with the User-Agents `evidence-user-agents.ps1` writes from the YAML evidence | Same |
 | `publish-package.ps1` | | Pushes, tags each package in one push, opens the versions pull request |
 
 `select-options.ps1` chooses the entries a pull request runs. The standard set
@@ -86,31 +86,44 @@ ends by printing those lines, which `build-log-lines.ps1` reads from the
 results files, and each job's log then holds what its runner measured.
 `build-log-lines.Tests.ps1` tests the reading, run with Pester 5 or later.
 
-The workflows pass the secrets to the shared workflows with `secrets: inherit`.
-Apart from `ACCESS_TOKEN` and the publishing ones (`NUGET_API_KEY`, the
-`CODE_SIGNING_KEY_VAULT_*` set and `STRONG_NAME_KEY_BASE64`), every key is read
-only under its `_51DEGREES_` name. The shared workflows export each of these
-except `_51DEGREES_LICENSE_KEY_51DID`:
+The workflows pass the secrets to the shared workflows with `secrets: inherit`,
+and each job exports every `_51DEGREES_` secret and organisation variable
+under its own name, with nothing copied from one name to another. The signing
+secrets reach only the job that builds the packages, and the publishing ones
+only the job that publishes. Each test reads the key it needs by its name:
 
 - `_51DEGREES_LICENSE_KEY`, the data license. The shared `fetch-assets.ps1`
   downloads `TAC-HashV41.hash` and `51Degrees-EnterpriseIpiV41.ipi` from the
   Distributor with it, and fails naming it when it is not set. The data file
   update example tests read it too.
-- `_51DEGREES_RESOURCE_KEY`, filled from `_51DEGREES_RESOURCE_KEY_BESPOKE`, for
-  the cloud tests and examples.
-- `_51DEGREES_RESOURCE_KEY_51DID` and `_51DEGREES_LICENSE_KEY_51DID`, for the
-  live 51Did tests. The license key reads only results sealed with the 51Did
-  resource key, so the shared workflows never export it. Only
-  `.github/workflows/cloud-51did.yml` sets it, from the secret of that name,
-  beside `_51DEGREES_RESOURCE_KEY_51DID`. In the other workflows it is empty,
-  so the 51Did tests run as they do with no license key.
+- `_51DEGREES_RESOURCE_KEY_BESPOKE`, the resource key that carries every
+  property, for the live cloud tests. A test that runs a cloud example gives
+  it this key as `_51DEGREES_RESOURCE_KEY`, the name a customer sets, which
+  no job sets. `run-integration-tests.ps1` does the same for the cloud example
+  that the Selenium contract runs against.
+- `_51DEGREES_RESOURCE_KEY_BASIC`, `_51DEGREES_RESOURCE_KEY_51DID` and
+  `_51DEGREES_LICENSE_KEY_51DID`, for the live 51Did tests. The license key
+  reads only results sealed with the 51Did resource key.
+  `.github/workflows/cloud-51did.yml` runs those tests on their own, nightly,
+  with the same names.
 - `_51DEGREES_LICENSE_KEY_BESPOKE`, for the Accept-CH tests of the cloud web
   examples, which ask for one SetHeader property each with `values`.
+- `_51DEGREES_CLOUD_ENDPOINT`, an organisation variable naming the cloud the
+  tests and examples call. When it is not set they call the public cloud, as
+  a customer's copy does.
 
 A live cloud test with no key skips and names the variable it needs.
-`run-integration-tests.ps1` sets `PAID_RESOURCE_KEY` from
-`_51DEGREES_RESOURCE_KEY` for the external Selenium contract suite only, which
-reads that name.
+
+`build-package.ps1` reads the strong name key as
+`_51DEGREES_SIGN_STRONG_NAME_KEY_BASE64` and the code signing key vault as the
+five `_51DEGREES_SIGN_KEY_VAULT_` names, and stops naming the first one that is
+not set. It writes the strong name key to `51Degrees.snk`, and each project
+signs with the private key only when that file is there, so every other build
+public signs with `51Degrees.publickey`, as a local build does. The Package
+job in `.github/workflows/publish.yml` gets its NuGet key from nuget.org
+trusted publishing and gives it to `publish-package.ps1` as
+`_51DEGREES_PUBLISH_NUGET_API_KEY`, with `_51DEGREES_ACCESS_TOKEN` for git and
+the GitHub releases.
 
 `run-unit-tests.ps1` and `run-integration-tests.ps1` each begin by running
 `start-chrome-once.ps1`, which asks the Chrome driver for its version and
