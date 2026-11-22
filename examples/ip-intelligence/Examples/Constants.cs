@@ -59,14 +59,6 @@ namespace FiftyOne.IpIntelligence.Examples
         public const string GEOIP_COMPARISON_EVIDENCE_FILE_NAME = "geoip_comparison_evidence.csv";
 
         /// <summary>
-        /// An old environment variable for the licence key the data file
-        /// update example uses. It is no longer read.
-        /// </summary>
-        [System.Obsolete("Use DATA_UPDATE_LICENSE_KEY_ENV_VAR, which names the environment " +
-            "variable that replaces this one.")]
-        public const string LICENSE_KEY_ENV_VAR = "IPINTELLIGENCELICENSEKEY_DOTNET";
-
-        /// <summary>
         /// Environment variable key for the licence key the data file update
         /// example and its test use.
         /// </summary>
@@ -77,22 +69,6 @@ namespace FiftyOne.IpIntelligence.Examples
         /// IP Intelligence data file.
         /// </summary>
         public const string IPI_PATH_ENV_VAR = "_51DEGREES_IPI_PATH";
-
-        /// <summary>
-        /// An old environment variable for the path to the IP Intelligence
-        /// data file. It is no longer read.
-        /// </summary>
-        [System.Obsolete("Use IPI_PATH_ENV_VAR, which names the environment " +
-            "variable that replaces this one.")]
-        public const string IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "51DEGREES_IPI_PATH";
-
-        /// <summary>
-        /// An old environment variable for the path to the IP Intelligence
-        /// data file. It is no longer read.
-        /// </summary>
-        [System.Obsolete("Use IPI_PATH_ENV_VAR, which names the environment " +
-            "variable that replaces this one.")]
-        public const string LEGACY_IP_INTELLIGENCE_DATA_FILE_ENV_VAR = "IPINTELLIGENCEDATAFILE";
 
         /// <summary>
         /// The free Device Detection data file, which the mixed examples

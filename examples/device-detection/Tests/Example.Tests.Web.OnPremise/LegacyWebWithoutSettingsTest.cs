@@ -25,7 +25,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -116,17 +115,14 @@ public class LegacyWebWithoutSettingsTest
         // current directory. It builds its pipeline for the first request,
         // so the settings stay out of the way until the page has come back.
         var currentDirectory = Directory.GetCurrentDirectory();
-        var saved = Constants.DATA_FILE_ENV_VARS.ToDictionary(
-            name => name,
-            Environment.GetEnvironmentVariable);
+        var saved = Environment.GetEnvironmentVariable(
+            Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR);
         Directory.SetCurrentDirectory(
             Path.Combine(ExamplesPath, "Legacy Web", folder));
         try
         {
-            foreach (var name in Constants.DATA_FILE_ENV_VARS)
-            {
-                Environment.SetEnvironmentVariable(name, null);
-            }
+            Environment.SetEnvironmentVariable(
+                Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR, null);
             using var host = createHostBuilder(
                 new[] { "--urls", Url }).Build();
             await host.StartAsync();
@@ -151,10 +147,8 @@ public class LegacyWebWithoutSettingsTest
         finally
         {
             Directory.SetCurrentDirectory(currentDirectory);
-            foreach (var entry in saved)
-            {
-                Environment.SetEnvironmentVariable(entry.Key, entry.Value);
-            }
+            Environment.SetEnvironmentVariable(
+                Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR, saved);
         }
     }
 }

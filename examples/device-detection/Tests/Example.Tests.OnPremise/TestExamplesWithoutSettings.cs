@@ -43,12 +43,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
         /// The environment variables that name a data file, an evidence file
         /// or a licence key, none of which a fresh clone has.
         /// </summary>
-        private static readonly string[] Settings =
-            Constants.DATA_FILE_ENV_VARS.Concat(new[]
-            {
-                Constants.EVIDENCE_FILE_ENV_VAR,
-                Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR
-            }).ToArray();
+        private static readonly string[] Settings = new[]
+        {
+            Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR,
+            Constants.EVIDENCE_FILE_ENV_VAR,
+            Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR
+        };
 
         /// <summary>
         /// The start of the link each example gives to ask for a copy of the
