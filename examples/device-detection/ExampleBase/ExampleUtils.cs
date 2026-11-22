@@ -44,30 +44,6 @@ public static class ExampleUtils
     public const string CLOUD_RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
 
     /// <summary>
-    /// The naming convention for resource key environment variables. The
-    /// organisation's CI exports every secret whose name begins with this
-    /// prefix, so one machine can carry several keys at once, one per
-    /// subscription tier, for example '_51DEGREES_RESOURCE_KEY_FREE' and
-    /// '_51DEGREES_RESOURCE_KEY_PAID'. Any variable matching the prefix
-    /// is accepted when the exact
-    /// <see cref="CLOUD_RESOURCE_KEY_ENV_VAR"/> name is not set.
-    /// </summary>
-    public const string CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX =
-        "_51DEGREES_RESOURCE_KEY";
-
-    /// <summary>
-    /// Names the environment variables a resource key is read from, for
-    /// use in a message telling somebody why an example or a test could
-    /// not run. Naming the variable is the point of such a message,
-    /// because "no resource key" on its own does not say what to set.
-    /// </summary>
-    public static string CLOUD_RESOURCE_KEY_ENV_VAR_DESCRIPTION =>
-        $"'{CLOUD_RESOURCE_KEY_ENV_VAR}', or any variable named " +
-        $"'{CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX}_<tier>' such as " +
-        $"'{CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX}_FREE' or " +
-        $"'{CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX}_PAID'";
-
-    /// <summary>
     /// The default environment variable key used to get the end point URL
     /// to use when running cloud examples. Can be used to override the
     /// appsettings.json configuration for testing custom end points.
@@ -138,9 +114,8 @@ public static class ExampleUtils
         output.WriteLine(
             "Once subscribed, create a resource key including the " +
             $"properties this example needs at {configureUrl}, then " +
-            "supply it as the first command line argument or in one " +
-            $"of these environment variables: " +
-            $"{CLOUD_RESOURCE_KEY_ENV_VAR_DESCRIPTION}.");
+            "supply it as the first command line argument or in the " +
+            $"environment variable '{CLOUD_RESOURCE_KEY_ENV_VAR}'.");
     }
 
 
@@ -786,88 +761,22 @@ public static class ExampleUtils
     }
 
     /// <summary>
-    /// Get the resource key from the environment, following the
-    /// organisation's naming convention. The exact
-    /// '_51DEGREES_RESOURCE_KEY' variable is checked first, then any
-    /// variable
-    /// whose name begins with '_51DEGREES_RESOURCE_KEY', which is how
-    /// per tier keys such as '_51DEGREES_RESOURCE_KEY_FREE' and
-    /// '_51DEGREES_RESOURCE_KEY_PAID' reach a build. Tier variables are
-    /// taken in name order so the same machine always picks the same
-    /// one, and <see cref="GetResourceKeyFromEnv(out string)"/> reports
-    /// which variable was used.
+    /// Get the resource key from the '_51DEGREES_RESOURCE_KEY' environment
+    /// variable.
     /// </summary>
     /// <returns>
-    /// The resource key, or null if no matching environment variable is
-    /// set.
+    /// The resource key, or null if the variable is not set.
     /// </returns>
     public static string GetResourceKeyFromEnv()
     {
-        return GetResourceKeyFromEnv(out _);
-    }
-
-    /// <summary>
-    /// Get the resource key from the environment, reporting the name of
-    /// the variable it came from. See
-    /// <see cref="GetResourceKeyFromEnv()"/> for the order the
-    /// variables are tried in.
-    /// </summary>
-    /// <param name="envVarName">
-    /// Set to the name of the environment variable the key was read
-    /// from, or null when no key was found. Callers use the name to
-    /// tell somebody which variable supplied the key, which matters
-    /// when a machine carries more than one tier.
-    /// </param>
-    /// <returns>
-    /// The resource key, or null if no matching environment variable is
-    /// set.
-    /// </returns>
-    public static string GetResourceKeyFromEnv(out string envVarName)
-    {
-        foreach (var name in new string[]
-        {
-            CLOUD_RESOURCE_KEY_ENV_VAR
-        })
-        {
-            var value = Environment.GetEnvironmentVariable(name);
-            if (string.IsNullOrWhiteSpace(value) == false)
-            {
-                envVarName = name;
-                return value;
-            }
-        }
-
-        // Fall back to the tier named variables, for example
-        // _51DEGREES_RESOURCE_KEY_FREE, which common-ci exports from
-        // every organisation secret following the convention. Ordered
-        // by name so the choice is repeatable rather than depending on
-        // the order the process happened to receive its environment.
-        foreach (System.Collections.DictionaryEntry entry in
-            Environment.GetEnvironmentVariables()
-                .Cast<System.Collections.DictionaryEntry>()
-                .OrderBy(e => (string)e.Key, StringComparer.Ordinal))
-        {
-            var name = (string)entry.Key;
-            var value = entry.Value as string;
-            if (name.StartsWith(
-                    CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX,
-                    StringComparison.OrdinalIgnoreCase) &&
-                string.IsNullOrWhiteSpace(value) == false)
-            {
-                envVarName = name;
-                return value;
-            }
-        }
-
-        envVarName = null;
-        return null;
+        var value = Environment.GetEnvironmentVariable(
+            CLOUD_RESOURCE_KEY_ENV_VAR);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     /// <summary>
     /// Get the resource key from the environment and run the action with
-    /// the value, or an empty string if no resource key is set. See
-    /// <see cref="GetResourceKeyFromEnv()"/> for the order the
-    /// variables are tried in.
+    /// the value, or an empty string if no resource key is set.
     /// </summary>
     /// <param name="setValue"></param>
     public static void GetResourceKeyFromEnv(Action<string> setValue)
