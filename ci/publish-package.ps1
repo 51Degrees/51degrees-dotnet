@@ -1,7 +1,6 @@
 param (
     [Parameter(Mandatory)][string]$RepoName,
     [Parameter(Mandatory)][string]$OrgName,
-    [Parameter(Mandatory)][string]$ApiKey,
     [string]$Version,
     [bool]$DryRun = $false
 )
@@ -24,9 +23,13 @@ if ($DryRun) {
     Write-Host "Dry run, not pushing:"
     $packages | ForEach-Object { Write-Host "  $($_.Name)" }
 } else {
+    # The job that publishes has the nuget.org key under this name.
+    if ([string]::IsNullOrWhiteSpace($env:_51DEGREES_PUBLISH_NUGET_API_KEY)) {
+        throw "_51DEGREES_PUBLISH_NUGET_API_KEY is not set, so publishing cannot succeed."
+    }
     Push-Location package
     try {
-        dotnet nuget push "*.nupkg" --source https://api.nuget.org/v3/index.json --api-key $ApiKey --skip-duplicate
+        dotnet nuget push "*.nupkg" --source https://api.nuget.org/v3/index.json --api-key $env:_51DEGREES_PUBLISH_NUGET_API_KEY --skip-duplicate
     } finally {
         Pop-Location
     }
