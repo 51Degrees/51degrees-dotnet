@@ -1,7 +1,8 @@
 name: Only rc into main
 
-# A pull request into the default branch must come from rc. See
-# 51Degrees/common-ci .github/workflows/only-rc-into-main.yml.
+# A pull request into the default branch must come from rc, and as this
+# repository publishes packages, a release must come at least a week after
+# the last one. See 51Degrees/common-ci .github/workflows/only-rc-into-main.yml.
 on:
   pull_request:
 
@@ -9,3 +10,5 @@ jobs:
   rc:
     name: Only rc into main
     uses: 51Degrees/common-ci/.github/workflows/only-rc-into-main.yml@main
+    with:
+      publishes-packages: true
