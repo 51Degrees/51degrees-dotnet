@@ -32,6 +32,7 @@ that is read or set and is not in the last table.
 | `_51DEGREES_EXAMPLE_HTTPS_PORTS` | The HTTPS ports a web example listens on | 5001 and 5002 |
 | `_51DEGREES_RUN_NETWORK_TESTS` | Set to 1 to let the agent signature tests fetch live key directories | The tests that need the network are skipped |
 | `_51DEGREES_TEST_FILTER` | A pattern of the test assemblies the CI scripts run | Every test assembly |
+| `_51DEGREES_ALLOW_VERSION_BUMP` | `true` to let a publish move a package's major or minor number, read by common-ci's version check | The move is refused |
 
 ## Secrets only CI reads
 
@@ -55,12 +56,15 @@ These are read or set under the name the tool gives them.
 | `ASPNETCORE_URLS` | ASP.NET Core |
 | `CHROME_BIN` | Chrome and the tools that start it |
 | `CHROMEWEBDRIVER` | The GitHub runner images |
+| `DOTNET_CLI_TELEMETRY_OPTOUT` | The .NET SDK |
+| `DOTNET_NOLOGO` | The .NET SDK |
 | `EXAMPLE_LANG` | The browser test suite, selenium-api-tests |
 | `EXAMPLE_URL` | The browser test suite, selenium-api-tests |
 | `GITHUB_ACTIONS` | GitHub Actions |
 | `GITHUB_JOB` | GitHub Actions |
 | `PATH` | The operating system |
 | `ProgramFiles` | Windows |
+| `PSModulePath` | PowerShell |
 | `SE_BROWSER_VERSION` | Selenium |
 | `SE_SKIP_DRIVER_IN_PATH` | Selenium |
 | `windir` | Windows |

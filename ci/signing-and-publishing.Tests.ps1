@@ -34,16 +34,17 @@ BeforeAll {
 
 Describe 'the secrets the package build and the publish read' {
     BeforeEach {
-        $script:Saved = @(Get-ChildItem env: | Where-Object {
-            $_.Name -like '_51DEGREES_SIGN_*' -or $_.Name -like '_51DEGREES_PUBLISH_*' })
-        $script:Saved | ForEach-Object { Remove-Item "Env:$($_.Name)" }
+        $script:Saved = @{}
+        foreach ($name in $SigningNames + $PublishName) {
+            $script:Saved[$name] = [Environment]::GetEnvironmentVariable($name)
+            [Environment]::SetEnvironmentVariable($name, $null)
+        }
     }
 
     AfterEach {
-        Get-ChildItem env: | Where-Object {
-            $_.Name -like '_51DEGREES_SIGN_*' -or $_.Name -like '_51DEGREES_PUBLISH_*' } |
-            ForEach-Object { Remove-Item "Env:$($_.Name)" }
-        $script:Saved | ForEach-Object { Set-Item "Env:$($_.Name)" $_.Value }
+        foreach ($name in $script:Saved.Keys) {
+            [Environment]::SetEnvironmentVariable($name, $script:Saved[$name])
+        }
     }
 
     It 'stops the package build naming the strong name key when no signing secret is set' {
