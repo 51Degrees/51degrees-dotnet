@@ -50,7 +50,7 @@ public class HardwareLookupMatchingNothingTests
     [TestMethod]
     public void TacLookup_NoMatchingDevice_SaysSoUnderEachHeading()
     {
-        using var standIn = new CloudStandIn(withHardware: true);
+        using var standIn = new CloudStandIn(StandInAnswer.NoDevices);
         var output = new StringWriter();
         var options = TestExamples.CreateConfiguration(
             typeof(TacLookup.Example), StandInKey, standIn.EndPoint);
@@ -65,7 +65,7 @@ public class HardwareLookupMatchingNothingTests
     [TestMethod]
     public void NativeModelLookup_NoMatchingDevice_SaysSoUnderEachHeading()
     {
-        using var standIn = new CloudStandIn(withHardware: true);
+        using var standIn = new CloudStandIn(StandInAnswer.NoDevices);
         using var loggerFactory = new LoggerFactory();
         var output = new StringWriter();
 

@@ -32,16 +32,18 @@ using System.Text.RegularExpressions;
 namespace FiftyOne.DeviceDetection.Example.Tests.Cloud;
 
 /// <summary>
-/// Runs an example's own build with no resource key in its environment, as
-/// someone who has just cloned the repository runs it, and checks that it
-/// ends without an error, names the variable to set and links to where a
-/// resource key is created.
+/// Runs an example's own build as a process, as someone who has just cloned
+/// the repository runs it. With no resource key in its environment it checks
+/// that the example ends without an error, names the variable to set and
+/// links to where a resource key is created. Other tests give it a key and a
+/// stand-in for the cloud service through its environment.
 /// </summary>
 internal static class ExampleWithoutKey
 {
     /// <summary>
-    /// How long an example may take to say it needs a resource key and end.
-    /// It loads no data file and calls no service, so it ends in seconds.
+    /// How long an example may take to end. It loads no data file and calls
+    /// either no service or a stand-in on this machine, so it ends in
+    /// seconds.
     /// </summary>
     private const int TimeoutMilliseconds = 60000;
 
@@ -136,7 +138,7 @@ internal static class ExampleWithoutKey
         {
             process.Kill(entireProcessTree: true);
             Assert.Fail($"{assemblyName} was still running after " +
-                $"{TimeoutMilliseconds} ms with no resource key. It wrote:" +
+                $"{TimeoutMilliseconds} ms. It wrote:" +
                 Environment.NewLine + output);
         }
         // Waits for the output handlers to finish.
