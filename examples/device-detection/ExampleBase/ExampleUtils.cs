@@ -102,12 +102,15 @@ public static class ExampleUtils
     /// unhandled exception and a stack trace.
     /// <para>
     /// The cloud service refuses per property when a key carries some but
-    /// not all of the properties an example displays. That is not a fault
-    /// in the example but a subscription that does not cover what the
-    /// example asks for, so the person running it needs to be told which
-    /// properties are missing and that a paid subscription supplies them.
-    /// The caller decides the exit code, and it must not be zero, because
-    /// an example that could not do its work has not succeeded.
+    /// not all of the properties an example displays, and
+    /// FiftyOne.Pipeline.CloudRequestEngine 4.5.130 and earlier refuse
+    /// while the pipeline is built when a key carries none of an engine's
+    /// properties. Neither is a fault in the example but a subscription
+    /// that does not cover what the example asks for, so the person running
+    /// it needs to be told which properties are missing and that a paid
+    /// subscription supplies them. The caller decides the exit code, and it
+    /// must not be zero, because an example that could not do its work has
+    /// not succeeded.
     /// </para>
     /// </summary>
     /// <param name="exception">

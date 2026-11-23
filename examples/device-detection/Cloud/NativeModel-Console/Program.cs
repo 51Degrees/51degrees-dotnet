@@ -214,6 +214,22 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                     loggerFactory.Dispose();
                     Environment.Exit(1);
                 }
+                catch (PipelineException exception)
+                    when (exception.GetType() == typeof(PipelineException))
+                {
+                    // FiftyOne.Pipeline.CloudRequestEngine 4.5.130 and
+                    // earlier throw while building the pipeline for a key
+                    // without the 'hardware' properties, rather than giving
+                    // the engine none.
+                    ExampleUtils.ReportMissingProperties(
+                        exception,
+                        Console.Out,
+                        "the 'hardware' properties a native model lookup " +
+                        "returns, which need a paid subscription",
+                        "https://51degrees.com/configure/QKyYH5XT?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
+                    loggerFactory.Dispose();
+                    Environment.Exit(1);
+                }
                 catch (PropertyMissingException exception)
                 {
                     ExampleUtils.ReportMissingProperties(
