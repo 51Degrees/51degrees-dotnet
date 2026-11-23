@@ -70,8 +70,9 @@ the only build of the .NET Framework projects. Both leave out the IP
 Intelligence tests that load the Enterprise data file and the web example
 tests, but still run each IP Intelligence example with no settings on the free
 data files (the `WithoutSettings` category) and that assembly's `Unit` tests,
-which need no data file. `run-integration-tests.Tests.ps1` checks this with
-Pester 5 or later. A native
+which need no data file. Every entry leaves out the Human Confidence tests in
+the `CloudStaging` category, which need the staging cloud.
+`run-integration-tests.Tests.ps1` checks this with Pester 5 or later. A native
 change adds Linux ARM and Windows x86, an IP Intelligence change
 runs the Enterprise tests, a web change runs the web example tests on Linux, and
 a change outside the package folders adds every entry but macOS. macOS and
@@ -114,6 +115,20 @@ The resource keys and the license keys are organization secrets:
   a customer's copy does.
 
 A live cloud test with no key skips and names the variable it needs.
+
+Two names only CI uses have no prefix, so the shared workflows never receive
+them. `CLOUD_STAGING_ENDPOINT`, an organization variable, names the staging
+cloud, and `RESOURCE_KEY_BESPOKE_STAGING`, an organization secret, is a
+resource key that carries every property and that the staging cloud resolves.
+The Human Confidence tests in the `CloudStaging` category check what the
+production cloud does not serve yet, so they call the staging cloud with those
+names and `_51DEGREES_RESOURCE_KEY_BASIC`. `run-integration-tests.ps1` leaves
+that category out, and
+[`.github/workflows/cloud-human-confidence.yml`](../.github/workflows/cloud-human-confidence.yml)
+runs it nightly and on a pull request that changes the Human Confidence
+example or its tests. The step fails when a name is empty, and when a test
+skipped or none ran. `cloud-human-confidence.Tests.ps1` tests the step's
+script, run with Pester 5 or later.
 
 `build-package.ps1` reads the strong name key as
 `STRONG_NAME_KEY_BASE64` and the code signing key vault as the

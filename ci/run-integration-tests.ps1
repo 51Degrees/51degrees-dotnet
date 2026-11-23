@@ -41,13 +41,22 @@ if ($env:_51DEGREES_TEST_FILTER) {
 # platform. The host is picked from the assembly's platform, which the
 # on-premise example test projects set, so an x86 build loads its x86 library.
 # They run in parallel lanes, which ci/run-test-lanes.ps1 describes, less
-# those a pull request leaves out. At standard depth the IP Intelligence
-# on-premise example tests run only the WithoutSettings category, which runs
-# each example as a fresh clone does, on the free data files, and the Unit
-# category, which needs no data file. The others load the Enterprise data
-# file.
-$Narrow = $Depth -eq 'standard' ?
-    '^FiftyOne\.IpIntelligence\.Example\.Tests\.OnPremise\.dll$' : ''
+# those a pull request leaves out.
+# The Human Confidence tests in the CloudStaging category call the staging
+# cloud, whose names never reach this flow, so they are left out here and
+# .github/workflows/cloud-human-confidence.yml runs them.
+$AssemblyFilters = [ordered]@{
+    '^FiftyOne\.HumanConfidence\.Examples\.Tests\.dll$' =
+        'TestCategory!=CloudStaging'
+}
+# At standard depth the IP Intelligence on-premise example tests run only
+# the WithoutSettings category, which runs each example as a fresh clone
+# does, on the free data files, and the Unit category, which needs no data
+# file. The others load the Enterprise data file.
+if ($Depth -eq 'standard') {
+    $AssemblyFilters['^FiftyOne\.IpIntelligence\.Example\.Tests\.OnPremise\.dll$'] =
+        'TestCategory=WithoutSettings|TestCategory=Unit'
+}
 $Exclude = @(
     if (-not $WebExamples) { '^FiftyOne\.DeviceDetection\.Example\.Tests\.Web\.' }
 ) -join '|'
@@ -70,8 +79,7 @@ if (-not ($IsLinux -and $Arch -eq 'arm64')) {
     -BlameHangTimeout "20m" `
     -Filter $Filter `
     -Exclude $Exclude `
-    -Narrow $Narrow `
-    -NarrowFilter "TestCategory=WithoutSettings|TestCategory=Unit" `
+    -AssemblyFilters $AssemblyFilters `
     -OutputFolder "integration"
 if ($LASTEXITCODE -ne 0) {
     throw "The example tests failed."

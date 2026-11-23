@@ -34,18 +34,32 @@ namespace FiftyOne.HumanConfidence.Examples.Tests;
 /// The two calls the example's server makes for the passive level, made
 /// against the live cloud service with a key from the environment. The
 /// first checks that the key carries the property, the way the example
-/// does before it serves its page, and the second asks for the passive
-/// level with the evidence passed on as it is, and reads the source and
-/// the level. A key outside the Bespoke product is asked the same and
-/// gets no source. Nothing here says how the cloud reaches the level.
-/// With no key the tests skip and name the variable, and never pass,
-/// because a cloud test that passes without calling the cloud has proved
-/// nothing. The key is never printed.
+/// does before it serves its page, against the cloud in
+/// _51DEGREES_CLOUD_ENDPOINT. The second asks for the passive level with
+/// the evidence passed on as it is, and reads the source and the level,
+/// and a key outside the Bespoke product is asked the same and gets no
+/// source. The passive call and the call with the key outside Bespoke need
+/// a cloud that serves HumanConfidenceSource and a passive level, which the
+/// production cloud does not yet, so their tests are in the
+/// <see cref="StagingCategory"/> category and call the staging cloud in
+/// CLOUD_STAGING_ENDPOINT, with the Bespoke key in
+/// RESOURCE_KEY_BESPOKE_STAGING. Only CI holds those two names, and
+/// .github/workflows/cloud-human-confidence.yml runs that category.
+/// Nothing here says how the cloud reaches the level. Without a name it
+/// needs, a test skips and names it, and never passes, because a cloud
+/// test that passes without calling the cloud has proved nothing. The key
+/// is never printed.
 /// </summary>
 [TestClass]
 public class LiveCloudTests
 {
     public TestContext TestContext { get; set; } = null!;
+
+    /// <summary>
+    /// The category of the tests that need the staging cloud. The shared
+    /// CI flow leaves it out, because the staging names never reach it.
+    /// </summary>
+    internal const string StagingCategory = "CloudStaging";
 
     /// <summary>
     /// The variable the key is read from, which holds the key that carries
@@ -60,14 +74,26 @@ public class LiveCloudTests
     internal const string BasicKeyName = "_51DEGREES_RESOURCE_KEY_BASIC";
 
     /// <summary>
+    /// The variable holding a Bespoke key the staging cloud resolves. It
+    /// is not the production key, which the staging cloud may not know.
+    /// </summary>
+    internal const string StagingKeyName = "RESOURCE_KEY_BESPOKE_STAGING";
+
+    /// <summary>
+    /// The variable naming the staging cloud's API base, ending /api/v4/.
+    /// It has no default, so a staging test never calls another cloud.
+    /// </summary>
+    internal const string StagingEndpointVariable = "CLOUD_STAGING_ENDPOINT";
+
+    /// <summary>
     /// The properties the passive request names, so the answer carries
     /// both whatever the key's own property list holds.
     /// </summary>
     private const string Values =
         "derived.humanconfidence,derived.humanconfidencesource";
 
-    private const string EndpointVariable = "_51DEGREES_CLOUD_ENDPOINT";
-    private const string DefaultEndpoint = "https://cloud.51degrees.com/api/v4/";
+    internal const string EndpointVariable = "_51DEGREES_CLOUD_ENDPOINT";
+    internal const string DefaultEndpoint = "https://cloud.51degrees.com/api/v4/";
 
     private const string ConfigureUrl =
         "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=pipeline-tests-humanconfidence.examples.tests-livecloudtests.cs&utm_term=resource-key";
@@ -77,11 +103,29 @@ public class LiveCloudTests
     /// <summary>
     /// The API base the example calls, read the way the example reads it.
     /// </summary>
-    private static string Endpoint()
+    internal static string Endpoint()
     {
         var endpoint = Environment.GetEnvironmentVariable(EndpointVariable);
         return (string.IsNullOrWhiteSpace(endpoint)
             ? DefaultEndpoint : endpoint.Trim()).TrimEnd('/') + "/";
+    }
+
+    /// <summary>
+    /// The staging cloud's API base, from its own variable alone.
+    /// </summary>
+    internal static string StagingEndpoint()
+    {
+        var endpoint = Environment.GetEnvironmentVariable(
+            StagingEndpointVariable);
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            Assert.Inconclusive(
+                "This test needs a cloud that serves HumanConfidenceSource " +
+                "and a passive level, which the production cloud does not " +
+                $"yet. {StagingEndpointVariable} is not set. It names the " +
+                "staging cloud, ending /api/v4/, and only CI holds it.");
+        }
+        return endpoint!.Trim().TrimEnd('/') + "/";
     }
 
     private static string RequireKey(string name = KeyName)
@@ -95,6 +139,23 @@ public class LiveCloudTests
                 $"on. {name} is not set. {EndpointVariable} names the " +
                 $"service, and defaults to {DefaultEndpoint}. Create a " +
                 $"key at {ConfigureUrl}.");
+        }
+        return key!;
+    }
+
+    /// <summary>
+    /// A key for a test against the staging cloud, from the variable
+    /// named.
+    /// </summary>
+    internal static string RequireStagingKey(string name)
+    {
+        var key = Environment.GetEnvironmentVariable(name);
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            Assert.Inconclusive(
+                "This test calls the staging cloud in " +
+                $"{StagingEndpointVariable}, so it needs a resource key " +
+                $"that cloud resolves. {name} is not set.");
         }
         return key!;
     }
@@ -146,11 +207,13 @@ public class LiveCloudTests
     }
 
     [TestMethod]
+    [TestCategory(StagingCategory)]
     [Timeout(60_000)]
     public async Task ThePassiveCallAnswersASourceAndALevel()
     {
-        var key = RequireKey();
-        var (status, body) = await PassiveAsync(key);
+        var endpoint = StagingEndpoint();
+        var key = RequireStagingKey(StagingKeyName);
+        var (status, body) = await PassiveAsync(endpoint, key);
         Assert.AreEqual(200, status,
             "The passive call did not succeed: " + Redact(body, key));
         using var document = JsonDocument.Parse(body);
@@ -173,11 +236,13 @@ public class LiveCloudTests
     }
 
     [TestMethod]
+    [TestCategory(StagingCategory)]
     [Timeout(60_000)]
     public async Task AKeyOutsideBespokeGetsNoSource()
     {
-        var key = RequireKey(BasicKeyName);
-        var (status, body) = await PassiveAsync(key);
+        var endpoint = StagingEndpoint();
+        var key = RequireStagingKey(BasicKeyName);
+        var (status, body) = await PassiveAsync(endpoint, key);
         Assert.AreEqual(200, status,
             "The passive call did not succeed: " + Redact(body, key));
         using var document = JsonDocument.Parse(body);
@@ -195,10 +260,11 @@ public class LiveCloudTests
 
     /// <summary>
     /// Posts the evidence a server passes on from a visitor's request to
-    /// the key's JSON path, as the example does, naming the two
-    /// properties, and returns the status and the body.
+    /// the key's JSON path on the cloud given, as the example does, naming
+    /// the two properties, and returns the status and the body.
     /// </summary>
-    private static async Task<(int Status, string Body)> PassiveAsync(string key)
+    private static async Task<(int Status, string Body)> PassiveAsync(
+        string endpoint, string key)
     {
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
         var form = new Dictionary<string, string>
@@ -211,7 +277,7 @@ public class LiveCloudTests
         try
         {
             using var answer = await http.PostAsync(
-                Endpoint() + key + ".json", new FormUrlEncodedContent(form));
+                endpoint + key + ".json", new FormUrlEncodedContent(form));
             return ((int)answer.StatusCode,
                 await answer.Content.ReadAsStringAsync());
         }

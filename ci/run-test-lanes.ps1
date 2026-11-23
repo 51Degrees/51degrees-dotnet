@@ -7,10 +7,10 @@ param (
     [string]$BlameHangTimeout = "20m",
     # Assemblies matching this are left out, even when they match $Filter.
     [string]$Exclude,
-    # Assemblies matching this run only the tests that $NarrowFilter, a
-    # 'dotnet test --filter' expression, selects.
-    [string]$Narrow,
-    [string]$NarrowFilter
+    # A 'dotnet test --filter' expression by assembly name pattern. An
+    # assembly runs only the tests the filter of the first pattern it
+    # matches selects, and every test when it matches none.
+    [System.Collections.IDictionary]$AssemblyFilters = @{}
 )
 $ErrorActionPreference = "Stop"
 
@@ -74,11 +74,14 @@ if ($assemblies.Count -eq 0) {
     exit 0
 }
 
-# The filter each narrowed assembly runs with, by its full path.
+# The filter each assembly runs with, by its full path.
 $testFilters = @{}
 foreach ($assembly in $assemblies) {
-    if ($Narrow -and $assembly.Name -match $Narrow) {
-        $testFilters[$assembly.FullName] = $NarrowFilter
+    foreach ($pattern in $AssemblyFilters.Keys) {
+        if ($assembly.Name -match $pattern) {
+            $testFilters[$assembly.FullName] = $AssemblyFilters[$pattern]
+            break
+        }
     }
 }
 

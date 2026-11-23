@@ -1,0 +1,105 @@
+name: Cloud Human Confidence Tests
+
+# Runs the Human Confidence tests that need the staging cloud, which are
+# those in the CloudStaging category of
+# pipeline/Tests/HumanConfidence.Examples.Tests. They check what the
+# production cloud does not serve yet, HumanConfidenceSource and a passive
+# level, so they call the staging cloud in CLOUD_STAGING_ENDPOINT with the
+# Bespoke key in RESOURCE_KEY_BESPOKE_STAGING and the Basic key in
+# _51DEGREES_RESOURCE_KEY_BASIC. CLOUD_STAGING_ENDPOINT is an organization
+# variable and RESOURCE_KEY_BESPOKE_STAGING an organization secret, and only
+# CI uses them. The shared workflows never receive those two names and
+# leave the category out (ci/run-integration-tests.ps1), so this is the
+# only place these tests run.
+#
+# The step fails when a name is empty, and when a test was skipped or none
+# ran. A cloud test that passes without calling the cloud reports success
+# having proved nothing, and that is worse than a red job.
+
+on:
+  workflow_dispatch:
+  # Nightly as well, so a change in what the staging cloud answers is found
+  # the next morning. The Cloud 51Did Tests run at 05:00 UTC, so these run
+  # half an hour later.
+  schedule:
+    - cron: '30 5 * * *'
+  pull_request:
+    branches: [main, rc]
+    paths:
+      - 'pipeline/Examples/HumanConfidence/**'
+      - 'pipeline/Tests/HumanConfidence.Examples.Tests/**'
+      - '.github/workflows/cloud-human-confidence.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  cloud-human-confidence:
+    name: Cloud Human Confidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # The test project targets net8.0 and net10.0, and dotnet test runs
+      # both, so both runtimes are needed.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Human Confidence tests against the staging cloud
+        shell: pwsh
+        env:
+          CLOUD_STAGING_ENDPOINT: ${{ vars.CLOUD_STAGING_ENDPOINT }}
+          RESOURCE_KEY_BESPOKE_STAGING: ${{ secrets.RESOURCE_KEY_BESPOKE_STAGING }}
+          _51DEGREES_RESOURCE_KEY_BASIC: ${{ secrets._51DEGREES_RESOURCE_KEY_BASIC }}
+        run: |
+          $names = 'CLOUD_STAGING_ENDPOINT', 'RESOURCE_KEY_BESPOKE_STAGING',
+            '_51DEGREES_RESOURCE_KEY_BASIC'
+          $empty = @($names | Where-Object {
+            -not [Environment]::GetEnvironmentVariable($_) })
+          foreach ($name in $empty) {
+            Write-Host ("::error::$name is empty or missing, so the tests " +
+              'that need the staging cloud cannot run.')
+          }
+          if ($empty) { exit 1 }
+          $project = 'pipeline/Tests/HumanConfidence.Examples.Tests/' +
+            'FiftyOne.HumanConfidence.Examples.Tests.csproj'
+          $results = Join-Path $PWD 'test-results' 'cloud-human-confidence'
+          dotnet build $project -c Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          dotnet test $project -c Release --no-build --nologo `
+            --filter TestCategory=CloudStaging `
+            --results-directory $results `
+            --logger 'trx;LogFilePrefix=human-confidence' `
+            --logger 'console;verbosity=normal'
+          $failed = $LASTEXITCODE -ne 0
+          # A test without a name it needs skips, and a skip passes the run,
+          # so each framework's results are read as well.
+          $reports = @(Get-ChildItem -Path $results -Filter *.trx -File `
+            -ErrorAction SilentlyContinue)
+          if ($reports.Count -eq 0) {
+            Write-Host '::error::The tests wrote no results, so none ran.'
+            exit 1
+          }
+          foreach ($report in $reports) {
+            $run = ([xml](Get-Content -Raw -LiteralPath $report.FullName)).TestRun
+            $total = [int]$run.ResultSummary.Counters.total
+            $passed = [int]$run.ResultSummary.Counters.passed
+            if ($total -eq 0) {
+              Write-Host "::error::No test ran in $($report.Name)."
+              $failed = $true
+            } elseif ($passed -ne $total) {
+              Write-Host ("::error::$($total - $passed) of $total tests in " +
+                "$($report.Name) did not pass, and a skipped test proved " +
+                'nothing.')
+              foreach ($result in @($run.Results.UnitTestResult)) {
+                if ($result.outcome -ne 'Passed') {
+                  Write-Host "  $($result.testName): $($result.outcome)"
+                }
+              }
+              $failed = $true
+            }
+          }
+          if ($failed) { exit 1 }

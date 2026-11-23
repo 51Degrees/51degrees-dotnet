@@ -114,5 +114,12 @@ is one more, made once.
 `../../Tests/HumanConfidence.Examples.Tests` runs the example with no
 Resource Key, reads these files for the rules every Human Confidence web
 example keeps, and, with a key in `_51DEGREES_RESOURCE_KEY_BESPOKE`, asks the
-live cloud whether the key carries `HumanConfidence` and for a passive
-level. Without that key the live tests skip and name the variable.
+live cloud whether the key carries `HumanConfidence`.
+
+The tests of the passive level, and of a key outside the Bespoke product
+getting no source, need a cloud that serves `HumanConfidenceSource`, which the
+production cloud does not yet. They call the staging cloud in
+`CLOUD_STAGING_ENDPOINT` with the key in `RESOURCE_KEY_BESPOKE_STAGING` and
+`_51DEGREES_RESOURCE_KEY_BASIC`. Only CI holds the first two names, and
+`.github/workflows/cloud-human-confidence.yml` runs these tests. Without a
+name it needs, a live test skips and names it.

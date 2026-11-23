@@ -35,11 +35,12 @@ namespace FiftyOne.Common.Tests;
 /// environment-variables.md at the root, apart from the version property of
 /// each package, which ci/packages.json names. A name a customer uses starts
 /// with an underscore and _51DEGREES_, because a POSIX shell cannot set a
-/// name that starts with a digit. A secret that only CI uses has no prefix
-/// and is listed in the table of secrets only CI reads. Any other name is one
-/// that another tool defines, listed in the last table of that file. A
-/// workflow reads only _51DEGREES_ secrets and variables and the secrets only
-/// CI reads, and no _51DEGREES_ name is filled from another. The tests read
+/// name that starts with a digit. A secret or variable that only CI uses has
+/// no prefix and is listed in the table of secrets and variables only CI
+/// reads. Any other name is one that another tool defines, listed in the last
+/// table of that file. A workflow reads only _51DEGREES_ secrets and
+/// variables and the secrets and variables only CI reads, and no _51DEGREES_
+/// name is filled from another. The tests read
 /// every file git tracks, which leaves out build output and the submodules.
 /// </summary>
 [TestClass]
@@ -74,10 +75,11 @@ public class EnvironmentVariableNamesTests
     private const string OtherToolsHeading = "## Names other tools define";
 
     /// <summary>
-    /// The heading in <see cref="NamesFile"/> of the table of secrets that
-    /// only CI uses, which have no prefix.
+    /// The heading in <see cref="NamesFile"/> of the table of secrets and
+    /// variables that only CI uses, which have no prefix.
     /// </summary>
-    private const string CiSecretsHeading = "## Secrets only CI reads";
+    private const string CiSecretsHeading =
+        "## Secrets and variables only CI reads";
 
     /// <summary>
     /// This file, whose tests use made up names.
@@ -295,7 +297,7 @@ public class EnvironmentVariableNamesTests
     /// <summary>
     /// The secrets and variables a workflow line reads that it may not, being
     /// any without the prefix, apart from GitHub's own token and the secrets
-    /// only CI reads.
+    /// and variables only CI reads.
     /// </summary>
     private static List<string> OtherWorkflowNames(
         string line, ISet<string> ciSecrets)
@@ -338,7 +340,8 @@ public class EnvironmentVariableNamesTests
 
     /// <summary>
     /// The names <see cref="NamesFile"/> lists, as the names customers use,
-    /// the secrets only CI reads and the names other tools define.
+    /// the secrets and variables only CI reads and the names other tools
+    /// define.
     /// </summary>
     private static (HashSet<string> Ours, HashSet<string> Ci, HashSet<string> OtherTools)
         ListedNames(IEnumerable<string> lines)
@@ -539,6 +542,44 @@ public class EnvironmentVariableNamesTests
                 new HashSet<string> { "MADE_UP_CI_SECRET" }));
     }
 
+    /// <summary>
+    /// The staging cloud and its key are names only CI uses. No customer
+    /// sets them, so they have no prefix, and a workflow may read them. A
+    /// name that only looks like one of them is still refused.
+    /// </summary>
+    [TestMethod]
+    public void TheStagingNamesAreOnlyCiNamesAndLookAlikesAreRefused()
+    {
+        var ci = Listed.Value.Ci;
+        var staging = new[]
+        {
+            "CLOUD_STAGING_ENDPOINT", "RESOURCE_KEY_BESPOKE_STAGING",
+        };
+        foreach (var name in staging)
+        {
+            Assert.Contains(name, ci,
+                $"{name} should be listed under {CiSecretsHeading}.");
+        }
+        CollectionAssert.AreEqual(
+            Array.Empty<string>(),
+            OtherWorkflowNames(
+                "${{ vars.CLOUD_STAGING_ENDPOINT }} " +
+                "${{ secrets.RESOURCE_KEY_BESPOKE_STAGING }}",
+                ci));
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "vars.CLOUD_STAGING_ENDPOINTS",
+                "secrets.RESOURCE_KEY_BESPOKE_STAGING_2",
+                "vars.STAGING_ENDPOINT",
+            },
+            OtherWorkflowNames(
+                "${{ vars.CLOUD_STAGING_ENDPOINTS }} " +
+                "${{ secrets.RESOURCE_KEY_BESPOKE_STAGING_2 }} " +
+                "${{ vars.STAGING_ENDPOINT }}",
+                ci));
+    }
+
     [TestMethod]
     public void TheNamesFileListsEachKind()
     {
@@ -558,7 +599,8 @@ public class EnvironmentVariableNamesTests
 
         var (listedOurs, listedCi, listedOther) = Listed.Value;
         Assert.IsTrue(listedOurs.Count > 0, "No 51Degrees name is listed.");
-        Assert.IsTrue(listedCi.Count > 0, "No secret only CI reads is listed.");
+        Assert.IsTrue(listedCi.Count > 0,
+            "No secret or variable only CI reads is listed.");
         Assert.IsTrue(listedOther.Count > 0, "No other tool's name is listed.");
         var wrongTable = listedOurs
             .Where(n => !n.StartsWith(Prefix, StringComparison.Ordinal))
@@ -610,8 +652,9 @@ public class EnvironmentVariableNamesTests
             found.Count,
             $"{found.Count} names are read or set that {NamesFile} does " +
             $"not list. A name 51Degrees defines starts {Prefix} and is " +
-            "listed with what it holds, a secret only CI reads is listed " +
-            "without the prefix, and another tool's name is listed in its " +
+            "listed with what it holds, a secret or variable only CI reads " +
+            "is listed without the prefix, and another tool's name is " +
+            "listed in its " +
             "last table:\n" + string.Join("\n", found));
     }
 
@@ -649,7 +692,8 @@ public class EnvironmentVariableNamesTests
             0,
             found.Count,
             $"{found.Count} secrets or variables named in the workflows " +
-            $"neither start {Prefix} nor are secrets only CI reads:\n" +
+            $"neither start {Prefix} nor are secrets or variables only " +
+            "CI reads:\n" +
             string.Join("\n", found));
     }
 

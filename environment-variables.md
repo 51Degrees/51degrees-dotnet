@@ -2,14 +2,15 @@
 
 These are the environment variables that the packages, examples, tests and CI
 scripts of this repository read. A name a customer uses, in the demos and the
-examples, starts with `_51DEGREES_`. A secret that only CI uses has no prefix,
-its name says what it does, and it is listed under "Secrets only CI reads".
-Each name holds one thing, and no name is filled from another.
+examples, starts with `_51DEGREES_`. A secret or variable that only CI uses has
+no prefix, its name says what it does, and it is listed under "Secrets and
+variables only CI reads". Each name holds one thing, and no name is filled from
+another.
 [`common/Test/EnvironmentVariableNamesTests.cs`](common/Test/EnvironmentVariableNamesTests.cs)
 reads the tables below. It fails on a `_51DEGREES_` name in the code that is
-not listed here, on a listed name that nothing uses, on a secret only CI reads
-that has the prefix, and on any other name that is read or set and is in
-neither of the last two tables.
+not listed here, on a listed name that nothing uses, on a secret or variable
+only CI reads that has the prefix, and on any other name that is read or set
+and is in neither of the last two tables.
 
 ## Keys
 
@@ -17,7 +18,7 @@ neither of the last two tables.
 | --- | --- | --- |
 | `_51DEGREES_RESOURCE_KEY` | The resource key a person running a cloud example sets. No CI job sets it. A test that runs a cloud example gives the example its key under this name. | The cloud examples |
 | `_51DEGREES_RESOURCE_KEY_BESPOKE` | A resource key that carries every property | The live cloud tests, and the tests that run the cloud examples |
-| `_51DEGREES_RESOURCE_KEY_BASIC` | A resource key on the basic data tier | The 51Did entitlement test |
+| `_51DEGREES_RESOURCE_KEY_BASIC` | A resource key on the basic data tier | The 51Did entitlement test, and the Human Confidence test of a key outside the Bespoke product, which calls the staging cloud in `CLOUD_STAGING_ENDPOINT` |
 | `_51DEGREES_RESOURCE_KEY_51DID` | A resource key carrying 51Did | The live 51Did tests |
 | `_51DEGREES_LICENSE_KEY` | A 51Degrees license key. CI downloads the paid data files with it. | The data file update examples, and the web examples that read a result with a license key |
 | `_51DEGREES_LICENSE_KEY_51DID` | The license key that reads results sealed with `_51DEGREES_RESOURCE_KEY_51DID` | The live 51Did tests |
@@ -64,7 +65,11 @@ them.
 | `_51DEGREES_BUILD_DEVICE_DETECTION` | `OFF` in the IP Intelligence engine, so only IP Intelligence is built | `ON` |
 | `_51DEGREES_BUILD_IP_INTELLIGENCE` | `OFF` in the Device Detection engine, so only Device Detection is built | `ON` |
 
-## Secrets only CI reads
+## Secrets and variables only CI reads
+
+The shared workflows pass on only `_51DEGREES_` names and the CI secrets on
+their own list, so `CLOUD_STAGING_ENDPOINT` and `RESOURCE_KEY_BESPOKE_STAGING`
+reach only the workflow that names them.
 
 | Name | What it holds | Read by |
 | --- | --- | --- |
@@ -76,6 +81,8 @@ them.
 | `CODE_SIGNING_KEY_VAULT_TENANT_ID` | The tenant of that client | `ci/build-package.ps1` |
 | `CODE_SIGNING_KEY_VAULT_CLIENT_SECRET` | The secret of that client | `ci/build-package.ps1` |
 | `CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME` | The name of the code signing certificate in the key vault | `ci/build-package.ps1` |
+| `CLOUD_STAGING_ENDPOINT` | The address of the staging cloud service, ending `/api/v4/`. An organization variable. It has no default. | `.github/workflows/cloud-human-confidence.yml`, and the Human Confidence tests in the `CloudStaging` category |
+| `RESOURCE_KEY_BESPOKE_STAGING` | A resource key that carries every property and that the staging cloud resolves. An organization secret. | `.github/workflows/cloud-human-confidence.yml`, and the Human Confidence tests in the `CloudStaging` category |
 
 ## Names other tools define
 
