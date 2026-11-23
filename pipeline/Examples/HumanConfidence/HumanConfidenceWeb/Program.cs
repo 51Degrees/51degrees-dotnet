@@ -134,12 +134,19 @@ app.MapGet("/passive", async (HttpContext context) =>
             }
         }
         // Behind a load balancer or CDN, use the visitor's address it
-        // passes on. Set last, so no header can replace it.
+        // passes on. Set last, so no header can replace it. A local
+        // address (this machine, or a private network) says nothing about
+        // the visitor's connection, so it isn't sent, and the cloud goes
+        // by the address this server calls from. That is the visitor's
+        // own connection when the demo runs on their machine or network.
         var ip = context.Connection.RemoteIpAddress;
         if (ip != null)
         {
-            evidence["client-ip"] = (ip.IsIPv4MappedToIPv6
-                ? ip.MapToIPv4() : ip).ToString();
+            ip = ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4() : ip;
+            if (IsLocal(ip) == false)
+            {
+                evidence["client-ip"] = ip.ToString();
+            }
         }
         using var answer = await http.PostAsync(
             api + resource + ".json", new FormUrlEncodedContent(evidence));
@@ -192,6 +199,24 @@ app.MapPost("/redeem", async (HttpRequest request) =>
 
 Console.WriteLine($"Human Confidence demo on http://localhost:{port}/, using {api}");
 app.Run();
+
+// True for this machine's own addresses and for private network ranges.
+static bool IsLocal(System.Net.IPAddress ip)
+{
+    if (System.Net.IPAddress.IsLoopback(ip) || ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal || ip.IsIPv6UniqueLocal)
+    {
+        return true;
+    }
+    if (ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+    {
+        return false;
+    }
+    var b = ip.GetAddressBytes();
+    return b[0] == 10
+        || (b[0] == 172 && b[1] >= 16 && b[1] <= 31)
+        || (b[0] == 192 && b[1] == 168)
+        || (b[0] == 169 && b[1] == 254);
+}
 return 0;
 
 static string? Read(JsonElement parent, string name) =>

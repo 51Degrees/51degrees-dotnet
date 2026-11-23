@@ -17,8 +17,11 @@ The page shows three rows, one for each step.
 1. **Passive.** The server asks the cloud itself, sending the visitor's
    request headers and IP address. `HumanConfidenceSource` is `Passive` and
    `HumanConfidence` is a plain level, `High`, `Medium`, or `Low`, worked
-   out from the request alone. On a first visit it's `Medium` at most,
-   because nothing has run in the browser yet. The server asks for it
+   out from the request alone. A current browser on a home or mobile
+   connection gets `High`. When the visitor's address is a local one, as
+   it is when you run the demo on your own machine, the server leaves it
+   out and the cloud goes by the address the server calls from. The
+   server asks for it
    rather than reading it from the page, because a level sent by a browser
    can be forged.
 2. **Active.** The page loads the 51Degrees client script. It runs the
@@ -87,7 +90,7 @@ before `dotnet run`.
 
 In a current Chrome or Edge on a genuine computer or phone:
 
-1. The first row shows `Passive` and a level, `Medium` at most.
+1. The first row shows `Passive` and a level, usually `High`.
 2. After a few seconds, the second row shows `Active` and a sealed value.
 3. The third row shows the level the server redeemed, usually `High`.
 4. **Redeem the same value again** shows `replayed`.
