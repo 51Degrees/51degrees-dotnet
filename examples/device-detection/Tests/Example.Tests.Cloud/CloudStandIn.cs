@@ -32,8 +32,9 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud;
 /// <summary>
 /// A stand-in for the cloud service on this machine. It answers as the
 /// service does for a resource key that does not include the hardware
-/// lookup, answers anything else with 404, and records the path of every
-/// request so a test can check what an example asked for.
+/// lookup, or for one that does where every lookup matches no device,
+/// answers anything else with 404, and records the path of every request
+/// so a test can check what an example asked for.
 /// </summary>
 internal sealed class CloudStandIn : IDisposable
 {
@@ -45,6 +46,27 @@ internal sealed class CloudStandIn : IDisposable
         "{\"Products\":{\"device\":{\"DataTier\":\"CloudV5Basic\"," +
         "\"Properties\":[{\"Name\":\"IsMobile\",\"Type\":\"Boolean\"," +
         "\"Category\":\"Device\",\"DelayExecution\":false}]}}}";
+
+    /// <summary>
+    /// The service's answer for a key with the hardware element, cut down
+    /// to the profile properties the examples print.
+    /// </summary>
+    private const string AccessiblePropertiesWithHardware =
+        "{\"Products\":{\"hardware\":{\"DataTier\":\"CloudV5Bespoke\"," +
+        "\"Properties\":[{\"Name\":\"Profiles\",\"Type\":\"Array\"," +
+        "\"Category\":\"\",\"DelayExecution\":false," +
+        "\"EvidenceProperties\":[],\"ItemProperties\":[" +
+        "{\"Name\":\"HardwareVendor\",\"Type\":\"String\"," +
+        "\"Category\":\"Name\",\"DelayExecution\":false}," +
+        "{\"Name\":\"HardwareName\",\"Type\":\"Array\"," +
+        "\"Category\":\"Name\",\"DelayExecution\":false}," +
+        "{\"Name\":\"HardwareModel\",\"Type\":\"String\"," +
+        "\"Category\":\"Name\",\"DelayExecution\":false}]}]}}}";
+
+    /// <summary>
+    /// The service's answer to a lookup that matches no device.
+    /// </summary>
+    private const string NoDevices = "{\"hardware\":{\"profiles\":[]}}";
 
     /// <summary>
     /// Part of the service's evidence key list, including the keys the
@@ -59,8 +81,15 @@ internal sealed class CloudStandIn : IDisposable
 
     private readonly Task _serving;
 
-    public CloudStandIn()
+    private readonly bool _withHardware;
+
+    /// <param name="withHardware">
+    /// True to answer as for a key with the hardware lookup, where every
+    /// lookup matches no device.
+    /// </param>
+    public CloudStandIn(bool withHardware = false)
     {
+        _withHardware = withHardware;
         var port = FreePort();
         EndPoint = $"http://localhost:{port}/api/v4/";
         _listener.Prefixes.Add($"http://localhost:{port}/");
@@ -115,9 +144,14 @@ internal sealed class CloudStandIn : IDisposable
             }
             var body =
                 path.EndsWith("/accessibleproperties",
-                    StringComparison.Ordinal) ? AccessibleProperties :
+                    StringComparison.Ordinal) ?
+                    (_withHardware ?
+                        AccessiblePropertiesWithHardware :
+                        AccessibleProperties) :
                 path.EndsWith("/evidencekeys",
                     StringComparison.Ordinal) ? EvidenceKeys :
+                path.EndsWith("/json",
+                    StringComparison.Ordinal) && _withHardware ? NoDevices :
                 null;
             if (body == null)
             {
