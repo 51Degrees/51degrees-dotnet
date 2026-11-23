@@ -119,7 +119,8 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                     // includes, so without Profiles there is nothing to look
                     // up.
                     var includesProfiles = propertyKeyedEngine.Properties
-                        .Any(p => p.Name == "Profiles");
+                        .Any(p => string.Equals(p.Name, "Profiles",
+                            StringComparison.OrdinalIgnoreCase));
                     if (includesProfiles == false)
                     {
                         output.WriteLine(NoHardwareLookup);

@@ -103,7 +103,8 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                     // up.
                     var includesProfiles = pipeline
                         .GetElement<HardwareProfileCloudEngine>()
-                        .Properties.Any(p => p.Name == "Profiles");
+                        .Properties.Any(p => string.Equals(p.Name, "Profiles",
+                            StringComparison.OrdinalIgnoreCase));
                     if (includesProfiles == false)
                     {
                         output.WriteLine(NoHardwareLookup);
