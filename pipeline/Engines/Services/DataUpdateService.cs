@@ -374,17 +374,18 @@ namespace FiftyOne.Pipeline.Engines.Services
         /// If the engine has only one data file then this parameter is ignored.
         /// </param>
         /// <returns>
-        /// The result of the update check. A data file disposed before any
-        /// try at refreshing the engine gives not needed, and the engine is
-        /// left alone. Nothing is downloaded if the file was disposed before
-        /// the call. A download under way when it was disposed is not
-        /// copied over the data file, though a copy already under way
-        /// finishes and writes it. A dispose during a try waits for that try
-        /// to end, and the check gives success if it worked. If that try
-        /// failed, or the dispose came after a failed try, the tries end and
-        /// the failure is thrown as a refresh failure. A dispose after the
-        /// engine is refreshed leaves the success. A failure to download or
-        /// copy is thrown whether or not the file was disposed.
+        /// The result of the update check. For a data file whose engine has
+        /// been built, a dispose before any try at refreshing the engine
+        /// gives not needed, and the engine is left alone. Nothing is
+        /// downloaded if the file was disposed before the call. A download
+        /// under way when it was disposed is not copied over the data file,
+        /// though a dispose after the download has been checked lets the copy
+        /// write it. A dispose during a try waits for that try to end, and
+        /// the check gives success if it worked. If that try failed, or the
+        /// dispose came after a failed try, the tries end and the failure is
+        /// thrown as a refresh failure. A dispose after the engine is
+        /// refreshed leaves the success. Any failure before the refresh is
+        /// thrown whether or not the file was disposed.
         /// </returns>
         /// <exception cref="DataUpdateException">
         /// Thrown if some problem occurs during the update process.
