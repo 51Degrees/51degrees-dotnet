@@ -80,7 +80,7 @@ public class DataUpdateServiceDisposeTests
     private int _exited;
     private ConcurrentQueue<DataUpdateCompleteArgs> _reports;
     private CountingHandler _http;
-    private ErrorCountingLogger _logger;
+    private ErrorRecordingLogger _logger;
 
     [TestInitialize]
     public void Init()
@@ -91,7 +91,7 @@ public class DataUpdateServiceDisposeTests
         _path = Path.Combine(_directory, "data.dat");
         File.WriteAllText(_path, OldData);
         _http = new CountingHandler();
-        _logger = new ErrorCountingLogger();
+        _logger = new ErrorRecordingLogger();
         _service = new DataUpdateService(
             _logger,
             new HttpClient(_http),
@@ -274,7 +274,10 @@ public class DataUpdateServiceDisposeTests
             reports,
             AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED,
             "Reported " + string.Join(", ", reports) + ".");
-        Assert.IsTrue(_logger.Errors > 0, "The failure was not logged.");
+        Assert.IsTrue(
+            _logger.Errors.Any(e => e?.InnerException
+                is InvalidOperationException),
+            "The failure was not logged with its cause.");
         Assert.AreEqual(1, _refreshes);
     }
 
@@ -305,6 +308,8 @@ public class DataUpdateServiceDisposeTests
         Assert.AreEqual(
             AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED,
             thrown.Status);
+        Assert.IsInstanceOfType<InvalidOperationException>(
+            thrown.InnerException);
         CollectionAssert.Contains(
             ReportsForFile(),
             AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED);
@@ -568,12 +573,13 @@ public class DataUpdateServiceDisposeTests
         public Stream OpenRead(string path) => _real.OpenRead(path);
     }
 
-    // Counts the errors logged from any thread.
-    private sealed class ErrorCountingLogger : ILogger<DataUpdateService>
+    // Records the exception of each error logged, from any thread.
+    private sealed class ErrorRecordingLogger : ILogger<DataUpdateService>
     {
-        private int _errors;
+        private readonly ConcurrentQueue<Exception> _errors =
+            new ConcurrentQueue<Exception>();
 
-        public int Errors => Volatile.Read(ref _errors);
+        public Exception[] Errors => _errors.ToArray();
 
         public IDisposable BeginScope<TState>(TState state) => null;
 
@@ -588,7 +594,7 @@ public class DataUpdateServiceDisposeTests
         {
             if (logLevel == LogLevel.Error)
             {
-                Interlocked.Increment(ref _errors);
+                _errors.Enqueue(exception);
             }
         }
     }
