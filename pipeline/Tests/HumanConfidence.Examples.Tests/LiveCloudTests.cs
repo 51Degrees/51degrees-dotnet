@@ -37,10 +37,12 @@ namespace FiftyOne.HumanConfidence.Examples.Tests;
 /// does before it serves its page, against the cloud in
 /// _51DEGREES_CLOUD_ENDPOINT. The second asks for the passive level with
 /// the evidence passed on as it is, and reads the source and the level,
-/// and a key outside the Bespoke product is asked the same and gets no
-/// source. The passive call and the call with the key outside Bespoke need
-/// a cloud that serves HumanConfidenceSource and a passive level, which the
-/// production cloud does not yet, so their tests are in the
+/// and a key outside the Bespoke product is asked the same and gets a null
+/// source with a reason. A cloud that leaves the source out entirely fails
+/// that test, because it does not serve the property at all. The passive
+/// call and the call with the key outside Bespoke need a cloud that serves
+/// HumanConfidenceSource and a passive level, which the production cloud
+/// does not yet, so their tests are in the
 /// <see cref="StagingCategory"/> category and call the staging cloud in
 /// CLOUD_STAGING_ENDPOINT, with the Bespoke key in
 /// RESOURCE_KEY_BESPOKE_STAGING. Only CI holds those two names, and
@@ -246,16 +248,29 @@ public class LiveCloudTests
         Assert.AreEqual(200, status,
             "The passive call did not succeed: " + Redact(body, key));
         using var document = JsonDocument.Parse(body);
-        var source = document.RootElement.TryGetProperty("derived", out var derived)
-            && derived.TryGetProperty("humanconfidencesource", out var value)
-            ? value : default;
-        if (source.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
-        {
-            Assert.Fail(
-                "A key outside the Bespoke product should get no " +
-                "humanconfidencesource, but the answer has " +
-                Redact(source.GetRawText(), key) + ".");
-        }
+        Assert.IsTrue(
+            document.RootElement.TryGetProperty("derived", out var derived),
+            "The answer has no derived object: " + Redact(body, key));
+        Assert.IsTrue(
+            derived.TryGetProperty("humanconfidencesource", out var source),
+            "The answer has no humanconfidencesource at all, so this cloud " +
+            "does not serve HumanConfidenceSource: " +
+            Redact(derived.GetRawText(), key));
+        Assert.AreEqual(JsonValueKind.Null, source.ValueKind,
+            "A key outside the Bespoke product should get a null " +
+            "humanconfidencesource, but the answer has " +
+            Redact(source.GetRawText(), key) + ".");
+        Assert.IsTrue(
+            derived.TryGetProperty(
+                "humanconfidencesourcenullreason", out var reason),
+            "The null humanconfidencesource has no " +
+            "humanconfidencesourcenullreason: " +
+            Redact(derived.GetRawText(), key));
+        Assert.AreEqual(JsonValueKind.String, reason.ValueKind,
+            "humanconfidencesourcenullreason should be a string, but the " +
+            "answer has " + Redact(reason.GetRawText(), key) + ".");
+        TestContext.WriteLine(
+            "No source, because: " + Redact(reason.GetString()!, key));
     }
 
     /// <summary>
