@@ -39,12 +39,14 @@ function Register-TestSigningKey([string]$Path) {
 }
 
 # A public signed assembly has the strong name signed flag in its CLI header
-# but no signature, and the .NET Framework checks the signature of any
-# assembly with that flag, whatever the skip entries say. Clearing the flag
-# leaves a delay signed assembly, which a skip entry does cover. This clears
-# it in each assembly in the folder that has the key in the public key file.
+# but no signature. When the .NET Framework checks a strong name, as it does
+# for an assembly ASP.NET has shadow copied, it honors a skip entry only for
+# an assembly without that flag. Set-DelaySigned clears the flag in each
+# assembly in a folder whose public key is the one in the public key file,
+# which leaves the assembly delay signed and covered by the skip entry.
 $StrongNameSignedFlag = [int][Reflection.PortableExecutable.CorFlags]::StrongNameSigned
-$CorHeaderFlagsOffset = 16
+# Where the Flags field starts in the CLI header (IMAGE_COR20_HEADER).
+$CorHeaderFlagsOffsetBytes = 16
 function Set-DelaySigned([string]$Bin, [string]$PublicKeyPath) {
     $key = [IO.File]::ReadAllBytes($PublicKeyPath)
     foreach ($dll in Get-ChildItem -Path $Bin -Filter *.dll -File) {
@@ -63,7 +65,7 @@ function Set-DelaySigned([string]$Bin, [string]$PublicKeyPath) {
             if ([Convert]::ToHexString($assemblyKey) -ne [Convert]::ToHexString($key)) {
                 continue
             }
-            $offset = $pe.PEHeaders.CorHeaderStartOffset + $CorHeaderFlagsOffset
+            $offset = $pe.PEHeaders.CorHeaderStartOffset + $CorHeaderFlagsOffsetBytes
         } finally {
             $pe.Dispose()
         }
@@ -134,8 +136,8 @@ if ($BuildMethod -eq "msbuild" -and $Arch -eq "x64") {
     # registered to skip verification. That covers this compile and the
     # sites test-framework-sites.ps1 hosts later in the same job.
     # A full path, because .NET reads a relative one from the process's
-    # folder rather than the PowerShell location.
-    $publicKey = (Resolve-Path (Join-Path $RepoName "51Degrees.publickey")).Path
+    # current directory, which the PowerShell location does not move.
+    $publicKey = Convert-Path (Join-Path $RepoName "51Degrees.publickey")
     $publicSigned = -not (Test-Path (Join-Path $RepoName "51Degrees.snk"))
     if ($publicSigned) {
         Register-TestSigningKey $publicKey
