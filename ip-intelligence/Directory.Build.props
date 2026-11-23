@@ -1,6 +1,0 @@
-<Project>
-  <!-- The settings shared by the whole repository come first. -->
-  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" />
-  <PropertyGroup>
-  </PropertyGroup>
-</Project>

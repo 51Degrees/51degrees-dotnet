@@ -1,2 +1,0 @@
-﻿This example project exists to illustrate how to create a custom element that makes use of client-side evidence.
-The Pipeline.Web solution contains an end-to-end demo project that builds on this element.
