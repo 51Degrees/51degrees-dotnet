@@ -435,11 +435,13 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         }
 
         /// <summary>
-        /// Dispose of the property and component meta data, which own native
+        /// Dispose of the data files, which waits for a refresh in progress,
+        /// then the property and component meta data, which own native
         /// copies of their entries.
         /// </summary>
         protected override void ManagedResourcesCleanup()
         {
+            base.ManagedResourcesCleanup();
             foreach (var property in _properties ??
                 Enumerable.Empty<IFiftyOneAspectPropertyMetaData>())
             {
@@ -450,7 +452,6 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
             {
                 component.Dispose();
             }
-            base.ManagedResourcesCleanup();
         }
 
         /// <summary>

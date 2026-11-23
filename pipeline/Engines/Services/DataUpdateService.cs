@@ -413,11 +413,18 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// <param name="data">
 		/// The data to update with.
 		/// </param>
+		/// <returns>
+		/// Success. Any failure is thrown.
+		/// </returns>
 		/// <exception cref="DataUpdateException">
 		/// Thrown if some problem occurs during the update process.
 		/// </exception>
 		/// <exception cref="ArgumentNullException">
 		/// Thrown if arguments are null.
+		/// </exception>
+		/// <exception cref="ObjectDisposedException">
+		/// Thrown if the data file has been disposed. Nothing is written and
+		/// the engine is not refreshed.
 		/// </exception>
 		public AutoUpdateStatus UpdateFromMemory(AspectEngineDataFile dataFile,
             MemoryStream data)
@@ -429,6 +436,10 @@ namespace FiftyOne.Pipeline.Engines.Services
 			if (data == null)
 			{
 				throw new ArgumentNullException(nameof(data));
+			}
+			if (dataFile.TimerClosed)
+			{
+				throw DataFileDisposed(dataFile);
 			}
 
 			AutoUpdateStatus result = AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS;
@@ -457,14 +468,21 @@ namespace FiftyOne.Pipeline.Engines.Services
                 try
                 {
                     // Refresh the engine using the new data.
-                    dataFile.Engine.RefreshData(dataFile.Identifier, data);
-                    result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+                    result = RefreshEngine(
+                        dataFile,
+                        () => dataFile.Engine.RefreshData(
+                            dataFile.Identifier, data));
                 }
                 catch (Exception ex)
                 {
                     result = AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED;
                     throw new DataUpdateException($"An error occurred when applying a " +
                         $"data update to engine '{dataFile.Engine.GetType().Name}'.", ex, result);
+                }
+                // Disposed during this call, so the engine was left alone.
+                if (result != AutoUpdateStatus.AUTO_UPDATE_SUCCESS)
+                {
+                    throw DataFileDisposed(dataFile);
                 }
             }
             else
@@ -619,13 +637,15 @@ namespace FiftyOne.Pipeline.Engines.Services
 
 								// Make sure we can actually open the file for reading
 								// before notifying the engine, otherwise the copy
-								// may still be in progress.
+								// may still be in progress. Dispose waits for this
+								// lock, so stop waiting once the file is closed.
 								bool fileLockable = false;
 								bool fileGone = false;
 								DateTime timeout = DateTime.UtcNow.AddMinutes(10);
 
 								while (fileLockable == false &&
 									fileGone == false &&
+									dataFile.TimerClosed == false &&
 									timeout > DateTime.UtcNow)
 								{
 									try
@@ -650,7 +670,7 @@ namespace FiftyOne.Pipeline.Engines.Services
 									}
 								}
 
-								if (fileGone)
+								if (fileGone || dataFile.TimerClosed)
 								{
 									status = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
 								}
@@ -872,7 +892,13 @@ namespace FiftyOne.Pipeline.Engines.Services
 
 			try
 			{
-				if (dataFile != null)
+				// A disposed file's engine is gone, so there is nothing to
+				// download or apply.
+				if (dataFile != null && dataFile.TimerClosed)
+				{
+					result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+				}
+				else if (dataFile != null)
 				{
 					LogInfoMessage(Messages.MessageAutoUpdateCheck, dataFile);
 
@@ -1034,8 +1060,11 @@ namespace FiftyOne.Pipeline.Engines.Services
 									LogInfoMessage(Messages.MessageAutoUpdateRefreshEngine, dataFile);
 									// Tell the engine to refresh itself with
 									// the new data.
-									dataFile.Engine.RefreshData(dataFile.Identifier, uncompressedStream);
-									result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+									result = RefreshEngine(
+										dataFile,
+										() => dataFile.Engine.RefreshData(
+											dataFile.Identifier,
+											uncompressedStream));
 								}
 								catch (Exception ex)
 								{
@@ -1230,9 +1259,10 @@ namespace FiftyOne.Pipeline.Engines.Services
 		}
 
 		/// <summary>
-		/// Called when a data update is available and the file at 
+		/// Called when a data update is available and the file at
 		/// engine.DataFilePath contains this new data. Refreshes the engine,
-		/// trying up to 10 times, and leaves the update timer alone.
+		/// trying up to 10 times, and leaves the update timer alone. Gives
+		/// not needed, with no refresh, once the file is disposed.
 		/// </summary>
 		/// <param name="dataFile"></param>
 		/// <returns></returns>
@@ -1254,8 +1284,14 @@ namespace FiftyOne.Pipeline.Engines.Services
 				{
 					try
 					{
-						dataFile.Engine.RefreshData(dataFile.Identifier);
-						result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+						result = RefreshEngine(
+							dataFile,
+							() => dataFile.Engine.RefreshData(
+								dataFile.Identifier));
+						if (result == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
+						{
+							return result;
+						}
 					}
 #pragma warning disable CA1031 // Do not catch general exception types
 					// The code executed by the RefreshData method could
@@ -1288,6 +1324,38 @@ namespace FiftyOne.Pipeline.Engines.Services
 
 			return result;
 		}
+
+		/// <summary>
+		/// Refreshes the data file's engine under the file's update lock,
+		/// unless the file has been disposed. Dispose waits for that lock,
+		/// so the engine is never freed while it refreshes, and once freed
+		/// it is never refreshed.
+		/// </summary>
+		/// <returns>
+		/// Success, or not needed when the file has been disposed and the
+		/// engine was left alone.
+		/// </returns>
+		private static AutoUpdateStatus RefreshEngine(
+			AspectEngineDataFile dataFile,
+			Action refresh)
+		{
+			lock (dataFile.UpdateSyncLock)
+			{
+				if (dataFile.TimerClosed)
+				{
+					return AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+				}
+				refresh();
+				return AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+			}
+		}
+
+		private static ObjectDisposedException DataFileDisposed(
+			AspectEngineDataFile dataFile) =>
+			new ObjectDisposedException(
+				dataFile.GetType().Name,
+				$"The data file '{dataFile.Identifier}' has been disposed, " +
+				"so its engine cannot be updated.");
 
 		/// <summary>
 		/// Clear the timer ready for a new one to be created.

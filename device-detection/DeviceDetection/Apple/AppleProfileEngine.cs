@@ -258,11 +258,13 @@ namespace FiftyOne.DeviceDetection.Apple
         }
 
         protected override void UnmanagedResourcesCleanup() { }
+        // The data files first, as disposing them waits for a refresh in
+        // progress, which takes the lock.
         protected override void ManagedResourcesCleanup()
         {
+            base.ManagedResourcesCleanup();
             DecisionTree = null;
             _decisionTreeLock.Dispose();
-            base.ManagedResourcesCleanup();
         }
     }
 }
