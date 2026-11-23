@@ -35,7 +35,8 @@
 //    browser tests and sends the answers to the cloud. When the script
 //    completes, HumanConfidenceSource is Active and HumanConfidence holds
 //    a sealed value the browser can't read or change.
-// 3. Redeem. The page hands the sealed value to this server, which calls
+// 3. Redeem. As soon as HumanConfidence isn't a plain level, the page
+//    hands the sealed value to this server, which calls
 //    hc/redeem with it and the account's License Key, and gets the true
 //    level back. A sealed value redeems once, within ten seconds. This
 //    server is the only party holding the License Key, which the browser

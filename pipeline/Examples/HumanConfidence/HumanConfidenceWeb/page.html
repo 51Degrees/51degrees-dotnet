@@ -72,6 +72,8 @@
   var FAIL = "c-eg-status c-eg-status--fail";
   var PART = "c-eg-status c-eg-status--part";
   var NONE = "c-eg-status c-eg-status--none";
+  // The values HumanConfidence takes before it is sealed.
+  var LEVELS = ["High", "Medium", "Low", "Unknown"];
 
   function show(id, text, cls) {
     var element = document.getElementById(id);
@@ -140,19 +142,22 @@
       var derived = (data && data.derived) || {};
       var source = derived.humanconfidencesource;
       var value = derived.humanconfidence;
-      if (source !== "Active") {
+      // A plain level means the result is still passive. Anything else is
+      // a sealed value, which is redeemed straight away, as it has to be
+      // within ten seconds. HumanConfidenceSource says the same thing, but
+      // only when the Resource Key includes it, so it is shown, not needed.
+      if (!value || LEVELS.indexOf(value) >= 0) {
         show("active-source", (source || "not returned") + " after "
           + seconds(), NONE);
         show("active-value", value || "not returned", levelClass(value));
         show("redeem-detail", "nothing to redeem", NONE);
         show("redeem-level", "", NONE);
-        document.getElementById("note").textContent = "The browser tests "
-          + "didn't run, so the result stays passive. The cloud may not "
-          + "have this page's tests yet, or the Resource Key may not "
-          + "include HumanConfidenceSource.";
+        document.getElementById("note").textContent = "The result is "
+          + "still passive, so the browser tests didn't run. The cloud may "
+          + "not have this page's tests yet.";
         return;
       }
-      show("active-source", "Active after " + seconds(), PASS);
+      show("active-source", (source || "Active") + " after " + seconds(), PASS);
       show("active-value", "sealed value, " + String(value).length
         + " characters, unreadable here", NONE);
       redeem(value).then(function (answer) {

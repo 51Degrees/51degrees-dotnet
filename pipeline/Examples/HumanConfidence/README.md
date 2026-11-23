@@ -26,7 +26,8 @@ The page shows three rows, one for each step.
    cloud. When the script completes, `HumanConfidenceSource` is `Active` and
    `HumanConfidence` holds a sealed value. The browser can't read it or
    change it.
-3. **Redeem.** The page hands the sealed value to the server, which sends
+3. **Redeem.** As soon as the value isn't a plain level, the page hands
+   it to the server, which sends
    it to the cloud's `hc/redeem` with the account's License Key and gets the
    true level back. A sealed value redeems once, within ten seconds of the
    tests. The page then offers to redeem the same value again, which
@@ -39,9 +40,11 @@ redeems it.
 ## What you need
 
 - **A Resource Key** for an account on the Pro or Bespoke plan (CloudV5Pro
-  or CloudV5Bespoke), with the properties `HumanConfidence` and
-  `HumanConfidenceSource`. The browser tests script comes with
-  `HumanConfidence` by itself, so you don't select it.
+  or CloudV5Bespoke), with the property `HumanConfidence`. The browser
+  tests script comes with it, so you don't select that. Add
+  `HumanConfidenceSource` too, to see `Passive` or `Active` in the Source
+  column. The page doesn't need it, as it spots a sealed value by it not
+  being a plain level.
 - **Leave the Resource Key's domain list empty,** or include `localhost`
   and the server's own address. The server calls the cloud with the same
   key, and a call from a server has no `Origin` header, so a key limited to
@@ -89,9 +92,8 @@ In a current Chrome or Edge on a genuine computer or phone:
 3. The third row shows the level the server redeemed, usually `High`.
 4. **Redeem the same value again** shows `replayed`.
 
-If the second row stays `Passive`, the browser tests didn't run. The cloud
-you're using may not have the tests yet, or the Resource Key may not
-include `HumanConfidenceSource`.
+If the second row still shows a plain level, the browser tests didn't run.
+The cloud you're using may not have the tests yet.
 
 ## What changes the result
 
