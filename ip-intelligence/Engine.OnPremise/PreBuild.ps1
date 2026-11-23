@@ -46,7 +46,7 @@ try {
 		# the fiftyone-ipi-dotnet.vxproj file to ensure it includes /O2 and
 		# other optimisations in Release configuration.
 
-		cmake ../../.. -A $Arch -DRebuildSwig=Off -DBUILD_TESTING=Off -DLargeDataFileSupport:BOOL=ON
+		cmake ../../.. -A $Arch -DRebuildSwig=Off -DBUILD_TESTING=Off
 		cmake --build . -t fiftyone-ipi-dotnet --config $BuildType $Jargs
 		
 	}
@@ -60,7 +60,7 @@ try {
 		if ($Arch -eq "x86") {
 			$Is32 = "on"
 		}
-		cmake ../../.. "-D32bit=$Is32" "-DCMAKE_BUILD_TYPE=$BuildType" -DRebuildSwig=Off -DBUILD_TESTING=Off -DLargeDataFileSupport:BOOL=ON
+		cmake ../../.. "-D_51DEGREES_32BIT=$Is32" "-DCMAKE_BUILD_TYPE=$BuildType" -DRebuildSwig=Off -DBUILD_TESTING=Off
 		cmake --build . -t fiftyone-ipi-dotnet $Jargs
 
 	}

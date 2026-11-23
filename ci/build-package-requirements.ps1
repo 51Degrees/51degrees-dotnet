@@ -17,7 +17,7 @@ $RepoPath = [IO.Path]::Combine($pwd, $RepoName)
 
 foreach ($engine in $NativeEngines) {
     Write-Host "::group::Building $($engine.Library) for $os $Arch"
-    $extra = ($Arch -eq "x86") ? @("-D32bit=on") : @()
+    $extra = ($Arch -eq "x86") ? @("-D_51DEGREES_32BIT=on") : @()
     ./cxx/build-project.ps1 -RepoName $RepoName -ProjectDir $engine.Project -Configuration "Release" -Arch $Arch -ExtraArgs $extra
     $library = Get-ChildItem -Recurse -File -Path "$RepoPath/$($engine.Project)/build" -Filter $engine.Library | Select-Object -First 1
     if (-not $library) {

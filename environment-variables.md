@@ -51,6 +51,19 @@ in `ci/packages.json`.
 | --- | --- | --- |
 | `_51DEGREES_REFERENCES` | `Project` to build against the projects of the other folders, `Package` to build against the published packages | `Package` |
 | `_51DEGREES_BUILT_ON_CI` | `true` when CI builds, so that an on-premise engine package packs the native library of every platform | `false` |
+
+## CMake options
+
+The `CMakeLists.txt` of each on-premise engine reads these, given as
+`-D<name>=<value>`, and passes them on to `cxx/CMakeLists.txt`, which names
+them.
+
+| Name | What it holds | Default when it is not set |
+| --- | --- | --- |
+| `_51DEGREES_32BIT` | `ON` to build the native library for 32-bit x86 | `OFF` |
+| `_51DEGREES_BUILD_DEVICE_DETECTION` | `OFF` in the IP Intelligence engine, so only IP Intelligence is built | `ON` |
+| `_51DEGREES_BUILD_IP_INTELLIGENCE` | `OFF` in the Device Detection engine, so only Device Detection is built | `ON` |
+
 ## Secrets only CI reads
 
 | Name | What it holds | Read by |
