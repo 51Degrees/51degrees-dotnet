@@ -92,6 +92,39 @@ namespace FiftyOne.Pipeline.Engines.Services
 		#endregion
 
 		/// <summary>
+		/// Constructor for a service that makes its own
+		/// <see cref="HttpClient"/>, which does not follow redirects.
+		/// </summary>
+		/// <param name="logger">
+		/// The logger to use
+		/// </param>
+		public DataUpdateService(
+			ILogger<DataUpdateService> logger) :
+			this(logger, CreateHttpClient(), null, null)
+		{ }
+
+		/// <summary>
+		/// Make the <see cref="HttpClient"/> the service uses when it is
+		/// given none. It does not follow redirects, so that the answer
+		/// which lists the products the license keys hold reaches the
+		/// service. That answer has a Location header, which a client
+		/// that follows redirects requests in place of the list.
+		/// </summary>
+		/// <returns>
+		/// A new <see cref="HttpClient"/>.
+		/// </returns>
+		internal static HttpClient CreateHttpClient()
+		{
+#pragma warning disable CA2000 // Dispose objects before losing scope
+			// The client owns its handler, and the caller owns the client.
+			return new HttpClient(new HttpClientHandler()
+			{
+				AllowAutoRedirect = false,
+			});
+#pragma warning restore CA2000 // Dispose objects before losing scope
+		}
+
+		/// <summary>
 		/// Constructor
 		/// </summary>
 		/// <param name="logger">
@@ -100,9 +133,14 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// <param name="httpClient">
 		/// The <see cref="HttpClient"/> to use when requesting an update
 		/// from a URL.
-		/// Note that only one HttpClient instance should be used throughout 
-		/// the application, as described in the documentation: 
+		/// Note that only one HttpClient instance should be used throughout
+		/// the application, as described in the documentation:
 		/// https://msdn.microsoft.com/library/system.net.http.httpclient(v=vs.110).aspx
+		/// The client must not follow redirects (its handler has
+		/// AllowAutoRedirect set to false) when the license keys hold
+		/// more than one product. Otherwise the client requests the
+		/// address in the Location header of the answer that lists the
+		/// products, and the service never sees the list.
 		/// </param>
 		public DataUpdateService(
 			ILogger<DataUpdateService> logger,
@@ -1440,8 +1478,9 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// The URL of that request, as it is shown in messages.
 		/// </param>
 		/// <returns>
-		/// The URL to request, or null if the response has no list of
-		/// products or the URL formatter cannot name a product.
+		/// The URL to request, or null if the response lists no product,
+		/// the URL formatter cannot name a product, or the request
+		/// already named the product.
 		/// </returns>
 		/// <exception cref="DataUpdateException">
 		/// Thrown if the product of the data file is not offered.
@@ -1458,11 +1497,20 @@ namespace FiftyOne.Pipeline.Engines.Services
 				return null;
 			}
 			var offered = ReadProductsOffered(response);
-			if (offered == null)
+			// A list that gives no product is not one to choose from.
+			if (offered == null || offered.Count == 0)
 			{
 				return null;
 			}
 			var needed = formatter.GetDataUpdateProduct(dataFile) ?? string.Empty;
+			// A request that already named the product, as it does when
+			// one is configured, is not repeated.
+			if (needed.Length > 0 &&
+				formatter.GetFormattedDataUpdateUri(dataFile, needed)
+					.Equals(dataFile.FormattedUri))
+			{
+				return null;
+			}
 			var chosen = offered.FirstOrDefault(p => string.Equals(
 				p, needed, StringComparison.OrdinalIgnoreCase));
 			if (chosen == null)

@@ -162,7 +162,8 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// The data file to name the product of.
         /// </param>
         /// <returns>
-        /// The product name, or null if no data file is loaded.
+        /// The product name, or null if no data file is loaded, its tier
+        /// is empty, or it is of a kind that has no prefix.
         /// </returns>
         /// <exception cref="ArgumentNullException">
         /// Thrown if the supplied data file is null
@@ -190,9 +191,26 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                 return null;
             }
             var type = (dataFile as IFiftyOneDataFile)?.DataDownloadType;
-            var prefix = type != null && type.StartsWith(
-                IpIntelligenceType, StringComparison.OrdinalIgnoreCase) ?
-                IpIntelligencePrefix : DeviceDetectionPrefix;
+            // A kind of data file with no prefix has no product name.
+            if (type == null)
+            {
+                return null;
+            }
+            string prefix;
+            if (type.StartsWith(
+                IpIntelligenceType, StringComparison.OrdinalIgnoreCase))
+            {
+                prefix = IpIntelligencePrefix;
+            }
+            else if (type.StartsWith(
+                DeviceDetectionType, StringComparison.OrdinalIgnoreCase))
+            {
+                prefix = DeviceDetectionPrefix;
+            }
+            else
+            {
+                return null;
+            }
             return tier.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ?
                 tier : prefix + tier;
         }
@@ -201,6 +219,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// The start of the 'Type' of an IP Intelligence data file.
         /// </summary>
         private const string IpIntelligenceType = "IPI";
+
+        /// <summary>
+        /// The start of the 'Type' of a Device Detection Hash data file.
+        /// </summary>
+        private const string DeviceDetectionType = "Hash";
 
         /// <summary>
         /// The start of the product name of an IP Intelligence data file.
