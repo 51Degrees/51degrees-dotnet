@@ -72,15 +72,13 @@ public static class ExampleUtils
     /// properties an example needs, in plain words rather than as an
     /// unhandled exception and a stack trace.
     /// <para>
-    /// The cloud service refuses at start-up when a key carries none of
-    /// the properties an engine needs, and refuses per property when a
-    /// key carries some but not all of them. Neither is a fault in the
-    /// example, it is a subscription that does not cover what the
-    /// example asks for, so the person running it needs to be told
-    /// which properties are missing and that a paid subscription
-    /// supplies them. The caller decides the exit code, and it must not
-    /// be zero, because an example that could not do its work has not
-    /// succeeded.
+    /// The cloud service refuses per property when a key carries some but
+    /// not all of the properties an example displays. That is not a fault
+    /// in the example but a subscription that does not cover what the
+    /// example asks for, so the person running it needs to be told which
+    /// properties are missing and that a paid subscription supplies them.
+    /// The caller decides the exit code, and it must not be zero, because
+    /// an example that could not do its work has not succeeded.
     /// </para>
     /// </summary>
     /// <param name="exception">

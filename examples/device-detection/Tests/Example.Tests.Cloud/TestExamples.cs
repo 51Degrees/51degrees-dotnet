@@ -35,9 +35,9 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
     /// This test class ensures that the cloud examples execute successfully.
     /// </summary>
     /// <remarks>
-    /// Note that these test do not generally ensure the correctness 
-    /// of the example, only that the example will run without 
-    /// crashing or throwing any unhandled exceptions.
+    /// Most of these tests check only that the example runs without
+    /// throwing. The TAC and native model lookup tests also check that
+    /// each lookup lists a device with a vendor and a model.
     /// </remarks>
     [TestClass]
     public class TestExamples
