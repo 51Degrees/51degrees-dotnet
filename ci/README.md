@@ -115,14 +115,14 @@ only the job that publishes. Each test reads the key it needs by its name:
 A live cloud test with no key skips and names the variable it needs.
 
 `build-package.ps1` reads the strong name key as
-`_51DEGREES_SIGN_STRONG_NAME_KEY_BASE64` and the code signing key vault as the
-five `_51DEGREES_SIGN_KEY_VAULT_` names, and stops naming the first one that is
+`STRONG_NAME_KEY_BASE64` and the code signing key vault as the
+five `CODE_SIGNING_KEY_VAULT_` names, and stops naming the first one that is
 not set. It writes the strong name key to `51Degrees.snk`, and each project
 signs with the private key only when that file is there, so every other build
 public signs with `51Degrees.publickey`, as a local build does. The Package
 job in `.github/workflows/publish.yml` gets its NuGet key from nuget.org
 trusted publishing and gives it to `publish-package.ps1` as
-`_51DEGREES_PUBLISH_NUGET_API_KEY`, with `_51DEGREES_ACCESS_TOKEN` for git and
+`NUGET_API_KEY`, with `CI_ACCESS_TOKEN` for git and
 the GitHub releases.
 
 `run-unit-tests.ps1` and `run-integration-tests.ps1` each begin by running
