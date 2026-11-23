@@ -22,6 +22,7 @@
 
 using FiftyOne.Common;
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
+using FiftyOne.Pipeline.CloudRequestEngine;
 using FiftyOne.Pipeline.Core.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
@@ -66,6 +67,34 @@ public static class ExampleUtils
         "Some properties used by this example are not available " +
         "with a free resource key. See https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=pricing-message " +
         "to get a paid subscription with more properties.";
+
+    /// <summary>
+    /// Reports in one line that a request to the cloud service failed,
+    /// with the service's own message and status code, rather than as an
+    /// unhandled exception and a stack trace. A failure to read which
+    /// properties the resource key includes is a fault in the request,
+    /// not a key without a property, so it is reported as one. The caller
+    /// ends with a non-zero exit code.
+    /// </summary>
+    /// <param name="exception">
+    /// The exception the pipeline threw.
+    /// </param>
+    /// <param name="output">
+    /// Where to write the line.
+    /// </param>
+    public static void ReportCloudFailure(
+        Exception exception,
+        TextWriter output)
+    {
+        var cause = exception.InnerException ?? exception;
+        var status = cause is CloudRequestException cloud &&
+            cloud.HttpStatusCode > 0 ?
+            $" (status code {cloud.HttpStatusCode})" :
+            string.Empty;
+        output.WriteLine(
+            "The example stopped because the request to the cloud " +
+            $"service failed. {cause.Message}{status}");
+    }
 
     /// <summary>
     /// Reports that the resource key in use does not carry the

@@ -23,6 +23,7 @@
 using FiftyOne.DeviceDetection.Cloud.Data;
 using FiftyOne.DeviceDetection.Cloud.FlowElements;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
+using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines;
 using Microsoft.Extensions.Logging;
@@ -204,6 +205,14 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                 {
                     new Example().Run(
                         resourceKey, loggerFactory, Console.Out);
+                }
+                catch (PropertiesNotYetLoadedException exception)
+                {
+                    // The cloud service could not say which properties the
+                    // resource key includes, so nothing was looked up.
+                    ExampleUtils.ReportCloudFailure(exception, Console.Out);
+                    loggerFactory.Dispose();
+                    Environment.Exit(1);
                 }
                 catch (PropertyMissingException exception)
                 {

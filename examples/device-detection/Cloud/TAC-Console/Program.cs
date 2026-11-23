@@ -24,6 +24,7 @@ using FiftyOne.DeviceDetection.Cloud.Data;
 using FiftyOne.DeviceDetection.Cloud.FlowElements;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.Configuration;
+using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Engines;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
@@ -237,6 +238,13 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
             try
             {
                 new Example().Run(options, Console.Out);
+            }
+            catch (PropertiesNotYetLoadedException exception)
+            {
+                // The cloud service could not say which properties the
+                // resource key includes, so nothing was looked up.
+                ExampleUtils.ReportCloudFailure(exception, Console.Out);
+                Environment.Exit(1);
             }
             catch (PropertyMissingException exception)
             {
