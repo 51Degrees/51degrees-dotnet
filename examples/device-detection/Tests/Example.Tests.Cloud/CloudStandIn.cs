@@ -30,11 +30,31 @@ using System.Threading.Tasks;
 namespace FiftyOne.DeviceDetection.Example.Tests.Cloud;
 
 /// <summary>
-/// A stand-in for the cloud service on this machine. It answers as the
-/// service does for a resource key that does not include the hardware
-/// lookup, or for one that does where every lookup matches no device,
-/// answers anything else with 404, and records the path of every request
-/// so a test can check what an example asked for.
+/// How the stand-in for the cloud service answers.
+/// </summary>
+internal enum StandInAnswer
+{
+    /// <summary>
+    /// As for a resource key that does not include the hardware lookup.
+    /// </summary>
+    NoHardware,
+
+    /// <summary>
+    /// As for a key that does, where every lookup matches no device.
+    /// </summary>
+    NoDevices,
+
+    /// <summary>
+    /// With status 500 to every request, as a service that is failing.
+    /// </summary>
+    Failing,
+}
+
+/// <summary>
+/// A stand-in for the cloud service on this machine. It answers as
+/// <see cref="StandInAnswer"/> says, answers anything else with 404, and
+/// records the path of every request so a test can check what an example
+/// asked for.
 /// </summary>
 internal sealed class CloudStandIn : IDisposable
 {
@@ -49,10 +69,14 @@ internal sealed class CloudStandIn : IDisposable
 
     /// <summary>
     /// The service's answer for a key with the hardware element, cut down
-    /// to the profile properties the examples print.
+    /// to one device property and the profile properties the examples
+    /// print.
     /// </summary>
     private const string AccessiblePropertiesWithHardware =
-        "{\"Products\":{\"hardware\":{\"DataTier\":\"CloudV5Bespoke\"," +
+        "{\"Products\":{\"device\":{\"DataTier\":\"CloudV5Bespoke\"," +
+        "\"Properties\":[{\"Name\":\"IsMobile\",\"Type\":\"Boolean\"," +
+        "\"Category\":\"Device\",\"DelayExecution\":false}]}," +
+        "\"hardware\":{\"DataTier\":\"CloudV5Bespoke\"," +
         "\"Properties\":[{\"Name\":\"Profiles\",\"Type\":\"Array\"," +
         "\"Category\":\"\",\"DelayExecution\":false," +
         "\"EvidenceProperties\":[],\"ItemProperties\":[" +
@@ -69,6 +93,12 @@ internal sealed class CloudStandIn : IDisposable
     private const string NoDevices = "{\"hardware\":{\"profiles\":[]}}";
 
     /// <summary>
+    /// The service's form of an error answer.
+    /// </summary>
+    private const string Failure =
+        "{\"errors\":[\"The stand-in service is failing.\"]}";
+
+    /// <summary>
     /// Part of the service's evidence key list, including the keys the
     /// hardware lookups use.
     /// </summary>
@@ -81,15 +111,12 @@ internal sealed class CloudStandIn : IDisposable
 
     private readonly Task _serving;
 
-    private readonly bool _withHardware;
+    private readonly StandInAnswer _answer;
 
-    /// <param name="withHardware">
-    /// True to answer as for a key with the hardware lookup, where every
-    /// lookup matches no device.
-    /// </param>
-    public CloudStandIn(bool withHardware = false)
+    /// <param name="answer">How the stand-in answers.</param>
+    public CloudStandIn(StandInAnswer answer = StandInAnswer.NoHardware)
     {
-        _withHardware = withHardware;
+        _answer = answer;
         var port = FreePort();
         EndPoint = $"http://localhost:{port}/api/v4/";
         _listener.Prefixes.Add($"http://localhost:{port}/");
@@ -142,16 +169,18 @@ internal sealed class CloudStandIn : IDisposable
             {
                 _paths.Add(path);
             }
+            var noDevices = _answer == StandInAnswer.NoDevices;
             var body =
+                _answer == StandInAnswer.Failing ? Failure :
                 path.EndsWith("/accessibleproperties",
                     StringComparison.Ordinal) ?
-                    (_withHardware ?
+                    (noDevices ?
                         AccessiblePropertiesWithHardware :
                         AccessibleProperties) :
                 path.EndsWith("/evidencekeys",
                     StringComparison.Ordinal) ? EvidenceKeys :
                 path.EndsWith("/json",
-                    StringComparison.Ordinal) && _withHardware ? NoDevices :
+                    StringComparison.Ordinal) && noDevices ? NoDevices :
                 null;
             if (body == null)
             {
@@ -159,6 +188,10 @@ internal sealed class CloudStandIn : IDisposable
             }
             else
             {
+                if (_answer == StandInAnswer.Failing)
+                {
+                    context.Response.StatusCode = 500;
+                }
                 var bytes = Encoding.UTF8.GetBytes(body);
                 context.Response.ContentType = "application/json";
                 context.Response.ContentLength64 = bytes.Length;
