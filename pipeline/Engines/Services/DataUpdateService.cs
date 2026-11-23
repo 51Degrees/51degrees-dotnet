@@ -374,14 +374,20 @@ namespace FiftyOne.Pipeline.Engines.Services
         /// If the engine has only one data file then this parameter is ignored.
         /// </param>
         /// <returns>
-        /// The result of the update check.
+        /// The result of the update check. Not needed, with nothing
+        /// downloaded, when the data file has been disposed.
         /// </returns>
         /// <exception cref="DataUpdateException">
         /// Thrown if some problem occurs during the update process.
         /// </exception>
 		/// <exception cref="ArgumentNullException">
 		/// Thrown if the parameter is null
-		/// </exception>        
+		/// </exception>
+		/// <remarks>
+		/// A refresh of the engine waits for one already in progress, which
+		/// includes the file watcher's wait for a changed data file to be
+		/// readable.
+		/// </remarks>
 		public AutoUpdateStatus CheckForUpdate(
 			IOnPremiseAspectEngine engine, 
 			string dataFileIdentifier = null)
@@ -423,9 +429,14 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// Thrown if arguments are null.
 		/// </exception>
 		/// <exception cref="ObjectDisposedException">
-		/// Thrown if the data file has been disposed. Nothing is written and
-		/// the engine is not refreshed.
+		/// Thrown if the data file has been disposed. The engine is not
+		/// refreshed, and the data file is not written unless it was
+		/// disposed during this call.
 		/// </exception>
+		/// <remarks>
+		/// The refresh waits for one already in progress, which includes the
+		/// file watcher's wait for a changed data file to be readable.
+		/// </remarks>
 		public AutoUpdateStatus UpdateFromMemory(AspectEngineDataFile dataFile,
             MemoryStream data)
 		{
@@ -1130,6 +1141,14 @@ namespace FiftyOne.Pipeline.Engines.Services
                         LogDebugMessage(() => $"{nameof(CheckForUpdateFromUrl)} resulted in {result}", dataFile);
 					}
 
+					// Disposed during the download, so there is no engine to
+					// apply it to and the data file is left as it is.
+					if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS &&
+						dataFile.TimerClosed)
+					{
+						result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+					}
+
 					if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS)
 					{
 						// If this engine has a data file watcher then we need to
@@ -1165,13 +1184,26 @@ namespace FiftyOne.Pipeline.Engines.Services
 						}
 						finally
 						{
-							// Make sure to enable the file watcher again 
-							// if needed.
+							// Make sure to enable the file watcher again
+							// if needed. Dispose closes the file under the
+							// timer lock before it disposes the watcher, so
+							// a watcher found open here is not yet disposed.
 							if (dataFile != null &&
 								dataFile.FileWatcher != null)
 							{
-								dataFile.FileWatcher.EnableRaisingEvents = true;
-                                LogDebugMessage(() => $"Restored {nameof(dataFile.FileWatcher)} events", dataFile);
+								var restored = false;
+								lock (dataFile.TimerLock)
+								{
+									if (dataFile.TimerClosed == false)
+									{
+										dataFile.FileWatcher.EnableRaisingEvents = true;
+										restored = true;
+									}
+								}
+								if (restored)
+								{
+                                    LogDebugMessage(() => $"Restored {nameof(dataFile.FileWatcher)} events", dataFile);
+								}
 							}
 						}
 					}

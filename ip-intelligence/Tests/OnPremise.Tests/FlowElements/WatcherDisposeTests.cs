@@ -58,17 +58,18 @@ public class WatcherDisposeTests
         var directory = Directory.CreateDirectory(Path.Combine(
             Path.GetTempPath(),
             Path.GetRandomFileName())).FullName;
+        using var loggerFactory = new LoggerFactory();
+        using var httpClient = new HttpClient();
+        var disposed = new ManualResetEventSlim();
+        IpiOnPremiseEngine engine = null;
         try
         {
             var master = Path.Combine(directory, DataFileName);
             File.Copy(source.FullName, master);
-            using var loggerFactory = new LoggerFactory();
-            using var httpClient = new HttpClient();
             var service = new DataUpdateService(
                 loggerFactory.CreateLogger<DataUpdateService>(),
                 httpClient);
             var started = new ManualResetEventSlim();
-            var disposed = new ManualResetEventSlim();
             var reports = new BlockingCollection<DataUpdateCompleteArgs>();
             // The watcher's thread waits here until the engine is disposed.
             service.CheckForUpdateStarted += (sender, e) =>
@@ -85,7 +86,7 @@ public class WatcherDisposeTests
             builder.SetDataFileSystemWatcher(true);
             builder.SetDataUpdateOnStartup(false);
             builder.SetAutoUpdate(false);
-            var engine = builder.Build(master, true);
+            engine = builder.Build(master, true);
             var dataFile = engine.DataFiles.Single();
 
             File.SetLastWriteTimeUtc(master, DateTime.UtcNow.AddSeconds(1));
@@ -101,6 +102,10 @@ public class WatcherDisposeTests
         }
         finally
         {
+            // Lets the watcher go and frees the engine if an assert failed
+            // before the test did.
+            disposed.Set();
+            engine?.Dispose();
             try
             {
                 Directory.Delete(directory, true);

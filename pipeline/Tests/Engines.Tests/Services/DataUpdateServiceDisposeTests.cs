@@ -46,7 +46,13 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services;
 /// disposed, so the service must not refresh the engine after that, and
 /// dispose must wait for a refresh in progress.
 /// </summary>
+/// <remarks>
+/// On macOS every file system watcher in a process raises its events from
+/// one thread, which these tests hold for a time, so they do not run
+/// alongside other tests.
+/// </remarks>
 [TestClass]
+[DoNotParallelize]
 public class DataUpdateServiceDisposeTests
 {
     // Every content has the same length, so it can be written in place.
@@ -247,7 +253,9 @@ public class DataUpdateServiceDisposeTests
         Assert.ThrowsExactly<ObjectDisposedException>(() =>
             _service.UpdateFromMemory(_file, data));
         Assert.AreEqual(OldData, File.ReadAllText(_path));
-        Assert.AreEqual(0, _refreshes);
+        _engine.Verify(
+            e => e.RefreshData(It.IsAny<string>(), It.IsAny<Stream>()),
+            Times.Never());
     }
 
     /// <summary>
@@ -264,6 +272,38 @@ public class DataUpdateServiceDisposeTests
 
         Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, status);
         Assert.AreEqual(0, _http.Requests);
+        Assert.AreEqual(0, _refreshes);
+    }
+
+    /// <summary>
+    /// The file is disposed while a check downloads a new data file. The
+    /// download is not copied over the data file, the disposed watcher is
+    /// left alone, and the check reports not needed.
+    /// </summary>
+    [TestMethod]
+    public void CheckForUpdate_DisposedDuringDownload_DoesNotApplyIt()
+    {
+        CountRefreshes(() => { });
+        var configuration = (DataFileConfiguration)_file.Configuration;
+        configuration.UpdateOnStartup = false;
+        configuration.VerifyMd5 = false;
+        configuration.DecompressContent = false;
+        _service.RegisterDataFile(_file);
+        _http.Respond = () =>
+        {
+            _file.Dispose();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(
+                    Encoding.ASCII.GetBytes(NewData)),
+            };
+        };
+
+        var status = _service.CheckForUpdate(_engine.Object);
+
+        Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, status);
+        Assert.AreEqual(1, _http.Requests);
+        Assert.AreEqual(OldData, File.ReadAllText(_path));
         Assert.AreEqual(0, _refreshes);
     }
 
@@ -342,20 +382,22 @@ public class DataUpdateServiceDisposeTests
     }
 
     // Counts the requests the service sends, and answers each with not
-    // modified.
+    // modified unless told otherwise.
     private sealed class CountingHandler : HttpMessageHandler
     {
         private int _requests;
 
         public int Requests => Volatile.Read(ref _requests);
 
+        public Func<HttpResponseMessage> Respond { get; set; } = () =>
+            new HttpResponseMessage(HttpStatusCode.NotModified);
+
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref _requests);
-            return Task.FromResult(
-                new HttpResponseMessage(HttpStatusCode.NotModified));
+            return Task.FromResult(Respond());
         }
     }
 }
