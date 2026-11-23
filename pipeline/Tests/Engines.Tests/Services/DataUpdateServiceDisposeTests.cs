@@ -334,6 +334,9 @@ public class DataUpdateServiceDisposeTests
         var status = service.CheckForUpdate(_engine.Object);
 
         Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, status);
+        Assert.AreEqual(1, _http.Requests);
+        // The copy ran, as the dispose came during it.
+        Assert.AreEqual(NewData, File.ReadAllText(_path));
         Assert.AreEqual(0, _refreshes);
     }
 
