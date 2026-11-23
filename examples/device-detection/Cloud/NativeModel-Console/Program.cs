@@ -23,12 +23,12 @@
 using FiftyOne.DeviceDetection.Cloud.Data;
 using FiftyOne.DeviceDetection.Cloud.FlowElements;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
-using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 
 /// <summary>
@@ -56,11 +56,22 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
         public class Example
         {
             // Example values to use when looking up device details from native model names.
-            private const string _nativeModel1 = "SC-03L";
-            private const string _nativeModel2 = "iPhone11,8";
+            public const string NativeModel1 = "SC-03L";
+            public const string NativeModel2 = "iPhone11,8";
 
-            private const string NoHardwareProperties =
-                "The resource key includes no 'hardware' properties.";
+            /// <summary>
+            /// The line written instead of any lookup when the resource key
+            /// does not include the hardware lookup.
+            /// </summary>
+            public const string NoHardwareLookup =
+                "The resource key does not include " +
+                "HardwarePlatform.Profiles, the hardware lookup this " +
+                "example needs, so no devices are listed. Create a " +
+                "resource key that includes it at " +
+                "https://51degrees.com/configure/QKyYH5XT?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=no-hardware-lookup" +
+                ", or contact us about it at " +
+                "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=no-hardware-lookup" +
+                ".";
 
             public void Run(string resourceKey, ILoggerFactory loggerFactory, 
                 TextWriter output, string cloudEndPoint = "")
@@ -104,17 +115,22 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                     .AddFlowElement(propertyKeyedEngine)
                     .Build())
                 {
-                    // A resource key without the 'hardware' properties leaves
-                    // the engine with none, so there is nothing to look up.
-                    if (propertyKeyedEngine.Properties.Count == 0)
+                    // The engine's properties are the ones the resource key
+                    // includes, so without Profiles there is nothing to look
+                    // up.
+                    var includesProfiles = propertyKeyedEngine.Properties
+                        .Any(p => string.Equals(p.Name, "Profiles",
+                            StringComparison.OrdinalIgnoreCase));
+                    if (includesProfiles == false)
                     {
-                        throw new PipelineException(NoHardwareProperties);
+                        output.WriteLine(NoHardwareLookup);
+                        return;
                     }
 
                     // Pass a native model into the pipeline and list the matching devices.
-                    AnalyseNativeModel(_nativeModel1, pipeline, output);
+                    AnalyseNativeModel(NativeModel1, pipeline, output);
                     // Repeat for an alternative native model name.
-                    AnalyseNativeModel(_nativeModel2, pipeline, output);
+                    AnalyseNativeModel(NativeModel2, pipeline, output);
                 }
             }
 
@@ -136,6 +152,11 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                     // implementing 'IDeviceData'.
                     // This is the same interface used for standard device detection, so we have
                     // access to all the same properties.
+                    if (result.Profiles.Count == 0)
+                    {
+                        output.WriteLine("\tNo devices are associated with " +
+                            "this native model name.");
+                    }
                     foreach (var device in result.Profiles)
                     {
                         var vendor = device.HardwareVendor.GetHumanReadable();
@@ -169,32 +190,20 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                     $"https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required to get a paid subscription with more " +
                     $"properties. Once subscribed, a resource " +
                     $"key with the properties required by this example can be created at " +
-                    $"https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required. You can now populate the " +
+                    $"https://51degrees.com/configure/QKyYH5XT?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required. You can now populate the " +
                     $"environment variable mentioned at the start of this message with the " +
                     $"resource key or pass it as the first argument on the command line.");
             }
             else
             {
-                // A resource key without the 'hardware' properties stops
-                // the example before it looks anything up. That is a subscription
-                // that does not cover this example rather than a fault, so
-                // it is reported plainly and the process still exits
-                // non-zero, because the example did not do its work.
+                // A resource key that includes the lookup but not every
+                // property this example displays stops the example part
+                // way, so it is reported plainly and the process exits
+                // non-zero.
                 try
                 {
                     new Example().Run(
                         resourceKey, loggerFactory, Console.Out);
-                }
-                catch (PipelineException exception)
-                {
-                    ExampleUtils.ReportMissingProperties(
-                        exception,
-                        Console.Out,
-                        "the 'hardware' properties a native model lookup " +
-                        "returns, which need a paid subscription",
-                        "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
-                    loggerFactory.Dispose();
-                    Environment.Exit(1);
                 }
                 catch (PropertyMissingException exception)
                 {
@@ -203,7 +212,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                         Console.Out,
                         "every 'hardware' property this example displays, " +
                         "which needs a paid subscription",
-                        "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
+                        "https://51degrees.com/configure/QKyYH5XT?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
                     loggerFactory.Dispose();
                     Environment.Exit(1);
                 }
