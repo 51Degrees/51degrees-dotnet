@@ -115,8 +115,14 @@
 
   function showRedeemed(answer) {
     if (answer.humanConfidence) {
-      show("redeem-detail", "redeemed " + answer.secondsSinceVerified
-        + " s after the check", PASS);
+      // A value sent late or a second time comes back Low, with a result
+      // saying which.
+      if (answer.result) {
+        show("redeem-detail", answer.result + ", so Low", FAIL);
+      } else {
+        show("redeem-detail", "redeemed " + answer.secondsSinceVerified
+          + " s after the check", PASS);
+      }
       show("redeem-level", answer.humanConfidence,
         levelClass(answer.humanConfidence));
     } else {
@@ -167,8 +173,9 @@
         again.onclick = function () {
           redeem(value).then(function (second) {
             document.getElementById("again-result").textContent =
-              " Second redeem: " + (second.result || second.humanConfidence
-                || second.error);
+              " Second redeem: " + (second.humanConfidence
+                ? second.humanConfidence + (second.result ? " (" + second.result + ")" : "")
+                : (second.result || second.error));
           });
         };
       }).catch(function (error) {

@@ -34,7 +34,8 @@ The page shows three rows, one for each step.
    it to the cloud's `hc/redeem` with the account's License Key and gets the
    true level back. A sealed value redeems once, within ten seconds of the
    tests. The page then offers to redeem the same value again, which
-   answers `replayed`.
+   answers `Low` with the result `replayed`. A value sent late or more
+   than once is always `Low`, whatever was sealed in it.
 
 This is the same two-step pattern as the 51Did creator context check in
 `../Did`: the browser carries a result it can't read, and your server
@@ -93,7 +94,7 @@ In a current Chrome or Edge on a genuine computer or phone:
 1. The first row shows `Passive` and a level, usually `High`.
 2. After a few seconds, the second row shows `Active` and a sealed value.
 3. The third row shows the level the server redeemed, usually `High`.
-4. **Redeem the same value again** shows `replayed`.
+4. **Redeem the same value again** shows `Low (replayed)`.
 
 If the second row still shows a plain level, the browser tests didn't run.
 The cloud you're using may not have the tests yet.
