@@ -374,8 +374,10 @@ namespace FiftyOne.Pipeline.Engines.Services
         /// If the engine has only one data file then this parameter is ignored.
         /// </param>
         /// <returns>
-        /// The result of the update check. Not needed, with nothing
-        /// downloaded, when the data file has been disposed.
+        /// The result of the update check. Not needed when the data file has
+        /// been disposed. Nothing is downloaded if it was disposed before the
+        /// call, and a download under way when it is disposed is not applied
+        /// to the engine.
         /// </returns>
         /// <exception cref="DataUpdateException">
         /// Thrown if some problem occurs during the update process.
@@ -1142,7 +1144,10 @@ namespace FiftyOne.Pipeline.Engines.Services
 					}
 
 					// Disposed during the download, so there is no engine to
-					// apply it to and the data file is left as it is.
+					// apply it to and the data file is left as it is. Dispose
+					// does not wait for the copy below, so a dispose after
+					// this check still lets the copy write the data file,
+					// and the refresh then leaves the engine alone.
 					if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS &&
 						dataFile.TimerClosed)
 					{
@@ -1187,7 +1192,8 @@ namespace FiftyOne.Pipeline.Engines.Services
 							// Make sure to enable the file watcher again
 							// if needed. Dispose closes the file under the
 							// timer lock before it disposes the watcher, so
-							// a watcher found open here is not yet disposed.
+							// while the file is still open here its watcher
+							// is not yet disposed.
 							if (dataFile != null &&
 								dataFile.FileWatcher != null)
 							{

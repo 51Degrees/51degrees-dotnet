@@ -166,7 +166,10 @@ namespace FiftyOne.Pipeline.Engines.Data
         // Held for every read and write of Timer, so a check cannot read
         // the timer before registration has stored it. Nothing run while it
         // is held takes the service's other locks or UpdateSyncLock, which
-        // every engine refresh the service makes holds throughout.
+        // every engine refresh the service makes holds throughout. Dispose
+        // closes the file under it before it disposes the watcher, which
+        // creating the watcher and enabling it again after a download both
+        // rely on.
         internal object TimerLock { get; } = new object();
         private bool _timerClosed;
         // True once the file is disposed, after which no timer may be
