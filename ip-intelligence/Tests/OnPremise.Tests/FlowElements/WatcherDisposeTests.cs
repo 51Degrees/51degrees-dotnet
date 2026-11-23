@@ -22,12 +22,14 @@
 
 using FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.Engines;
+using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 
@@ -56,53 +58,81 @@ public class WatcherDisposeTests
         var directory = Directory.CreateDirectory(Path.Combine(
             Path.GetTempPath(),
             Path.GetRandomFileName())).FullName;
-        var master = Path.Combine(directory, DataFileName);
-        File.Copy(source.FullName, master);
-
-        var loggerFactory = new LoggerFactory();
-        var service = new DataUpdateService(
-            loggerFactory.CreateLogger<DataUpdateService>(),
-            new HttpClient());
-        var started = new ManualResetEventSlim();
-        var disposed = new ManualResetEventSlim();
-        var reports = new BlockingCollection<AutoUpdateStatus>();
-        // The watcher's thread waits here until the engine is disposed.
-        service.CheckForUpdateStarted += (sender, e) =>
-        {
-            started.Set();
-            disposed.Wait(Wait);
-        };
-        service.CheckForUpdateComplete += (sender, e) =>
-            reports.Add(e.Status);
-
-        var builder = new IpiOnPremiseEngineBuilder(loggerFactory, service);
-        builder.SetPerformanceProfile(profile);
-        builder.SetTempDirPath(Directory.CreateDirectory(
-            Path.Combine(directory, "temp")).FullName);
-        builder.SetDataFileSystemWatcher(true);
-        builder.SetDataUpdateOnStartup(false);
-        builder.SetAutoUpdate(false);
-        var engine = builder.Build(master, true);
-
-        File.SetLastWriteTimeUtc(master, DateTime.UtcNow.AddSeconds(1));
-        Assert.IsTrue(
-            started.Wait(Wait),
-            "The watcher did not see the change to the data file.");
-        engine.Dispose();
-        disposed.Set();
-
-        Assert.IsTrue(
-            reports.TryTake(out var status, Wait),
-            "The update service did not finish with the change.");
-        Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, status);
-
         try
         {
-            Directory.Delete(directory, true);
+            var master = Path.Combine(directory, DataFileName);
+            File.Copy(source.FullName, master);
+            using var loggerFactory = new LoggerFactory();
+            using var httpClient = new HttpClient();
+            var service = new DataUpdateService(
+                loggerFactory.CreateLogger<DataUpdateService>(),
+                httpClient);
+            var started = new ManualResetEventSlim();
+            var disposed = new ManualResetEventSlim();
+            var reports = new BlockingCollection<DataUpdateCompleteArgs>();
+            // The watcher's thread waits here until the engine is disposed.
+            service.CheckForUpdateStarted += (sender, e) =>
+            {
+                started.Set();
+                disposed.Wait(Wait);
+            };
+            service.CheckForUpdateComplete += (sender, e) => reports.Add(e);
+
+            var builder = new IpiOnPremiseEngineBuilder(loggerFactory, service);
+            builder.SetPerformanceProfile(profile);
+            builder.SetTempDirPath(Directory.CreateDirectory(
+                Path.Combine(directory, "temp")).FullName);
+            builder.SetDataFileSystemWatcher(true);
+            builder.SetDataUpdateOnStartup(false);
+            builder.SetAutoUpdate(false);
+            var engine = builder.Build(master, true);
+            var dataFile = engine.DataFiles.Single();
+
+            File.SetLastWriteTimeUtc(master, DateTime.UtcNow.AddSeconds(1));
+            Assert.IsTrue(
+                started.Wait(Wait),
+                "The watcher did not see the change to the data file.");
+            engine.Dispose();
+            disposed.Set();
+
+            Assert.AreEqual(
+                AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED,
+                TakeFor(reports, dataFile));
         }
-        catch (IOException)
+        finally
         {
-            // The native code can still hold a temporary copy for a moment.
+            try
+            {
+                Directory.Delete(directory, true);
+            }
+            catch (IOException)
+            {
+                // The native code can still hold a temporary copy for a
+                // moment.
+            }
+        }
+    }
+
+    // The status of the first report for the data file. An event raised
+    // once the file is unregistered belongs to no data file, so its report
+    // is skipped.
+    private static AutoUpdateStatus TakeFor(
+        BlockingCollection<DataUpdateCompleteArgs> reports,
+        IAspectEngineDataFile dataFile)
+    {
+        var deadline = DateTime.UtcNow + Wait;
+        while (true)
+        {
+            var remaining = deadline - DateTime.UtcNow;
+            DataUpdateCompleteArgs report = null;
+            Assert.IsTrue(
+                remaining > TimeSpan.Zero &&
+                reports.TryTake(out report, remaining),
+                "The update service did not finish with the change.");
+            if (ReferenceEquals(report.DataFile, dataFile))
+            {
+                return report.Status;
+            }
         }
     }
 }

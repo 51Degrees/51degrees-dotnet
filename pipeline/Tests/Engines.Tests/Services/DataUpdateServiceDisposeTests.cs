@@ -32,6 +32,7 @@ using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -69,7 +70,8 @@ public class DataUpdateServiceDisposeTests
     private int _refreshes;
     private int _entered;
     private int _exited;
-    private BlockingCollection<AutoUpdateStatus> _reports;
+    private ConcurrentQueue<DataUpdateCompleteArgs> _reports;
+    private CountingHandler _http;
 
     [TestInitialize]
     public void Init()
@@ -79,18 +81,19 @@ public class DataUpdateServiceDisposeTests
             Path.GetRandomFileName())).FullName;
         _path = Path.Combine(_directory, "data.dat");
         File.WriteAllText(_path, OldData);
+        _http = new CountingHandler();
         _service = new DataUpdateService(
             NullLogger<DataUpdateService>.Instance,
-            new HttpClient(),
+            new HttpClient(_http),
             new RealFileSystem(),
             (callback, state, dueTime) => null);
         _service.OnDataFileUpdatedEntered += () =>
             Interlocked.Increment(ref _entered);
         _service.OnDataFileUpdatedWillExit += () =>
             Interlocked.Increment(ref _exited);
-        _reports = new BlockingCollection<AutoUpdateStatus>();
+        _reports = new ConcurrentQueue<DataUpdateCompleteArgs>();
         _service.CheckForUpdateComplete += (sender, e) =>
-            _reports.Add(e.Status);
+            _reports.Enqueue(e);
         _engine = new Mock<IOnPremiseAspectEngine>();
         _file = new AspectEngineDataFile()
         {
@@ -99,7 +102,9 @@ public class DataUpdateServiceDisposeTests
             {
                 FileSystemWatcherEnabled = true,
                 DataFilePath = _path,
+                DataUpdateUrl = "https://update.invalid/data",
             },
+            TempDataDirPath = _directory,
         };
         _engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>()))
             .Returns(_file);
@@ -227,6 +232,41 @@ public class DataUpdateServiceDisposeTests
         AssertNotRefreshed();
     }
 
+    /// <summary>
+    /// An update from memory for a disposed file fails, and neither writes
+    /// the data file nor refreshes the engine.
+    /// </summary>
+    [TestMethod]
+    public void UpdateFromMemory_Disposed_ThrowsAndChangesNothing()
+    {
+        CountRefreshes(() => { });
+        _file.Dispose();
+        using var data = new MemoryStream();
+        data.Write(Encoding.ASCII.GetBytes(NewData));
+
+        Assert.ThrowsExactly<ObjectDisposedException>(() =>
+            _service.UpdateFromMemory(_file, data));
+        Assert.AreEqual(OldData, File.ReadAllText(_path));
+        Assert.AreEqual(0, _refreshes);
+    }
+
+    /// <summary>
+    /// A check for an update to a disposed file reports not needed without
+    /// asking the update URL for a new file.
+    /// </summary>
+    [TestMethod]
+    public void CheckForUpdate_Disposed_DoesNotDownload()
+    {
+        CountRefreshes(() => { });
+        _file.Dispose();
+
+        var status = _service.CheckForUpdate(_engine.Object);
+
+        Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, status);
+        Assert.AreEqual(0, _http.Requests);
+        Assert.AreEqual(0, _refreshes);
+    }
+
     private void CountRefreshes(Action refresh)
     {
         _engine.Setup(e => e.RefreshData(It.IsAny<string>()))
@@ -238,7 +278,9 @@ public class DataUpdateServiceDisposeTests
     }
 
     // Waits for every watcher event that started to end, then checks none
-    // refreshed the engine.
+    // refreshed the engine. An event raised once the file is unregistered
+    // belongs to no data file and reports in progress, so only the reports
+    // for this file are checked.
     private void AssertNotRefreshed()
     {
         Assert.IsTrue(
@@ -251,7 +293,10 @@ public class DataUpdateServiceDisposeTests
             0,
             _refreshes,
             "The engine was refreshed after its data file was disposed.");
-        var reports = _reports.ToArray();
+        var reports = _reports
+            .Where(r => ReferenceEquals(r.DataFile, _file))
+            .Select(r => r.Status)
+            .ToArray();
         Assert.IsTrue(reports.Length > 0, "Nothing was reported.");
         Assert.IsTrue(
             reports.All(r => r == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED),
@@ -293,6 +338,24 @@ public class DataUpdateServiceDisposeTests
             path, FileMode.Open, FileAccess.Write, FileShare.ReadWrite))
         {
             stream.Write(bytes, 0, bytes.Length);
+        }
+    }
+
+    // Counts the requests the service sends, and answers each with not
+    // modified.
+    private sealed class CountingHandler : HttpMessageHandler
+    {
+        private int _requests;
+
+        public int Requests => Volatile.Read(ref _requests);
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _requests);
+            return Task.FromResult(
+                new HttpResponseMessage(HttpStatusCode.NotModified));
         }
     }
 }

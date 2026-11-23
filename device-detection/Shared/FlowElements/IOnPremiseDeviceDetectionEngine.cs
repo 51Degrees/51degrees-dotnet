@@ -37,6 +37,11 @@ namespace FiftyOne.DeviceDetection.Shared.FlowElements
         /// This event is fired whenever the data that this engine makes use
         /// of has been updated.
         /// </summary>
+        /// <remarks>
+        /// When the data update service refreshes the engine, disposing the
+        /// engine waits for the handlers to return, so a handler must not
+        /// wait for another thread that disposes the engine.
+        /// </remarks>
         event EventHandler<EventArgs> RefreshCompleted;
 
         /// <summary>

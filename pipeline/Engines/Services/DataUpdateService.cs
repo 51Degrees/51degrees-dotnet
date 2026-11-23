@@ -414,14 +414,17 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// The data to update with.
 		/// </param>
 		/// <returns>
-		/// Success, or not needed when the data file has been disposed, in
-		/// which case the engine is not refreshed.
+		/// Success. Any failure is thrown.
 		/// </returns>
 		/// <exception cref="DataUpdateException">
 		/// Thrown if some problem occurs during the update process.
 		/// </exception>
 		/// <exception cref="ArgumentNullException">
 		/// Thrown if arguments are null.
+		/// </exception>
+		/// <exception cref="ObjectDisposedException">
+		/// Thrown if the data file has been disposed. Nothing is written and
+		/// the engine is not refreshed.
 		/// </exception>
 		public AutoUpdateStatus UpdateFromMemory(AspectEngineDataFile dataFile,
             MemoryStream data)
@@ -433,6 +436,10 @@ namespace FiftyOne.Pipeline.Engines.Services
 			if (data == null)
 			{
 				throw new ArgumentNullException(nameof(data));
+			}
+			if (dataFile.TimerClosed)
+			{
+				throw DataFileDisposed(dataFile);
 			}
 
 			AutoUpdateStatus result = AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS;
@@ -471,6 +478,11 @@ namespace FiftyOne.Pipeline.Engines.Services
                     result = AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED;
                     throw new DataUpdateException($"An error occurred when applying a " +
                         $"data update to engine '{dataFile.Engine.GetType().Name}'.", ex, result);
+                }
+                // Disposed during this call, so the engine was left alone.
+                if (result != AutoUpdateStatus.AUTO_UPDATE_SUCCESS)
+                {
+                    throw DataFileDisposed(dataFile);
                 }
             }
             else
@@ -880,7 +892,13 @@ namespace FiftyOne.Pipeline.Engines.Services
 
 			try
 			{
-				if (dataFile != null)
+				// A disposed file's engine is gone, so there is nothing to
+				// download or apply.
+				if (dataFile != null && dataFile.TimerClosed)
+				{
+					result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+				}
+				else if (dataFile != null)
 				{
 					LogInfoMessage(Messages.MessageAutoUpdateCheck, dataFile);
 
@@ -1331,6 +1349,13 @@ namespace FiftyOne.Pipeline.Engines.Services
 				return AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
 			}
 		}
+
+		private static ObjectDisposedException DataFileDisposed(
+			AspectEngineDataFile dataFile) =>
+			new ObjectDisposedException(
+				dataFile.GetType().Name,
+				$"The data file '{dataFile.Identifier}' has been disposed, " +
+				"so its engine cannot be updated.");
 
 		/// <summary>
 		/// Clear the timer ready for a new one to be created.

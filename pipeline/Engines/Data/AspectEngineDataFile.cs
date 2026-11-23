@@ -166,7 +166,7 @@ namespace FiftyOne.Pipeline.Engines.Data
         // Held for every read and write of Timer, so a check cannot read
         // the timer before registration has stored it. Nothing run while it
         // is held takes the service's other locks or UpdateSyncLock, which
-        // the file watcher holds for the whole engine refresh.
+        // every engine refresh the service makes holds throughout.
         internal object TimerLock { get; } = new object();
         private bool _timerClosed;
         // True once the file is disposed, after which no timer may be
@@ -282,7 +282,8 @@ namespace FiftyOne.Pipeline.Engines.Data
                         _dataUpdateService = null;
                     }
                     // Wait for a refresh that started before the file was
-                    // closed. The engine frees its native data after this.
+                    // closed, which can take as long as loading the whole
+                    // data file. The engine frees its native data after this.
                     lock (UpdateSyncLock)
                     {
                     }

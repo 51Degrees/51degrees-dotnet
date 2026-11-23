@@ -82,6 +82,9 @@ namespace FiftyOne.Pipeline.Engines.Services
         /// <exception cref="DataUpdateException">
         /// Thrown if some problem occurs during the update process.
         /// </exception>
+        /// <exception cref="System.ObjectDisposedException">
+        /// Thrown if the data file has been disposed.
+        /// </exception>
         AutoUpdateStatus UpdateFromMemory(AspectEngineDataFile dataFile, 
             MemoryStream data);
 
