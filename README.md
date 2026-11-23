@@ -151,8 +151,10 @@ from the test assembly. Point them at other files, such as the Enterprise
 files, with `_51DEGREES_DD_PATH` and `_51DEGREES_IPI_PATH`. The tests that use
 the cloud read a Resource Key that carries every property from
 `_51DEGREES_RESOURCE_KEY_BESPOKE`, and the live 51Did tests read
-`_51DEGREES_RESOURCE_KEY_51DID` and `_51DEGREES_LICENSE_KEY_51DID`. See each
-folder's README for the keys and data files its tests use.
+`_51DEGREES_RESOURCE_KEY_51DID` and `_51DEGREES_LICENSE_KEY_51DID`. The Human
+Confidence tests that need the staging cloud read `CLOUD_STAGING_ENDPOINT` and
+`RESOURCE_KEY_BESPOKE_STAGING`, which only CI holds. See each folder's README
+for the keys and data files its tests use.
 
 Every environment variable name that the packages, tests, examples and CI
 scripts read is in [environment-variables.md](environment-variables.md).

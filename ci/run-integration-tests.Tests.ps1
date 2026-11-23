@@ -18,7 +18,8 @@ BeforeAll {
 
     $script:IpExamples = 'FiftyOne.IpIntelligence.Example.Tests.OnPremise.dll'
     $script:DdExamples = 'FiftyOne.DeviceDetection.Example.Tests.OnPremise.dll'
-    foreach ($name in $IpExamples, $DdExamples) {
+    $script:HcExamples = 'FiftyOne.HumanConfidence.Examples.Tests.dll'
+    foreach ($name in $IpExamples, $DdExamples, $HcExamples) {
         New-Item -ItemType File -Path (Join-Path $Bin $name) | Out-Null
     }
 
@@ -92,6 +93,20 @@ Describe 'run-integration-tests.ps1' {
 
         $calls.Count | Should -Be 1
         $calls[0] | Should -Not -Match '--filter'
+    }
+
+    # The staging cloud's names never reach this flow, so the tests that
+    # call it run only in .github/workflows/cloud-human-confidence.yml.
+    It 'leaves the staging cloud tests out of the Human Confidence example tests at <Label>' -ForEach @(
+        @{ Label = 'standard depth'; Depth = 'standard' }
+        @{ Label = 'deep depth'; Depth = 'deep' }
+        @{ Label = 'the branch and in a release'; Depth = '' }
+    ) {
+        $calls = @(Get-Calls $Depth $HcExamples)
+
+        $calls.Count | Should -Be 1
+        $calls[0] | Should -Match ([regex]::Escape(
+            '--filter TestCategory!=CloudStaging'))
     }
 
     # The contract runs the cloud example with the key that carries every
