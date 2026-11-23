@@ -22,6 +22,7 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -82,9 +83,19 @@ internal static class ExampleWithoutKey
             $"{assemblyName} should link to where a resource key is created.");
     }
 
-    private static (int ExitCode, string Output) Run(
+    /// <summary>
+    /// Runs the example built from the project in the folder, relative to
+    /// the repository root, with no resource key in its environment unless
+    /// the environment given here sets one, and returns its exit code and
+    /// everything it wrote.
+    /// </summary>
+    /// <param name="environment">
+    /// Variables to set in the example's environment, or null for none.
+    /// </param>
+    internal static (int ExitCode, string Output) Run(
         string projectFolder,
-        string assemblyName)
+        string assemblyName,
+        IReadOnlyDictionary<string, string> environment = null)
     {
         var dll = FindBuild(projectFolder, assemblyName);
         var folder = Path.GetDirectoryName(dll);
@@ -106,6 +117,11 @@ internal static class ExampleWithoutKey
             start.ArgumentList.Add(dll);
         }
         start.Environment.Remove(KeyVariable);
+        foreach (var variable in environment ??
+            new Dictionary<string, string>())
+        {
+            start.Environment[variable.Key] = variable.Value;
+        }
 
         var output = new StringBuilder();
         using var process = new Process { StartInfo = start };

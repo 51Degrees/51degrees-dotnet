@@ -20,8 +20,11 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.DeviceDetection.Examples;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NativeModelLookup =
@@ -73,6 +76,46 @@ public class HardwareLookupWithoutTheLookupTests
 
         HardwareLookupOutput.AssertSaysTheKeyLacksTheLookup(
             output.ToString(), NativeModelLookup.Example.NoHardwareLookup);
+        AssertLookedNothingUp(standIn);
+    }
+
+    /// <summary>
+    /// Runs each example's own build as a process, as a person runs it,
+    /// and checks it also ends with exit code 0 and the "Find out more"
+    /// section after the line.
+    /// </summary>
+    [TestMethod]
+    [DataRow("examples/device-detection/Cloud/TAC-Console",
+        "FiftyOne.DeviceDetection.Examples.Cloud.TacLookup",
+        TacLookup.Example.NoHardwareLookup)]
+    [DataRow("examples/device-detection/Cloud/NativeModel-Console",
+        "FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup",
+        NativeModelLookup.Example.NoHardwareLookup)]
+    public void Example_KeyWithoutTheLookup_EndsWithExitCodeZero(
+        string projectFolder,
+        string assemblyName,
+        string expectedLine)
+    {
+        using var standIn = new CloudStandIn();
+
+        var (exitCode, output) = ExampleWithoutKey.Run(
+            projectFolder,
+            assemblyName,
+            new Dictionary<string, string>
+            {
+                [ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR] = StandInKey,
+                [ExampleUtils.CLOUD_ENDPOINT_ENV_VAR] = standIn.EndPoint,
+            });
+
+        Console.WriteLine(output);
+        Assert.AreEqual(0, exitCode,
+            $"{assemblyName} should end with exit code 0.");
+        HardwareLookupOutput.AssertSaysTheKeyLacksTheLookup(
+            output, expectedLine);
+        Assert.IsTrue(
+            output.IndexOf("Find out more", StringComparison.Ordinal) >
+                output.IndexOf(expectedLine, StringComparison.Ordinal),
+            $"{assemblyName} should end with the Find out more section.");
         AssertLookedNothingUp(standIn);
     }
 

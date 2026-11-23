@@ -24,7 +24,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace FiftyOne.DeviceDetection.Example.Tests.Cloud;
 
@@ -53,13 +52,6 @@ internal static class HardwareLookupOutput
     /// </summary>
     private const string NoValue = "No value";
 
-    /// <summary>
-    /// A device line, being a tab, the vendor, the name and the model in
-    /// parentheses. A model with no value renders with parentheses of its
-    /// own, so it does not match.
-    /// </summary>
-    private static readonly Regex DeviceLine = new Regex(
-        @"^\t(?<vendor>\S+) .*\((?<model>[^()]+)\)$");
 
     /// <summary>
     /// Fails unless every value the example looked up lists at least one
@@ -135,12 +127,56 @@ internal static class HardwareLookupOutput
             Environment.NewLine + output);
     }
 
-    private static bool HasVendorAndModel(string line)
+    /// <summary>
+    /// True when the line is a device line, being a tab, the vendor, the
+    /// name and the model in the final parentheses, and neither the vendor
+    /// nor the model is empty or rendered as having no value. The model
+    /// may hold parentheses of its own.
+    /// </summary>
+    internal static bool HasVendorAndModel(string line)
     {
-        var match = DeviceLine.Match(line);
-        return match.Success &&
-            line.StartsWith("\t" + NoValue, StringComparison.Ordinal) == false &&
-            string.IsNullOrWhiteSpace(match.Groups["model"].Value) == false;
+        if (line.StartsWith('\t') == false || line.EndsWith(')') == false)
+        {
+            return false;
+        }
+        var text = line.Substring(1);
+        var open = OpeningParenthesis(text);
+        if (open <= 0)
+        {
+            return false;
+        }
+        var vendor = text.Split(' ')[0];
+        var model = text.Substring(open + 1, text.Length - open - 2);
+        return IsValue(vendor) &&
+            IsValue(model) &&
+            text.StartsWith(NoValue, StringComparison.Ordinal) == false;
+    }
+
+    /// <summary>
+    /// The position of the parenthesis that opens the one closing the text,
+    /// or -1 when there is none.
+    /// </summary>
+    private static int OpeningParenthesis(string text)
+    {
+        var depth = 0;
+        for (var i = text.Length - 1; i >= 0; i--)
+        {
+            if (text[i] == ')')
+            {
+                depth++;
+            }
+            else if (text[i] == '(' && --depth == 0)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static bool IsValue(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) == false &&
+            value.StartsWith(NoValue, StringComparison.Ordinal) == false;
     }
 
     private static IReadOnlyList<string> Lines(string output)
