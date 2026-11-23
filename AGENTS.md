@@ -203,12 +203,12 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   references (`ci/build-project.ps1`), and against the packages only when it
   publishes (`ci/README.md`). It runs most of the example tests with the paid
   data files that `ci/fetch-assets.ps1` fetches. Of those, the Device
-  Detection ones send the output to `TextWriter.Null`, apart from the cloud TAC
-  and native model lookups, which check that each lookup lists a device. The
-  IP Intelligence ones check only a few words of it. The `TestExamplesWithoutSettings` classes
-  run the console examples with no settings on the free files and check what
-  each prints, so an example that is not in one of them is not tested as a
-  fresh clone runs it.
+  Detection ones send the output to `TextWriter.Null`, apart from the cloud
+  TAC and native model lookups, which check that each lookup lists a device.
+  The IP Intelligence ones check only a few words of it. The
+  `TestExamplesWithoutSettings` classes run the console examples with no
+  settings on the free files and check what each prints, so an example that
+  is not in one of them is not tested as a fresh clone runs it.
 
 ## Environment variable names
 
