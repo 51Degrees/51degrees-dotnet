@@ -378,8 +378,8 @@ namespace FiftyOne.Pipeline.Engines.Services
         /// disposed before the engine is refreshed. Nothing is downloaded if
         /// it was disposed before the call. A download under way when it is
         /// disposed is not applied to the engine, though its copy can still
-        /// write the data file. A dispose during the refresh waits for it,
-        /// and the check reports the refresh.
+        /// write the data file. A dispose during a refresh waits for it to
+        /// end, and the check then reports whether the refresh worked.
         /// </returns>
         /// <exception cref="DataUpdateException">
         /// Thrown if some problem occurs during the update process.
@@ -1302,7 +1302,8 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// Called when a data update is available and the file at
 		/// engine.DataFilePath contains this new data. Refreshes the engine,
 		/// trying up to 10 times, and leaves the update timer alone. Gives
-		/// not needed, with no refresh, once the file is disposed.
+		/// not needed, with no refresh, once the file is disposed, unless an
+		/// earlier try failed, whose failure is then thrown.
 		/// </summary>
 		/// <param name="dataFile"></param>
 		/// <returns></returns>
@@ -1324,14 +1325,21 @@ namespace FiftyOne.Pipeline.Engines.Services
 				{
 					try
 					{
-						result = RefreshEngine(
+						var refreshed = RefreshEngine(
 							dataFile,
 							() => dataFile.Engine.RefreshData(
 								dataFile.Identifier));
-						if (result == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
+						if (refreshed == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
 						{
-							return result;
+							// Disposed. A failure from an earlier try is
+							// still thrown below.
+							if (exception == null)
+							{
+								return refreshed;
+							}
+							break;
 						}
+						result = refreshed;
 					}
 #pragma warning disable CA1031 // Do not catch general exception types
 					// The code executed by the RefreshData method could

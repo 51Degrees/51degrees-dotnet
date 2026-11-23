@@ -167,8 +167,8 @@ namespace FiftyOne.Pipeline.Engines.Data
         // the timer before registration has stored it. Nothing run while it
         // is held takes the service's list of data files lock or
         // UpdateSyncLock, which every engine refresh the service makes holds
-        // throughout. Only the random number lock, which is held while
-        // nothing else is taken, is taken under it. Dispose
+        // throughout. Of the service's own locks, only the random number
+        // lock, under which nothing else is taken, is taken under it. Dispose
         // closes the file under it before it disposes the watcher, which
         // creating the watcher and enabling it again after a download both
         // rely on.

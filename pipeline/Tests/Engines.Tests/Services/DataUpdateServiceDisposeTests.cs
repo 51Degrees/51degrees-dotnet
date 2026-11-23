@@ -239,6 +239,42 @@ public class DataUpdateServiceDisposeTests
     }
 
     /// <summary>
+    /// The engine's refresh fails while the file is disposed. Dispose waits
+    /// for the refresh, and the failure is reported rather than lost when
+    /// the next try finds the file closed.
+    /// </summary>
+    [TestMethod]
+    public void Watcher_RefreshFailsDuringDispose_ReportsTheFailure()
+    {
+        var refreshing = new ManualResetEventSlim();
+        CountRefreshes(() =>
+        {
+            refreshing.Set();
+            // Fails once dispose has closed the file and is waiting for
+            // this refresh.
+            SpinWait.SpinUntil(() => _file.TimerClosed, WaitMilliseconds);
+            throw new InvalidOperationException("The refresh failed.");
+        });
+        _service.RegisterDataFile(_file);
+
+        Replace(_path, NewData);
+        Assert.IsTrue(
+            refreshing.Wait(WaitMilliseconds),
+            "The watcher did not start a refresh.");
+        Assert.IsTrue(
+            Task.Run(() => _file.Dispose()).Wait(WaitMilliseconds),
+            "Dispose did not return once the refresh ended.");
+        WaitForWatcher();
+
+        var reports = ReportsForFile();
+        CollectionAssert.Contains(
+            reports,
+            AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED,
+            "Reported " + string.Join(", ", reports) + ".");
+        Assert.AreEqual(1, _refreshes);
+    }
+
+    /// <summary>
     /// An update from memory for a disposed file fails, and neither writes
     /// the data file nor refreshes the engine.
     /// </summary>
@@ -309,8 +345,9 @@ public class DataUpdateServiceDisposeTests
 
     /// <summary>
     /// The file is disposed while a check copies a downloaded data file over
-    /// it. The disposed watcher is not enabled again, the engine is not
-    /// refreshed, and the check reports not needed.
+    /// it. The copy still writes the data file, the disposed watcher is not
+    /// enabled again, the engine is not refreshed, and the check reports not
+    /// needed.
     /// </summary>
     [TestMethod]
     public void CheckForUpdate_DisposedDuringCopy_LeavesWatcherAlone()
@@ -335,7 +372,7 @@ public class DataUpdateServiceDisposeTests
 
         Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, status);
         Assert.AreEqual(1, _http.Requests);
-        // The copy ran, as the dispose came during it.
+        // The dispose came during the copy, which still wrote the file.
         Assert.AreEqual(NewData, File.ReadAllText(_path));
         Assert.AreEqual(0, _refreshes);
     }
@@ -356,25 +393,33 @@ public class DataUpdateServiceDisposeTests
     // for this file are checked.
     private void AssertNotRefreshed()
     {
+        WaitForWatcher();
+        Assert.AreEqual(
+            0,
+            _refreshes,
+            "The engine was refreshed after its data file was disposed.");
+        var reports = ReportsForFile();
+        Assert.IsTrue(reports.Length > 0, "Nothing was reported.");
+        Assert.IsTrue(
+            reports.All(r => r == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED),
+            "Reported " + string.Join(", ", reports) + ".");
+    }
+
+    // Waits for every watcher event that started to end.
+    private void WaitForWatcher()
+    {
         Assert.IsTrue(
             SpinWait.SpinUntil(
                 () => Volatile.Read(ref _exited) ==
                     Volatile.Read(ref _entered),
                 WaitMilliseconds),
             "The watcher did not finish with the change.");
-        Assert.AreEqual(
-            0,
-            _refreshes,
-            "The engine was refreshed after its data file was disposed.");
-        var reports = _reports
-            .Where(r => ReferenceEquals(r.DataFile, _file))
-            .Select(r => r.Status)
-            .ToArray();
-        Assert.IsTrue(reports.Length > 0, "Nothing was reported.");
-        Assert.IsTrue(
-            reports.All(r => r == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED),
-            "Reported " + string.Join(", ", reports) + ".");
     }
+
+    private AutoUpdateStatus[] ReportsForFile() => _reports
+        .Where(r => ReferenceEquals(r.DataFile, _file))
+        .Select(r => r.Status)
+        .ToArray();
 
     // Opens the file so that it cannot be opened again until it is closed,
     // trying again while the write that changed it still has it open.
