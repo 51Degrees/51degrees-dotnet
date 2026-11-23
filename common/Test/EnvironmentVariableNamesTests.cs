@@ -153,6 +153,14 @@ public class EnvironmentVariableNamesTests
         RegexOptions.CultureInvariant);
 
     /// <summary>
+    /// A resource key a workflow reads as an organization variable. Every
+    /// resource key is an organization secret.
+    /// </summary>
+    private static readonly Regex ResourceKeyVariable = new Regex(
+        @"(?<![A-Za-z0-9_])vars\.(?<name>_51DEGREES_RESOURCE_KEY[A-Za-z0-9_]*)",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>
     /// A _51DEGREES_ name set from a workflow secret or variable, or from
     /// another variable in PowerShell, with the source in 'from'.
     /// </summary>
@@ -643,6 +651,43 @@ public class EnvironmentVariableNamesTests
             $"{found.Count} secrets or variables named in the workflows " +
             $"neither start {Prefix} nor are secrets only CI reads:\n" +
             string.Join("\n", found));
+    }
+
+    [TestMethod]
+    public void TheResourceKeyVariableMatcherFindsOnlyAResourceKeyVariable()
+    {
+        var key = Prefix + "RESOURCE_KEY_BASIC";
+        Assert.IsTrue(ResourceKeyVariable.IsMatch(
+            $"{key}: ${{{{ vars.{key} }}}}"));
+        Assert.IsTrue(ResourceKeyVariable.IsMatch(
+            $"{Prefix}RESOURCE_KEY: ${{{{ vars.{Prefix}RESOURCE_KEY }}}}"));
+        Assert.IsFalse(ResourceKeyVariable.IsMatch(
+            $"{key}: ${{{{ secrets.{key} }}}}"));
+        Assert.IsFalse(ResourceKeyVariable.IsMatch(
+            $"{Prefix}CLOUD_ENDPOINT: ${{{{ vars.{Prefix}CLOUD_ENDPOINT }}}}"));
+    }
+
+    [TestMethod]
+    public void EveryWorkflowReadsEachResourceKeyAsASecret()
+    {
+        var found = new List<string>();
+        foreach (var file in Files.Value.Where(f => f.IsWorkflow))
+        {
+            for (var index = 0; index < file.Lines.Length; index++)
+            {
+                foreach (Match match in
+                    ResourceKeyVariable.Matches(file.Lines[index]))
+                {
+                    found.Add($"{file.Relative}:{index + 1}: {match.Value}");
+                }
+            }
+        }
+        Assert.AreEqual(
+            0,
+            found.Count,
+            $"{found.Count} resource keys are read as organization " +
+            "variables, where each is an organization secret and must be " +
+            "read as secrets.<name>:\n" + string.Join("\n", found));
     }
 
     [TestMethod]
