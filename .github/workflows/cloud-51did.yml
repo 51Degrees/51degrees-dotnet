@@ -1,8 +1,8 @@
 name: Cloud 51Did Tests
 
-# Runs the live cloud 51Did tests with every key under the name of its own
-# secret. Each test reads the key it needs by that name and skips, naming it,
-# when the key is empty. The step fails when no resource key reached it at
+# Runs the live cloud 51Did tests with every key under its own name. Each
+# test reads the key it needs by that name and skips, naming it, when the
+# key is empty. The step fails when no resource key reached it at
 # all, because a cloud test that passes without calling the cloud has proved
 # nothing.
 #
@@ -17,10 +17,11 @@ name: Cloud 51Did Tests
 # _51DEGREES_RESOURCE_KEY_51DID, and checks that the outcome matches what the
 # key is entitled to.
 #
-# The secrets are named one by one rather than passed as toJSON(secrets),
+# The keys are named one by one rather than passed as toJSON(secrets),
 # because GitHub holds a run that hands every secret to a step for manual
-# approval. _51DEGREES_CLOUD_ENDPOINT is the organisation variable, and the
-# tests use the public cloud when it is empty.
+# approval. The resource keys and _51DEGREES_CLOUD_ENDPOINT are organization
+# variables, and the license key is an organization secret. The tests use the
+# public cloud when _51DEGREES_CLOUD_ENDPOINT is empty.
 
 on:
   workflow_dispatch:
@@ -79,7 +80,7 @@ jobs:
           # key, so without that key the license key would go untested.
           if ($env:_51DEGREES_LICENSE_KEY_51DID -and
               -not $env:_51DEGREES_RESOURCE_KEY_51DID) {
-            Write-Host '::error::_51DEGREES_LICENSE_KEY_51DID has a value but _51DEGREES_RESOURCE_KEY_51DID is empty, so the redeem test would not run. Add the secret _51DEGREES_RESOURCE_KEY_51DID.'
+            Write-Host '::error::_51DEGREES_LICENSE_KEY_51DID has a value but _51DEGREES_RESOURCE_KEY_51DID is empty, so the redeem test would not run. Add the organization variable _51DEGREES_RESOURCE_KEY_51DID.'
             exit 1
           }
           $runs = @(
