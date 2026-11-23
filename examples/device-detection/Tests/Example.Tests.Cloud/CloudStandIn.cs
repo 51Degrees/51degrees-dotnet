@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace FiftyOne.DeviceDetection.Example.Tests.Cloud;
@@ -48,6 +49,18 @@ internal enum StandInAnswer
     /// With status 500 to every request, as a service that is failing.
     /// </summary>
     Failing,
+
+    /// <summary>
+    /// With status 500 to the first request for the key's properties, then
+    /// as <see cref="NoHardware"/>.
+    /// </summary>
+    FailsOnceThenNoHardware,
+
+    /// <summary>
+    /// With status 500 to the first request for the key's properties, then
+    /// as <see cref="NoDevices"/>.
+    /// </summary>
+    FailsOnceThenNoDevices,
 }
 
 /// <summary>
@@ -113,6 +126,8 @@ internal sealed class CloudStandIn : IDisposable
 
     private readonly StandInAnswer _answer;
 
+    private int _propertyRequests;
+
     /// <param name="answer">How the stand-in answers.</param>
     public CloudStandIn(StandInAnswer answer = StandInAnswer.NoHardware)
     {
@@ -169,11 +184,19 @@ internal sealed class CloudStandIn : IDisposable
             {
                 _paths.Add(path);
             }
-            var noDevices = _answer == StandInAnswer.NoDevices;
+            var isProperties = path.EndsWith("/accessibleproperties",
+                StringComparison.Ordinal);
+            var failsOnce =
+                _answer == StandInAnswer.FailsOnceThenNoHardware ||
+                _answer == StandInAnswer.FailsOnceThenNoDevices;
+            var fail = _answer == StandInAnswer.Failing ||
+                (failsOnce && isProperties &&
+                    Interlocked.Increment(ref _propertyRequests) == 1);
+            var noDevices = _answer == StandInAnswer.NoDevices ||
+                _answer == StandInAnswer.FailsOnceThenNoDevices;
             var body =
-                _answer == StandInAnswer.Failing ? Failure :
-                path.EndsWith("/accessibleproperties",
-                    StringComparison.Ordinal) ?
+                fail ? Failure :
+                isProperties ?
                     (noDevices ?
                         AccessiblePropertiesWithHardware :
                         AccessibleProperties) :
@@ -188,7 +211,7 @@ internal sealed class CloudStandIn : IDisposable
             }
             else
             {
-                if (_answer == StandInAnswer.Failing)
+                if (fail)
                 {
                     context.Response.StatusCode = 500;
                 }

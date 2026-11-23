@@ -79,6 +79,48 @@ public class HardwareLookupMatchingNothingTests
     }
 
     /// <summary>
+    /// The first request for the key's properties fails and the next
+    /// answers with the hardware lookup. The example should ask again and
+    /// go on to look each value up, not decide the key lacks the lookup.
+    /// </summary>
+    [TestMethod]
+    public void TacLookup_PropertiesFailOnce_StillLooksUp()
+    {
+        using var standIn = new CloudStandIn(
+            StandInAnswer.FailsOnceThenNoDevices);
+        var output = new StringWriter();
+        var options = TestExamples.CreateConfiguration(
+            typeof(TacLookup.Example), StandInKey, standIn.EndPoint);
+
+        new TacLookup.Example().Run(options, output);
+
+        AssertSaysNoDevices(output.ToString(), standIn, "TAC",
+            TacLookup.Example.NoHardwareLookup,
+            TacLookup.Example.Tac1, TacLookup.Example.Tac2);
+    }
+
+    /// <summary>
+    /// As <see cref="TacLookup_PropertiesFailOnce_StillLooksUp"/> for the
+    /// native model example.
+    /// </summary>
+    [TestMethod]
+    public void NativeModelLookup_PropertiesFailOnce_StillLooksUp()
+    {
+        using var standIn = new CloudStandIn(
+            StandInAnswer.FailsOnceThenNoDevices);
+        using var loggerFactory = new LoggerFactory();
+        var output = new StringWriter();
+
+        new NativeModelLookup.Example().Run(
+            StandInKey, loggerFactory, output, standIn.EndPoint);
+
+        AssertSaysNoDevices(output.ToString(), standIn, "native model name",
+            NativeModelLookup.Example.NoHardwareLookup,
+            NativeModelLookup.Example.NativeModel1,
+            NativeModelLookup.Example.NativeModel2);
+    }
+
+    /// <summary>
     /// Fails unless each value's heading is followed by the line saying no
     /// device is associated with it, the example did not say the key lacks
     /// the lookup, and it made a lookup request for each value.

@@ -122,6 +122,47 @@ public class HardwareLookupWithoutTheLookupTests
 
     /// <summary>
     /// Runs each example's own build as a process against a stand-in that
+    /// fails the first request for the key's properties and then answers
+    /// as for a key without the lookup. The example should ask again and
+    /// still say on one line that the key lacks the lookup.
+    /// </summary>
+    [TestMethod]
+    [DataRow("examples/device-detection/Cloud/TAC-Console",
+        "FiftyOne.DeviceDetection.Examples.Cloud.TacLookup",
+        TacLookup.Example.NoHardwareLookup)]
+    [DataRow("examples/device-detection/Cloud/NativeModel-Console",
+        "FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup",
+        NativeModelLookup.Example.NoHardwareLookup)]
+    public void Example_PropertiesFailOnce_StillSaysTheKeyLacksTheLookup(
+        string projectFolder,
+        string assemblyName,
+        string expectedLine)
+    {
+        using var standIn = new CloudStandIn(
+            StandInAnswer.FailsOnceThenNoHardware);
+
+        var (exitCode, output) = ExampleWithoutKey.Run(
+            projectFolder,
+            assemblyName,
+            new Dictionary<string, string>
+            {
+                [ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR] = StandInKey,
+                [ExampleUtils.CLOUD_ENDPOINT_ENV_VAR] = standIn.EndPoint,
+            });
+
+        Console.WriteLine(output);
+        Assert.AreEqual(0, exitCode,
+            $"{assemblyName} should end with exit code 0.");
+        HardwareLookupOutput.AssertSaysTheKeyLacksTheLookup(
+            output, expectedLine);
+        Assert.IsTrue(
+            standIn.Paths.Count(p => p.EndsWith("/accessibleproperties")) >= 2,
+            $"{assemblyName} should ask again for the key's properties.");
+        AssertLookedNothingUp(standIn);
+    }
+
+    /// <summary>
+    /// Runs each example's own build as a process against a stand-in that
     /// answers every request with an error. The example cannot tell which
     /// properties the key includes, so it should say the request failed,
     /// not that the key lacks the lookup, and end with a non-zero exit
