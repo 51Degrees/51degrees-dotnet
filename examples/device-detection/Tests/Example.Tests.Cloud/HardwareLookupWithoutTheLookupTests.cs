@@ -116,7 +116,120 @@ public class HardwareLookupWithoutTheLookupTests
             output.IndexOf("Find out more", StringComparison.Ordinal) >
                 output.IndexOf(expectedLine, StringComparison.Ordinal),
             $"{assemblyName} should end with the Find out more section.");
+        AssertNoError(output, assemblyName);
         AssertLookedNothingUp(standIn);
+    }
+
+    /// <summary>
+    /// Runs each example's own build as a process against a stand-in that
+    /// fails the first request for the key's properties and then answers
+    /// as for a key without the lookup. The example should ask again and
+    /// still say on one line that the key lacks the lookup.
+    /// </summary>
+    [TestMethod]
+    [DataRow("examples/device-detection/Cloud/TAC-Console",
+        "FiftyOne.DeviceDetection.Examples.Cloud.TacLookup",
+        TacLookup.Example.NoHardwareLookup)]
+    [DataRow("examples/device-detection/Cloud/NativeModel-Console",
+        "FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup",
+        NativeModelLookup.Example.NoHardwareLookup)]
+    public void Example_PropertiesFailOnce_StillSaysTheKeyLacksTheLookup(
+        string projectFolder,
+        string assemblyName,
+        string expectedLine)
+    {
+        using var standIn = new CloudStandIn(
+            StandInAnswer.FailsOnceThenNoHardware);
+
+        var (exitCode, output) = ExampleWithoutKey.Run(
+            projectFolder,
+            assemblyName,
+            new Dictionary<string, string>
+            {
+                [ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR] = StandInKey,
+                [ExampleUtils.CLOUD_ENDPOINT_ENV_VAR] = standIn.EndPoint,
+            });
+
+        Console.WriteLine(output);
+        Assert.AreEqual(0, exitCode,
+            $"{assemblyName} should end with exit code 0.");
+        HardwareLookupOutput.AssertSaysTheKeyLacksTheLookup(
+            output, expectedLine);
+        Assert.IsTrue(
+            standIn.Paths.Count(p => p.EndsWith("/accessibleproperties")) >= 2,
+            $"{assemblyName} should ask again for the key's properties.");
+        AssertLookedNothingUp(standIn);
+    }
+
+    /// <summary>
+    /// Runs each example's own build as a process against a stand-in that
+    /// answers every request with an error. The example cannot tell which
+    /// properties the key includes, so it should say the request failed,
+    /// not that the key lacks the lookup, and end with a non-zero exit
+    /// code and no stack trace.
+    /// </summary>
+    [TestMethod]
+    [DataRow("examples/device-detection/Cloud/TAC-Console",
+        "FiftyOne.DeviceDetection.Examples.Cloud.TacLookup",
+        TacLookup.Example.NoHardwareLookup)]
+    [DataRow("examples/device-detection/Cloud/NativeModel-Console",
+        "FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup",
+        NativeModelLookup.Example.NoHardwareLookup)]
+    public void Example_CloudFailing_SaysTheRequestFailed(
+        string projectFolder,
+        string assemblyName,
+        string noLookupLine)
+    {
+        using var standIn = new CloudStandIn(StandInAnswer.Failing);
+
+        var (exitCode, output) = ExampleWithoutKey.Run(
+            projectFolder,
+            assemblyName,
+            new Dictionary<string, string>
+            {
+                [ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR] = StandInKey,
+                [ExampleUtils.CLOUD_ENDPOINT_ENV_VAR] = standIn.EndPoint,
+            });
+
+        Console.WriteLine(output);
+        Assert.AreNotEqual(0, exitCode,
+            $"{assemblyName} should end with a non-zero exit code.");
+        var lines = output.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        Assert.IsTrue(
+            lines.Any(l => l.StartsWith(
+                "The example stopped because the request to the cloud " +
+                "service failed. ", StringComparison.Ordinal) &&
+                l.Contains("(status code 500)", StringComparison.Ordinal)),
+            $"{assemblyName} should say the request failed with its " +
+            "status code.");
+        Assert.IsFalse(lines.Contains(noLookupLine),
+            $"{assemblyName} should not say the key lacks the lookup.");
+        Assert.IsFalse(
+            lines.Any(l => l.StartsWith("Which devices are associated",
+                StringComparison.Ordinal)),
+            $"{assemblyName} should look nothing up.");
+        Assert.IsFalse(
+            output.Contains("Unhandled exception",
+                StringComparison.OrdinalIgnoreCase),
+            $"{assemblyName} should end without a stack trace.");
+        Assert.IsFalse(standIn.Paths.Any(p => p.EndsWith("/json")),
+            $"{assemblyName} should make no lookup request.");
+    }
+
+    /// <summary>
+    /// Fails if the example logged an error or ended on an unhandled
+    /// exception.
+    /// </summary>
+    private static void AssertNoError(string output, string assemblyName)
+    {
+        Assert.IsFalse(
+            output.Contains("Unhandled exception",
+                StringComparison.OrdinalIgnoreCase),
+            $"{assemblyName} should end without a stack trace.");
+        Assert.IsFalse(
+            output.Split('\n').Any(l => l.StartsWith("fail:",
+                StringComparison.Ordinal)),
+            $"{assemblyName} should log no error.");
     }
 
     /// <summary>
