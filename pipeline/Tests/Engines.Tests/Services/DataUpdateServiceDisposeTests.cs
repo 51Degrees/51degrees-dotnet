@@ -23,8 +23,10 @@
 using FiftyOne.Common.Wrappers.IO;
 using FiftyOne.Pipeline.Engines.Configuration;
 using FiftyOne.Pipeline.Engines.Data;
+using FiftyOne.Pipeline.Engines.Exceptions;
 using FiftyOne.Pipeline.Engines.FlowElements;
 using FiftyOne.Pipeline.Engines.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -78,6 +80,7 @@ public class DataUpdateServiceDisposeTests
     private int _exited;
     private ConcurrentQueue<DataUpdateCompleteArgs> _reports;
     private CountingHandler _http;
+    private ErrorCountingLogger _logger;
 
     [TestInitialize]
     public void Init()
@@ -88,8 +91,9 @@ public class DataUpdateServiceDisposeTests
         _path = Path.Combine(_directory, "data.dat");
         File.WriteAllText(_path, OldData);
         _http = new CountingHandler();
+        _logger = new ErrorCountingLogger();
         _service = new DataUpdateService(
-            NullLogger<DataUpdateService>.Instance,
+            _logger,
             new HttpClient(_http),
             new RealFileSystem(),
             (callback, state, dueTime) => null);
@@ -250,8 +254,7 @@ public class DataUpdateServiceDisposeTests
         CountRefreshes(() =>
         {
             refreshing.Set();
-            // Fails once dispose has closed the file and is waiting for
-            // this refresh.
+            // Fails once dispose has closed the file.
             SpinWait.SpinUntil(() => _file.TimerClosed, WaitMilliseconds);
             throw new InvalidOperationException("The refresh failed.");
         });
@@ -271,6 +274,40 @@ public class DataUpdateServiceDisposeTests
             reports,
             AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED,
             "Reported " + string.Join(", ", reports) + ".");
+        Assert.IsTrue(_logger.Errors > 0, "The failure was not logged.");
+        Assert.AreEqual(1, _refreshes);
+    }
+
+    /// <summary>
+    /// The engine's refresh fails, and the file is disposed before the next
+    /// try. A programmatic check throws the failure and reports it.
+    /// </summary>
+    [TestMethod]
+    public void CheckForUpdate_DisposedAfterFailedTry_ThrowsTheFailure()
+    {
+        CountRefreshes(() =>
+        {
+            // The next try finds the file closed.
+            _file.Dispose();
+            throw new InvalidOperationException("The refresh failed.");
+        });
+        var configuration = (DataFileConfiguration)_file.Configuration;
+        configuration.VerifyMd5 = false;
+        configuration.DecompressContent = false;
+        _http.Respond = () => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(Encoding.ASCII.GetBytes(NewData)),
+        };
+
+        var thrown = Assert.ThrowsExactly<DataUpdateException>(() =>
+            _service.CheckForUpdate(_engine.Object));
+
+        Assert.AreEqual(
+            AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED,
+            thrown.Status);
+        CollectionAssert.Contains(
+            ReportsForFile(),
+            AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED);
         Assert.AreEqual(1, _refreshes);
     }
 
@@ -529,6 +566,31 @@ public class DataUpdateServiceDisposeTests
             string path, DateTime lastWriteTimeUtc) =>
             _real.SetLastWriteTimeUtc(path, lastWriteTimeUtc);
         public Stream OpenRead(string path) => _real.OpenRead(path);
+    }
+
+    // Counts the errors logged from any thread.
+    private sealed class ErrorCountingLogger : ILogger<DataUpdateService>
+    {
+        private int _errors;
+
+        public int Errors => Volatile.Read(ref _errors);
+
+        public IDisposable BeginScope<TState>(TState state) => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception exception,
+            Func<TState, Exception, string> formatter)
+        {
+            if (logLevel == LogLevel.Error)
+            {
+                Interlocked.Increment(ref _errors);
+            }
+        }
     }
 
     // Counts the requests the service sends, and answers each with not

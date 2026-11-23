@@ -374,12 +374,15 @@ namespace FiftyOne.Pipeline.Engines.Services
         /// If the engine has only one data file then this parameter is ignored.
         /// </param>
         /// <returns>
-        /// The result of the update check. Not needed when the data file is
-        /// disposed before the engine is refreshed. Nothing is downloaded if
-        /// it was disposed before the call. A download under way when it is
-        /// disposed is not applied to the engine, though its copy can still
-        /// write the data file. A dispose during a refresh waits for it to
-        /// end, and the check then reports whether the refresh worked.
+        /// The result of the update check. A data file disposed before the
+        /// call gives not needed, with nothing downloaded. One disposed
+        /// during a download gives not needed, and the download is not
+        /// applied to the engine, though its copy can still write the data
+        /// file. A dispose during a try at refreshing the engine waits for
+        /// that try to end, and the check gives success if it worked. A
+        /// dispose during or after a failed try ends the tries, and the
+        /// failure is thrown as a refresh failure. A failure to download or
+        /// copy is thrown whether or not the file was disposed.
         /// </returns>
         /// <exception cref="DataUpdateException">
         /// Thrown if some problem occurs during the update process.
