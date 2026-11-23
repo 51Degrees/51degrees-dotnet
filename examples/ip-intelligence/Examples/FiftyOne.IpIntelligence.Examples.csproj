@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <!-- C# 10 for file-scoped namespaces, as netstandard2.0 defaults to 7.3. -->
+    <LangVersion>10</LangVersion>
+    <AssemblyName>FiftyOne.IpIntelligence.Examples</AssemblyName>
+    <Platforms>AnyCPU;x64;ARM64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FiftyOneReference Include="FiftyOne.IpIntelligence" ProjectPath="..\..\..\ip-intelligence\IpIntelligence\FiftyOne.IpIntelligence.csproj" Version="$(_51DEGREES_IP_INTELLIGENCE_VERSION)" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+
+</Project>

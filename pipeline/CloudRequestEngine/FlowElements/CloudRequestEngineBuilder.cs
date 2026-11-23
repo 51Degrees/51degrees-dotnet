@@ -1,0 +1,612 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+using FiftyOne.Pipeline.CloudRequestEngine.Data;
+using FiftyOne.Pipeline.Core.FailHandling.Facade;
+using FiftyOne.Pipeline.Core.FailHandling.Recovery;
+using FiftyOne.Pipeline.Core.Attributes;
+using FiftyOne.Pipeline.Core.Exceptions;
+using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines.Data;
+using FiftyOne.Pipeline.Engines.FlowElements;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
+
+namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
+{
+    /// <summary>
+    /// A fluent builder for <see cref="CloudRequestEngine"/> instances.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", 
+        "CA1054:Uri parameters should not be strings", 
+        Justification = "Changing this could cause implementation issues " +
+        "so it being delayed for the time being.")]
+    public class CloudRequestEngineBuilder : 
+        AspectEngineBuilderBase<CloudRequestEngineBuilder, CloudRequestEngine>
+    {
+        #region Private Properties
+
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger<CloudRequestData> _dataLogger;
+        private readonly HttpClient _httpClient;
+
+        // What GetDiscoveryResults gave after an earlier build, or null to
+        // ask the cloud service.
+        private string _discoveryResults;
+
+        // Note - Defaults for these fields are set in the Build method.
+        private string _dataEndpoint = "";
+        private string _propertiesEndpoint = "";
+        private string _evidenceKeysEndpoint = "";
+
+        private string _resourceKey = Constants.RESOURCE_KEY_DEFAULT;
+        private string _licenseKey = Constants.LICENSE_KEY_DEFAULT;
+        private readonly List<string> _requestedProperties =
+            new List<string>();
+        private string _cloudRequestOrigin = Constants.CLOUD_REQUEST_ORIGIN_DEFAULT;
+        private int _timeout = Constants.CLOUD_REQUEST_TIMEOUT_DEFAULT_SECONDS;
+        private int _failuresToEnterRecovery = Constants.CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_DEFAULT;
+        private int _failuresWindowSeconds = Constants.CLOUD_REQUEST_FAILURES_WINDOW_SECONDS_DEFAULT;
+        private double _recoverySeconds = Constants.CLOUD_REQUEST_RECOVERY_SECONDS_DEFAULT;
+        private bool _useExponentialBackoff = Constants.CLOUD_REQUEST_EXPONENTIAL_BACKOFF_ENABLED_DEFAULT;
+        private double _exponentialBackoffInitialDelay = Constants.CLOUD_REQUEST_EXPONENTIAL_BACKOFF_INITIAL_DELAY_SECONDS_DEFAULT;
+        private double _exponentialBackoffMaxDelay = Constants.CLOUD_REQUEST_EXPONENTIAL_BACKOFF_MAX_DELAY_SECONDS_DEFAULT;
+        private double _exponentialBackoffMultiplier = Constants.CLOUD_REQUEST_EXPONENTIAL_BACKOFF_MULTIPLIER_DEFAULT;
+
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Construct a new instance of the builder.
+        /// </summary>
+        /// <param name="loggerFactory">
+        /// Factory used to create loggers for the engine
+        /// </param>
+        /// <param name="httpClient">
+        /// HttpClient instance used to make http requests
+        /// </param>
+        public CloudRequestEngineBuilder(
+            ILoggerFactory loggerFactory,
+            HttpClient httpClient)
+        {
+            _loggerFactory = loggerFactory;
+            _httpClient = httpClient;
+            _dataLogger = _loggerFactory.CreateLogger<CloudRequestData>();
+        }
+
+        #endregion
+
+        /// <summary>
+        /// The root endpoint which the CloudRequestsEngine will query.
+        /// This will set the data, properties and evidence keys endpoints.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if a required parameter is null.
+        /// </exception>
+        [DefaultValue(Constants.CLOUD_URI_DEFAULT)]
+        public CloudRequestEngineBuilder SetEndPoint(string uri)
+        {
+            if (uri == null) throw new ArgumentNullException(nameof(uri));
+
+            if (uri.EndsWith("/", StringComparison.Ordinal) == false)
+            {
+                uri += '/';
+            }
+            return SetDataEndpoint(uri + Constants.DATA_FILENAME)
+                .SetPropertiesEndpoint(uri + Constants.PROPERTIES_FILENAME)
+                .SetEvidenceKeysEndpoint(uri + Constants.EVIDENCE_KEYS_FILENAME);
+        }
+
+        /// <summary>
+        /// The endpoint the CloudRequestEngine will query to get a processing
+        /// result.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <returns></returns>
+        [DefaultValue(Constants.DATA_ENDPOINT_DEFAULT)]
+        public CloudRequestEngineBuilder SetDataEndpoint(string uri)
+        {
+            _dataEndpoint = uri;
+            return this;
+        }
+
+        /// <summary>
+        /// The endpoint the cloudRequestEngine will query to get the available
+        /// properties.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <returns></returns>
+        [DefaultValue(Constants.PROPERTIES_ENDPOINT_DEFAULT)]
+        public CloudRequestEngineBuilder SetPropertiesEndpoint(string uri)
+        {
+            _propertiesEndpoint = uri;
+            return this;
+        }
+
+        /// <summary>
+        /// The endpoint the cloudRequestEngine will query to get the required
+        /// evidence keys.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <returns></returns>
+        [DefaultValue(Constants.EVIDENCE_KEYS_ENDPOINT_DEFAULT)]
+        public CloudRequestEngineBuilder SetEvidenceKeysEndpoint(string uri)
+        {
+            _evidenceKeysEndpoint = uri;
+            return this;
+        }
+
+        /// <summary>
+        /// The resource key to query the endpoint with. Either a resource key
+        /// or a license key must be supplied.
+        /// </summary>
+        /// <param name="resourceKey">
+        /// The resource key to use when making requests to the cloud service
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        [DefaultValue("No default - a resource key or a license key must be supplied")]
+        public CloudRequestEngineBuilder SetResourceKey(string resourceKey)
+        {
+            _resourceKey = resourceKey;
+            return this;
+        }
+
+        /// <summary>
+        /// The license key to authenticate with. A license key alone
+        /// needs the properties wanted, named with
+        /// <see cref="SetRequestedProperties"/>. Beside a resource key it
+        /// adds the requested properties the license grants to what the
+        /// resource key carries. Leading and trailing white space is
+        /// ignored.
+        /// </summary>
+        /// <param name="licenseKey">
+        /// The license key to use when making requests to the cloud service
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        [DefaultValue("No default - a resource key or a license key must be supplied")]
+        [CodeConfigOnly]
+        public CloudRequestEngineBuilder SetLicenseKey(string licenseKey)
+        {
+            _licenseKey = licenseKey;
+            return this;
+        }
+
+        /// <summary>
+        /// The properties to ask the cloud service for, as fully qualified
+        /// names such as 'device.ismobile', sent as 'values'. Required with
+        /// a license key alone. Beside a resource key the cloud service adds
+        /// them to the properties the resource key carries. Names are
+        /// trimmed and sent as given, and a name given again in another
+        /// letter case is sent once. The properties set with
+        /// <c>SetProperties</c> are not sent.
+        /// </summary>
+        /// <param name="properties">
+        /// The fully qualified property names to ask for.
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if a required parameter is null.
+        /// </exception>
+        [DefaultValue("None - required with a license key alone")]
+        public CloudRequestEngineBuilder SetRequestedProperties(
+            List<string> properties)
+        {
+            if (properties == null)
+            {
+                throw new ArgumentNullException(nameof(properties));
+            }
+            _requestedProperties.AddRange(properties);
+            return this;
+        }
+
+        /// <summary>
+        /// Timeout in seconds for the request to the endpoint.
+        /// </summary>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        [DefaultValue(Constants.CLOUD_REQUEST_TIMEOUT_DEFAULT_SECONDS)]
+        public CloudRequestEngineBuilder SetTimeOutSeconds(int timeout)
+        {
+            _timeout = timeout;
+            return this;
+        }
+
+        /// <summary>
+        /// Number of failures to occur within
+        /// 
+        /// for CloudRequestEngine to temporarily stop sending requests.
+        /// </summary>
+        /// <param name="failuresToEnterRecovery"></param>
+        /// <returns></returns>
+        [DefaultValue(Constants.CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_DEFAULT)]
+        public CloudRequestEngineBuilder SetFailuresToEnterRecovery(
+            int failuresToEnterRecovery)
+        {
+            if (failuresToEnterRecovery < Constants.CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_MIN
+                || failuresToEnterRecovery > Constants.CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_MAX)
+            {
+                throw new ArgumentOutOfRangeException(
+                        nameof(failuresToEnterRecovery),
+                        $"{nameof(failuresToEnterRecovery)} must be within"
+                        + $" {Constants.CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_MIN} and"
+                        + $" {Constants.CLOUD_REQUEST_FAILURES_TO_ENTER_RECOVERY_MAX} (both inclusive)."
+                        + $" Received: {failuresToEnterRecovery}.");
+            }
+            _failuresToEnterRecovery = failuresToEnterRecovery;
+            return this;
+        }
+
+        /// <summary>
+        /// The time period in seconds within which a number of
+        /// failed requests should reach `FailuresToEnterRecovery`
+        /// for the engine to enter "recovery period"
+        /// </summary>
+        /// <param name="failuresWindowSeconds"></param>
+        [DefaultValue(Constants.CLOUD_REQUEST_FAILURES_WINDOW_SECONDS_DEFAULT)]
+        public CloudRequestEngineBuilder SetFailuresWindowSeconds(
+            int failuresWindowSeconds)
+        {
+            if ((_failuresWindowSeconds = failuresWindowSeconds) <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(failuresWindowSeconds),
+                    $"{nameof(failuresWindowSeconds)} must be positive,"
+                    + $" Received: {failuresWindowSeconds}.");
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// For how long to disallow server calls after failure.
+        /// </summary>
+        /// <param name="recoverySeconds"></param>
+        /// <returns></returns>
+        [DefaultValue(Constants.CLOUD_REQUEST_RECOVERY_SECONDS_DEFAULT)]
+        public CloudRequestEngineBuilder SetRecoverySeconds(double recoverySeconds)
+        {
+            _recoverySeconds = recoverySeconds;
+            return this;
+        }
+
+        /// <summary>
+        /// Enable exponential backoff recovery strategy instead of simple recovery.
+        /// </summary>
+        /// <param name="useExponentialBackoff">True to use exponential backoff, false for simple recovery</param>
+        /// <returns>This builder instance</returns>
+        [DefaultValue(Constants.CLOUD_REQUEST_EXPONENTIAL_BACKOFF_ENABLED_DEFAULT)]
+        public CloudRequestEngineBuilder SetUseExponentialBackoff(bool useExponentialBackoff)
+        {
+            _useExponentialBackoff = useExponentialBackoff;
+            return this;
+        }
+
+        /// <summary>
+        /// Set the initial delay in seconds for exponential backoff recovery strategy.
+        /// Only used when exponential backoff is enabled.
+        /// </summary>
+        /// <param name="initialDelaySeconds">Initial delay in seconds</param>
+        /// <returns>This builder instance</returns>
+        [DefaultValue(Constants.CLOUD_REQUEST_EXPONENTIAL_BACKOFF_INITIAL_DELAY_SECONDS_DEFAULT)]
+        public CloudRequestEngineBuilder SetExponentialBackoffInitialDelay(double initialDelaySeconds)
+        {
+            _exponentialBackoffInitialDelay = initialDelaySeconds;
+            return this;
+        }
+
+        /// <summary>
+        /// Set the maximum delay in seconds for exponential backoff recovery strategy.
+        /// Only used when exponential backoff is enabled.
+        /// </summary>
+        /// <param name="maxDelaySeconds">Maximum delay in seconds</param>
+        /// <returns>This builder instance</returns>
+        [DefaultValue(Constants.CLOUD_REQUEST_EXPONENTIAL_BACKOFF_MAX_DELAY_SECONDS_DEFAULT)]
+        public CloudRequestEngineBuilder SetExponentialBackoffMaxDelay(double maxDelaySeconds)
+        {
+            _exponentialBackoffMaxDelay = maxDelaySeconds;
+            return this;
+        }
+
+        /// <summary>
+        /// Set the multiplier for exponential backoff recovery strategy.
+        /// Only used when exponential backoff is enabled.
+        /// </summary>
+        /// <param name="multiplier">Exponential multiplier (typically 2.0 for doubling)</param>
+        /// <returns>This builder instance</returns>
+        [DefaultValue(Constants.CLOUD_REQUEST_EXPONENTIAL_BACKOFF_MULTIPLIER_DEFAULT)]
+        public CloudRequestEngineBuilder SetExponentialBackoffMultiplier(double multiplier)
+        {
+            _exponentialBackoffMultiplier = multiplier;
+            return this;
+        }
+
+        /// <summary>
+        /// The value to set for the Origin header when making requests
+        /// to the cloud service.
+        /// This is used by the cloud service to check that the request
+        /// is being made from a origin matching those allowed by the 
+        /// resource key.
+        /// For more detail, see the 'Request Headers' section in the 
+        /// <a href="https://cloud.51degrees.com/api-docs/index.html">cloud documentation</a>.
+        /// </summary>
+        /// <param name="cloudRequestOrigin">
+        /// The value to use for the Origin header.
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        [DefaultValue(Constants.CLOUD_REQUEST_ORIGIN_DEFAULT)]
+        public CloudRequestEngineBuilder SetCloudRequestOrigin(string cloudRequestOrigin)
+        {
+            _cloudRequestOrigin = cloudRequestOrigin;
+            return this;
+        }
+
+        /// <summary>
+        /// Builds the engine from the discovery results that
+        /// <see cref="CloudRequestEngine.GetDiscoveryResults"/> gave after
+        /// an earlier build with the same keys and endpoints, so that
+        /// building asks the cloud service for nothing. Results made for
+        /// other keys or endpoints are refused when the engine is built.
+        /// </summary>
+        /// <param name="discoveryResults">
+        /// The results, as GetDiscoveryResults gave them, or null to ask the
+        /// cloud service.
+        /// </param>
+        /// <returns>
+        /// This builder
+        /// </returns>
+        public CloudRequestEngineBuilder SetDiscoveryResults(
+            string discoveryResults)
+        {
+            _discoveryResults = discoveryResults;
+            return this;
+        }
+
+        /// <summary>
+        /// Build and return a new <see cref="CloudRequestEngine"/>
+        /// instance using the current configuration.
+        /// This calls <see cref="CloudRequestEngine.WarmUp"/> before
+        /// returning, so the first call to Process does not pay the cost
+        /// of the discovery requests. See that method's documentation for
+        /// the failure semantics: a definitive configuration error (4xx)
+        /// throws, while a transient failure falls back to retrying on
+        /// first use. With discovery results set by
+        /// <see cref="SetDiscoveryResults"/>, the engine uses them and asks
+        /// the cloud service for nothing.
+        /// </summary>
+        /// <returns>
+        /// A new <see cref="CloudRequestEngine"/>.
+        /// </returns>
+        /// <exception cref="CloudRequestException">
+        /// Thrown if the cloud service definitively rejected a discovery
+        /// request (4xx response), for example because the resource key
+        /// is invalid.
+        /// </exception>
+        /// <exception cref="PipelineConfigurationException">
+        /// Thrown if the discovery results set are not what
+        /// <see cref="CloudRequestEngine.GetDiscoveryResults"/> gives, or
+        /// were made for other keys or endpoints.
+        /// </exception>
+        public CloudRequestEngine Build()
+        {
+            CheckCredentials();
+
+            // If any of the endpoints are not set, then use the environment variable if
+            // specified, or the default base url if not. The environment
+            // is not read when every endpoint has been set.
+            if (string.IsNullOrWhiteSpace(_dataEndpoint) ||
+                string.IsNullOrWhiteSpace(_propertiesEndpoint) ||
+                string.IsNullOrWhiteSpace(_evidenceKeysEndpoint))
+            {
+                var endpoint = EndpointFromEnvironment() ??
+                    Constants.CLOUD_URI_DEFAULT;
+
+                if (string.IsNullOrWhiteSpace(_dataEndpoint))
+                {
+                    SetDataEndpoint(endpoint + Constants.DATA_FILENAME);
+                }
+                if (string.IsNullOrWhiteSpace(_propertiesEndpoint))
+                {
+                    SetPropertiesEndpoint(endpoint + Constants.PROPERTIES_FILENAME);
+                }
+                if (string.IsNullOrWhiteSpace(_evidenceKeysEndpoint))
+                {
+                    SetEvidenceKeysEndpoint(endpoint + Constants.EVIDENCE_KEYS_FILENAME);
+                }
+            }
+
+            var engine = BuildEngine();
+            try
+            {
+                if (_discoveryResults == null)
+                {
+                    engine.WarmUp();
+                }
+                else
+                {
+                    engine.UseDiscoveryResults(_discoveryResults);
+                }
+            }
+            catch
+            {
+                // A failed warmup means the engine must not be returned,
+                // so make sure it is not left registered anywhere. A
+                // dispose failure is only logged so that it cannot mask
+                // the warmup exception.
+                try
+                {
+                    engine.Dispose();
+                }
+                catch (Exception disposeEx)
+                {
+                    _loggerFactory.CreateLogger<CloudRequestEngineBuilder>()
+                        .LogWarning(disposeEx,
+                            "Failed to dispose engine after warmup failure.");
+                }
+                throw;
+            }
+            return engine;
+        }
+
+        /// <summary>
+        /// The cloud service URL that
+        /// <see cref="Constants.CLOUD_ENDPOINT_ENV_VAR"/> holds, or null
+        /// when it is unset or empty.
+        /// </summary>
+        private static string EndpointFromEnvironment()
+        {
+            var endpoint = Environment.GetEnvironmentVariable(
+                Constants.CLOUD_ENDPOINT_ENV_VAR);
+            return string.IsNullOrEmpty(endpoint) ? null : endpoint;
+        }
+
+        private static string TrimOrEmpty(string value)
+        {
+            return value == null ? string.Empty : value.Trim();
+        }
+
+        /// <summary>
+        /// Trim each name and drop empty names and repeats. A repeat
+        /// differs only in letter case, as the cloud service reads names
+        /// without regard to case, and the first spelling given is kept.
+        /// </summary>
+        private static List<string> NormalizeProperties(
+            IEnumerable<string> names)
+        {
+            var result = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var name in names ?? new List<string>())
+            {
+                var trimmed = TrimOrEmpty(name);
+                if (trimmed.Length > 0 && seen.Add(trimmed))
+                {
+                    result.Add(trimmed);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Refuse a combination of resource key, license key and requested
+        /// properties that the cloud service would refuse on every request,
+        /// so a deployment sees one configuration error when the engine is
+        /// built and not a failure on every request it serves. A blank
+        /// value counts as absent.
+        /// </summary>
+        /// <exception cref="PipelineConfigurationException">
+        /// Thrown for either of the two combinations that cannot work.
+        /// </exception>
+        private void CheckCredentials()
+        {
+            var hasResourceKey = TrimOrEmpty(_resourceKey).Length > 0;
+            var hasLicenseKey = TrimOrEmpty(_licenseKey).Length > 0;
+            var hasProperties =
+                NormalizeProperties(_requestedProperties).Count > 0;
+
+            if (hasResourceKey == false && hasLicenseKey == false)
+            {
+                throw new PipelineConfigurationException(
+                    Messages.ExceptionNoCredential);
+            }
+            if (hasResourceKey == false && hasProperties == false)
+            {
+                throw new PipelineConfigurationException(
+                    Messages.ExceptionLicenseKeyNeedsProperties);
+            }
+        }
+
+        private CloudRequestData CreateAspectData(IPipeline pipeline, 
+            FlowElementBase<CloudRequestData, IAspectPropertyMetaData> engine)
+        {
+            return new CloudRequestData(
+                _dataLogger,
+                pipeline,
+                (IAspectEngine)engine);
+        }
+
+        /// <summary>
+        /// Create the appropriate recovery strategy based on current configuration.
+        /// </summary>
+        /// <returns>The configured recovery strategy</returns>
+        private IRecoveryStrategy CreateRecoveryStrategy()
+        {
+            return RecoveryStrategyFactory.Create(
+                _useExponentialBackoff,
+                _recoverySeconds,
+                _exponentialBackoffInitialDelay,
+                _exponentialBackoffMaxDelay,
+                _exponentialBackoffMultiplier);
+        }
+
+        /// <summary>
+        /// Create a new engine using the current configuration.
+        /// </summary>
+        /// <param name="properties">
+        /// The properties to populate.
+        /// </param>
+        /// <returns>
+        /// A new <see cref="CloudRequestEngine"/> instance.
+        /// </returns>
+        protected override CloudRequestEngine NewEngine(List<string> properties)
+        {
+            CheckCredentials();
+
+            var failThrottlingStrategy = CreateRecoveryStrategy();
+
+            var logger = _loggerFactory.CreateLogger<CloudRequestEngine>();
+
+            return new CloudRequestEngine(
+                logger,
+                CreateAspectData,
+                _httpClient,
+                new CloudRequestEngine.EndpointsAndKeys
+                {
+                    DataEndpoint = _dataEndpoint,
+                    ResourceKey = TrimOrEmpty(_resourceKey),
+                    LicenseKey = TrimOrEmpty(_licenseKey),
+                    PropertiesEndpoint = _propertiesEndpoint,
+                    EvidenceKeysEndpoint = _evidenceKeysEndpoint,
+                    CloudRequestOrigin = _cloudRequestOrigin,
+                    RequestedProperties =
+                        NormalizeProperties(_requestedProperties),
+                },
+                _timeout,
+                new WindowedFailHandler(
+                    failThrottlingStrategy,
+                    _failuresToEnterRecovery,
+                    TimeSpan.FromSeconds(_failuresWindowSeconds),
+                    logger,
+                    nameof(CloudRequestEngine)));
+        }
+    }
+}

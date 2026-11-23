@@ -1,0 +1,219 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+using FiftyOne.Did.Cloud.FlowElements;
+using FiftyOne.Did.Core.FlowElements;
+using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
+using FiftyOne.Pipeline.Core.FlowElements;
+using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+namespace FiftyOne.Did.Cloud.Tests;
+
+/// <summary>
+/// The live half of the entitlement change. A customer style pipeline is
+/// built against the real cloud with a resource key from the environment,
+/// and the outcome has to match what that key is actually entitled to.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Each row reads one tier's resource key under its own name, so one run
+/// covers a key with the 51Did product and keys without it. A row whose
+/// key is not set is skipped, naming the variable.
+/// </para>
+/// <para>
+/// Whether the key carries the product is not taken from the engine under
+/// test. It is read from the cloud's own accessibleproperties answer, so
+/// the two sides of the assertion come from different places and the test
+/// cannot agree with itself.
+/// </para>
+/// <para>
+/// The key is never printed, in a message, a log or a failure.
+/// </para>
+/// </remarks>
+[TestClass]
+public class DidCloudEngineLiveEntitlementTests
+{
+    /// <summary>
+    /// Set by the test framework. Used to say which of the two outcomes
+    /// the run took, because the key decides that and a run that says
+    /// nothing looks the same either way.
+    /// </summary>
+    public TestContext TestContext { get; set; } = null!;
+
+    /// <summary>
+    /// The environment variable that names the cloud, read as the cloud
+    /// request engine reads it.
+    /// </summary>
+    private const string EndpointVariable = "_51DEGREES_CLOUD_ENDPOINT";
+
+    /// <summary>
+    /// The cloud used when <see cref="EndpointVariable"/> is not set.
+    /// </summary>
+    private const string DefaultEndpoint = "https://cloud.51degrees.com/api/v4/";
+
+    /// <summary>
+    /// The accessible properties address of the cloud the pipeline asks.
+    /// </summary>
+    private static string AccessiblePropertiesUrl()
+    {
+        var endpoint = Environment.GetEnvironmentVariable(EndpointVariable);
+        return (string.IsNullOrWhiteSpace(endpoint)
+            ? DefaultEndpoint : endpoint.Trim()).TrimEnd('/') +
+            "/accessibleproperties";
+    }
+
+    /// <summary>
+    /// Seconds a request to the cloud service may take. The default of
+    /// 2 seconds is short for a first request from a machine that has
+    /// not yet connected to the service.
+    /// </summary>
+    private const int CloudTimeoutSeconds = 10;
+
+    /// <summary>
+    /// Ask the cloud what the key is entitled to, and return the property
+    /// names it lists for the 51Did element, or null where it lists no
+    /// entry for the element at all.
+    /// </summary>
+    private static async Task<List<string>?> ListedPropertiesAsync(string key)
+    {
+        using var client = new HttpClient();
+        var json = await client.GetStringAsync(
+            $"{AccessiblePropertiesUrl()}?resource={key}");
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.TryGetProperty("Products", out var products)
+            == false)
+        {
+            return null;
+        }
+        foreach (var product in products.EnumerateObject())
+        {
+            if (product.Name.Equals(
+                DidBaseEnginePropertiesBuilder.ComponentName,
+                StringComparison.OrdinalIgnoreCase) == false)
+            {
+                continue;
+            }
+            // The exact spelling matters, because the loader looks the
+            // element data key up in a dictionary the cloud's own answer
+            // fills, and that dictionary compares keys exactly.
+            Assert.AreEqual(
+                DidBaseEnginePropertiesBuilder.ComponentName, product.Name,
+                "the cloud must list the 51Did product under the element " +
+                "data key the engine returns, spelled the same way");
+            var names = new List<string>();
+            if (product.Value.TryGetProperty("Properties", out var properties))
+            {
+                names.AddRange(properties.EnumerateArray()
+                    .Select(p => p.GetProperty("Name").GetString())
+                    .Where(n => n != null)
+                    .Select(n => n!));
+            }
+            return names;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The customer style pipeline of the work package's three
+    /// configurations. An entitled key builds and reports what the cloud
+    /// listed. An unentitled one builds and reports nothing, so the
+    /// pipeline offers no 51Did property and no identifier is promised.
+    /// </summary>
+    /// <param name="keyName">The variable the row's key is read from.</param>
+    [TestMethod]
+    [DataRow("_51DEGREES_RESOURCE_KEY_BASIC")]
+    [DataRow("_51DEGREES_RESOURCE_KEY_BESPOKE")]
+    [DataRow("_51DEGREES_RESOURCE_KEY_51DID")]
+    [Timeout(180_000)]
+    public async Task ACustomerPipelineMatchesWhatTheKeyIsEntitledTo(
+        string keyName)
+    {
+        var key = LiveCloudKey.Require(
+            keyName,
+            "the FODid properties the key carries, and checks that the " +
+            "pipeline offers exactly those, or nothing when there " +
+            "are none");
+
+        var listed = await ListedPropertiesAsync(key);
+        var loggerFactory = new LoggerFactory();
+
+        // The cloud request engine's builder warms up at build, so the
+        // whole question is settled here.
+        using var pipeline = new PipelineBuilder(loggerFactory)
+            .AddFlowElement(new CloudRequestEngineBuilder(
+                    loggerFactory, new HttpClient())
+                .SetResourceKey(key)
+                .SetTimeOutSeconds(CloudTimeoutSeconds)
+                .Build())
+            .AddFlowElement(new DidCloudEngineBuilder(loggerFactory)
+                .Build())
+            .Build();
+
+        var engine = pipeline.GetElement<DidCloudEngine>();
+        var reported = engine.Properties.Select(p => p.Name).ToList();
+        var offered = pipeline.ElementAvailableProperties.TryGetValue(
+                DidBaseEnginePropertiesBuilder.ComponentName,
+                out var forElement)
+            ? forElement.Count
+            : 0;
+
+        if (listed == null)
+        {
+            Assert.IsEmpty(reported,
+                "the cloud lists no 51Did entry for this key, so the " +
+                "engine must report nothing, engine: " +
+                $"[{string.Join(", ", reported)}]");
+            Assert.AreEqual(0, offered,
+                "and the pipeline must offer nothing under the element " +
+                "data key, so the JavaScript builder leaves the user " +
+                "prompt block out");
+            TestContext.WriteLine(
+                $"The key in {keyName} carries no 51Did entitlement, and " +
+                "the pipeline " +
+                "builds offering nothing under " +
+                DidBaseEnginePropertiesBuilder.ComponentName + ".");
+            return;
+        }
+
+        CollectionAssert.AreEquivalent(listed, reported,
+            "the engine must report exactly what the cloud listed, " +
+            $"cloud: [{string.Join(", ", listed)}], engine: " +
+            $"[{string.Join(", ", reported)}]");
+        Assert.IsTrue(engine.Properties.All(p => p.Available),
+            "everything the cloud lists is available");
+        Assert.IsGreaterThan(0, offered,
+            "and the pipeline must offer them under the element data " +
+            "key, because that is what the JavaScript builder reads to " +
+            "decide whether to render the user prompt block");
+        TestContext.WriteLine(
+            $"The key in {keyName} is entitled and the pipeline offers " +
+            $"[{string.Join(", ", reported)}] under " +
+            DidBaseEnginePropertiesBuilder.ComponentName + ".");
+    }
+}

@@ -1,0 +1,14 @@
+# A developer's own build settings, see Directory.Build.props.
+Directory.Build.local.props
+
+# Build output.
+bin/
+obj/
+build/
+.vs/
+*.user
+TestResults/
+test-results/
+
+# Written by CI from a secret, never committed
+51Degrees.snk

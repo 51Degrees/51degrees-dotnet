@@ -1,0 +1,6 @@
+# GitVersion.yml
+# https://gitversion.readthedocs.io/en/latest/configuration/
+mode: Mainline
+branches: {}
+ignore:
+  sha: []

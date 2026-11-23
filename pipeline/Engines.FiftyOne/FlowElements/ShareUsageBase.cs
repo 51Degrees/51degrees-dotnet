@@ -1,0 +1,1844 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+using FiftyOne.Caching;
+using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.Exceptions;
+using FiftyOne.Pipeline.Core.FailHandling.Facade;
+using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines.Configuration;
+using FiftyOne.Pipeline.Engines.FiftyOne.Data;
+using FiftyOne.Pipeline.Engines.FiftyOne.Trackers;
+using FiftyOne.Pipeline.Engines.Trackers;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Net.Sockets;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml;
+
+[assembly: InternalsVisibleTo("FiftyOne.Pipeline.Engines.FiftyOne.Tests, PublicKey=0024000004800000940000000602000000240000525341310004000001000100c3a631e6634ea697e19c6d2fedc285bdc7f0447a5583e1ac3c5ed3502b7633e691f899a265c42a5611122a23fd2bc882e4e412384a5d4183271782416cf016b06e6648273d44896e95ce482bb8b13054ba6a6f41d393c3f3f2e5780d620e50cb67c248882e4427bf007b7c77fdd65f832c7f4a3fef9dc18e39f792d1a37cc980")]
+namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
+{
+    /// <summary>
+    /// Abstract base class for ShareUsage elements. A Pipeline holds one as
+    /// its last Flow Element, outside any parallel group, and a builder
+    /// refuses it anywhere else.
+    /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/pipeline-elements/usage-sharing-element.md">Specification</see>
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", 
+        "CA1054:Uri parameters should not be strings", 
+        Justification = "We do not wish to make this breaking change at this time.")]
+    public abstract class ShareUsageBase : 
+        FlowElementBase<IElementData, IElementPropertyMetaData>,
+        IUsageSharingElement
+    {
+        /// <summary>
+        /// The HttpClient to use when sending the data.
+        /// </summary>
+        private HttpClient _httpClient;
+
+        /// <summary>
+        /// The HttpClient to use when sending the data.
+        /// </summary>
+        protected HttpClient HttpClient => _httpClient;
+
+        /// <summary>
+        /// Inner class that is used to store details of data in memory
+        /// prior to it being sent to 51Degrees.
+        /// </summary>
+        protected class ShareUsageData
+        {
+            /// <summary>
+            /// The Pipeline session id for this event.
+            /// </summary>
+            public string SessionId { get; set; }
+            /// <summary>
+            /// The sequence number for this event.
+            /// This is incremented as requests are made using the associated
+            /// session id.
+            /// </summary>
+            public int Sequence { get; set; }
+            /// <summary>
+            /// The source IP address for this event.
+            /// </summary>
+            public string ClientIP { get; set; }
+            /// <summary>
+            /// The evidence data from this event.
+            /// The dictionary key is the first part of the evidence key.
+            /// The value is another dictionary containing the rest of 
+            /// the evidence key and the evidence value.
+            /// For example, the evidence "header.user-agent"="ABC123"
+            /// would become:
+            /// <code>
+            /// { Key = "header", Value = { Key = "user-agent" Value = "ABC123" }}
+            /// </code>
+            /// </summary>
+            public Dictionary<string, Dictionary<string, string>> EvidenceData { get; private set; } =
+                new Dictionary<string, Dictionary<string, string>>();
+        }
+
+        /// <summary>
+        /// IP Addresses of local host device.
+        /// </summary>
+        private static readonly IPAddress[] LOCALHOSTS = new IPAddress[]
+        {
+            IPAddress.Parse("127.0.0.1"),
+            IPAddress.Parse("::1")
+        };
+
+        /// <summary>
+        /// Queue used to store entries in memory prior to them being sent
+        /// to 51Degrees.
+        /// </summary>
+        protected BlockingCollection<ShareUsageData> EvidenceCollection { get; }
+
+        /// <summary>
+        /// The current task sending data to the remote service.
+        /// </summary>
+        private volatile Task _sendDataTask = null;
+
+        /// <summary>
+        /// Lock to use when starting a new send data task.
+        /// </summary>
+        private volatile object _lock = new object();
+
+        /// <summary>
+        /// The longest single wait during a pause. Longer pauses are waited
+        /// out in parts, as a delay cannot be longer than about 24 days.
+        /// </summary>
+        private static readonly TimeSpan LongestWait = TimeSpan.FromDays(1);
+
+        /// <summary>
+        /// Decides when sending may happen after failed sends.
+        /// </summary>
+        private readonly ShareUsageBackOff _backOff;
+
+        /// <summary>
+        /// While the queue is full, a message is logged for the first
+        /// request that finds it full and then for every this many more,
+        /// never for each request.
+        /// </summary>
+        private const int QueueFullLogEvery = 1000;
+
+        /// <summary>
+        /// The requests that have found the queue full since it last had
+        /// room.
+        /// </summary>
+        private long _discarded;
+
+        /// <summary>
+        /// Cancelled when the element closes, to end any pause at once.
+        /// </summary>
+        private readonly CancellationTokenSource _closing =
+            new CancellationTokenSource();
+
+        /// <summary>
+        /// Set when the message being sent was not accepted.
+        /// </summary>
+        private volatile bool _sendFailed;
+
+        /// <summary>
+        /// Timeout to use when adding to the queue.
+        /// </summary>
+        private int _addTimeout;
+
+        /// <summary>
+        /// Timeout to use when taking from the queue.
+        /// </summary>
+        protected int TakeTimeout { get; }
+
+        /// <summary>
+        /// A generator for each thread, because Random is not safe for
+        /// several threads and a lock would sit on every request.
+        /// </summary>
+        [ThreadStatic]
+        private static Random _threadRandom;
+
+        /// <summary>
+        /// This thread's generator, seeded from a new GUID so that threads
+        /// started at the same moment do not draw the same numbers.
+        /// </summary>
+        private static Random ThreadRandom =>
+            _threadRandom ??
+            (_threadRandom = new Random(Guid.NewGuid().GetHashCode()));
+
+        /// <summary>
+        /// The tracker to use to determine if a <see cref="FlowData"/>
+        /// instance should be shared or not.
+        /// </summary>
+        private ITracker _tracker;
+
+        /// <summary>
+        /// The minimum number of request entries per message sent to 51Degrees.
+        /// </summary>
+        protected int MinEntriesPerMessage { get; } = Constants.SHARE_USAGE_DEFAULT_MIN_ENTRIES_PER_MESSAGE;
+
+        /// <summary>
+        /// The interval is a timespan which is used to determine if a piece
+        /// of repeated evidence should be considered new evidence to share.
+        /// If the evidence from a request matches that in the tracker but this
+        /// interval has elapsed then the tracker will track it as new evidence.
+        /// </summary>
+        private TimeSpan _interval = new TimeSpan(0, Constants.SHARE_USAGE_DEFAULT_REPEAT_EVIDENCE_INTERVAL, 0);
+
+        /// <summary>
+        /// The approximate proportion of requests to be shared.
+        /// 1 = 100%, 0.5 = 50%, etc.
+        /// </summary>
+        private double _sharePercentage = Constants.SHARE_USAGE_DEFAULT_SHARE_PERCENTAGE;
+
+        // Used to store the part of the xml message that will not change.
+        private string _staticXml = null;
+        private object _staticXmlLock = new object();
+
+        /// <summary>
+        /// How long after the invariant values were last written to a
+        /// record they are written again.
+        /// </summary>
+        private static readonly TimeSpan InvariantValuesInterval =
+            TimeSpan.FromHours(1);
+
+        /// <summary>
+        /// The identifier created when the element is built, written to
+        /// every record as ProcessId so that a record that leaves out the
+        /// invariant values is tied to them. It is never stored, so a
+        /// process that starts again, or another element, has a new one.
+        /// </summary>
+        private readonly string _processId = Guid.NewGuid().ToString("D");
+
+        /// <summary>
+        /// When, on <see cref="ClockNow"/>, the invariant values were last
+        /// written to a record, or null before they have been.
+        /// </summary>
+        private TimeSpan? _invariantValuesWrittenAt = null;
+
+        /// <summary>
+        /// True when the invariant values were last written with an empty
+        /// ServerIP, because the address of this machine was not yet known.
+        /// </summary>
+        private bool _invariantValuesWrittenWithoutServerIP = false;
+        private readonly object _invariantValuesLock = new object();
+
+
+        private List<string> _flowElements = null;
+
+        /// <summary>
+        /// Return a list of <see cref="IFlowElement"/> in the pipeline. 
+        /// If the list is null then populate from the pipeline.
+        /// If there are multiple or no pipelines then log a warning.
+        /// </summary>
+        private List<string> FlowElements
+        {
+            get
+            {
+                if (_flowElements == null)
+                {
+                    IPipeline pipeline = null;
+                    if (Pipelines.Count == 1)
+                    {
+                        pipeline = Pipelines.Single();
+                        _flowElements = new List<string>(pipeline.FlowElements
+                            .Select(e => e.GetType().FullName));
+                    }
+                    else
+                    {
+                        // This element has somehow been registered to too 
+                        // many (or zero) pipelines.
+                        // This means we cannot know the flow elements that
+                        // make up the pipeline so a warning is logged
+                        // but otherwise, the system can continue as normal.
+                        Logger.LogWarning(Pipelines.Count == 0 ? 
+                            Messages.MessageShareUsageNoPipelines :
+                            string.Format(CultureInfo.InvariantCulture,
+                                Messages.MessageShareUsageTooManyPipelines,
+                                Pipelines.Count));
+                        _flowElements = new List<string>();
+                    }
+                }
+                return _flowElements;
+            }
+        }
+
+        /// <summary>
+        /// The version of the package the assembly was built as, which
+        /// the message names so that the release in use can be told from
+        /// it. The informational version holds it, followed by a plus sign
+        /// and the source revision when the build knew one. The file
+        /// version is the same for every release, so it is used only when
+        /// the assembly has no informational version.
+        /// </summary>
+        private static string PackageVersion(Assembly assembly)
+        {
+            var version = assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion;
+            if (string.IsNullOrEmpty(version))
+            {
+                return assembly
+                    .GetCustomAttribute<AssemblyFileVersionAttribute>()
+                    ?.Version ?? string.Empty;
+            }
+            var revision = version.IndexOf('+');
+            return revision < 0 ? version : version.Substring(0, revision);
+        }
+
+        /// <summary>
+        /// The key of the assembly metadata in which the build records the
+        /// id of the NuGet package an assembly ships in.
+        /// </summary>
+        private const string PACKAGE_ID_KEY = "FiftyOne.PackageId";
+
+        /// <summary>
+        /// What the build records for an assembly that ships in no package.
+        /// </summary>
+        private const string NOT_A_PACKAGE = "none";
+
+        /// <summary>
+        /// How the name of every 51Degrees assembly starts.
+        /// </summary>
+        private const string FIFTYONE_ASSEMBLY_PREFIX = "FiftyOne.";
+
+        private List<KeyValuePair<string, string>> _packages = null;
+
+        /// <summary>
+        /// The 51Degrees packages in use, in order of package id, each with
+        /// the version in use. They are the package that holds the
+        /// Pipeline, the package that holds each flow element, and every
+        /// 51Degrees package those depend on.
+        /// </summary>
+        private List<KeyValuePair<string, string>> Packages
+        {
+            get
+            {
+                if (_packages == null)
+                {
+                    var assemblies = new List<Assembly>()
+                    {
+                        typeof(IPipeline).Assembly
+                    };
+                    if (Pipelines.Count == 1)
+                    {
+                        assemblies.AddRange(Pipelines.Single().FlowElements
+                            .Select(e => e.GetType().Assembly));
+                    }
+                    _packages = FindPackages(assemblies);
+                }
+                return _packages;
+            }
+        }
+
+        /// <summary>
+        /// The packages the assemblies ship in, and the packages of the
+        /// 51Degrees assemblies they reference, and of the ones those
+        /// reference, each once.
+        /// </summary>
+        private static List<KeyValuePair<string, string>> FindPackages(
+            IEnumerable<Assembly> assemblies)
+        {
+            var packages = new SortedDictionary<string, string>(
+                StringComparer.OrdinalIgnoreCase);
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var pending = new Queue<Assembly>(assemblies);
+            while (pending.Count > 0)
+            {
+                var assembly = pending.Dequeue();
+                if (assembly.IsDynamic ||
+                    seen.Add(assembly.GetName().Name) == false)
+                {
+                    continue;
+                }
+                var id = PackageId(assembly);
+                if (id != null && packages.ContainsKey(id) == false)
+                {
+                    packages.Add(id, PackageVersion(assembly));
+                }
+                foreach (var reference in assembly.GetReferencedAssemblies())
+                {
+                    if (reference.Name.StartsWith(
+                            FIFTYONE_ASSEMBLY_PREFIX, StringComparison.Ordinal) &&
+                        seen.Contains(reference.Name) == false)
+                    {
+                        var loaded = Load(reference);
+                        if (loaded != null)
+                        {
+                            pending.Enqueue(loaded);
+                        }
+                    }
+                }
+            }
+            return packages.ToList();
+        }
+
+        /// <summary>
+        /// The id of the package the assembly ships in, as the build
+        /// recorded it, or null when it ships in none. An assembly built
+        /// before the build recorded it ships in the package named after
+        /// it, when it is a 51Degrees one.
+        /// </summary>
+        private static string PackageId(Assembly assembly)
+        {
+            var recorded = assembly
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
+                .FirstOrDefault(a => a.Key == PACKAGE_ID_KEY)?.Value;
+            if (recorded != null)
+            {
+                return recorded.Length == 0 || recorded == NOT_A_PACKAGE ?
+                    null : recorded;
+            }
+            var name = assembly.GetName().Name;
+            return name.StartsWith(
+                FIFTYONE_ASSEMBLY_PREFIX, StringComparison.Ordinal) ?
+                name : null;
+        }
+
+        /// <summary>
+        /// The referenced assembly, or null when it cannot be loaded.
+        /// </summary>
+        private static Assembly Load(AssemblyName name)
+        {
+            try
+            {
+                return Assembly.Load(name);
+            }
+            catch (FileNotFoundException)
+            {
+                return null;
+            }
+            catch (FileLoadException)
+            {
+                return null;
+            }
+            catch (BadImageFormatException)
+            {
+                return null;
+            }
+        }
+
+        private string _osVersion = "";
+        private string _languageVersion = "";
+        private string _coreVersion = "";
+        private string _enginesVersion = "";
+
+        /// <summary>
+        /// The base URL to send usage data to.
+        /// </summary>
+        [Obsolete("Use the ShareUsageUri property instead. " +
+            "This property could be removed in a future version.")]
+#pragma warning disable CA1056 // Uri properties should not be strings
+        protected string ShareUsageUrl => ShareUsageUri.AbsoluteUri;
+#pragma warning restore CA1056 // Uri properties should not be strings
+
+        /// <summary>
+        /// The base URL to send usage data to.
+        /// </summary>
+        protected Uri ShareUsageUri { get; }
+
+        /// <summary>
+        /// The settings to use when creating an XML payload to send
+        /// to the usage sharing web service.
+        /// </summary>
+        protected XmlWriterSettings WriterSettings { get; } = new XmlWriterSettings()
+        {
+            ConformanceLevel = ConformanceLevel.Document,
+            Encoding = Encoding.UTF8,
+            CheckCharacters = true,
+            NewLineHandling = NewLineHandling.None,
+            CloseOutput = true,
+        };
+
+        /// <summary>
+        /// The default element data key that will be used for this element. 
+        /// </summary>
+#pragma warning disable CA1707 // Identifiers should not contain underscores
+        public const string DEFAULT_ELEMENT_DATA_KEY = "shareusage";
+#pragma warning restore CA1707 // Identifiers should not contain underscores
+
+        /// <summary>
+        /// The data key for this element
+        /// </summary>
+        public override string ElementDataKey => DEFAULT_ELEMENT_DATA_KEY;
+
+        /// <summary>
+        /// Accepts no evidence.
+        /// </summary>
+        private static readonly IEvidenceKeyFilter _noEvidence =
+            new EvidenceKeyFilterWhitelist(new List<string>());
+
+        /// <summary>
+        /// Get the evidence key filter for this element, which accepts no
+        /// evidence, so caching, the ETag and the Vary header never depend
+        /// on usage sharing. The element shares what it finds instead, being
+        /// the evidence and the values of the web request that a web
+        /// integration adds as
+        /// <see cref="Core.Constants.EVIDENCE_HTTPREQUEST_KEY"/>.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/d79bbe3b2aef86273570742f6b660f29bfe72816/pipeline-specification/pipeline-elements/usage-sharing-element.md#accepted-evidence">Specification</see>
+        /// </summary>
+        public override IEvidenceKeyFilter EvidenceKeyFilter
+        {
+            get { return _noEvidence; }
+        }
+
+        /// <summary>
+        /// Decides which of the evidence found is shared.
+        /// </summary>
+        private EvidenceKeyFilterShareUsage _sharedEvidenceFilter;
+
+        /// <summary>
+        /// Decides which of the evidence found makes a request new to the
+        /// default tracker.
+        /// </summary>
+        private EvidenceKeyFilterShareUsage _trackerEvidenceFilter;
+
+        private List<KeyValuePair<string, string>> _ignoreDataEvidenceFilter;
+
+        private string _hostAddress;
+        private bool _hostAddressWaited;
+        private IList<IElementPropertyMetaData> _properties;
+
+        /// <summary>
+        /// Looks up the address of this machine once for the process. The
+        /// first element built starts it.
+        /// </summary>
+        private static readonly HostAddressLookup SharedHostAddress =
+            new HostAddressLookup(LookUpHostAddress);
+
+        /// <summary>
+        /// Get the IP address of the machine that this code is running on,
+        /// or an empty string while the lookup has not finished or if it
+        /// failed. The first read waits for the lookup for at most
+        /// <see cref="HostAddressWaitMilliseconds"/>, so a slow name lookup
+        /// cannot use up the time that disposal has for sending, and later
+        /// reads do not wait. Only a finished lookup's answer is kept.
+        /// </summary>
+        protected string HostAddress
+        {
+            get
+            {
+                if (_hostAddress == null)
+                {
+                    var wait = _hostAddressWaited ?
+                        0 :
+                        HostAddressWaitMilliseconds;
+                    _hostAddressWaited = true;
+                    if (HostAddressSource.TryGet(wait, out var address))
+                    {
+                        _hostAddress = address;
+                    }
+                }
+                return _hostAddress ?? string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Where the address of this machine comes from.
+        /// </summary>
+        internal virtual HostAddressLookup HostAddressSource =>
+            SharedHostAddress;
+
+        /// <summary>
+        /// The time elapsed on a monotonic clock, so that a change to the
+        /// system clock cannot shorten or lengthen an interval the element
+        /// measures.
+        /// </summary>
+        internal virtual TimeSpan ClockNow => ShareUsageBackOff.Now;
+
+        /// <summary>
+        /// The longest in milliseconds that a send waits for the address of
+        /// this machine.
+        /// </summary>
+        internal virtual int HostAddressWaitMilliseconds =>
+            Constants.SHARE_USAGE_HOST_ADDRESS_WAIT_MILLISECONDS;
+
+        /// <summary>
+        /// Looks up the address of this machine by its name, preferring an
+        /// IPv4 address, and leaving out the loopback addresses.
+        /// </summary>
+        private static string LookUpHostAddress()
+        {
+            IPAddress[] addresses = Dns.GetHostAddresses(Dns.GetHostName());
+
+            var address = addresses.FirstOrDefault(a => !IsLocalHost(a) &&
+                a.AddressFamily == AddressFamily.InterNetwork);
+            if (address == null)
+            {
+                address = addresses.FirstOrDefault(a => !IsLocalHost(a));
+            }
+
+            return address == null ? "" : address.ToString();
+        }
+
+        /// <summary>
+        /// Get a list of the meta-data relating to the properties 
+        /// that this flow element will populate.
+        /// For this share usage element, the list will always be empty
+        /// as it does not populate any properties.
+        /// </summary>
+        public override IList<IElementPropertyMetaData> Properties
+        {
+            get { return _properties; }
+        }
+
+        /// <summary>
+        /// True if there is a task running to send usage data to the remote
+        /// service.
+        /// </summary>
+        internal bool IsRunning
+        {
+            get => SendDataTask != null &&
+                SendDataTask.IsCompleted == false &&
+                SendDataTask.IsFaulted == false;
+        }
+
+        /// <summary>
+        /// Currently running task which is sending the usage data to the
+        /// remote service.
+        /// </summary>
+        internal Task SendDataTask
+        {
+            get => _sendDataTask;
+            private set => _sendDataTask = value;
+        }
+
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="logger">
+        /// The logger to use.
+        /// </param>
+        /// <param name="httpClient">
+        /// The <see cref="HttpClient"/> to use when sending request data.
+        /// </param>
+        /// <param name="sharePercentage">
+        /// The approximate proportion of requests to share. 
+        /// 1 = 100%, 0.5 = 50%, etc.
+        /// </param>
+        /// <param name="minimumEntriesPerMessage">
+        /// The minimum number of request entries per message sent to 51Degrees.
+        /// </param>
+        /// <param name="maximumQueueSize">
+        /// The maximum number of items to hold in the queue at one time. This
+        /// must be larger than minimum entries.
+        /// </param>
+        /// <param name="addTimeout">
+        /// The timeout in milliseconds to allow when attempting to add an
+        /// item to the queue. If this timeout is exceeded then usage sharing
+        /// will be disabled.
+        /// </param>
+        /// <param name="takeTimeout">
+        /// The timeout in milliseconds to allow when attempting to take an
+        /// item to the queue.
+        /// </param>
+        /// <param name="repeatEvidenceIntervalMinutes">
+        /// The interval (in minutes) which is used to decide if repeat 
+        /// evidence is old enough to consider a new session.
+        /// </param>
+        /// <param name="trackSession">
+        /// Set if the tracker should consider sessions in share usage.
+        /// </param>
+        /// <param name="shareUsageUrl">
+        /// The URL to send data to
+        /// </param>
+        /// <param name="blockedHttpHeaders">
+        /// A list of the names of the HTTP headers that share usage should
+        /// not send to 51Degrees.
+        /// </param>
+        /// <param name="includedQueryStringParameters">
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
+        /// </param>
+        /// <param name="ignoreDataEvidenceFilter"></param>
+        /// <param name="aspSessionCookieName">
+        /// The name of the cookie that contains the asp.net session id.
+        /// </param>
+        protected ShareUsageBase(
+            ILogger<ShareUsageBase> logger,
+            HttpClient httpClient,
+            double sharePercentage,
+            int minimumEntriesPerMessage,
+            int maximumQueueSize,
+            int addTimeout,
+            int takeTimeout,
+            int repeatEvidenceIntervalMinutes,
+            bool trackSession,
+            string shareUsageUrl,
+            List<string> blockedHttpHeaders,
+            List<string> includedQueryStringParameters,
+            List<KeyValuePair<string, string>> ignoreDataEvidenceFilter,
+            string aspSessionCookieName = Engines.Constants.DEFAULT_ASP_COOKIE_NAME)
+            : this(logger,
+                  httpClient,
+                  sharePercentage,
+                  minimumEntriesPerMessage,
+                  maximumQueueSize,
+                  addTimeout,
+                  takeTimeout,
+                  repeatEvidenceIntervalMinutes,
+                  trackSession,
+                  shareUsageUrl,
+                  blockedHttpHeaders,
+                  includedQueryStringParameters,
+                  ignoreDataEvidenceFilter,
+                  aspSessionCookieName,
+                  null,
+                  false,
+                  null)
+        {
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="logger">
+        /// The logger to use.
+        /// </param>
+        /// <param name="httpClient">
+        /// The <see cref="HttpClient"/> to use when sending request data.
+        /// </param>
+        /// <param name="sharePercentage">
+        /// The approximate proportion of requests to share. 
+        /// 1 = 100%, 0.5 = 50%, etc.
+        /// </param>
+        /// <param name="minimumEntriesPerMessage">
+        /// The minimum number of request entries per message sent to 51Degrees.
+        /// </param>
+        /// <param name="maximumQueueSize">
+        /// The maximum number of items to hold in the queue at one time. This
+        /// must be larger than minimum entries.
+        /// </param>
+        /// <param name="addTimeout">
+        /// The timeout in milliseconds to allow when attempting to add an
+        /// item to the queue. If this timeout is exceeded then usage sharing
+        /// will be disabled.
+        /// </param>
+        /// <param name="takeTimeout">
+        /// The timeout in milliseconds to allow when attempting to take an
+        /// item to the queue.
+        /// </param>
+        /// <param name="repeatEvidenceIntervalMinutes">
+        /// The interval (in minutes) which is used to decide if repeat 
+        /// evidence is old enough to consider a new session.
+        /// </param>
+        /// <param name="trackSession">
+        /// Set if the tracker should consider sessions in share usage.
+        /// </param>
+        /// <param name="shareUsageUrl">
+        /// The URL to send data to
+        /// </param>
+        /// <param name="blockedHttpHeaders">
+        /// A list of the names of the HTTP headers that share usage should
+        /// not send to 51Degrees.
+        /// </param>
+        /// <param name="includedQueryStringParameters">
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
+        /// </param>
+        /// <param name="ignoreDataEvidenceFilter"></param>
+        /// <param name="aspSessionCookieName">
+        /// The name of the cookie that contains the asp.net session id.
+        /// </param>
+        /// <param name="tracker">
+        /// The <see cref="ITracker"/> to use to determine if a given 
+        /// <see cref="IFlowData"/> instance should be shared or not.
+        /// </param>
+        protected ShareUsageBase(
+            ILogger<ShareUsageBase> logger,
+            HttpClient httpClient,
+            double sharePercentage,
+            int minimumEntriesPerMessage,
+            int maximumQueueSize,
+            int addTimeout,
+            int takeTimeout,
+            int repeatEvidenceIntervalMinutes,
+            bool trackSession,
+            string shareUsageUrl,
+            List<string> blockedHttpHeaders,
+            List<string> includedQueryStringParameters,
+            List<KeyValuePair<string, string>> ignoreDataEvidenceFilter,
+            string aspSessionCookieName,
+            ITracker tracker)
+            : this(logger,
+                  httpClient,
+                  sharePercentage,
+                  minimumEntriesPerMessage,
+                  maximumQueueSize,
+                  addTimeout,
+                  takeTimeout,
+                  repeatEvidenceIntervalMinutes,
+                  trackSession,
+                  shareUsageUrl,
+                  blockedHttpHeaders,
+                  includedQueryStringParameters,
+                  ignoreDataEvidenceFilter,
+                  aspSessionCookieName,
+                  tracker,
+                  false,
+                  null)
+        {
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="logger">
+        /// The logger to use.
+        /// </param>
+        /// <param name="httpClient">
+        /// <see cref="HttpClient"/> to use when sending request data.
+        /// </param>
+        /// <param name="sharePercentage">
+        /// The approximate proportion of requests to share. 
+        /// 1 = 100%, 0.5 = 50%, etc.
+        /// </param>
+        /// <param name="minimumEntriesPerMessage">
+        /// The minimum number of request entries per message sent to 51Degrees.
+        /// </param>
+        /// <param name="maximumQueueSize">
+        /// The maximum number of items to hold in the queue at one time. This
+        /// must be larger than minimum entries.
+        /// </param>
+        /// <param name="addTimeout">
+        /// The timeout in milliseconds to allow when attempting to add an
+        /// item to the queue. If this timeout is exceeded then usage sharing
+        /// will be disabled.
+        /// </param>
+        /// <param name="takeTimeout">
+        /// The timeout in milliseconds to allow when attempting to take an
+        /// item to the queue.
+        /// </param>
+        /// <param name="repeatEvidenceIntervalMinutes">
+        /// The interval (in minutes) which is used to decide if repeat 
+        /// evidence is old enough to consider a new session.
+        /// </param>
+        /// <param name="trackSession">
+        /// Set if the tracker should consider sessions in share usage.
+        /// </param>
+        /// <param name="shareUsageUrl">
+        /// The URL to send data to
+        /// </param>
+        /// <param name="blockedHttpHeaders">
+        /// A list of the names of the HTTP headers that share usage should
+        /// not send to 51Degrees.
+        /// </param>
+        /// <param name="includedQueryStringParameters">
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
+        /// </param>
+        /// <param name="ignoreDataEvidenceFilter"></param>
+        /// <param name="aspSessionCookieName">
+        /// The name of the cookie that contains the asp.net session id.
+        /// </param>
+        /// <param name="tracker">
+        /// The <see cref="ITracker"/> to use to determine if a given 
+        /// <see cref="IFlowData"/> instance should be shared or not.
+        /// </param>
+        /// <param name="shareAllEvidence">
+        /// If true, all evidence will be shared and
+        /// the blockedHttpHeaders and includedQueryStringParameters
+        /// parameters will be ignored.
+        /// </param>
+        /// <param name="failHandler">
+        /// Obsolete. This parameter is no longer used.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if certain arguments are null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if certain argument values are invalid.
+        /// </exception>
+        protected ShareUsageBase(
+            ILogger<ShareUsageBase> logger,
+            HttpClient httpClient,
+            double sharePercentage,
+            int minimumEntriesPerMessage,
+            int maximumQueueSize,
+            int addTimeout,
+            int takeTimeout,
+            int repeatEvidenceIntervalMinutes,
+            bool trackSession,
+            string shareUsageUrl,
+            List<string> blockedHttpHeaders,
+            List<string> includedQueryStringParameters,
+            List<KeyValuePair<string, string>> ignoreDataEvidenceFilter,
+            string aspSessionCookieName,
+            ITracker tracker,
+            bool shareAllEvidence,
+            IFailHandler failHandler = null)
+            : this(logger,
+                  httpClient,
+                  sharePercentage,
+                  minimumEntriesPerMessage,
+                  maximumQueueSize,
+                  addTimeout,
+                  takeTimeout,
+                  repeatEvidenceIntervalMinutes,
+                  trackSession,
+                  shareUsageUrl,
+                  blockedHttpHeaders,
+                  includedQueryStringParameters,
+                  ignoreDataEvidenceFilter,
+                  aspSessionCookieName,
+                  tracker,
+                  shareAllEvidence,
+                  Constants.SHARE_USAGE_FAILURES_TO_ENTER_RECOVERY_DEFAULT,
+                  Constants.SHARE_USAGE_FAILURES_WINDOW_SECONDS_DEFAULT,
+                  Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_INITIAL_DELAY_SECONDS_DEFAULT,
+                  Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MAX_DELAY_SECONDS_DEFAULT,
+                  Constants.SHARE_USAGE_EXPONENTIAL_BACKOFF_MULTIPLIER_DEFAULT)
+        {
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="logger">
+        /// The logger to use.
+        /// </param>
+        /// <param name="httpClient">
+        /// <see cref="HttpClient"/> to use when sending request data.
+        /// </param>
+        /// <param name="sharePercentage">
+        /// The approximate proportion of requests to share.
+        /// 1 = 100%, 0.5 = 50%, etc.
+        /// </param>
+        /// <param name="minimumEntriesPerMessage">
+        /// The minimum number of request entries per message sent to 51Degrees.
+        /// </param>
+        /// <param name="maximumQueueSize">
+        /// The maximum number of items to hold in the queue at one time. This
+        /// must be larger than minimum entries.
+        /// </param>
+        /// <param name="addTimeout">
+        /// The timeout in milliseconds to allow when attempting to add an
+        /// item to the queue. If this timeout is exceeded then the item is
+        /// not shared.
+        /// </param>
+        /// <param name="takeTimeout">
+        /// The timeout in milliseconds to allow when attempting to take an
+        /// item to the queue.
+        /// </param>
+        /// <param name="repeatEvidenceIntervalMinutes">
+        /// The interval (in minutes) which is used to decide if repeat
+        /// evidence is old enough to consider a new session.
+        /// </param>
+        /// <param name="trackSession">
+        /// Set if the tracker should consider sessions in share usage.
+        /// </param>
+        /// <param name="shareUsageUrl">
+        /// The URL to send data to
+        /// </param>
+        /// <param name="blockedHttpHeaders">
+        /// A list of the names of the HTTP headers that share usage should
+        /// not send to 51Degrees.
+        /// </param>
+        /// <param name="includedQueryStringParameters">
+        /// Deprecated and has no effect. A query string or form
+        /// parameter is shared only when its name starts 51D_ or a
+        /// Flow Element in the Pipeline accepts it.
+        /// </param>
+        /// <param name="ignoreDataEvidenceFilter"></param>
+        /// <param name="aspSessionCookieName">
+        /// The name of the cookie that contains the asp.net session id.
+        /// </param>
+        /// <param name="tracker">
+        /// The <see cref="ITracker"/> to use to determine if a given
+        /// <see cref="IFlowData"/> instance should be shared or not.
+        /// </param>
+        /// <param name="shareAllEvidence">
+        /// If true, all evidence will be shared and
+        /// the blockedHttpHeaders and includedQueryStringParameters
+        /// parameters will be ignored.
+        /// </param>
+        /// <param name="failuresToEnterRecovery">
+        /// The number of failed sends within the failures window that
+        /// pauses sending.
+        /// </param>
+        /// <param name="failuresWindowSeconds">
+        /// The time in seconds over which failed sends are counted.
+        /// </param>
+        /// <param name="initialRecoveryDelaySeconds">
+        /// The length in seconds of the first pause.
+        /// </param>
+        /// <param name="maxRecoveryDelaySeconds">
+        /// The longest a pause can be, in seconds.
+        /// </param>
+        /// <param name="recoveryMultiplier">
+        /// What the pause is multiplied by each time the send tried when a
+        /// pause ends fails.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if certain arguments are null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if certain argument values are invalid.
+        /// </exception>
+        protected ShareUsageBase(
+            ILogger<ShareUsageBase> logger,
+            HttpClient httpClient,
+            double sharePercentage,
+            int minimumEntriesPerMessage,
+            int maximumQueueSize,
+            int addTimeout,
+            int takeTimeout,
+            int repeatEvidenceIntervalMinutes,
+            bool trackSession,
+            string shareUsageUrl,
+            List<string> blockedHttpHeaders,
+            List<string> includedQueryStringParameters,
+            List<KeyValuePair<string, string>> ignoreDataEvidenceFilter,
+            string aspSessionCookieName,
+            ITracker tracker,
+            bool shareAllEvidence,
+            int failuresToEnterRecovery,
+            int failuresWindowSeconds,
+            double initialRecoveryDelaySeconds,
+            double maxRecoveryDelaySeconds,
+            double recoveryMultiplier)
+            : base(logger)
+        {
+            if (blockedHttpHeaders == null)
+            {
+                throw new ArgumentNullException(nameof(blockedHttpHeaders));
+            }
+            if (minimumEntriesPerMessage > maximumQueueSize)
+            {
+                throw new ArgumentException(Messages.ExceptionShareUsageMinimumEntriesTooLarge);
+            }
+
+            // Make sure the cookie headers are ignored.
+            if (!blockedHttpHeaders.Contains(Constants.EVIDENCE_HTTPHEADER_COOKIE_SUFFIX))
+            {
+                blockedHttpHeaders.Add(Constants.EVIDENCE_HTTPHEADER_COOKIE_SUFFIX);
+            }
+
+            _httpClient = httpClient;
+            _backOff = new ShareUsageBackOff(
+                failuresToEnterRecovery,
+                failuresWindowSeconds,
+                initialRecoveryDelaySeconds,
+                maxRecoveryDelaySeconds,
+                recoveryMultiplier);
+            EvidenceCollection = new BlockingCollection<ShareUsageData>(maximumQueueSize);
+
+            _addTimeout = addTimeout;
+            TakeTimeout = takeTimeout;
+            _sharePercentage = sharePercentage;
+            MinEntriesPerMessage = minimumEntriesPerMessage;
+            _interval = TimeSpan.FromMinutes(repeatEvidenceIntervalMinutes);
+            ShareUsageUri = new Uri(shareUsageUrl);
+
+            // Some data is going to stay the same on all requests so we can
+            // gather that now. The address of this machine is looked up in
+            // the background, so that building the element does not wait.
+            SharedHostAddress.Start();
+            _languageVersion = Environment.Version.ToString();
+            _osVersion = Environment.OSVersion.VersionString;
+
+            _enginesVersion = GetType().Assembly
+                .GetCustomAttribute<AssemblyFileVersionAttribute>().Version;
+            _coreVersion = PackageVersion(typeof(IPipeline).Assembly);
+
+            if (shareAllEvidence == false)
+            {
+                // Create evidence filters for the configured evidence
+                // sharing settings. The included query string parameters
+                // have no effect, as the filters share a parameter only
+                // when its name starts 51D_ or the Pipeline uses it.
+                _sharedEvidenceFilter = new EvidenceKeyFilterShareUsage(
+                    blockedHttpHeaders, includedQueryStringParameters, false,
+                    aspSessionCookieName);
+
+                 _trackerEvidenceFilter = new EvidenceKeyFilterShareUsageTracker(
+                     blockedHttpHeaders,
+                     includedQueryStringParameters,
+                     trackSession,
+                     aspSessionCookieName);
+            }
+            else
+            {
+                // Create evidence filters what will allow all evidence to
+                // be shared. No cookie but the 51D_ ones is shared, so the
+                // tracker is told the session cookie, as it is when only
+                // some evidence is shared.
+                _sharedEvidenceFilter = new EvidenceKeyFilterShareUsage();
+                _trackerEvidenceFilter = new EvidenceKeyFilterShareUsageTracker(
+                    trackSession,
+                    aspSessionCookieName);
+            }
+
+            _ignoreDataEvidenceFilter = ignoreDataEvidenceFilter;
+
+            _tracker = tracker;
+            // If no tracker was supplied then create the default one.
+            if (_tracker == null)
+            {
+                _tracker = new ShareUsageTracker(new CacheConfiguration()
+                {
+                    Builder = new LruPutCacheBuilder(),
+                    Size = 1000
+                },
+                _interval,
+               _trackerEvidenceFilter);
+            }
+
+            _properties = new List<IElementPropertyMetaData>();
+        }
+
+        /// <summary>
+        /// Add 
+        /// </summary>
+        /// <param name="pipeline"></param>
+        public override void AddPipeline(IPipeline pipeline)
+        {
+            if (Pipelines.Count > 0)
+            {
+                throw new PipelineException(Messages.ExceptionShareUsageSinglePipeline);
+            }
+            base.AddPipeline(pipeline);
+            // The Pipeline's Flow Elements decide which parameters are
+            // shared and which make a request new to the tracker.
+            _sharedEvidenceFilter.UsePipeline(pipeline);
+            _trackerEvidenceFilter.UsePipeline(pipeline);
+        }
+
+        /// <summary>
+        /// Process the data
+        /// </summary>
+        /// <param name="data">
+        /// The <see cref="IFlowData"/> instance that provides the evidence
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if the supplied data instance is null
+        /// </exception>
+        protected override void ProcessInternal(IFlowData data)
+        {
+            if(data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+
+            bool ignoreData = false;
+            var evidence = data.GetEvidence().AsDictionary();
+
+            if (_ignoreDataEvidenceFilter != null)
+            {
+                foreach (var kvp in _ignoreDataEvidenceFilter)
+                {
+                    if (ShareUsageEvidence.TryGetValue(
+                            evidence, kvp.Key, out var value) &&
+                        value?.ToString() == kvp.Value)
+                    {
+                        ignoreData = true;
+                        break;
+                    }
+                }
+            }
+
+            if (ignoreData == false)
+            {
+                ProcessData(data);
+            }
+        }
+
+        /// <summary>
+        /// Send any data which has built up locally and not yet been sent to
+        /// the remote service.
+        /// </summary>
+        protected override void ManagedResourcesCleanup()
+        {
+            // Ends any pause at once, so closing never waits for one, and
+            // stops new sends starting.
+            lock (_lock)
+            {
+                _closing.Cancel();
+            }
+
+            // Wait for a send already running, then send messages until the
+            // queue is empty, as a message holds at most twice the minimum
+            // entries. Nothing is sent while paused, and the pause is
+            // checked before every send because a failed send can start
+            // one. One timeout bounds the whole of it, so an endpoint that
+            // does not answer cannot hold disposal up. Nothing is sent when
+            // nothing is queued.
+            using (var stop = new CancellationTokenSource())
+            {
+                var flush = Task.Run(() =>
+                {
+                    SendDataTask?.Wait();
+                    while (EvidenceCollection.Count > 0 &&
+                        stop.IsCancellationRequested == false)
+                    {
+                        if (_backOff.Remaining(ShareUsageBackOff.Now) >
+                            TimeSpan.Zero)
+                        {
+                            Logger.LogInformation(string.Format(
+                                CultureInfo.InvariantCulture,
+                                Messages.MessageShareUsageNotSentWhilePaused,
+                                EvidenceCollection.Count));
+                            return;
+                        }
+                        // Already on the thread pool, so the send runs
+                        // here and takes its entries at once.
+                        SendOnceAsync().GetAwaiter().GetResult();
+                    }
+                });
+                if (flush.Wait(DisposeTimeoutMilliseconds) == false)
+                {
+                    stop.Cancel();
+                    Logger.LogWarning(string.Format(
+                        CultureInfo.InvariantCulture,
+                        Messages.MessageShareUsageNotSentOnClose,
+                        EvidenceCollection.Count,
+                        DisposeTimeoutMilliseconds));
+                }
+            }
+            _closing.Dispose();
+        }
+
+        /// <summary>
+        /// The time in milliseconds that disposal may spend sending the
+        /// entries still queued.
+        /// </summary>
+        internal virtual int DisposeTimeoutMilliseconds =>
+            Constants.SHARE_USAGE_DISPOSE_TIMEOUT_MILLISECONDS;
+
+        /// <summary>
+        /// Clean up any unmanaged resources.
+        /// </summary>
+        protected override void UnmanagedResourcesCleanup()
+        {
+        }
+
+        /// <summary>
+        /// Returns true if the request is from the local host IP address.
+        /// </summary>
+        /// <param name="address">
+        /// The IP address to be checked.
+        /// </param>
+        /// <returns>
+        /// True if from the local host IP address.
+        /// </returns>
+        private static bool IsLocalHost(IPAddress address)
+        {
+            return LOCALHOSTS.Any(host => host.Equals(address));
+        }
+
+        /// <summary>
+        /// Process the supplied request data
+        /// </summary>
+        /// <param name="data">
+        /// The <see cref="IFlowData"/> instance that provides the evidence
+        /// </param>
+        private void ProcessData(IFlowData data)
+        {
+            // If the queue is full, try to drain it by sending
+            // existing data, but don't accept new evidence.
+            if (EvidenceCollection.Count >= EvidenceCollection.BoundedCapacity)
+            {
+                RecordDiscard();
+                TrySendData();
+                return;
+            }
+
+            if (ThreadRandom.NextDouble() > _sharePercentage)
+            {
+                return;
+            }
+
+            // Check if the tracker will allow sharing of this data
+            if (!_tracker.Track(data))
+            {
+                return;
+            }
+
+            // Extract the data we want from the evidence and the web
+            // request, and add it to the collection.
+            if (EvidenceCollection.TryAdd(
+                GetDataFromEvidence(ShareUsageEvidence.Find(
+                    data.GetEvidence().AsDictionary())),
+                _addTimeout))
+            {
+                Interlocked.Exchange(ref _discarded, 0);
+                // If the collection has enough entries then start
+                // taking data from it to be sent.
+                if (EvidenceCollection.Count >= MinEntriesPerMessage)
+                {
+                    TrySendData();
+                }
+            }
+            else
+            {
+                // Queue was full, try to drain it.
+                RecordDiscard();
+                TrySendData();
+            }
+        }
+
+        /// <summary>
+        /// Logs that evidence is being discarded because the queue is full,
+        /// for the first request that finds it full and then every
+        /// <see cref="QueueFullLogEvery"/> requests, so a busy server does
+        /// not flood its log.
+        /// </summary>
+        private void RecordDiscard()
+        {
+            var discarded = Interlocked.Increment(ref _discarded);
+            if (discarded == 1 || discarded % QueueFullLogEvery == 0)
+            {
+                Logger.LogWarning(string.Format(
+                    CultureInfo.InvariantCulture,
+                    Messages.MessageShareUsageQueueFull,
+                    EvidenceCollection.BoundedCapacity));
+            }
+        }
+
+        /// <summary>
+        /// Extract the desired data from the evidence found.
+        /// In order to avoid problems with the evidence data being disposed
+        /// before it is sent, the data placed into a new object rather
+        /// than being a reference to the existing evidence instance.
+        /// </summary>
+        /// <param name="evidence">
+        /// The evidence found, as <see cref="ShareUsageEvidence.Find"/>
+        /// gives it.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ShareUsageData"/> instance populated with data from
+        /// the evidence.
+        /// </returns>
+        private ShareUsageData GetDataFromEvidence(
+            IReadOnlyDictionary<string, object> evidence)
+        {
+            ShareUsageData data = new ShareUsageData();
+
+            foreach (var entry in evidence)
+            {
+                if (entry.Key.Equals(Core.Constants.EVIDENCE_CLIENTIP_KEY, 
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    // The client IP is dealt with separately for backwards
+                    // compatibility purposes.
+                    data.ClientIP = entry.Value.ToString();
+                }
+                else if (entry.Key.Equals(Constants.EVIDENCE_SESSIONID,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    // The SessionID has its own field, filled only when
+                    // shared, being when the Sequence Element uses it.
+                    if (_sharedEvidenceFilter.Include(entry.Key))
+                    {
+                        data.SessionId = entry.Value.ToString();
+                    }
+                }
+                else if (entry.Key.Equals(Constants.EVIDENCE_SEQUENCE,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    // The Sequence has its own field, filled only when
+                    // shared, being when the Sequence Element uses it.
+                    var sequence = 0;
+                    if (_sharedEvidenceFilter.Include(entry.Key) &&
+                        int.TryParse(entry.Value.ToString(), out sequence))
+                    {
+                        data.Sequence = sequence;
+                    }
+                }
+                else
+                {
+                    // Check if we can send this piece of evidence
+                    bool addToData = _sharedEvidenceFilter.Include(entry.Key);
+
+                    if (addToData)
+                    {
+                        // Get the category and field names from the evidence key.
+                        string category = "";
+                        string field = entry.Key;
+
+                        int firstSeperator = entry.Key.IndexOf(
+                            Core.Constants.EVIDENCE_SEPERATOR,
+                            StringComparison.OrdinalIgnoreCase);
+                        if (firstSeperator > 0)
+                        {
+                            category = entry.Key.Remove(firstSeperator);
+                            field = entry.Key.Substring(firstSeperator + 1);
+                        }
+
+                        // Get the evidence value.
+                        string evidenceValue = entry.Value.ToString();
+                        // If the value is longer than the permitted length 
+                        // then truncate it.
+                        if (evidenceValue.Length > Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH)
+                        {
+                            evidenceValue = "[TRUNCATED BY USAGE SHARING] " +
+                                evidenceValue.Remove(Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH);
+                        }
+
+                        // Add the evidence to the dictionary.
+                        Dictionary<string, string> categoryDict;
+                        if (data.EvidenceData.TryGetValue(category, out categoryDict) == false)
+                        {
+                            categoryDict = new Dictionary<string, string>();
+                            data.EvidenceData.Add(category, categoryDict);
+                        }
+                        categoryDict.Add(field, evidenceValue);
+                    }
+                }
+            }
+
+            return data;
+        }
+
+        /// <summary>
+        /// Attempt to send the data to the remote service. This only happens
+        /// if there is not a task already running. The task sends until
+        /// fewer than the minimum entries per message are queued, waiting
+        /// out any pause after failed sends first.
+        /// </summary>
+        protected void TrySendData()
+        {
+            if (IsRunning == false)
+            {
+                lock (_lock)
+                {
+                    if (IsRunning == false &&
+                        _closing.IsCancellationRequested == false)
+                    {
+                        var closing = _closing.Token;
+                        SendDataTask = Task.Run(
+                            () => SendWhileQueuedAsync(closing));
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Called by <see cref="BuildAndSendXmlAsync"/> when the remote
+        /// service does not accept a message, so that the failure counts
+        /// towards pausing sends. An exception thrown from
+        /// BuildAndSendXmlAsync counts without this being called.
+        /// </summary>
+        protected void RecordSendFailure()
+        {
+            _sendFailed = true;
+        }
+
+        /// <summary>
+        /// Sends messages while at least the minimum entries per message
+        /// are queued. Before each send it waits out any pause, so the
+        /// queue drains when a pause ends without more requests arriving.
+        /// </summary>
+        /// <param name="closing">
+        /// Cancelled when the element closes, which ends a pause at once
+        /// and stops further sends, as closing sends what remains.
+        /// </param>
+        private async Task SendWhileQueuedAsync(CancellationToken closing)
+        {
+            try
+            {
+                do
+                {
+                    TimeSpan pause;
+                    while ((pause = _backOff.Remaining(ShareUsageBackOff.Now)) >
+                        TimeSpan.Zero)
+                    {
+                        await Task.Delay(
+                            pause < LongestWait ? pause : LongestWait,
+                            closing).ConfigureAwait(false);
+                    }
+                    if (EvidenceCollection.Count == 0 ||
+                        closing.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    await SendOnceAsync().ConfigureAwait(false);
+                }
+                while (EvidenceCollection.Count >= MinEntriesPerMessage);
+            }
+            catch (OperationCanceledException)
+            {
+                // Closing ended a pause. Closing decides what is sent.
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(
+                    ex,
+                    Messages.MessageShareUsageUnexpectedFailure);
+            }
+        }
+
+        /// <summary>
+        /// Sends one message and records whether it was accepted.
+        /// </summary>
+        private async Task SendOnceAsync()
+        {
+            _sendFailed = false;
+            try
+            {
+                await BuildAndSendXmlAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _sendFailed = true;
+                Logger.LogError(
+                    ex,
+                    Messages.MessageShareUsageUnexpectedFailure);
+            }
+
+            if (_sendFailed)
+            {
+                var pause = _backOff.Failed(ShareUsageBackOff.Now);
+                if (pause > TimeSpan.Zero)
+                {
+                    Logger.LogWarning(string.Format(
+                        CultureInfo.InvariantCulture,
+                        Messages.MessageShareUsagePaused,
+                        pause.TotalSeconds));
+                }
+            }
+            else if (_backOff.Succeeded())
+            {
+                Logger.LogInformation(Messages.MessageShareUsageResumed);
+            }
+        }
+
+        /// <summary>
+        /// Abstract method to build XML from queued data and send it to the remote service.
+        /// </summary>
+        protected abstract Task BuildAndSendXmlAsync();
+
+        /// <summary>
+        /// Virtual method to be overridden in extending usage share elements.
+        /// Write the specified data using the specified writer.
+        /// </summary>
+        /// <param name="writer">
+        /// The <see cref="XmlWriter"/> to use.
+        /// </param>
+        /// <param name="data">
+        /// The <see cref="ShareUsageData"/> to write.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if the supplied arguments are null
+        /// </exception>
+        protected virtual void WriteData(XmlWriter writer, ShareUsageData data)
+        {
+            if(writer == null)
+            {
+                throw new ArgumentNullException(nameof(writer));
+            }
+
+            writer.WriteStartElement("Device");
+
+            WriteDeviceData(writer, data);
+
+            writer.WriteEndElement();
+        }
+
+        /// <summary>
+        /// Write the specified device data using the specified writer.
+        /// </summary>
+        /// <param name="writer">
+        /// The <see cref="XmlWriter"/> to use.
+        /// </param>
+        /// <param name="data">
+        /// The <see cref="ShareUsageData"/> to write.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if the supplied arguments are null
+        /// </exception>
+        protected void WriteDeviceData(XmlWriter writer, ShareUsageData data)
+        {
+            if (writer == null)
+            {
+                throw new ArgumentNullException(nameof(writer));
+            }
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+
+            // Used to record whether the evidence within a flow data contains invalid XML
+            // characters such as control characters.
+            var flagBadSchema = false;
+
+            // The identifier of this element, the same in every record
+            writer.WriteElementString("ProcessId", _processId);
+            // The SessionID used to track a series of requests
+            writer.WriteElementString("SessionId", data.SessionId);
+            // The sequence number of the request in a series of requests.
+            writer.WriteElementString("Sequence", data.Sequence.ToString(
+                CultureInfo.InvariantCulture));
+            // The UTC date/time this entry was written
+            writer.WriteElementString("DateSent", DateTime.UtcNow.ToString(
+                "yyyy-MM-ddTHH:mm:ss", 
+                CultureInfo.InvariantCulture));
+            // The client IP of the request
+            writer.WriteElementString("ClientIP", data.ClientIP);
+            // The values that do not change while the element lives, in the
+            // first record, once an hour, and once the address of this
+            // machine is known when they were written without it
+            var invariantValues = InvariantValuesToWrite();
+            if (invariantValues != null)
+            {
+                writer.WriteRaw(invariantValues);
+            }
+
+            // Write all other evidence data that has been included.
+            foreach (var category in data.EvidenceData)
+            {
+                foreach (var entry in category.Value)
+                {
+                    if (category.Key.Length > 0)
+                    {
+                        writer.WriteStartElement(category.Key);
+                        writer.WriteAttributeString("Name", EncodeInvalidXMLChars(entry.Key, ref flagBadSchema));
+                        writer.WriteCData(EncodeInvalidXMLChars(entry.Value, ref flagBadSchema));
+                        writer.WriteEndElement();
+                    }
+                    else
+                    {
+                        // A key starting with the separator has an empty prefix,
+                        // so the field after it names the element, as an
+                        // element name cannot start with a '.'.
+                        var name = entry.Key.StartsWith(
+                            Core.Constants.EVIDENCE_SEPERATOR,
+                            StringComparison.Ordinal) ?
+                            entry.Key.Substring(
+                                Core.Constants.EVIDENCE_SEPERATOR.Length) :
+                            entry.Key;
+                        writer.WriteElementString(
+                            EncodeInvalidXMLChars(name, ref flagBadSchema),
+                            EncodeInvalidXMLChars(
+                                entry.Value, ref flagBadSchema));
+                    }
+                }
+            }
+            // If any written value contained invalid characters, add the 'BadSchema' element.
+            if (flagBadSchema)
+            {
+                writer.WriteElementString("BadSchema", "true");
+            }
+        }
+
+        /// <summary>
+        /// The invariant values for the record being written, or null when
+        /// it is to leave them out. They are written to the first record
+        /// the element writes, to the first it writes once an hour or more
+        /// has passed since it last wrote them, and, when they were last
+        /// written without the address of this machine, to the first it
+        /// writes once the address is known. The hour runs from when they
+        /// were written, whether or not the record arrives.
+        /// </summary>
+        private string InvariantValuesToWrite()
+        {
+            lock (_invariantValuesLock)
+            {
+                var now = ClockNow;
+                var hourUp = _invariantValuesWrittenAt.HasValue == false ||
+                    now - _invariantValuesWrittenAt.Value >=
+                        InvariantValuesInterval;
+                if (hourUp == false &&
+                    _invariantValuesWrittenWithoutServerIP == false)
+                {
+                    return null;
+                }
+                // Read once, so the record carries the address that decided
+                // whether it is written.
+                var serverIP = HostAddress;
+                if (hourUp == false && serverIP.Length == 0)
+                {
+                    return null;
+                }
+                _invariantValuesWrittenAt = now;
+                _invariantValuesWrittenWithoutServerIP = serverIP.Length == 0;
+                return GetStaticXml(serverIP);
+            }
+        }
+
+        /// <summary>
+        /// Get the part of the xml message that will be the same for every usage
+        /// sharing event on this machine.
+        /// This is written once to a string in memory and then re-used for
+        /// future messages. While the address of this machine is not known
+        /// it is written again each time it is used, so that ServerIP
+        /// carries the address once it is known. It holds the invariant
+        /// values, which only the records that
+        /// <see cref="InvariantValuesToWrite"/> chooses carry.
+        /// </summary>
+        /// <param name="serverIP">
+        /// The address of this machine, or an empty string while it is not
+        /// known.
+        /// </param>
+        /// <returns></returns>
+        private string GetStaticXml(string serverIP)
+        {
+            if (_staticXml == null)
+            {
+                lock (_staticXmlLock)
+                {
+                    if (_staticXml == null)
+                    {
+                        var result = new StringBuilder();
+                        var settings = new XmlWriterSettings()
+                        {
+                            OmitXmlDeclaration = true,
+                            WriteEndDocumentOnClose = false,
+                            ConformanceLevel = ConformanceLevel.Fragment
+                        };
+                        using (var writer = XmlWriter.Create(result, settings))
+                        {
+                            // The version number of the Pipeline API
+                            writer.WriteElementString("Version", _coreVersion);
+                            // Write Pipeline information
+                            WritePipelineInfo(writer);
+                            // The 51Degrees packages in use, with versions
+                            foreach (var package in Packages)
+                            {
+                                writer.WriteStartElement("Package");
+                                writer.WriteAttributeString("Name", package.Key);
+                                writer.WriteString(package.Value);
+                                writer.WriteEndElement();
+                            }
+                            // The software language
+                            writer.WriteElementString("Language", "dotnet");
+                            // The software language version
+                            writer.WriteElementString("LanguageVersion", _languageVersion);
+                            // The IP of this server
+                            writer.WriteElementString("ServerIP", serverIP);
+                            // The OS name and version
+                            writer.WriteElementString("Platform", _osVersion);
+                        }
+
+                        if (serverIP.Length == 0)
+                        {
+                            return result.ToString();
+                        }
+                        _staticXml = result.ToString();
+                    }
+
+                    // If it's still null for some reason, set it to the empty string 
+                    // so that we don't keep hitting the lock every time evidence is 
+                    // processed.
+                    if (_staticXml == null) { _staticXml = string.Empty; }
+                }
+            }
+            return _staticXml;
+        }
+
+        /// <summary>
+        /// Virtual method to write details about the pipeline.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if the supplied writer is null
+        /// </exception>
+        protected virtual void WritePipelineInfo(XmlWriter writer)
+        {
+            if (writer == null)
+            {
+                throw new ArgumentNullException(nameof(writer));
+            }
+
+            // The product name
+            writer.WriteElementString("Product", "Pipeline");
+            // The flow elements in the current pipeline
+            foreach (var flowElement in FlowElements)
+            {
+                writer.WriteElementString("FlowElement", flowElement);
+            }
+        }
+
+        /// <summary>
+        /// encodes any unusual characters into their hex representation
+        /// </summary>
+        /// <param name="text">
+        /// The text to encode
+        /// </param>
+        /// <param name="flagBadSchema">
+        /// A flag storing whether this usage message inculdes any invalid characters 
+        /// that we have had to encod.
+        /// </param>
+        /// <returns>
+        /// The encoded version of <paramref name="text"/>
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if the supplied text is null
+        /// </exception>
+        public string EncodeInvalidXMLChars(string text, ref bool flagBadSchema)
+        {
+            if (text == null)
+            {
+                throw new ArgumentNullException(nameof(text));
+            }
+
+            // Validate characters in string. If not valid check chars 
+            // individually and build new string with encoded chars. Set _flag 
+            // to add "bad schema" element into usage data.
+
+            try
+            {
+                return XmlConvert.VerifyXmlChars(text);
+            }
+            catch (XmlException)
+            {
+                flagBadSchema = true;
+                var tmp = new StringBuilder();
+                for (var i = 0; i < text.Length; i++)
+                {
+                    var c = text[i];
+                    if (char.IsHighSurrogate(c) &&
+                        i + 1 < text.Length &&
+                        char.IsLowSurrogate(text[i + 1]))
+                    {
+                        // A surrogate pair is one allowed character.
+                        tmp.Append(c);
+                        tmp.Append(text[++i]);
+                    }
+                    else if (XmlConvert.IsXmlChar(c))
+                    {
+                        tmp.Append(c);
+                    }
+                    else
+                    {
+                        // Control characters, U+FFFE, U+FFFF and surrogates
+                        // with no partner, as four lowercase hex digits.
+                        tmp.Append("\\x" + ((int)c).ToString("x4",
+                            CultureInfo.InvariantCulture));
+                    }
+                }
+
+                return tmp.ToString();
+            }
+        }
+    }
+}

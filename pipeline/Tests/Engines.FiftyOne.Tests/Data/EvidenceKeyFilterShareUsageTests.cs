@@ -1,0 +1,356 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+using FiftyOne.Pipeline.Engines.FiftyOne.Data;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
+
+namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
+{
+    /// <summary>
+    /// Tests that the caller-supplied secrets used to derive hashed-email
+    /// identifiers (the 'id.email' and 'id.salt' keys) are never shared,
+    /// regardless of the share-all setting.
+    /// </summary>
+    [TestClass]
+    public class EvidenceKeyFilterShareUsageTests
+    {
+        [TestMethod]
+        public void ShareAll_IncludesEverythingExceptTheEmailAndSaltKeys()
+        {
+            var filter = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsFalse(filter.Include("query.id.email"));
+            Assert.IsFalse(filter.Include("header.id.email"));
+            Assert.IsFalse(filter.Include("query.id.salt"));
+            Assert.IsFalse(filter.Include("header.id.salt"));
+            Assert.IsTrue(filter.Include("header.id.usage"));
+            Assert.IsTrue(filter.Include("header.user-agent"));
+        }
+
+        [TestMethod]
+        public void ShareAll_NeverSharedKeys_AreCaseInsensitive()
+        {
+            var filter = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsFalse(filter.Include("QUERY.ID.EMAIL"));
+            Assert.IsFalse(filter.Include("QUERY.ID.SALT"));
+        }
+
+        /// <summary>
+        /// The method is shared like the other values under the 'server'
+        /// prefix. It names no address and carries nothing a site put
+        /// there, so neither reason for holding the path and the query
+        /// back applies to it.
+        /// </summary>
+        [TestMethod]
+        public void ShareAll_IncludesTheMethod()
+        {
+            var filter = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsTrue(filter.Include("server.request-method"));
+            Assert.IsTrue(filter.Include("server.client-ip"));
+        }
+
+        /// <summary>
+        /// The path is never shared, in either mode.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="EvidenceKeyFilterShareUsageTracker"/> derives from
+        /// this class, so anything shared is also part of the key usage
+        /// sharing de-duplicates on. Sharing the path would make every
+        /// address a visitor opens look like a different session, so one
+        /// visitor moving through thirty pages would send thirty records
+        /// where the tracker is meant to send one. The path is also the
+        /// part of a URL most likely to carry a name or an identifier a
+        /// site has put in it.
+        /// </remarks>
+        [TestMethod]
+        public void ThePathIsNeverShared()
+        {
+            var shareAll = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsFalse(shareAll.Include("server.request-path"));
+            Assert.IsFalse(shareAll.Include("SERVER.REQUEST-PATH"));
+
+            var configured = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "sessionid");
+
+            Assert.IsFalse(configured.Include("server.request-path"));
+
+            // The tracker inherits the rule, which is the point of it.
+            var tracker = new EvidenceKeyFilterShareUsageTracker();
+
+            Assert.IsFalse(tracker.Include("server.request-path"));
+            Assert.IsFalse(tracker.Include("server.request-query"));
+        }
+
+        /// <summary>
+        /// The whole query string is never shared, in either mode.
+        /// </summary>
+        /// <remarks>
+        /// This class withholds every query string parameter that does not
+        /// start 51D_ and that no Flow Element of the Pipeline uses, and a
+        /// name given through the constructor has no effect. The whole
+        /// query string carries every parameter at once, so without this
+        /// the same value would be withheld under its 'query' prefix and
+        /// shared under its 'server' prefix.
+        /// </remarks>
+        [TestMethod]
+        public void TheWholeQueryStringIsNeverShared()
+        {
+            var shareAll = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsFalse(shareAll.Include("server.request-query"));
+            Assert.IsFalse(shareAll.Include("SERVER.REQUEST-QUERY"));
+
+            var configured = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "sessionid");
+
+            Assert.IsFalse(configured.Include("server.request-query"));
+
+            // Naming a parameter shares neither it nor the whole query
+            // string.
+            var namedParameter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>() { "utm_source" },
+                false,
+                "sessionid");
+
+            Assert.IsFalse(namedParameter.Include("query.utm_source"));
+            Assert.IsFalse(namedParameter.Include("server.request-query"));
+        }
+
+        [TestMethod]
+        public void ShareAll_SuffixIsAnchoredToASegmentBoundary()
+        {
+            // 'valid.email' ends with the literal string 'id.email' but the
+            // segment-boundary match prevents it being treated as a
+            // never-shared key.
+            var filter = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsTrue(filter.Include("header.valid.email"));
+        }
+
+        [TestMethod]
+        public void ShareAll_NeverSharedKeys_MatchWithoutACategoryPrefix()
+        {
+            // The secret keys must be excluded even when supplied as a bare
+            // segment with no 'query.'/'header.' category prefix.
+            var filter = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsFalse(filter.Include("id.email"));
+            Assert.IsFalse(filter.Include("id.salt"));
+        }
+
+        [TestMethod]
+        public void Filtered_NeverSharedKeys_ExcludedBeforeOtherRules()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                blockedHttpHeaders: new List<string>(),
+                includedQueryStringParams: null,
+                includeSession: false,
+                aspSessionCookieName: "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("query.id.email"));
+            Assert.IsFalse(filter.Include("query.id.salt"));
+            Assert.IsTrue(filter.Include("header.id.usage"));
+            Assert.IsTrue(filter.Include("header.user-agent"));
+        }
+
+        /// <summary>
+        /// The Cookie header carries every cookie, including the ones the
+        /// cookie rule leaves out, so it is never shared, even when all
+        /// evidence is. The cookies starting 51D_ are still shared as their
+        /// own 'cookie.' evidence.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_TheCookieHeaderIsNotShared()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("header.cookie"));
+            Assert.IsFalse(filter.Include("header.Cookie"));
+            Assert.IsTrue(filter.Include("header.user-agent"));
+            Assert.IsTrue(filter.Include("cookie.51d_screenpixelswidth"));
+
+            var shareAll = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsFalse(shareAll.Include("header.cookie"));
+            Assert.IsFalse(shareAll.Include("header.Cookie"));
+            Assert.IsTrue(shareAll.Include("header.user-agent"));
+            Assert.IsTrue(shareAll.Include("cookie.51d_screenpixelswidth"));
+        }
+
+        /// <summary>
+        /// By default every header but Cookie is shared, so a header named
+        /// Cookies is shared like any other header.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_OnlyTheCookieHeaderIsBlockedByDefault()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("header.cookie"));
+            Assert.IsTrue(filter.Include("header.cookies"));
+            Assert.IsTrue(filter.Include("header.Cookies"));
+        }
+
+        /// <summary>
+        /// A cookie that does not start 51D_ is never shared, even when all
+        /// evidence is, whatever the session setting, so the ASP.NET
+        /// session cookie is not shared by the filter that decides what is
+        /// sent.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_TheSessionCookieIsNotShared()
+        {
+            foreach (var includeSession in new[] { false, true })
+            {
+                var filter = new EvidenceKeyFilterShareUsage(
+                    new List<string>(),
+                    new List<string>(),
+                    includeSession,
+                    "asp.net_sessionid");
+
+                Assert.IsFalse(
+                    filter.Include("cookie.asp.net_sessionid"),
+                    "includeSession=" + includeSession);
+                Assert.IsFalse(filter.Include("cookie.other"));
+                Assert.IsTrue(filter.Include("cookie.51d_screenpixelswidth"));
+            }
+
+            var shareAll = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsFalse(shareAll.Include("cookie.asp.net_sessionid"));
+            Assert.IsFalse(shareAll.Include("COOKIE.other"));
+            Assert.IsTrue(shareAll.Include("cookie.51d_screenpixelswidth"));
+        }
+
+        /// <summary>
+        /// When all evidence is shared the tracker's filter still keys on
+        /// the session cookie when the session is tracked, and on no other
+        /// cookie but the 51D_ ones.
+        /// </summary>
+        [TestMethod]
+        public void Tracker_ShareAll_TheSessionCookieIsKeyedOnlyWhenSessionIsTracked()
+        {
+            var tracked = new EvidenceKeyFilterShareUsageTracker(
+                true, "asp.net_sessionid");
+            var untracked = new EvidenceKeyFilterShareUsageTracker(
+                false, "asp.net_sessionid");
+
+            Assert.IsTrue(tracked.Include("cookie.ASP.NET_SessionId"));
+            Assert.IsFalse(tracked.Include("cookie.other"));
+            Assert.IsTrue(tracked.Include("cookie.51d_screenpixelswidth"));
+            Assert.IsFalse(tracked.Include("query.utm_campaign"));
+            Assert.IsFalse(untracked.Include("cookie.asp.net_sessionid"));
+        }
+
+        /// <summary>
+        /// The session setting still lets the tracker tell visitors apart,
+        /// so the filter that makes the repeat tracker's key includes the
+        /// session cookie when the setting is on and leaves it out when it
+        /// is off. That filter decides nothing about what is sent.
+        /// </summary>
+        [TestMethod]
+        public void Tracker_TheSessionCookieIsKeyedOnlyWhenSessionIsTracked()
+        {
+            var tracked = new EvidenceKeyFilterShareUsageTracker(
+                new List<string>(),
+                new List<string>(),
+                true,
+                "asp.net_sessionid");
+            var untracked = new EvidenceKeyFilterShareUsageTracker(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsTrue(tracked.Include("cookie.asp.net_sessionid"));
+            Assert.IsTrue(tracked.Include("cookie.ASP.NET_SessionId"));
+            Assert.IsFalse(tracked.Include("cookie.other"));
+            Assert.IsFalse(untracked.Include("cookie.asp.net_sessionid"));
+        }
+
+        /// <summary>
+        /// A query string parameter is shared only when its name starts with
+        /// 51D_ or a Flow Element of the Pipeline uses it, whatever the
+        /// settings. With no Pipeline, only the 51D_ ones are shared, and
+        /// the allow list has no effect.
+        /// </summary>
+        [TestMethod]
+        public void NoPipeline_OnlyThe51DQueryParametersAreShared()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>() { "allowed" },
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("query.other"));
+            Assert.IsFalse(filter.Include("query.allowed"));
+            Assert.IsFalse(filter.Include("QUERY.Allowed"));
+            Assert.IsTrue(filter.Include("query.51D_ScreenPixelsWidth"));
+            Assert.IsTrue(filter.Include("QUERY.51d_ScreenPixelsWidth"));
+
+            var shareAll = new EvidenceKeyFilterShareUsage();
+
+            Assert.IsFalse(shareAll.Include("query.other"));
+            Assert.IsTrue(shareAll.Include("query.51D_ScreenPixelsWidth"));
+        }
+
+        /// <summary>
+        /// Keys are compared without regard to case, so a prefix written in
+        /// capitals gets the same answer as the prefix in lower case.
+        /// </summary>
+        [TestMethod]
+        public void Filtered_PrefixIsCaseInsensitive()
+        {
+            var filter = new EvidenceKeyFilterShareUsage(
+                new List<string>(),
+                new List<string>(),
+                false,
+                "asp.net_sessionid");
+
+            Assert.IsFalse(filter.Include("COOKIE.other"));
+            Assert.IsTrue(filter.Include("COOKIE.51D_ScreenPixelsWidth"));
+            Assert.IsFalse(filter.Include("Header.Cookie"));
+            Assert.IsFalse(filter.Include("SESSION.other"));
+            Assert.IsTrue(filter.Include("HEADER.user-agent"));
+        }
+    }
+}

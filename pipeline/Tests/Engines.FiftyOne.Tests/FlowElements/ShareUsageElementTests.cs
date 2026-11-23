@@ -1,0 +1,2085 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
+using FiftyOne.Pipeline.Engines.Trackers;
+using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.IO;
+using System.IO.Compression;
+using System.Net.Http;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Xml;
+using FiftyOne.Common.TestHelpers;
+using FiftyOne.Pipeline.Engines.TestHelpers;
+using System;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.FlowElements
+{
+    [TestClass]
+    public class ShareUsageElementTests
+    {
+        private SequenceElement _sequenceElement;
+
+        // Share usage instance that is being tested
+        private ShareUsageElement _shareUsageElement;
+
+        // Mocks and dependencies
+        private TestLogger<ShareUsageElement> _logger;
+        private TestHttpHandler _httpHandler;
+        private Mock<IPipeline> _pipeline;
+        private Mock<ITracker> _tracker;
+        private HttpClient _httpClient;
+
+        // Test instance data.
+        private List<string> _xmlContent = new List<string>();
+
+        /// <summary>
+        /// Simple HTTP handler for tests that directly implements SendAsync
+        /// without relying on Moq's CallBase behavior for protected methods.
+        /// </summary>
+        private class TestHttpHandler : HttpMessageHandler
+        {
+            private Func<HttpRequestMessage, HttpResponseMessage> _responseFactory;
+            public int SendCallCount { get; private set; } = 0;
+
+            public void SetupResponse(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
+            {
+                _responseFactory = responseFactory;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(
+                HttpRequestMessage request,
+                CancellationToken cancellationToken)
+            {
+                SendCallCount++;
+                if (_responseFactory == null)
+                {
+                    throw new InvalidOperationException("Response factory not configured. Call SetupResponse first.");
+                }
+                return Task.FromResult(_responseFactory(request));
+            }
+
+            public void VerifySendCalled(int expectedCount)
+            {
+                Assert.AreEqual(expectedCount, SendCallCount,
+                    $"Expected Send to be called {expectedCount} time(s), but was called {SendCallCount} time(s).");
+            }
+        }
+
+        /// <summary>
+        /// Initialise the test instance.
+        /// </summary>
+        [TestInitialize]
+        public void Init()
+        {
+            _logger = new TestLogger<ShareUsageElement>();
+
+            // Create the HttpClient using a simple test handler that directly
+            // implements SendAsync without relying on Moq's CallBase behavior.
+            _httpHandler = new TestHttpHandler();
+            _httpClient = new HttpClient(_httpHandler);
+
+            // Configure the handler to store the XML content of requests
+            // in the _xmlContent list and return an 'OK' status code.
+            _httpHandler.SetupResponse(request =>
+            {
+                StoreRequestXml(request);
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
+                };
+            });
+
+            // Configure the pipeline to return an empty list of flow elements
+            _pipeline = new Mock<IPipeline>();
+            _pipeline.Setup(p => p.FlowElements).Returns(
+                new ReadOnlyCollection<IFlowElement>(new List<IFlowElement>()));
+
+            // Configure the tracker to always allow sharing.
+            _tracker = new Mock<ITracker>();
+            _tracker.Setup(t => t.Track(It.IsAny<IFlowData>())).Returns(true);
+        }
+
+        /// <summary>
+        /// Helper method used to create a share usage instance.
+        /// </summary>
+        private void CreateShareUsage(double sharePercentage,
+            int minimumEntriesPerMessage,
+            int interval,
+            List<string> blockedHeaders,
+            List<string> includedQueryStringParams, 
+            List<KeyValuePair<string, string>> ignoreDataEvidenceFiler,
+            bool shareAll = false)
+        {
+            _sequenceElement = new SequenceElement(new Mock<ILogger<SequenceElement>>().Object);
+            _sequenceElement.AddPipeline(_pipeline.Object);
+            _shareUsageElement = new ShareUsageElement(
+                _logger,
+                _httpClient,
+                sharePercentage,
+                minimumEntriesPerMessage,
+                minimumEntriesPerMessage * 2,
+                100,
+                100,
+				interval,
+				true,
+                "http://51Degrees.com/test",
+                blockedHeaders,
+                includedQueryStringParams,
+                ignoreDataEvidenceFiler,
+                Engines.Constants.DEFAULT_ASP_COOKIE_NAME,
+                _tracker.Object,
+                shareAll);
+            _shareUsageElement.AddPipeline(_pipeline.Object);
+        }
+
+        /// <summary>
+        /// Opens the queue and the send so a test can fill the queue
+        /// directly and drain it, independent of thread timing.
+        /// </summary>
+        private class QueueOpenShareUsageElement : ShareUsageElement
+        {
+            private readonly int _disposeTimeoutMilliseconds;
+
+            public QueueOpenShareUsageElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                int minimumEntriesPerMessage,
+                int maximumQueueSize,
+                ITracker tracker,
+                int disposeTimeoutMilliseconds = 5000)
+                : base(logger, httpClient, 1, minimumEntriesPerMessage,
+                      maximumQueueSize, 100, 100, 1, true,
+                      "http://51Degrees.com/test", new List<string>(),
+                      new List<string>(), new List<KeyValuePair<string, string>>(),
+                      Engines.Constants.DEFAULT_ASP_COOKIE_NAME, tracker, false)
+            {
+                _disposeTimeoutMilliseconds = disposeTimeoutMilliseconds;
+            }
+
+            internal override int DisposeTimeoutMilliseconds =>
+                _disposeTimeoutMilliseconds;
+
+            /// <summary>
+            /// The element's clock when the test sets it.
+            /// </summary>
+            public TimeSpan? Clock { get; set; }
+
+            internal override TimeSpan ClockNow => Clock ?? base.ClockNow;
+
+            public void Enqueue(string clientIp) =>
+                EvidenceCollection.Add(new ShareUsageData() { ClientIP = clientIp });
+
+            public int Queued => EvidenceCollection.Count;
+
+            public Task SendAsync() => BuildAndSendXmlAsync();
+
+            public void StartSending() => TrySendData();
+        }
+
+        /// <summary>
+        /// Takes the address of the machine from the lookup the test gives,
+        /// and waits for it for as long as the test chooses, or for the
+        /// product's wait when the test does not choose.
+        /// </summary>
+        private class LookupHostAddressElement : QueueOpenShareUsageElement
+        {
+            private readonly int? _waitMilliseconds;
+
+            public LookupHostAddressElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                ITracker tracker,
+                Func<string> lookUp,
+                int? waitMilliseconds = null)
+                : base(logger, httpClient, 2, 100, tracker)
+            {
+                Lookup = new HostAddressLookup(lookUp);
+                _waitMilliseconds = waitMilliseconds;
+            }
+
+            public HostAddressLookup Lookup { get; }
+
+            internal override HostAddressLookup HostAddressSource => Lookup;
+
+            internal override int HostAddressWaitMilliseconds =>
+                _waitMilliseconds ?? base.HostAddressWaitMilliseconds;
+        }
+
+        /// <summary>
+        /// Takes the address of the machine from a lookup that does not
+        /// finish until the test releases it, as on a machine whose own name
+        /// is slow to look up. Disposal keeps the product's bound.
+        /// </summary>
+        private class SlowHostAddressElement : LookupHostAddressElement
+        {
+            /// <summary>
+            /// The longest the lookup blocks if the test never releases it.
+            /// </summary>
+            internal static readonly TimeSpan LookupLimit =
+                TimeSpan.FromSeconds(30);
+
+            public SlowHostAddressElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                ITracker tracker,
+                ManualResetEventSlim release,
+                int? waitMilliseconds = null)
+                : base(logger, httpClient, tracker, () =>
+                {
+                    release.Wait(LookupLimit);
+                    return "192.0.2.1";
+                }, waitMilliseconds)
+            {
+            }
+        }
+
+        /// <summary>
+        /// A lookup of the machine's address that fails, by throwing or by
+        /// giving no address, gives an empty ServerIP and the entry is
+        /// still sent.
+        /// </summary>
+        [DataRow(true)]
+        [DataRow(false)]
+        [TestMethod]
+        public void ShareUsageElement_HostAddressLookupFails_ServerIPEmpty(
+            bool throws)
+        {
+            var element = new LookupHostAddressElement(
+                _logger, _httpClient, _tracker.Object,
+                () => throws ?
+                    throw new System.Net.Sockets.SocketException() :
+                    (string)null);
+            element.AddPipeline(_pipeline.Object);
+            element.Enqueue("10.3.0.2");
+
+            element.SendAsync().Wait();
+
+            Assert.HasCount(1, _xmlContent);
+            StringAssert.Contains(_xmlContent[0], "<ClientIP>10.3.0.2</ClientIP>");
+            StringAssert.Matches(_xmlContent[0],
+                new Regex("<ServerIP\\s*/>|<ServerIP></ServerIP>"),
+                "ServerIP was not empty when the lookup failed.");
+        }
+
+        /// <summary>
+        /// A message built before the lookup of the machine's address has
+        /// finished has an empty ServerIP, and a message built after it has
+        /// finished carries the address, so the empty value is not kept for
+        /// the life of the element. ServerIP is one of the invariant values,
+        /// which the specification at 07e1fced writes "again to the first
+        /// record the element writes once an hour or more has passed since
+        /// it last wrote them" and "MUST NOT" write "to any other record"
+        /// (usage-sharing-element.md lines 151 to 153), so the later
+        /// message is built an hour on, by the element's clock.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_HostAddressLookupFinishesLater_LaterMessageCarriesIt()
+        {
+            using (var release = new ManualResetEventSlim(false))
+            {
+                var element = new SlowHostAddressElement(
+                    _logger, _httpClient, _tracker.Object, release, 10);
+                element.Clock = TimeSpan.Zero;
+                element.AddPipeline(_pipeline.Object);
+                element.Enqueue("10.3.0.3");
+                element.SendAsync().Wait();
+                element.Clock = TimeSpan.FromHours(1);
+
+                release.Set();
+                Assert.IsTrue(
+                    element.Lookup.TryGet(
+                        (int)SlowHostAddressElement.LookupLimit.TotalMilliseconds,
+                        out _),
+                    "The lookup did not finish once it was released.");
+                element.Enqueue("10.3.0.4");
+                element.SendAsync().Wait();
+
+                Assert.HasCount(2, _xmlContent);
+                StringAssert.Matches(_xmlContent[0],
+                    new Regex("<ServerIP\\s*/>|<ServerIP></ServerIP>"),
+                    "ServerIP was not empty before the lookup finished.");
+                StringAssert.Contains(_xmlContent[1],
+                    "<ServerIP>192.0.2.1</ServerIP>",
+                    "The message built after the lookup finished did not " +
+                    "carry the address.");
+            }
+        }
+
+        /// <summary>
+        /// A lookup of the machine's address that has not finished holds up
+        /// no send. Disposal, with the product's bound, still sends the entry
+        /// queued, with an empty ServerIP.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_SlowHostAddressLookup_StillSends()
+        {
+            using (var release = new ManualResetEventSlim(false))
+            {
+                var element = new SlowHostAddressElement(
+                    _logger, _httpClient, _tracker.Object, release);
+                element.AddPipeline(_pipeline.Object);
+                element.Enqueue("10.3.0.1");
+
+                var timer = System.Diagnostics.Stopwatch.StartNew();
+                element.Dispose();
+                timer.Stop();
+                release.Set();
+
+                var sent = _xmlContent
+                    .SelectMany(xml => Regex.Matches(xml, "<ClientIP>([^<]+)</ClientIP>")
+                        .Cast<System.Text.RegularExpressions.Match>()
+                        .Select(m => m.Groups[1].Value))
+                    .ToList();
+                CollectionAssert.AreEqual(new[] { "10.3.0.1" }, sent,
+                    "The entry queued was not sent while the lookup of the " +
+                    "machine's address had not finished. Disposal took " +
+                    $"{timer.ElapsedMilliseconds} ms.");
+                StringAssert.Matches(_xmlContent[0],
+                    new Regex("<ServerIP\\s*/>|<ServerIP></ServerIP>"),
+                    "ServerIP was not empty while the lookup had not finished.");
+            }
+        }
+
+        /// <summary>
+        /// Every entry put on the queue is sent exactly once, including
+        /// when the queue holds more than a full message when a send
+        /// starts. The queue is filled directly so the result does not
+        /// depend on thread timing.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_FullBatch_SendsEveryEntryOnce()
+        {
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, 2, 100, _tracker.Object);
+            element.AddPipeline(_pipeline.Object);
+            var clientIps = Enumerable.Range(1, 7)
+                .Select(i => $"10.1.0.{i}")
+                .ToList();
+            foreach (var ip in clientIps)
+            {
+                element.Enqueue(ip);
+            }
+
+            while (element.Queued > 0)
+            {
+                element.SendAsync().Wait();
+            }
+
+            var sent = _xmlContent
+                .SelectMany(xml => Regex.Matches(xml, "<ClientIP>([^<]+)</ClientIP>")
+                    .Cast<System.Text.RegularExpressions.Match>()
+                    .Select(m => m.Groups[1].Value))
+                .ToList();
+            var neverSent = clientIps.Except(sent).ToList();
+            Assert.AreEqual(clientIps.Count, sent.Count,
+                $"Queued {clientIps.Count} entries but {sent.Count} were sent " +
+                $"in {_xmlContent.Count} message(s). " +
+                $"Never sent: {string.Join(", ", neverSent)}");
+            CollectionAssert.AreEquivalent(clientIps, sent);
+        }
+
+        /// <summary>
+        /// On disposal every entry still queued is sent, in as many messages
+        /// as it takes, each holding at most twice the minimum entries.
+        /// Disposal is given no time bound, because the subject here is that
+        /// everything queued is sent and not how soon the runner gets round
+        /// to the work. The two tests below cover the bound itself.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/rc/pipeline-specification/pipeline-elements/usage-sharing-element.md#cleanup">Specification</see>
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_SendsEveryRemainingEntry()
+        {
+            const int minimumEntries = 2;
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, minimumEntries, 100, _tracker.Object,
+                Timeout.Infinite);
+            element.AddPipeline(_pipeline.Object);
+            var clientIps = Enumerable.Range(1, 11)
+                .Select(i => $"10.2.0.{i}")
+                .ToList();
+            foreach (var ip in clientIps)
+            {
+                element.Enqueue(ip);
+            }
+
+            element.Dispose();
+
+            var sent = _xmlContent
+                .SelectMany(xml => Regex.Matches(xml, "<ClientIP>([^<]+)</ClientIP>")
+                    .Cast<System.Text.RegularExpressions.Match>()
+                    .Select(m => m.Groups[1].Value))
+                .ToList();
+            CollectionAssert.AreEquivalent(clientIps, sent,
+                $"Queued {clientIps.Count} entries and sent {sent.Count} " +
+                $"in {_xmlContent.Count} message(s).");
+            foreach (var xml in _xmlContent)
+            {
+                Assert.IsLessThanOrEqualTo(minimumEntries * 2, CountDeviceNodes(xml),
+                    "A message held more than twice the minimum entries.");
+            }
+            Assert.AreEqual(0, element.Queued);
+        }
+
+        /// <summary>
+        /// One timeout bounds the whole of disposal, so an endpoint that
+        /// never answers cannot hold it up. Disposal returns when the time is
+        /// up, and logs a warning that says how many entries were not sent.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_EndpointNeverAnswers_Bounded()
+        {
+            const int boundMilliseconds = 500;
+            const int minimumEntries = 2;
+            const int queued = 11;
+            using (var release = new ManualResetEventSlim(false))
+            {
+                _httpHandler.SetupResponse(request =>
+                {
+                    release.Wait(TimeSpan.FromSeconds(60));
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
+                });
+                var element = new QueueOpenShareUsageElement(
+                    _logger, _httpClient, minimumEntries, 100, _tracker.Object,
+                    boundMilliseconds);
+                element.AddPipeline(_pipeline.Object);
+                for (int i = 1; i <= queued; i++)
+                {
+                    element.Enqueue($"10.3.0.{i}");
+                }
+
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                element.Dispose();
+                watch.Stop();
+                release.Set();
+
+                Assert.IsLessThan(boundMilliseconds * 6, watch.ElapsedMilliseconds,
+                    "Disposal was held up by an endpoint that never answers.");
+                Assert.AreEqual(1, _logger.WarningEntries.Count(
+                    w => w.Contains("not sent")),
+                    "Expected one warning that entries were not sent.");
+                var warning = _logger.WarningEntries.First(w => w.Contains("not sent"));
+                // The warning opens with the entries still queued. Disposal
+                // starts one message, which the endpoint never answers, so
+                // the count is the queue less however many of that message's
+                // entries it had taken when the time ran out. A message holds
+                // at most twice the minimum entries.
+                var notSent = int.Parse(
+                    warning.Split(' ')[0], CultureInfo.InvariantCulture);
+                Assert.IsGreaterThanOrEqualTo(
+                    queued - minimumEntries * 2, notSent,
+                    $"The warning said {notSent} entries were not sent, " +
+                    $"which is fewer than one message can account for.");
+                Assert.IsLessThanOrEqualTo(queued, notSent,
+                    $"The warning said {notSent} entries were not sent, " +
+                    $"which is more than were queued.");
+            }
+        }
+
+        /// <summary>
+        /// The same timeout covers a send already running when disposal
+        /// starts, so an endpoint that never answers it cannot hold disposal
+        /// up, and no further message is sent once that send returns.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Dispose_RunningSendNeverAnswers_Bounded()
+        {
+            const int boundMilliseconds = 500;
+            using (var release = new ManualResetEventSlim(false))
+            using (var started = new ManualResetEventSlim(false))
+            {
+                _httpHandler.SetupResponse(request =>
+                {
+                    started.Set();
+                    release.Wait(TimeSpan.FromSeconds(20));
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
+                });
+                var element = new QueueOpenShareUsageElement(
+                    _logger, _httpClient, 2, 100, _tracker.Object,
+                    boundMilliseconds);
+                element.AddPipeline(_pipeline.Object);
+                for (int i = 1; i <= 7; i++)
+                {
+                    element.Enqueue($"10.5.0.{i}");
+                }
+                element.StartSending();
+                Assert.IsTrue(started.Wait(TimeSpan.FromSeconds(10)),
+                    "The first send did not start.");
+
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                element.Dispose();
+                watch.Stop();
+                release.Set();
+                Thread.Sleep(1000);
+
+                Assert.IsLessThan(boundMilliseconds * 6, watch.ElapsedMilliseconds,
+                    "Disposal was held up by a running send that never answers.");
+                Assert.AreEqual(1, _httpHandler.SendCallCount,
+                    "A message was sent after disposal had given up.");
+                var warning = _logger.WarningEntries.First(w => w.Contains("not sent"));
+                StringAssert.Contains(warning, "3 ");
+            }
+        }
+
+        /// <summary>
+        /// Test that the ShareUsageElement behaves as expected when it is 
+        /// configured to send data after a single event.
+        /// Check that client IP and headers from the evidence are included
+        /// in the XML.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_SingleEvent_ClientIPAndHeader()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                { Core.Constants.EVIDENCE_HTTPHEADER_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "x-forwarded-for", "5.6.7.8" },
+                { Core.Constants.EVIDENCE_HTTPHEADER_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "forwarded-for", "2001::" },
+                { Core.Constants.EVIDENCE_COOKIE_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + Engines.Constants.FIFTYONE_COOKIE_PREFIX + "Profile", "123456" },
+                { Core.Constants.EVIDENCE_COOKIE_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "RemoveMe", "123456" }
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that one and only one HTTP message was sent
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+
+            // Validate that the XML is well formed by passing it through a reader
+            using (XmlReader xr = XmlReader.Create(new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+            // Check that the expected values are populated.
+            Assert.Contains("<ClientIP>1.2.3.4</ClientIP>", _xmlContent[0]);
+            Assert.Contains("<header Name=\"x-forwarded-for\"><![CDATA[5.6.7.8]]></header>", _xmlContent[0]);
+            Assert.Contains("<header Name=\"forwarded-for\"><![CDATA[2001::]]></header>", _xmlContent[0]);
+            Assert.Contains($"<cookie Name=\"{Engines.Constants.FIFTYONE_COOKIE_PREFIX}Profile\"><![CDATA[123456]]></cookie>", _xmlContent[0]);
+            Assert.DoesNotContain("<cookie Name=\"RemoveMe\">", _xmlContent[0]);
+        }
+
+        /// <summary>
+        /// The message names the version the Pipeline packages were built
+        /// as, so that the release a caller runs can be told from the
+        /// message. The build gives this test project that version.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_SingleEvent_VersionIsThePackageVersion()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            var data = MockFlowData.CreateFromEvidence(
+                new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" }
+                },
+                false);
+            var built = typeof(ShareUsageElementTests).Assembly
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
+                .Single(a => a.Key == "_51DEGREES_PIPELINE_CORE_VERSION")
+                .Value;
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            WaitForSendDataTask();
+
+            // Assert
+            Assert.IsFalse(string.IsNullOrEmpty(built),
+                "The build gave the tests no Pipeline version.");
+            Assert.HasCount(1, _xmlContent);
+            Assert.Contains($"<Version>{built}</Version>", _xmlContent[0]);
+        }
+
+        /// <summary>
+        /// Test that the ShareUsageElement behaves as expected when it is 
+        /// configured to send data after two events and just one event is 
+        /// logged.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_TwoEvents_FirstEvent()
+        {
+            // Arrange
+            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+
+            // Assert
+            // Check that no HTTP messages were sent.
+            _httpHandler.VerifySendCalled(0);
+        }
+
+        /// <summary>
+        /// Test that the ShareUsageElement behaves as expected when it is 
+        /// configured to send data after two events and two events are 
+        /// logged.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_TwoEvents_SecondEvent()
+        {
+            // Arrange
+            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            _shareUsageElement.Process(data.Object);
+
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that one and only one HTTP message was sent.
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+
+            // Validate that the XML is well formed by passing it through a reader
+            using (XmlReader xr = XmlReader.Create(new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+            // Make sure there are 2 'Device' nodes
+            int count = 0;
+            int index = 0;
+            while (index >= 0)
+            {
+                index = _xmlContent[0].IndexOf("<Device>", index + 1);
+                if (index > 0) { count++; }
+            }
+            Assert.AreEqual(2, count);
+        }
+
+        /// <summary>
+        /// Test that the ShareUsageElement behaves as expected when using
+        /// the 'restricted headers' option.
+        /// This should prevent all but a few HTTP headers from being 
+        /// included in the data.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_RestrictedHeaders()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>() { "x-forwarded-for", "forwarded-for" }, new List<string>(), new List<KeyValuePair<string, string>>());
+
+            string useragent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0 Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0.";
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                { Core.Constants.EVIDENCE_HTTPHEADER_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "x-forwarded-for", "5.6.7.8" },
+                { Core.Constants.EVIDENCE_HTTPHEADER_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "forwarded-for", "2001::" },
+                { Core.Constants.EVIDENCE_HTTPHEADER_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "user-agent", useragent },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that one and only one HTTP message was sent.
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+
+            // Validate that the XML is well formed by passing it through a reader
+            using (XmlReader xr = XmlReader.Create(new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+            // Check that the expected values are populated.
+            Assert.Contains("<ClientIP>1.2.3.4</ClientIP>", _xmlContent[0]);
+            Assert.Contains($"<header Name=\"user-agent\"><![CDATA[{useragent}]]></header>", _xmlContent[0]);
+            Assert.DoesNotContain("<header Name=\"x-forwarded-for\">", _xmlContent[0]);
+            Assert.DoesNotContain("<header Name=\"forwarded-for\">", _xmlContent[0]);
+        }
+
+        /// <summary>
+        /// Test that the ShareUsageElement behaves as expected when it is 
+        /// configured to share a low percentage of requests.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_LowPercentage()
+        {
+            // Arrange
+            CreateShareUsage(0.001, 100, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            // Feed events until the first share message is sent (or we hit the
+            // ceiling). Stop as soon as a send happens so we don't keep feeding
+            // while the asynchronous send is in flight.
+            int requiredEvents = 0;
+            while (_httpHandler.SendCallCount == 0 &&
+                requiredEvents <= 1000000)
+            {
+                _shareUsageElement.Process(data.Object);
+                if (requiredEvents % 200000 == 0) {
+                    Thread.Sleep(1000);
+                }
+                requiredEvents++;
+            }
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // On average, the number of required events should be around
+            // 100,000. However, as it's chance based it can vary
+            // significantly. We only want to catch any gross errors so just
+            // make sure the value is of the expected order of magnitude.
+            Console.WriteLine($"requiredEvents = {requiredEvents}");
+            Assert.IsGreaterThan(10000, requiredEvents, $"Expected the number of required " +
+                $"events to be at least 10,000, but was actually '{requiredEvents}'");
+            Assert.IsLessThan(1000000, requiredEvents, $"Expected the number of required " +
+                $"events to be less than 1,000,000, but was actually '{requiredEvents}'");
+            // At least one share message must have been sent with valid XML.
+            // The exact count is not asserted: sharing is probabilistic and the
+            // send is asynchronous, so a second batch can occasionally fill
+            // while the first send is still in flight (this previously caused
+            // intermittent "expected 1, was 2" failures under load).
+            Assert.IsGreaterThan(0, _httpHandler.SendCallCount, $"Expected at least " +
+                $"one share message to be sent, but none were.");
+            Assert.IsGreaterThan(0, _xmlContent.Count, $"Expected at least one " +
+                $"share message body, but there were none.");
+        }
+
+        /// <summary>
+        /// Test that any data collected is sent when the element is disposed
+        /// of rather than being discarded.
+        /// Disposal is given no time bound, because the subject is that the
+        /// queued entry is sent and not how soon the runner gets round to it.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_SendOnCleanup()
+        {
+            // Arrange
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, 2, 4, _tracker.Object, Timeout.Infinite);
+            element.AddPipeline(_pipeline.Object);
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            element.Process(data.Object);
+
+            // No data should be being sending yet.
+            Assert.IsNull(element.SendDataTask);
+            _httpHandler.VerifySendCalled(0);
+
+            // Dispose of the element - this should trigger sending remaining
+            // data. Disposal waits for the send, so nothing here waits on a
+            // clock.
+            element.Dispose();
+
+            // Assert
+            // Check that one HTTP message was sent during cleanup.
+            _httpHandler.VerifySendCalled(1);
+        }
+
+        /// <summary>
+        /// Issue #224 regression: disposing a share usage element that was never
+        /// used (no Process call) must NOT attempt a network POST and must NOT log
+        /// an error - even when the transport would fail (offline / DNS failure).
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_NoSendOnCleanup_WhenNothingProcessed()
+        {
+            // Arrange - share usage element, but never call Process(...).
+            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(),
+                new List<KeyValuePair<string, string>>());
+
+            // Simulate an offline machine: any send throws like the reported
+            // SocketException 11004 / HttpRequestException (devices-v4.51degrees.com:443).
+            _httpHandler.SetupResponse(_ =>
+                throw new HttpRequestException(
+                    "simulated DNS failure (devices-v4.51degrees.com:443)"));
+
+            // Act - dispose without any usage.
+            _shareUsageElement.Dispose();
+            // Allow any (erroneously) started background task to run.
+            Thread.Sleep(200);
+
+            // Assert - no POST attempted and no error logged.
+            _httpHandler.VerifySendCalled(0);
+            _logger.AssertMaxErrors(0);
+        }
+
+        /// <summary>
+        /// Issue #224 regression: even when a background flush is triggered with an
+        /// empty queue (e.g. a race where the queue was already drained), no empty
+        /// payload should be sent.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_NoSend_WhenQueueEmpty()
+        {
+            // Arrange.
+            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(),
+                new List<KeyValuePair<string, string>>());
+
+            // Act - force a send attempt with an empty queue via dispose.
+            _shareUsageElement.Dispose();
+            Thread.Sleep(200);
+
+            // Assert - nothing in the queue => nothing sent.
+            _httpHandler.VerifySendCalled(0);
+            Assert.IsEmpty(_xmlContent,
+                "No XML document should have been produced for an empty queue.");
+        }
+
+        /// <summary>
+        /// Guard test: the fix must NOT regress the real flush-on-dispose behaviour.
+        /// When data WAS processed, disposing must still send exactly one message.
+        /// (Equivalent intent to ShareUsageElement_SendOnCleanup; kept explicit so
+        /// the #224 fix is verified end-to-end.)
+        /// Disposal is given no time bound, because the subject is that the
+        /// queued entry is sent and not how soon the runner gets round to it.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_StillSendsOnCleanup_WhenDataProcessed()
+        {
+            // Arrange.
+            var element = new QueueOpenShareUsageElement(
+                _logger, _httpClient, 2, 100, _tracker.Object, Timeout.Infinite);
+            element.AddPipeline(_pipeline.Object);
+
+            var evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act - one item processed (below MinEntriesPerMessage so nothing sent yet).
+            element.Process(data.Object);
+            _httpHandler.VerifySendCalled(0);
+
+            // Disposal waits for the send, so nothing here waits on a clock.
+            element.Dispose();
+
+            // Assert - the queued item is flushed exactly once on dispose.
+            _httpHandler.VerifySendCalled(1);
+        }
+
+        /// <summary>
+        /// Issue #224 reproduction. This is the exact failure from the report:
+        /// a pipeline that was never used still triggers a usage-sharing send
+        /// with an EMPTY queue. On a machine that cannot reach the endpoint the
+        /// POST fails and the transport throws (the AggregateException wrapping
+        /// SocketException 11004 "The requested name is valid, but no data of the
+        /// requested type was found. (devices-v4.51degrees.com:443)").
+        ///
+        /// The send path is invoked directly here (this is what dispose does
+        /// internally via TrySendData) so the exception surfaces instead of being
+        /// swallowed and logged. This bypasses the dispose-time guard so the test
+        /// pins the behaviour of the send method itself:
+        ///   - WITHOUT the fix: BuildAndSendXmlAsync POSTs an empty &lt;Devices/&gt;
+        ///     document and the await rethrows the transport exception (test fails).
+        ///   - WITH the fix:    BuildAndSendXmlAsync skips the empty send, so it
+        ///     completes without throwing and never touches the network.
+        /// </summary>
+        [TestMethod]
+        public async Task ShareUsageElement_EmptyQueue_DoesNotThrowOrSend()
+        {
+            // Arrange - element with an empty evidence queue (nothing processed).
+            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(),
+                new List<KeyValuePair<string, string>>());
+
+            // Simulate the offline / DNS-failure machine from the issue: any
+            // attempt to send throws exactly like the reported failure.
+            _httpHandler.SetupResponse(_ =>
+                throw new HttpRequestException(
+                    "The requested name is valid, but no data of the requested " +
+                    "type was found. (devices-v4.51degrees.com:443)"));
+
+            // Act - invoke the send path directly with an empty queue. Without the
+            // fix this builds and POSTs an empty document, and awaiting the task
+            // rethrows the transport exception (reproducing the issue).
+            var buildAndSend = (Task)_shareUsageElement.GetType()
+                .GetMethod("BuildAndSendXmlAsync",
+                    BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(_shareUsageElement, null);
+            await buildAndSend;
+
+            // Assert - with the fix the send is skipped: no exception was thrown
+            // (we reached this line) and no network call was made.
+            _httpHandler.VerifySendCalled(0);
+        }
+
+        /// <summary>
+        /// Test that the ShareUsageElement will log a warning if errors occur when sending
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_LogErrors()
+        {
+            // Arrange
+            _httpHandler.SetupResponse(request =>
+                new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Wait for the consumer task to finish.
+            Assert.IsNotNull(_shareUsageElement.SendDataTask,
+                "SendDataTask should not be null after processing evidence");
+            var completed = _shareUsageElement.SendDataTask.Wait(30000);
+            Assert.IsTrue(completed,
+                $"SendDataTask did not complete within 30000ms. Task status: {_shareUsageElement.SendDataTask.Status}");
+
+            // Assert
+            // Check that a warning was logged.
+            Assert.AreEqual(1, _logger.WarningEntries.Count());
+            Assert.StartsWith("Failure sending usage data", _logger.WarningEntries.First());
+            Console.WriteLine(_logger.WarningEntries.First());
+        }
+
+        /// <summary>
+        /// A refused message is logged with the status code and the content
+        /// of the response, to help find why it was refused.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_LogErrors_StatusCodeAndContent()
+        {
+            const string refusal = "The usage data was refused.";
+            _httpHandler.SetupResponse(request =>
+                new HttpResponseMessage(
+                    System.Net.HttpStatusCode.InternalServerError)
+                {
+                    Content = new StringContent(refusal),
+                });
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            var data = MockFlowData.CreateFromEvidence(
+                new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                },
+                false);
+
+            _shareUsageElement.Process(data.Object);
+            WaitForSendDataTask();
+
+            var warning = _logger.WarningEntries.Single(
+                w => w.StartsWith("Failure sending usage data"));
+            StringAssert.Contains(warning, "500");
+            StringAssert.Contains(warning, refusal);
+        }
+
+        /// <summary>
+        /// The message is one Devices element holding a Device element for
+        /// each request shared.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_Message_DevicesHoldsADevicePerEntry()
+        {
+            CreateShareUsage(1, 2, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            foreach (var ip in new[] { "1.2.3.4", "5.6.7.8" })
+            {
+                var data = MockFlowData.CreateFromEvidence(
+                    new Dictionary<string, object>()
+                    {
+                        { Core.Constants.EVIDENCE_CLIENTIP_KEY, ip },
+                    },
+                    false);
+                _shareUsageElement.Process(data.Object);
+            }
+            WaitForSendDataTask();
+
+            Assert.HasCount(1, _xmlContent);
+            var root = System.Xml.Linq.XDocument.Parse(_xmlContent[0]).Root;
+            Assert.AreEqual("Devices", root.Name.LocalName);
+            CollectionAssert.AreEqual(
+                new[] { "Device", "Device" },
+                root.Elements().Select(e => e.Name.LocalName).ToArray());
+        }
+
+        /// <summary>
+        /// Test that the ShareUsageElement does not share usage if the evidence
+        /// contains any of the configured key value pairs.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_IgnoreOnEvidence()
+        {
+            // Arrange
+            // Note: SetupResponse is already configured in Init(), no need to override for OK response
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(),
+                new List<KeyValuePair<string, string>>()
+                {
+                    new KeyValuePair<string, string>("header.User-Agent", "Azure Traffic Manager Endpoint Monitor")
+                });
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                { "header.User-Agent", "Azure Traffic Manager Endpoint Monitor" }
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Check that the consumer task did not start.
+            Assert.IsNull(_shareUsageElement.SendDataTask);
+
+            // Assert
+            // Check that no HTTP messages were sent.
+            _httpHandler.VerifySendCalled(0);
+        }
+
+        /// <summary>
+        /// Test that the ignore filter is applied when the element is
+        /// configured to share all evidence.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_IgnoreOnEvidence_ShareAllEvidence()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(),
+                new List<KeyValuePair<string, string>>()
+                {
+                    new KeyValuePair<string, string>("header.User-Agent", "Azure Traffic Manager Endpoint Monitor")
+                },
+                shareAll: true);
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                { "header.User-Agent", "Azure Traffic Manager Endpoint Monitor" }
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Check that the consumer task did not start.
+            Assert.IsNull(_shareUsageElement.SendDataTask);
+
+            // Assert
+            // Check that no HTTP messages were sent.
+            _httpHandler.VerifySendCalled(0);
+        }
+
+        /// <summary>
+        /// Test that a request which does not match the ignore filter is
+        /// still shared when the element is configured to share all
+        /// evidence. This guards the opposite direction to
+        /// <see cref="ShareUsageElement_IgnoreOnEvidence_ShareAllEvidence"/>:
+        /// applying the filter must not suppress everything.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_ShareAllEvidence_FilterDoesNotMatch()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(),
+                new List<KeyValuePair<string, string>>()
+                {
+                    new KeyValuePair<string, string>("header.User-Agent", "Azure Traffic Manager Endpoint Monitor")
+                },
+                shareAll: true);
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                { "header.User-Agent", "iPhone" }
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that one and only one HTTP message was sent.
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+            Assert.Contains("iPhone", _xmlContent[0]);
+        }
+
+        /// <summary>
+        /// Check that the usage element can handle invalid xml chars.
+        /// </summary>
+        /// <param name="config"></param>
+        [TestMethod]
+        public void ShareUsageElement_BadSchema()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                // Contains hidden character at the end of the string.
+                // (0x0018) - Cancel control character
+                { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, "iPhone" },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that one and only one HTTP message was sent.
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+
+            // Validate that the XML is well formed by passing it through a reader
+            using (XmlReader xr = XmlReader.Create(new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+            // Check that the expected values are populated.
+            Assert.Contains(@"iPhone\x0018", _xmlContent[0]);
+            Assert.Contains("<BadSchema>true</BadSchema>", _xmlContent[0]);
+
+        }
+
+        /// <summary>
+        /// Sends one message built from the evidence, sharing all of it,
+        /// and returns the XML after checking it is well formed and still
+        /// holds the user agent that sits beside the evidence under test.
+        /// </summary>
+        private string ShareAllAndGetMessage(
+            params KeyValuePair<string, object>[] evidence)
+        {
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(),
+                new List<KeyValuePair<string, string>>(), shareAll: true);
+
+            var evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, "iPhone" },
+            };
+            foreach (var pair in evidence)
+            {
+                evidenceData.Add(pair.Key, pair.Value);
+            }
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            _shareUsageElement.Process(data.Object);
+            WaitForSendDataTask();
+
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+            using (XmlReader xr = XmlReader.Create(
+                new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+            Assert.Contains("<ClientIP>1.2.3.4</ClientIP>", _xmlContent[0]);
+            Assert.Contains("iPhone", _xmlContent[0]);
+            return _xmlContent[0];
+        }
+
+        /// <summary>
+        /// A key that starts with a dot has an empty prefix, so the field
+        /// after the dot names the element and the message is still written.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_KeyStartingWithDot_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(".dot", "w"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains("<dot>w</dot>", xml);
+            Assert.Contains("kept", xml);
+            Assert.DoesNotContain("BadSchema", xml);
+        }
+
+        /// <summary>
+        /// A character outside the Basic Multilingual Plane (two UTF-16 code
+        /// units) is valid and is kept beside a control character that is
+        /// replaced.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_SurrogatePairThenControlChar_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(
+                    "query.51D_Emoji", "a\U0001F600\u0001b"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains("a\U0001F600\\x0001b", xml);
+            Assert.Contains("kept", xml);
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
+        }
+
+        /// <summary>
+        /// U+FFFE and U+FFFF are not allowed in XML 1.0 (section 2.2) so each
+        /// is replaced by its four digit code and the message is written.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_NonCharacters_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(
+                    "query.51D_Fffe", "a\uFFFEb\uFFFFc"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains(@"a\xfffeb\xffffc", xml);
+            Assert.Contains("kept", xml);
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
+        }
+
+        /// <summary>
+        /// A surrogate with no partner is not allowed in XML 1.0 and is
+        /// replaced by its four digit code, so the message is written.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_LoneSurrogate_MessageWritten()
+        {
+            var xml = ShareAllAndGetMessage(
+                new KeyValuePair<string, object>(
+                    "query.51D_Lone", "a\uD83Db"),
+                new KeyValuePair<string, object>("query.51D_Other", "kept"));
+
+            Assert.Contains(@"a\xd83db", xml);
+            Assert.Contains("kept", xml);
+            Assert.Contains("<BadSchema>true</BadSchema>", xml);
+        }
+
+        /// <summary>
+        /// Test that the share usage build can handle invalid configuration for
+        /// the ignoreDataEvidenceFilter.
+        /// </summary>
+        [TestMethod]
+        [DataRow("user-agent=iPhone")]
+        [DataRow("user-agent,iPhone")]
+        [DataRow("test,iPhone,block")]
+        public void ShareUsageBuilder_IgnoreData_InvalidFilter(string config)
+        {
+            var logger = new TestLogger();
+
+            ShareUsageBuilder builder = new ShareUsageBuilder(new TestLoggerFactory(), logger, _httpClient);
+            ShareUsageElement element = builder.SetSharePercentage(1)
+                .SetMinimumEntriesPerMessage(1)
+                .SetRepeatEvidenceIntervalMinutes(1)
+                .SetIgnoreFlowDataEvidenceFilter(config)
+                .Build();
+
+            Assert.IsGreaterThan(0, logger.WarningEntries.Count());
+            Assert.AreEqual(0, logger.ErrorEntries.Count());
+        }
+
+        /// <summary>
+        /// Test valid configuration for the ignoreDataEvidenceFilter.
+        /// </summary>
+        [TestMethod]
+        [DataRow("user-agent:iPhone")]
+        [DataRow("user-agent:iPhone,host:bacon.com")]
+        [DataRow("user-agent:iPhone,host:bacon.com,license:ABCDEF")]
+        public void ShareUsageBuilder_IgnoreData_ValidFilter(string config)
+        {
+            var logger = new TestLogger();
+            
+            ShareUsageBuilder builder = new ShareUsageBuilder(new TestLoggerFactory(), logger, _httpClient);
+            ShareUsageElement element = builder.SetSharePercentage(1)
+                .SetMinimumEntriesPerMessage(1)
+                .SetRepeatEvidenceIntervalMinutes(1)
+                .SetIgnoreFlowDataEvidenceFilter(config)
+                .Build();
+
+            Assert.AreEqual(0, logger.WarningEntries.Count());
+            Assert.AreEqual(0, logger.ErrorEntries.Count());
+        }
+
+        /// <summary>
+        /// Test that a filter value containing colons is parsed in full.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageBuilder_IgnoreData_ValueWithColons()
+        {
+            var logger = new TestLogger();
+
+            TestShareUsageBuilder builder = new TestShareUsageBuilder(new TestLoggerFactory(), logger, _httpClient);
+            builder.SetIgnoreFlowDataEvidenceFilter(
+                "header.User-Agent:Pingdom.com_bot_version_1.4_(http://www.pingdom.com/)");
+
+            Assert.AreEqual(0, logger.WarningEntries.Count());
+            Assert.HasCount(1, builder.Filter);
+            Assert.AreEqual("header.User-Agent", builder.Filter[0].Key);
+            Assert.AreEqual(
+                "Pingdom.com_bot_version_1.4_(http://www.pingdom.com/)",
+                builder.Filter[0].Value);
+        }
+
+        /// <summary>
+        /// Test that whitespace around entries and keys is ignored, so a
+        /// filter written with spaces after the commas still matches.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageBuilder_IgnoreData_WhitespaceAroundEntries()
+        {
+            var logger = new TestLogger();
+
+            TestShareUsageBuilder builder = new TestShareUsageBuilder(new TestLoggerFactory(), logger, _httpClient);
+            builder.SetIgnoreFlowDataEvidenceFilter(
+                " header.User-Agent :Azure Traffic Manager Endpoint Monitor , header.Other:value ");
+
+            Assert.AreEqual(0, logger.WarningEntries.Count());
+            Assert.HasCount(2, builder.Filter);
+            Assert.AreEqual("header.User-Agent", builder.Filter[0].Key);
+            Assert.AreEqual(
+                "Azure Traffic Manager Endpoint Monitor",
+                builder.Filter[0].Value);
+            Assert.AreEqual("header.Other", builder.Filter[1].Key);
+            Assert.AreEqual("value", builder.Filter[1].Value);
+        }
+
+        /// <summary>
+        /// Exposes the parsed ignore filter for assertions.
+        /// </summary>
+        private class TestShareUsageBuilder : ShareUsageBuilder
+        {
+            public TestShareUsageBuilder(
+                ILoggerFactory loggerFactory,
+                ILogger logger,
+                HttpClient httpClient)
+                : base(loggerFactory, logger, httpClient)
+            {
+            }
+
+            public List<KeyValuePair<string, string>> Filter => IgnoreDataEvidenceFilter;
+        }
+
+        /// <summary>
+        /// Test that the ShareUsageElement generates a session id if one is not
+        /// contained in the evidence and adds it to the results.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_SessionIdAndSequence_None()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            // The Pipeline holds the Sequence Element, so it uses the
+            // session id and sequence, and they are shared.
+            _pipeline.Setup(p => p.EvidenceKeyFilter)
+                .Returns(_sequenceElement.EvidenceKeyFilter);
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+            };
+
+            var pipeline = new TestPipeline(_pipeline.Object);
+            var data = new TestFlowData(new Mock<ILogger<TestFlowData>>().Object, pipeline);
+            data.AddEvidence(evidenceData);
+
+            // Act
+            _sequenceElement.Process(data);
+            _shareUsageElement.Process(data);
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that one and only one HTTP message was sent
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+
+            // Validate that the XML is well formed by passing it through a reader
+            using (XmlReader xr = XmlReader.Create(new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+
+            // Check that the expected values are populated.
+            Assert.Contains("<SessionId>", _xmlContent[0]);
+            Assert.Contains("<Sequence>1</Sequence>", _xmlContent[0]);
+            Assert.IsTrue(data.GetEvidence().AsDictionary().ContainsKey(Constants.EVIDENCE_SESSIONID));
+            Assert.IsTrue(data.GetEvidence().AsDictionary().ContainsKey(Constants.EVIDENCE_SEQUENCE));
+        }
+
+        /// <summary>
+        /// Test that if a session id and sequence exists in the evidence the 
+        /// ShareUsageElement persists the session id and increments the 
+        /// sequence.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_SessionIdAndSequence_Existing()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+            // The Pipeline holds the Sequence Element, so it uses the
+            // session id and sequence, and they are shared.
+            _pipeline.Setup(p => p.EvidenceKeyFilter)
+                .Returns(_sequenceElement.EvidenceKeyFilter);
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                { Constants.EVIDENCE_SESSIONID, "abcdefg-hijklmn-opqrst-uvwyxz" },
+                { Constants.EVIDENCE_SEQUENCE, "2" },
+            };
+
+            var pipeline = new TestPipeline(_pipeline.Object);
+            var data = new TestFlowData(new Logger<TestFlowData>(new LoggerFactory()), pipeline, new Evidence(new Logger<Evidence>(new LoggerFactory())));
+            data.AddEvidence(evidenceData);
+
+            // Act
+            _sequenceElement.Process(data);
+            _shareUsageElement.Process(data);
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that one and only one HTTP message was sent
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+
+            // Validate that the XML is well formed by passing it through a reader
+            using (XmlReader xr = XmlReader.Create(new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+
+            // Check that the expected values are populated.
+            Assert.Contains("<SessionId>abcdefg-hijklmn-opqrst-uvwyxz</SessionId>", _xmlContent[0]);
+            Assert.Contains("<Sequence>3</Sequence>", _xmlContent[0]);
+            Assert.IsTrue(data.GetEvidence().AsDictionary().ContainsKey(Constants.EVIDENCE_SESSIONID));
+            Assert.IsTrue(data.GetEvidence().AsDictionary().ContainsKey(Constants.EVIDENCE_SEQUENCE));
+        }
+
+        /// <summary>
+        /// Test that the share all function causes all evidence to be
+        /// shared, apart from cookies whose names do not start 51D_.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_ShareAll()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, 
+                new List<string>() { "notblocked" }, 
+                new List<string>(), 
+                new List<KeyValuePair<string, string>>(), true);
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_HTTPHEADER_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "notblocked", "abc" },
+                { Core.Constants.EVIDENCE_QUERY_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "somevalue", "123" },
+                { Core.Constants.EVIDENCE_COOKIE_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "mycookie", "zyx" },
+                { Core.Constants.EVIDENCE_COOKIE_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "51D_mycookie", "wvu" },
+                { "someprefix" + Core.Constants.EVIDENCE_SEPERATOR + "anothervalue", "987" },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that one and only one HTTP message was sent
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+
+            // Validate that the XML is well formed by passing it through a reader
+            using (XmlReader xr = XmlReader.Create(new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+            // Check that the expected values are populated.
+            Assert.Contains("<header Name=\"notblocked\"><![CDATA[abc]]></header>", _xmlContent[0]);
+            Assert.DoesNotContain("<query Name=\"somevalue\">", _xmlContent[0]);
+            Assert.DoesNotContain("zyx", _xmlContent[0]);
+            Assert.Contains("<cookie Name=\"51D_mycookie\"><![CDATA[wvu]]></cookie>", _xmlContent[0]);
+            Assert.Contains("<someprefix Name=\"anothervalue\"><![CDATA[987]]></someprefix>", _xmlContent[0]);
+        }
+
+        /// <summary>
+        /// Test that a null value for the 'included query string
+        /// parameters', which has no effect, leaves a query parameter
+        /// that no Flow Element in the Pipeline uses unshared.
+        /// </summary>
+        /// <param name="prefix">
+        /// The prefix for the evidence.
+        /// </param>
+        /// <param name="shareAll">
+        /// True if all evidence should be shared, or false to limit evidence.
+        /// </param>
+        /// <param name="expected">
+        /// True if the header values are expected to be present in the share usage content otherwise false.
+        /// </param>
+        [TestMethod]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, false)]
+        [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, false, true)]
+        [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, true, false)]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, false)]
+        [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, true, true)]
+        [DataRow(Core.Constants.EVIDENCE_COOKIE_PREFIX, false, false)]
+        public void ShareUsageElement_NullQueryWhitelist(string prefix, bool shareAll, bool expected)
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1,
+                new List<string>(), null,
+                new List<KeyValuePair<string, string>>(),
+                shareAll);
+
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { prefix + Core.Constants.EVIDENCE_SEPERATOR + "somevalue", "123" },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that one and only one HTTP message was sent
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+
+            // Validate that the XML is well formed by passing it through a reader
+            using (XmlReader xr = XmlReader.Create(new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+            // Check that the expected values are populated or not.
+            Assert.AreEqual(expected, _xmlContent[0].Contains(
+                $"<{prefix} Name=\"somevalue\"><![CDATA[123]]></{prefix}>"));
+        }
+
+        /// <summary>
+        /// A test that checks that share usage of other fields happens when the User-Agent is missing.
+        /// </summary>
+        /// <param name="prefix">
+        /// The prefix for the evidence.
+        /// </param>
+        /// <param name="shareAll">
+        /// True if all evidence should be shared, or false to limit evidence.
+        /// </param>
+        /// <param name="expected">
+        /// True if the header values are expected to be present in the share usage content otherwise false.
+        /// </param>
+        [TestMethod]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, false, false)]
+        [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, false, true)]
+        [DataRow(Core.Constants.EVIDENCE_QUERY_PREFIX, true, false)]
+        [DataRow(Core.Constants.EVIDENCE_HTTPHEADER_PREFIX, true, true)]
+        public void ShareUsageElement_MissingUserAgent(string prefix, bool shareAll, bool expected)
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1,
+                new List<string>(), null,
+                new List<KeyValuePair<string, string>>());
+
+            var evidenceData = new Dictionary<string, object>()
+            {
+                { prefix + Core.Constants.EVIDENCE_SEPERATOR + "sec-ch-ua", @"""Google Chrome"";v=""143"", ""Chromium"";v=""143"", ""Not A(Brand"";v=""24""" },
+                { prefix + Core.Constants.EVIDENCE_SEPERATOR + "sec-ch-ua-mobile", "?0" },
+                { prefix + Core.Constants.EVIDENCE_SEPERATOR + "sec-ch-ua-platform", @"""Windows""" },
+                { prefix + Core.Constants.EVIDENCE_SEPERATOR + "sec-ch-ua-platform-version", @"""10.0.0""" },
+                { prefix + Core.Constants.EVIDENCE_SEPERATOR + "sec-ch-ua-model", @"""""" },
+                { prefix + Core.Constants.EVIDENCE_SEPERATOR + "sec-ch-ua-full-version-list", @"""Google Chrome"";v=""143.0.7499.170"", ""Chromium"";v=""143.0.7499.170"", ""Not A(Brand"";v=""24.0.0.0""" }
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that the HTTP message was sent and the headers were or weren't present.
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+            foreach (var pair in evidenceData)
+            {
+                var key = pair.Key.Substring(pair.Key.IndexOf('.') + 1);
+                var value = pair.Value;
+                Assert.AreEqual(expected, _xmlContent[0].Contains(
+                    $"<{prefix} Name=\"{key}\"><![CDATA[{value}]]></{prefix}>"),
+                    $"Expected '{pair.Key}' to be present");
+            }
+        }
+
+        /// <summary>
+        /// Helper to create a share usage instance with explicit queue size control.
+        /// </summary>
+        private void CreateShareUsage(double sharePercentage,
+            int minimumEntriesPerMessage,
+            int maximumQueueSize,
+            int interval,
+            List<string> blockedHeaders,
+            List<string> includedQueryStringParams,
+            List<KeyValuePair<string, string>> ignoreDataEvidenceFiler)
+        {
+            _sequenceElement = new SequenceElement(new Mock<ILogger<SequenceElement>>().Object);
+            _sequenceElement.AddPipeline(_pipeline.Object);
+            _shareUsageElement = new ShareUsageElement(
+                _logger,
+                _httpClient,
+                sharePercentage,
+                minimumEntriesPerMessage,
+                maximumQueueSize,
+                100,
+                100,
+                interval,
+                true,
+                "http://51Degrees.com/test",
+                blockedHeaders,
+                includedQueryStringParams,
+                ignoreDataEvidenceFiler,
+                Engines.Constants.DEFAULT_ASP_COOKIE_NAME,
+                _tracker.Object,
+                false);
+            _shareUsageElement.AddPipeline(_pipeline.Object);
+        }
+
+        /// <summary>
+        /// When the queue is full, new entries are discarded and one warning
+        /// is logged for each time the queue fills, never one for each entry
+        /// discarded. Once there is room again a new entry is accepted, and
+        /// the next time the queue fills is warned about again. A failed
+        /// send first pauses sending, so no send takes entries while the
+        /// test fills the queue, and the result does not depend on thread
+        /// timing.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_QueueFullRecovery()
+        {
+            _httpHandler.SetupResponse(request => new HttpResponseMessage(
+                System.Net.HttpStatusCode.InternalServerError));
+            var element = new PausedQueueElement(
+                _logger, _httpClient, _tracker.Object);
+            element.AddPipeline(_pipeline.Object);
+            element.Enqueue("10.6.9.1");
+            element.StartSending();
+            var paused = System.Diagnostics.Stopwatch.StartNew();
+            while (_logger.WarningEntries.Any(w => w.Contains("paused")) == false &&
+                paused.Elapsed < TimeSpan.FromSeconds(10))
+            {
+                Thread.Sleep(10);
+            }
+            Assert.IsTrue(_logger.WarningEntries.Any(w => w.Contains("paused")),
+                "The failed send did not pause sending.");
+
+            // The queue fills for the first time.
+            for (int i = 0; i < 20; i++)
+            {
+                element.Enqueue($"10.6.0.{i}");
+            }
+            for (int i = 0; i < 5; i++)
+            {
+                ProcessRequest(element, $"10.6.1.{i}");
+            }
+            Assert.AreEqual(20, element.Queued);
+            Assert.AreEqual(1, QueueFullWarnings(),
+                "Five entries discarded while the queue was full should " +
+                "give one warning.");
+
+            // There is room again, so a new entry is accepted.
+            element.Drain();
+            ProcessRequest(element, "10.6.2.0");
+            Assert.AreEqual(1, element.Queued,
+                "An entry was not accepted once there was room.");
+
+            // The queue fills for the second time.
+            for (int i = 1; i < 20; i++)
+            {
+                element.Enqueue($"10.6.3.{i}");
+            }
+            for (int i = 0; i < 5; i++)
+            {
+                ProcessRequest(element, $"10.6.4.{i}");
+            }
+            Assert.AreEqual(2, QueueFullWarnings(),
+                "Each time the queue fills should give one warning.");
+
+            element.Dispose();
+            _logger.AssertMaxErrors(0);
+            Assert.AreEqual(1, _httpHandler.SendCallCount,
+                "A send was made while sending was paused.");
+        }
+
+        /// <summary>
+        /// Opens the queue, so a test can fill it directly. The queue holds
+        /// 20 entries, and one failed send pauses sending for 60 seconds.
+        /// </summary>
+        private class PausedQueueElement : ShareUsageElement
+        {
+            public PausedQueueElement(
+                ILogger<ShareUsageBase> logger,
+                HttpClient httpClient,
+                ITracker tracker)
+                : base(logger, httpClient, 1, 10, 20, 100, 100, 1, true,
+                      "http://51Degrees.com/test", new List<string>(),
+                      new List<string>(),
+                      new List<KeyValuePair<string, string>>(),
+                      Engines.Constants.DEFAULT_ASP_COOKIE_NAME, tracker, false,
+                      failuresToEnterRecovery: 1,
+                      failuresWindowSeconds: 100,
+                      initialRecoveryDelaySeconds: 60,
+                      maxRecoveryDelaySeconds: 60,
+                      recoveryMultiplier: 2)
+            {
+            }
+
+            public void Enqueue(string clientIp) =>
+                EvidenceCollection.Add(new ShareUsageData() { ClientIP = clientIp });
+
+            public int Queued => EvidenceCollection.Count;
+
+            public void StartSending() => TrySendData();
+
+            public void Drain()
+            {
+                while (EvidenceCollection.TryTake(out _))
+                {
+                }
+            }
+        }
+
+        private int QueueFullWarnings() =>
+            _logger.WarningEntries.Count(w => w.Contains("is full"));
+
+        private static void ProcessRequest(ShareUsageElement element, string ip)
+        {
+            var data = MockFlowData.CreateFromEvidence(
+                new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, ip },
+                    { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, $"TestAgent/{ip}" },
+                },
+                false);
+            element.Process(data.Object);
+        }
+
+        /// <summary>
+        /// Test that when the HTTP endpoint fails, the queue still drains
+        /// on subsequent requests and eventually recovers when the endpoint
+        /// comes back.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_HttpFailureRecovery()
+        {
+            // Arrange
+            // First N calls fail, then succeed
+            int callCount = 0;
+            int failUntil = 3;
+            _httpHandler.SetupResponse(request =>
+            {
+                var count = Interlocked.Increment(ref callCount);
+                if (count <= failUntil)
+                {
+                    throw new HttpRequestException("Simulated network failure");
+                }
+                StoreRequestXml(request);
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
+                };
+            });
+
+            CreateShareUsage(
+                sharePercentage: 1,
+                minimumEntriesPerMessage: 5,
+                maximumQueueSize: 20,
+                interval: 1,
+                blockedHeaders: new List<string>(),
+                includedQueryStringParams: new List<string>(),
+                ignoreDataEvidenceFiler: new List<KeyValuePair<string, string>>());
+
+            // Act - send enough data to trigger multiple send attempts
+            for (int batch = 0; batch < 10; batch++)
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    int idx = batch * 5 + i;
+                    var evidenceData = new Dictionary<string, object>()
+                    {
+                        { Core.Constants.EVIDENCE_CLIENTIP_KEY, $"10.0.{idx / 256}.{idx % 256}" },
+                        { Core.Constants.EVIDENCE_HEADER_USERAGENT_KEY, $"TestAgent/{idx}" },
+                    };
+                    var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+                    _shareUsageElement.Process(data.Object);
+                }
+
+                // Wait for send task to complete between batches
+                if (_shareUsageElement.SendDataTask != null)
+                {
+                    _shareUsageElement.SendDataTask.Wait(10000);
+                }
+            }
+
+            // Assert
+            // Some calls failed but eventually sends succeeded
+            Assert.IsGreaterThan(failUntil,
+callCount, $"Expected more than {failUntil} HTTP attempts, got {callCount}");
+            Assert.IsNotEmpty(_xmlContent,
+                $"Expected successful sends after recovery, but got {_xmlContent.Count} XML batches");
+
+            Console.WriteLine($"Total HTTP attempts: {callCount}");
+            Console.WriteLine($"Failed attempts: {Math.Min(callCount, failUntil)}");
+            Console.WriteLine($"Successful XML batches: {_xmlContent.Count}");
+        }
+
+        /// <summary>
+        /// Test that an evidence value longer than the permitted maximum is
+        /// cut down to that maximum and marked as truncated in the XML.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_TruncatesLongValue()
+        {
+            // Arrange
+            CreateShareUsage(1, 1, 1, new List<string>(), new List<string>(), new List<KeyValuePair<string, string>>());
+
+            string longValue = new string('a', Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH + 100);
+            string expectedValue = "[TRUNCATED BY USAGE SHARING] " +
+                new string('a', Constants.SHARE_USAGE_MAX_EVIDENCE_LENGTH);
+            Dictionary<string, object> evidenceData = new Dictionary<string, object>()
+            {
+                { Core.Constants.EVIDENCE_CLIENTIP_KEY, "1.2.3.4" },
+                { Core.Constants.EVIDENCE_HTTPHEADER_PREFIX + Core.Constants.EVIDENCE_SEPERATOR + "user-agent", longValue },
+            };
+            var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+
+            // Act
+            _shareUsageElement.Process(data.Object);
+            // Wait for the consumer task to finish.
+            WaitForSendDataTask();
+
+            // Assert
+            // Check that one and only one HTTP message was sent.
+            _httpHandler.VerifySendCalled(1);
+            Assert.HasCount(1, _xmlContent);
+
+            // Validate that the XML is well formed by passing it through a reader
+            using (XmlReader xr = XmlReader.Create(new StringReader(_xmlContent[0])))
+            {
+                while (xr.Read()) { }
+            }
+            // Check that the value was truncated and marked as such.
+            Assert.Contains($"<header Name=\"user-agent\"><![CDATA[{expectedValue}]]></header>", _xmlContent[0]);
+            Assert.DoesNotContain(longValue, _xmlContent[0]);
+        }
+
+        /// <summary>
+        /// Test that a usage sharing message never holds more than the
+        /// maximum number of entries, which is twice the configured minimum
+        /// entries per message, even when many more entries are queued.
+        /// </summary>
+        [TestMethod]
+        public void ShareUsageElement_MaximumEntriesPerMessage()
+        {
+            // Arrange
+            int minimumEntries = 2;
+            int maximumEntries = minimumEntries * 2;
+            int sendCount = 0;
+            _httpHandler.SetupResponse(request =>
+            {
+                // Slow the first send so that the queue fills up while
+                // it is in flight.
+                if (Interlocked.Increment(ref sendCount) == 1)
+                {
+                    Thread.Sleep(300);
+                }
+                StoreRequestXml(request);
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent("<empty />", Encoding.UTF8, "application/xml"),
+                };
+            });
+
+            CreateShareUsage(
+                sharePercentage: 1,
+                minimumEntriesPerMessage: minimumEntries,
+                maximumQueueSize: 20,
+                interval: 1,
+                blockedHeaders: new List<string>(),
+                includedQueryStringParams: new List<string>(),
+                ignoreDataEvidenceFiler: new List<KeyValuePair<string, string>>());
+
+            // Act
+            // Queue three times the maximum so that both the first send and
+            // the final flush on dispose have more entries available than
+            // will fit in one message.
+            for (int i = 0; i < maximumEntries * 3; i++)
+            {
+                var evidenceData = new Dictionary<string, object>()
+                {
+                    { Core.Constants.EVIDENCE_CLIENTIP_KEY, $"1.2.3.{i}" },
+                };
+                var data = MockFlowData.CreateFromEvidence(evidenceData, false);
+                _shareUsageElement.Process(data.Object);
+            }
+            // Wait for the first send to finish, then dispose to flush
+            // the remaining entries.
+            WaitForSendDataTask();
+            _shareUsageElement.Dispose();
+            Thread.Sleep(200);
+
+            // Assert
+            Assert.IsGreaterThanOrEqualTo(2, _xmlContent.Count,
+                $"Expected at least 2 messages, but got {_xmlContent.Count}");
+            foreach (var xml in _xmlContent)
+            {
+                Assert.IsLessThanOrEqualTo(maximumEntries, CountDeviceNodes(xml),
+                    $"A message held more than {maximumEntries} entries");
+            }
+            // Disposal sends everything still queued, so every entry that
+            // was queued has been sent.
+            Assert.AreEqual(maximumEntries * 3,
+                _xmlContent.Sum(xml => CountDeviceNodes(xml)),
+                "Entries were left unsent on disposal");
+        }
+
+        /// <summary>
+        /// Helper method used to extract the XML data from an
+        /// HTTP request.
+        /// </summary>
+        /// <param name="request">
+        /// The <see cref="HttpRequestMessage"/> object from which to extract
+        /// the XML content.
+        /// </param>
+        private void StoreRequestXml(HttpRequestMessage request)
+        {
+            // Read the content bytes first to avoid stream disposal issues
+            var bytes = request.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
+            using (var memoryStream = new MemoryStream(bytes))
+            using (GZipStream decompressedStream =
+                new GZipStream(memoryStream, CompressionMode.Decompress, true))
+            using (StreamReader reader = new StreamReader(decompressedStream))
+            {
+                _xmlContent.Add(reader.ReadToEnd());
+            }
+        }
+
+        /// <summary>
+        /// Helper method to count the 'Device' entries in a usage sharing
+        /// XML message.
+        /// </summary>
+        /// <param name="xml">
+        /// The XML content of a usage sharing message.
+        /// </param>
+        private static int CountDeviceNodes(string xml)
+        {
+            int count = 0;
+            int index = xml.IndexOf("<Device>", StringComparison.Ordinal);
+            while (index >= 0)
+            {
+                count++;
+                index = xml.IndexOf("<Device>", index + 1, StringComparison.Ordinal);
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// Helper method to wait for the SendDataTask to complete with proper
+        /// timeout handling and exception checking.
+        /// </summary>
+        /// <param name="timeout">Optional timeout in milliseconds. Default is 30000ms.</param>
+        private void WaitForSendDataTask(int timeout = 30000)
+        {
+            Assert.IsNotNull(_shareUsageElement.SendDataTask,
+                "SendDataTask should not be null after processing evidence");
+
+            var completed = _shareUsageElement.SendDataTask.Wait(timeout);
+
+            // Build diagnostic message with all available information
+            var diagnostics = new List<string>();
+            diagnostics.Add($"Task Status: {_shareUsageElement.SendDataTask.Status}");
+            diagnostics.Add($"Task Completed: {completed}");
+            diagnostics.Add($"XML Content Count: {_xmlContent.Count}");
+
+            // Check for logged errors
+            var errors = _logger.ErrorEntries.ToList();
+            if (errors.Count > 0)
+            {
+                diagnostics.Add($"Logged Errors: {string.Join("; ", errors)}");
+            }
+
+            // Check for logged warnings
+            var warnings = _logger.WarningEntries.ToList();
+            if (warnings.Count > 0)
+            {
+                diagnostics.Add($"Logged Warnings: {string.Join("; ", warnings)}");
+            }
+
+            // Check if task is faulted
+            if (_shareUsageElement.SendDataTask.IsFaulted)
+            {
+                var exception = _shareUsageElement.SendDataTask.Exception;
+                diagnostics.Add($"Task Exception: {exception}");
+            }
+
+            Assert.IsTrue(completed,
+                $"SendDataTask did not complete within {timeout}ms. Diagnostics: {string.Join(" | ", diagnostics)}");
+
+            // Additional check: if task completed but errors were logged, fail with details including exceptions
+            if (errors.Count > 0)
+            {
+                // Get full error entries with exceptions for better diagnostics
+                var errorDetails = _logger.ExtendedEntries
+                    .Where(e => e.LogLevel == LogLevel.Error)
+                    .Select(e => $"Message: {e.Message}" + (e.Exception != null ? $" | Exception: {e.Exception}" : ""));
+                Assert.Fail($"SendDataTask completed but errors were logged: {string.Join("; ", errorDetails)}");
+            }
+        }
+
+    }
+}

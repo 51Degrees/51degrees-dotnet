@@ -1,0 +1,388 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+using System.Net;
+using FiftyOne.Pipeline.Core.Data;
+using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Engines.Data;
+using FiftyOne.Pipeline.Engines.FlowElements;
+using FiftyOne.Pipeline.Engines.Services;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+namespace FiftyOne.IpIntelligence.Shared
+{
+	/// <summary>
+	/// Abstract base class for properties relating to an IP.
+	/// This includes the network, and location.
+	/// </summary>
+	public abstract class IpIntelligenceData : AspectDataBase, IIpIntelligenceData
+	{
+		/// <summary>
+		/// Constructor.
+		/// </summary>
+		/// <param name="logger">
+		/// The logger for this instance to use.
+		/// </param>
+		/// <param name="pipeline">
+		/// The Pipeline this data instance has been created by.
+		/// </param>
+		/// <param name="engine">
+		/// The engine this data instance has been created by.
+		/// </param>
+		/// <param name="missingPropertyService">
+		/// The missing property service to use when a requested property
+		/// does not exist.
+		/// </param>
+		protected IpIntelligenceData(
+			ILogger<AspectDataBase> logger,
+			IPipeline pipeline,
+			IAspectEngine engine,
+			IMissingPropertyService missingPropertyService)
+			: base(logger, pipeline, engine, missingPropertyService) { }
+
+		/// <summary>
+		/// Dictionary of property value types, keyed on the string
+		/// name of the type.
+		/// </summary>
+		protected static readonly IReadOnlyDictionary<string, Type> PropertyTypes =
+			new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase)
+			{
+				{ "AccuracyRadiusMax", typeof(IAspectPropertyValue<int>) },
+				{ "AccuracyRadiusMin", typeof(IAspectPropertyValue<int>) },
+				{ "Areas", typeof(IAspectPropertyValue<WktString>) },
+				{ "Asn", typeof(IAspectPropertyValue<string>) },
+				{ "AsnName", typeof(IAspectPropertyValue<string>) },
+				{ "BrowserDiversity", typeof(IAspectPropertyValue<int>) },
+				{ "ConnectionType", typeof(IAspectPropertyValue<string>) },
+				{ "ContinentCode2", typeof(IAspectPropertyValue<string>) },
+				{ "ContinentGeoNameId", typeof(IAspectPropertyValue<string>) },
+				{ "ContinentName", typeof(IAspectPropertyValue<string>) },
+				{ "Country", typeof(IAspectPropertyValue<string>) },
+				{ "CountryCode", typeof(IAspectPropertyValue<string>) },
+				{ "CountryCode3", typeof(IAspectPropertyValue<string>) },
+				{ "CountryCodesGeographical", typeof(IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>) },
+				{ "CountryCodesPopulation", typeof(IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>) },
+				{ "CountryGeoNameId", typeof(IAspectPropertyValue<string>) },
+				{ "County", typeof(IAspectPropertyValue<string>) },
+				{ "CountyGeoNameId", typeof(IAspectPropertyValue<string>) },
+				{ "CurrencyCode", typeof(IAspectPropertyValue<string>) },
+				{ "DialCode", typeof(IAspectPropertyValue<string>) },
+				{ "HardwareDiversity", typeof(IAspectPropertyValue<int>) },
+				{ "HumanProbability", typeof(IAspectPropertyValue<int>) },
+				{ "Ip", typeof(IAspectPropertyValue<IPAddress>) },
+				{ "IpRangeEnd", typeof(IAspectPropertyValue<IPAddress>) },
+				{ "IpRangeStart", typeof(IAspectPropertyValue<IPAddress>) },
+				{ "IpV6", typeof(IAspectPropertyValue<IPAddress>) },
+				{ "IsBroadband", typeof(IAspectPropertyValue<bool>) },
+				{ "IsCellular", typeof(IAspectPropertyValue<bool>) },
+				{ "IsEu", typeof(IAspectPropertyValue<bool>) },
+				{ "IsHosted", typeof(IAspectPropertyValue<bool>) },
+				{ "Iso31662Lvl4", typeof(IAspectPropertyValue<string>) },
+				{ "Iso31662Lvl4SubdivisionOnly", typeof(IAspectPropertyValue<string>) },
+				{ "Iso31662Lvl8", typeof(IAspectPropertyValue<string>) },
+				{ "Iso31662Lvl8SubdivisionOnly", typeof(IAspectPropertyValue<string>) },
+				{ "IsProxy", typeof(IAspectPropertyValue<bool>) },
+				{ "IsPublicRouter", typeof(IAspectPropertyValue<bool>) },
+				{ "IsTor", typeof(IAspectPropertyValue<bool>) },
+				{ "IsVPN", typeof(IAspectPropertyValue<bool>) },
+				{ "LanguageCode", typeof(IAspectPropertyValue<string>) },
+				{ "Latitude", typeof(IAspectPropertyValue<float>) },
+				{ "LocationConfidence", typeof(IAspectPropertyValue<string>) },
+				{ "Longitude", typeof(IAspectPropertyValue<float>) },
+				{ "Mcc", typeof(IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>) },
+				{ "PlatformDiversity", typeof(IAspectPropertyValue<int>) },
+				{ "Region", typeof(IAspectPropertyValue<string>) },
+				{ "RegisteredCountry", typeof(IAspectPropertyValue<string>) },
+				{ "RegisteredCountryGeoNameId", typeof(IAspectPropertyValue<string>) },
+				{ "RegisteredName", typeof(IAspectPropertyValue<string>) },
+				{ "RegisteredOwner", typeof(IAspectPropertyValue<string>) },
+				{ "State", typeof(IAspectPropertyValue<string>) },
+				{ "StateGeoNameId", typeof(IAspectPropertyValue<string>) },
+				{ "StateGeoNameIdsGeographical", typeof(IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>) },
+				{ "Suburb", typeof(IAspectPropertyValue<string>) },
+				{ "TimeZoneIana", typeof(IAspectPropertyValue<string>) },
+				{ "TimeZoneOffset", typeof(IAspectPropertyValue<int>) },
+				{ "Town", typeof(IAspectPropertyValue<string>) },
+				{ "TownGeoNameId", typeof(IAspectPropertyValue<string>) },
+				{ "ZipCode", typeof(IAspectPropertyValue<string>) }
+			};
+
+		/// <summary>
+		/// Radius in kilometers of the circle centred around the most probable location that encompasses the entire area, measured against the trimmed area. Where multiple areas are returned, this will only cover the area the most probable location is in. See Areas property. This will likely be a very large distance. It is recommended to use the AccuracyRadiusMin property.
+		/// </summary>
+		public IAspectPropertyValue<int> AccuracyRadiusMax { get { return GetAs<IAspectPropertyValue<int>>("AccuracyRadiusMax"); } }
+		/// <summary>
+		/// Radius in kilometers of the largest circle centred around the most probable location that fits within the area, measured against the trimmed area. Where multiple areas are returned, only the area that the most probable location falls within is considered. See Areas property.
+		/// </summary>
+		public IAspectPropertyValue<int> AccuracyRadiusMin { get { return GetAs<IAspectPropertyValue<int>>("AccuracyRadiusMin"); } }
+		/// <summary>
+		/// The area the IP range is likely to be in, trimmed to the land of the country the location is in, so it does not reach into neighbouring countries or over the sea. Returned as a WKT string stored as a reduced format of WKB.
+		/// </summary>
+		/// <remarks>
+		/// <para>
+		/// See <see href="https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry">https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry</see> for more information.
+		/// </para>
+		/// </remarks>
+		public IAspectPropertyValue<WktString> Areas { get { return GetAs<IAspectPropertyValue<WktString>>("Areas"); } }
+		/// <summary>
+		/// Autonomous System Number associated with the IP address.
+		/// </summary>
+		/// <remarks>
+		/// <para>
+		/// See <see href="https://en.wikipedia.org/wiki/Autonomous_system_(Internet)">https://en.wikipedia.org/wiki/Autonomous_system_(Internet)</see> for more information.
+		/// </para>
+		/// </remarks>
+		public IAspectPropertyValue<string> Asn { get { return GetAs<IAspectPropertyValue<string>>("Asn"); } }
+		/// <summary>
+		/// The name registered to the Asn associated with the IP address.
+		/// </summary>
+		/// <remarks>
+		/// <para>
+		/// See <see href="https://en.wikipedia.org/wiki/Autonomous_system_(Internet)">https://en.wikipedia.org/wiki/Autonomous_system_(Internet)</see> for more information.
+		/// </para>
+		/// </remarks>
+		public IAspectPropertyValue<string> AsnName { get { return GetAs<IAspectPropertyValue<string>>("AsnName"); } }
+		/// <summary>
+		/// Refers to the diversity of browsers observed from the IP range. An integer between 1-10, a lower value indicates a low number of browsers seen per IP address, while a higher value indicates a high number of browsers seen per IP address. A 0 value indicates that the probability is unknown.
+		/// </summary>
+		public IAspectPropertyValue<int> BrowserDiversity { get { return GetAs<IAspectPropertyValue<int>>("BrowserDiversity"); } }
+		/// <summary>
+		/// Indicates the type of connection being used. Returns either Broadband, Cellular, or Hosting and Anonymous.
+		/// </summary>
+		public IAspectPropertyValue<string> ConnectionType { get { return GetAs<IAspectPropertyValue<string>>("ConnectionType"); } }
+		/// <summary>
+		/// The 2-character ISO 3166-1 continent code for the supplied location.
+		/// </summary>
+		public IAspectPropertyValue<string> ContinentCode2 { get { return GetAs<IAspectPropertyValue<string>>("ContinentCode2"); } }
+		/// <summary>
+		/// The GeoNames identifier of the continent associated with the supplied location.
+		/// </summary>
+		public IAspectPropertyValue<string> ContinentGeoNameId { get { return GetAs<IAspectPropertyValue<string>>("ContinentGeoNameId"); } }
+		/// <summary>
+		/// The name of the continent the supplied location is in.
+		/// </summary>
+		public IAspectPropertyValue<string> ContinentName { get { return GetAs<IAspectPropertyValue<string>>("ContinentName"); } }
+		/// <summary>
+		/// The name of the country that the supplied location is in.
+		/// </summary>
+		public IAspectPropertyValue<string> Country { get { return GetAs<IAspectPropertyValue<string>>("Country"); } }
+		/// <summary>
+		/// The 2-character ISO 3166-1 code of the country that the supplied location is in.
+		/// </summary>
+		public IAspectPropertyValue<string> CountryCode { get { return GetAs<IAspectPropertyValue<string>>("CountryCode"); } }
+		/// <summary>
+		/// The 3-character ISO 3166-1 alpha-3 code of the country that the supplied location is in.
+		/// </summary>
+		public IAspectPropertyValue<string> CountryCode3 { get { return GetAs<IAspectPropertyValue<string>>("CountryCode3"); } }
+		/// <summary>
+		/// A list of countries in ISO 3166-1 alpha-2 country code format that overlap with the area likely associated with the provided evidence, weighted and ordered by each country's proportion of the area. Administrative areas that cannot be cleanly resolved to the country level will not contribute to the resulting data.
+		/// </summary>
+		public IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>> CountryCodesGeographical { get { return GetAs<IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>>("CountryCodesGeographical"); } }
+		/// <summary>
+		/// A list of countries in ISO 3166-1 alpha-2 country code format that overlap with the area likely associated with the provided evidence, weighted and ordered by each country's proportion of the total population within the area. Administrative areas that cannot be cleanly resolved to the country level will not contribute to the resulting data.
+		/// </summary>
+		public IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>> CountryCodesPopulation { get { return GetAs<IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>>("CountryCodesPopulation"); } }
+		/// <summary>
+		/// The GeoNames identifier of the country associated with the supplied location.
+		/// </summary>
+		public IAspectPropertyValue<string> CountryGeoNameId { get { return GetAs<IAspectPropertyValue<string>>("CountryGeoNameId"); } }
+		/// <summary>
+		/// The name of the county that the supplied location is in. In this case, a county is defined as an administrative sub-section of a country or state.
+		/// </summary>
+		public IAspectPropertyValue<string> County { get { return GetAs<IAspectPropertyValue<string>>("County"); } }
+		/// <summary>
+		/// The GeoNames identifier of the county, a second-level administrative subdivision (admin2) associated with the supplied location. Unknown where the nearest subdivision lies in a different country from the location.
+		/// </summary>
+		public IAspectPropertyValue<string> CountyGeoNameId { get { return GetAs<IAspectPropertyValue<string>>("CountyGeoNameId"); } }
+		/// <summary>
+		/// The Alpha-3 ISO 4217 code of the currency associated with the supplied location.
+		/// </summary>
+		public IAspectPropertyValue<string> CurrencyCode { get { return GetAs<IAspectPropertyValue<string>>("CurrencyCode"); } }
+		/// <summary>
+		/// ITU international telephone numbering plan code for the country.
+		/// </summary>
+		public IAspectPropertyValue<string> DialCode { get { return GetAs<IAspectPropertyValue<string>>("DialCode"); } }
+		/// <summary>
+		/// Refers to the diversity of hardware devices observed from the IP range. An integer between 1-10, a lower value indicates a low number of devices seen per IP address, while a higher value indicates a high number of devices seen per IP address. A 0 value indicates that the probability is unknown.
+		/// </summary>
+		public IAspectPropertyValue<int> HardwareDiversity { get { return GetAs<IAspectPropertyValue<int>>("HardwareDiversity"); } }
+		/// <summary>
+		/// The confidence that the IP address is a human user versus associated with hosting. A 0-10 value where; 0-3: Low confidence the user is human, 4-6: Medium confidence, 7-10: High confidence. A -1 value indicates that the probability is unknown.
+		/// </summary>
+		public IAspectPropertyValue<int> HumanProbability { get { return GetAs<IAspectPropertyValue<int>>("HumanProbability"); } }
+		/// <summary>
+		/// The IPv4 address of the request.
+		/// </summary>
+		public IAspectPropertyValue<IPAddress> Ip { get { return GetAs<IAspectPropertyValue<IPAddress>>("Ip"); } }
+		/// <summary>
+		/// End of the IP range to which the evidence IP belongs.
+		/// </summary>
+		public IAspectPropertyValue<IPAddress> IpRangeEnd { get { return GetAs<IAspectPropertyValue<IPAddress>>("IpRangeEnd"); } }
+		/// <summary>
+		/// Start of the IP range to which the evidence IP belongs.
+		/// </summary>
+		public IAspectPropertyValue<IPAddress> IpRangeStart { get { return GetAs<IAspectPropertyValue<IPAddress>>("IpRangeStart"); } }
+		/// <summary>
+		/// The IPv6 address of the request.
+		/// </summary>
+		public IAspectPropertyValue<IPAddress> IpV6 { get { return GetAs<IAspectPropertyValue<IPAddress>>("IpV6"); } }
+		/// <summary>
+		/// Indicates whether the IP address is associated with a broadband connection. Includes DSL, Cable, Fibre, and Satellite connections.
+		/// </summary>
+		public IAspectPropertyValue<bool> IsBroadband { get { return GetAs<IAspectPropertyValue<bool>>("IsBroadband"); } }
+		/// <summary>
+		/// Indicates whether the IP address is associated with a cellular network.
+		/// </summary>
+		public IAspectPropertyValue<bool> IsCellular { get { return GetAs<IAspectPropertyValue<bool>>("IsCellular"); } }
+		/// <summary>
+		/// Indicates whether the country of the supplied location is within the European Union.
+		/// </summary>
+		public IAspectPropertyValue<bool> IsEu { get { return GetAs<IAspectPropertyValue<bool>>("IsEu"); } }
+		/// <summary>
+		/// Indicates whether the IP address is associated with hosting. Includes both hosting and anonymised connections such as hosting networks, hosting ASNs, VPNs, proxies, TOR networks, and unreachable IP addresses.
+		/// </summary>
+		public IAspectPropertyValue<bool> IsHosted { get { return GetAs<IAspectPropertyValue<bool>>("IsHosted"); } }
+		/// <summary>
+		/// The ISO 3166-2 code for the supplied location. This is using the 'ISO3166-2-lvl4' property from OpenStreetMap.
+		/// </summary>
+		public IAspectPropertyValue<string> Iso31662Lvl4 { get { return GetAs<IAspectPropertyValue<string>>("Iso31662Lvl4"); } }
+		/// <summary>
+		/// The alphanumeric code representing the subdivision from the ISO 3166-2 code of the supplied location. This is using the 'ISO3166-2-lvl4' property from OpenStreetMap.
+		/// </summary>
+		public IAspectPropertyValue<string> Iso31662Lvl4SubdivisionOnly { get { return GetAs<IAspectPropertyValue<string>>("Iso31662Lvl4SubdivisionOnly"); } }
+		/// <summary>
+		/// The ISO 3166-2 code for the supplied location. This is using the 'ISO3166-2-lvl8' property from OpenStreetMap.
+		/// </summary>
+		public IAspectPropertyValue<string> Iso31662Lvl8 { get { return GetAs<IAspectPropertyValue<string>>("Iso31662Lvl8"); } }
+		/// <summary>
+		/// The alphanumeric code representing the subdivision from the ISO 3166-2 code of the supplied location. This is using the 'ISO3166-2-lvl8' property from OpenStreetMap.
+		/// </summary>
+		public IAspectPropertyValue<string> Iso31662Lvl8SubdivisionOnly { get { return GetAs<IAspectPropertyValue<string>>("Iso31662Lvl8SubdivisionOnly"); } }
+		/// <summary>
+		/// Indicates whether the IP address is associated with a Proxy server.
+		/// </summary>
+		public IAspectPropertyValue<bool> IsProxy { get { return GetAs<IAspectPropertyValue<bool>>("IsProxy"); } }
+		/// <summary>
+		/// Indicates whether the IP address is associated with a public router.
+		/// </summary>
+		public IAspectPropertyValue<bool> IsPublicRouter { get { return GetAs<IAspectPropertyValue<bool>>("IsPublicRouter"); } }
+		/// <summary>
+		/// Indicates whether the IP address is associated with a TOR server.
+		/// </summary>
+		public IAspectPropertyValue<bool> IsTor { get { return GetAs<IAspectPropertyValue<bool>>("IsTor"); } }
+		/// <summary>
+		/// Indicates whether the IP address is associated with a VPN server.
+		/// </summary>
+		public IAspectPropertyValue<bool> IsVPN { get { return GetAs<IAspectPropertyValue<bool>>("IsVPN"); } }
+		/// <summary>
+		/// The Alpha-2 ISO 639 Language code associated with the supplied location.
+		/// </summary>
+		public IAspectPropertyValue<string> LanguageCode { get { return GetAs<IAspectPropertyValue<string>>("LanguageCode"); } }
+		/// <summary>
+		/// Average latitude of the IP. For privacy, this is randomized within around 1 kilometer of the result. Randomized result will change only once per day.
+		/// </summary>
+		public IAspectPropertyValue<float> Latitude { get { return GetAs<IAspectPropertyValue<float>>("Latitude"); } }
+		/// <summary>
+		/// The confidence in the town and country provided. Returns one of High, Medium, Low, or Unknown. The confidence must be checked before using the returned location values.
+		/// </summary>
+		/// <remarks>
+		/// <para>
+		/// Possible values:
+		/// </para>
+		/// <code>
+		/// High      High confidence results can be relied upon and considered useful for all practical purposes.
+		/// Medium    Medium confidence results might be useful where the use case can tolerate a degree of inaccuracy.
+		/// Low       Low confidence results should be discarded when the results might be used to make consequential decisions.
+		/// Unknown   Unknown confidence results should be treated in the same way as Low and discarded when the results might be used to m...
+		/// </code>
+		/// </remarks>
+		public IAspectPropertyValue<string> LocationConfidence { get { return GetAs<IAspectPropertyValue<string>>("LocationConfidence"); } }
+		/// <summary>
+		/// Average longitude of the IP. For privacy, this is randomized within around 1 kilometer of the result. Randomized result will change only once per day.
+		/// </summary>
+		public IAspectPropertyValue<float> Longitude { get { return GetAs<IAspectPropertyValue<float>>("Longitude"); } }
+		/// <summary>
+		/// The mobile country code of the network the device is connected to.
+		/// </summary>
+		public IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>> Mcc { get { return GetAs<IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>>("Mcc"); } }
+		/// <summary>
+		/// Refers to the diversity of software observed from the IP range. An integer between 1-10, a lower value indicates a low number of software seen per IP address, while a higher value indicates a high number of software seen per IP address. A 0 value indicates that the probability is unknown.
+		/// </summary>
+		public IAspectPropertyValue<int> PlatformDiversity { get { return GetAs<IAspectPropertyValue<int>>("PlatformDiversity"); } }
+		/// <summary>
+		/// The name of the geographical region that the supplied location is in.
+		/// </summary>
+		public IAspectPropertyValue<string> Region { get { return GetAs<IAspectPropertyValue<string>>("Region"); } }
+		/// <summary>
+		/// Country code of the registered range.
+		/// </summary>
+		public IAspectPropertyValue<string> RegisteredCountry { get { return GetAs<IAspectPropertyValue<string>>("RegisteredCountry"); } }
+		/// <summary>
+		/// The GeoNames identifier of the country in which the IP address range is registered.
+		/// </summary>
+		public IAspectPropertyValue<string> RegisteredCountryGeoNameId { get { return GetAs<IAspectPropertyValue<string>>("RegisteredCountryGeoNameId"); } }
+		/// <summary>
+		/// Name of the IP range. This is usually the owner.
+		/// </summary>
+		public IAspectPropertyValue<string> RegisteredName { get { return GetAs<IAspectPropertyValue<string>>("RegisteredName"); } }
+		/// <summary>
+		/// Registered owner of the range.
+		/// </summary>
+		public IAspectPropertyValue<string> RegisteredOwner { get { return GetAs<IAspectPropertyValue<string>>("RegisteredOwner"); } }
+		/// <summary>
+		/// The name of the state that the supplied location is in.
+		/// </summary>
+		public IAspectPropertyValue<string> State { get { return GetAs<IAspectPropertyValue<string>>("State"); } }
+		/// <summary>
+		/// The GeoNames database identifier for the state (first-level administrative subdivision, admin1) that the supplied location is in. Unknown where the nearest subdivision lies in a different country from the location.
+		/// </summary>
+		public IAspectPropertyValue<string> StateGeoNameId { get { return GetAs<IAspectPropertyValue<string>>("StateGeoNameId"); } }
+		/// <summary>
+		/// GeoNames identifiers of the first-level administrative subdivisions (admin1) of the location's country that overlap the area associated with the supplied evidence, weighted and ordered by each subdivision's share of that area. Subdivisions covering less than 1% of the area are omitted, at most the 20 largest are returned, and the weights of those returned are scaled to sum to 100%.
+		/// </summary>
+		public IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>> StateGeoNameIdsGeographical { get { return GetAs<IAspectPropertyValue<IReadOnlyList<IWeightedValue<string>>>>("StateGeoNameIdsGeographical"); } }
+		/// <summary>
+		/// The name of the suburb that the supplied location is in.
+		/// </summary>
+		public IAspectPropertyValue<string> Suburb { get { return GetAs<IAspectPropertyValue<string>>("Suburb"); } }
+		/// <summary>
+		/// The time zone at the supplied location in the IANA Time Zone format.
+		/// </summary>
+		public IAspectPropertyValue<string> TimeZoneIana { get { return GetAs<IAspectPropertyValue<string>>("TimeZoneIana"); } }
+		/// <summary>
+		/// The offset from UTC in minutes in the supplied location, at the time that the value is produced. A value of -1 means the offset is unknown and is only returned when no location can be determined for the IP address. Real offsets are whole multiples of 15 minutes, so -1 never collides with a genuine value.
+		/// </summary>
+		public IAspectPropertyValue<int> TimeZoneOffset { get { return GetAs<IAspectPropertyValue<int>>("TimeZoneOffset"); } }
+		/// <summary>
+		/// The name of the town that the supplied location is in.
+		/// </summary>
+		public IAspectPropertyValue<string> Town { get { return GetAs<IAspectPropertyValue<string>>("Town"); } }
+		/// <summary>
+		/// The GeoNames identifier of the town or populated place nearest to the supplied location. Unknown where the nearest populated place lies in a different country from the location.
+		/// </summary>
+		public IAspectPropertyValue<string> TownGeoNameId { get { return GetAs<IAspectPropertyValue<string>>("TownGeoNameId"); } }
+		/// <summary>
+		/// The zip or postal code that the supplied location falls under.
+		/// </summary>
+		public IAspectPropertyValue<string> ZipCode { get { return GetAs<IAspectPropertyValue<string>>("ZipCode"); } }
+	}
+}

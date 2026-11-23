@@ -1,0 +1,10 @@
+﻿{
+  "PipelineOptions": {
+    "Elements": [
+      {
+        "BuilderName": "JavaScriptBundlerElement"
+      }
+    ],
+    "ClientSideEnabled": true
+  }
+}

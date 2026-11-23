@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Platforms>AnyCPU;x64;x86;ARM64</Platforms>
+    <RootNamespace>Cloud_Client_Hints_NetCore_31</RootNamespace>
+    <AssemblyName>Cloud_Client_Hints_NetCore_31</AssemblyName>
+    <Configurations>Debug;Release;CoreRelease;CoreDebug</Configurations>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<ProjectReference Include="..\..\ExampleBase\FiftyOne.DeviceDetection.Examples.csproj" />
+	<FiftyOneReference Include="FiftyOne.DeviceDetection" ProjectPath="..\..\..\..\device-detection\DeviceDetection\FiftyOne.DeviceDetection.csproj" Version="$(_51DEGREES_DEVICE_DETECTION_VERSION)" />
+	<FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\Web\FiftyOne.Pipeline.Web.csproj" Version="$(_51DEGREES_PIPELINE_WEB_VERSION)" />
+	<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.14" />
+  </ItemGroup>
+  
+</Project>

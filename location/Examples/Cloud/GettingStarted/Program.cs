@@ -1,0 +1,234 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+using FiftyOne.GeoLocation;
+using FiftyOne.GeoLocation.Core.Data;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+
+/// <summary>
+/// @example Cloud/GettingStarted/Program.cs
+/// 
+/// Getting started example of using 51Degrees reverse geocoding.
+/// 
+/// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/location/Examples/Cloud/GettingStarted/Program.cs). 
+/// 
+/// To run this example, you will need to create a **resource key**. 
+/// The resource key is used as short-hand to store the particular set of 
+/// properties you are interested in as well as any associated license keys 
+/// that entitle you to increased request limits and/or paid-for properties.
+/// 
+/// You can create a resource key using the 51Degrees [configuration page](https://51degrees.com/configure?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-gettingstarted-program.cs&amp;utm_term=gettingstarted).
+/// 
+/// Required NuGet Dependencies:
+/// - [FiftyOne.GeoLocation](https://www.nuget.org/packages/FiftyOne.GeoLocation/)
+/// 
+/// The example shows how to:
+/// 
+/// 1. Build a new Pipeline with a cloud-based geolocation engine, with lazy
+/// loading configured to allow up to a second for a response from the cloud
+/// service.
+/// 2. Create a new FlowData instance ready to be populated with evidence for
+/// the Pipeline.
+/// 3. Process a longitude and latitude to retrieve the values associated with
+/// with the location for the selected properties.
+/// 4. Extract the value of a property as a string from the results.
+/// </summary>
+namespace GettingStarted
+{
+    public class Program
+    {
+        public class Example
+        {
+            private static ILoggerFactory _loggerFactory = new LoggerFactory();
+
+            private static string latitude = "51.458048";
+            private static string longitude = "-0.9822207999999999";
+
+            /// <summary>
+            /// Runs the example.
+            /// </summary>
+            /// <param name="resourceKey">The resource key to use.</param>
+            /// <param name="cloudEndPoint">
+            /// The cloud service's address, or empty for the default.
+            /// </param>
+            /// <param name="cloudRequestTimeoutSeconds">
+            /// The seconds a request to the cloud service may take, or null
+            /// for the default of 2 seconds. The tests give a longer one.
+            /// </param>
+            public void Run(
+                string resourceKey,
+                string cloudEndPoint = "",
+                int? cloudRequestTimeoutSeconds = null)
+            {
+                // Create a new pipeline builder.
+                var pipelineBuilder = new GeoLocationPipelineBuilder(_loggerFactory)
+                    // Obtain a resource key from https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-program.cs&utm_term=run 
+                    // and select your Geo Location provider.
+                    .UseCloud(resourceKey, FiftyOne.GeoLocation.Core.GeoLocationProvider.FiftyOneDegrees)
+                    .UseLazyLoading(TimeSpan.FromSeconds(10));
+
+                // If a cloud endpoint has been provided then set the
+                // cloud pipeline endpoint. 
+                if (string.IsNullOrWhiteSpace(cloudEndPoint) == false)
+                {
+                    pipelineBuilder.SetEndPoint(cloudEndPoint);
+                }
+                if (cloudRequestTimeoutSeconds.HasValue)
+                {
+                    pipelineBuilder.SetCloudRequestTimeOutSeconds(
+                        cloudRequestTimeoutSeconds.Value);
+                }
+
+                using (var pipeline = pipelineBuilder.Build())
+                {
+                    using (var data = pipeline.CreateFlowData())
+                    {
+                        data.AddEvidence("query.51D_Pos_latitude", latitude);
+                        data.AddEvidence("query.51D_Pos_longitude", longitude);
+
+                        data.Process();
+
+                        var country = data.Get<IGeoData>().Country;
+
+                        Console.Write($"Awaiting response");
+                        CancellationTokenSource cancellationSource = new CancellationTokenSource();
+                        Task.Run(() => { OutputUntilCancelled(".", 1000, cancellationSource.Token); });
+                        cancellationSource.Cancel();
+                        Console.WriteLine();
+
+                        if (country.HasValue)
+                        {
+                            Console.WriteLine($"Country: {country.Value}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Country: {country.NoValueMessage}");
+                        }
+                    }
+                }
+            }
+
+            private void OutputUntilCancelled(string text, int intervalMs, CancellationToken token)
+            {
+                while (token.IsCancellationRequested == false)
+                {
+                    Console.Write(text);
+                    Task.Delay(intervalMs).Wait();
+                }
+            }
+        }
+
+        /// <summary>
+        /// The environment variable the resource key is read from when
+        /// none is given on the command line.
+        /// </summary>
+        private const string ResourceKeyVariable =
+            "_51DEGREES_RESOURCE_KEY";
+
+        static void Main(string[] args)
+        {
+            // Obtain a resource key for free at https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-program.cs&utm_term=main
+            // Make sure to include the 'Country' property as it is used by this example.
+            string resourceKey = args.Length > 0 ? args[0] :
+                Environment.GetEnvironmentVariable(ResourceKeyVariable);
+
+            if (string.IsNullOrWhiteSpace(resourceKey))
+            {
+                Console.WriteLine("No resource key was given on the command " +
+                    "line or in the environment variable " +
+                    $"'{ResourceKeyVariable}'. A resource key can be " +
+                    "created at " +
+                    "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-program.cs&utm_term=resource-key-required. " +
+                    "Then set the environment variable to it, or give it " +
+                    "as the first argument.");
+                Console.WriteLine("Make sure to include the 'Country' " +
+                    "property as it is used by this example.");
+            }
+            else
+            {
+                new Example().Run(resourceKey);
+            }
+            WriteFindOutMore();
+#if (DEBUG)
+            // Console.ReadKey throws when the input is redirected.
+            if (Console.IsInputRedirected == false)
+            {
+                Console.WriteLine("Complete. Press key to exit.");
+                Console.ReadKey();
+            }
+#endif
+        }
+
+        /// <summary>
+        /// Print where to find out more, so that anyone this example is
+        /// shown to can follow up from the output itself.
+        /// </summary>
+        private static void WriteFindOutMore()
+        {
+            Console.WriteLine("==========================================");
+            Console.WriteLine("Find out more");
+            Console.WriteLine("  Reverse geocoding quick start:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation/_reverse_geocoding__quickstart.html" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloud-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  Resource keys, which say what the cloud service returns:");
+            Console.WriteLine(
+                "    https://51degrees.com/documentation/_services__cloud__resource_keys.html" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloud-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine("  Plans and prices:");
+            Console.WriteLine(
+                "    https://51degrees.com/pricing" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloud-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  Talk to 51Degrees about using reverse geocoding:");
+            Console.WriteLine(
+                "    https://51degrees.com/contact-us" +
+                "?utm_source=code&utm_medium=example" +
+                "&utm_campaign=51degrees-dotnet" +
+                "&utm_content=examples-cloud-gettingstarted-program.cs" +
+                "&utm_term=find-out-more");
+            Console.WriteLine(
+                "  This repository, where the location engine and this " +
+                "example live:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/location");
+            Console.WriteLine("  The pipeline the location engine runs in:");
+            Console.WriteLine(
+                "    https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline");
+        }
+
+    }
+}

@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <Platforms>AnyCPU;x64;x86;ARM64</Platforms>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+
+    <!-- NuGet package properties -->
+    <PackageId>FiftyOne.DeviceDetection.RobotsTxt.Cloud</PackageId>
+    <Title>51Degrees Device Detection – Robots.txt Cloud Engines</Title>
+    <Description>51Degrees engine that unpacks the contents of a 51Degrees cloud response for robots.txt data.</Description>
+    <Authors>51Degrees Engineering</Authors>
+    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
+    <Copyright>51Degrees Mobile Experts Limited</Copyright>
+    <PackageTags>51degrees;pipeline;data;device;detection;robots.txt;cloud</PackageTags>
+    <RepositoryUrl>https://github.com/51Degrees/51degrees-dotnet</RepositoryUrl>
+    <PackageProjectUrl>https://51degrees.com/robots-txt?utm_source=nuget&amp;utm_medium=package&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection.robotstxt.cloud&amp;utm_term=packageprojecturl</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageIcon>51d-logo.png</PackageIcon>
+    <NeutralLanguage>en</NeutralLanguage>
+    <Configurations>Debug;Release</Configurations>
+    <!-- GitHub CI -->
+    <_51DEGREES_BUILT_ON_CI>false</_51DEGREES_BUILT_ON_CI>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\Images\51d-logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(_51DEGREES_PIPELINE_CLOUD_REQUEST_ENGINE_VERSION)" />
+    <ProjectReference Include="..\RobotsTxt\FiftyOne.DeviceDetection.RobotsTxt.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,17 @@
+﻿<#@ template language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+
+if (navigator.geolocation) {
+	navigator.geolocation.getCurrentPosition(function(pos) {
+        for (var key in pos.coords) {
+            document.cookie = "51D_Pos_" + key + "=" + pos.coords[key];
+        }
+        // 51D replace this comment with callback function.
+	}, function(e) {
+        document.cookie ="51D_Pos_Error=" + encodeURIComponent(e.message);
+        // 51D replace this comment with callback function.
+    });
+}
