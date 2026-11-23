@@ -251,12 +251,13 @@ public class DataUpdateServiceDisposeTests
     public void Watcher_RefreshFailsDuringDispose_ReportsTheFailure()
     {
         var refreshing = new ManualResetEventSlim();
+        var failure = new InvalidOperationException("The refresh failed.");
         CountRefreshes(() =>
         {
             refreshing.Set();
             // Fails once dispose has closed the file.
             SpinWait.SpinUntil(() => _file.TimerClosed, WaitMilliseconds);
-            throw new InvalidOperationException("The refresh failed.");
+            throw failure;
         });
         _service.RegisterDataFile(_file);
 
@@ -275,24 +276,25 @@ public class DataUpdateServiceDisposeTests
             AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED,
             "Reported " + string.Join(", ", reports) + ".");
         Assert.IsTrue(
-            _logger.Errors.Any(e => e?.InnerException
-                is InvalidOperationException),
+            _logger.Errors.Any(e =>
+                ReferenceEquals(e?.InnerException, failure)),
             "The failure was not logged with its cause.");
         Assert.AreEqual(1, _refreshes);
     }
 
     /// <summary>
-    /// The engine's refresh fails, and the file is disposed before the next
-    /// try. A programmatic check throws the failure and reports it.
+    /// The file is disposed during a try at refreshing the engine that then
+    /// fails, so the next try finds the file closed. A programmatic check
+    /// throws the failure and reports it.
     /// </summary>
     [TestMethod]
-    public void CheckForUpdate_DisposedAfterFailedTry_ThrowsTheFailure()
+    public void CheckForUpdate_DisposedDuringFailedTry_ThrowsTheFailure()
     {
+        var failure = new InvalidOperationException("The refresh failed.");
         CountRefreshes(() =>
         {
-            // The next try finds the file closed.
             _file.Dispose();
-            throw new InvalidOperationException("The refresh failed.");
+            throw failure;
         });
         var configuration = (DataFileConfiguration)_file.Configuration;
         configuration.VerifyMd5 = false;
@@ -308,8 +310,7 @@ public class DataUpdateServiceDisposeTests
         Assert.AreEqual(
             AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED,
             thrown.Status);
-        Assert.IsInstanceOfType<InvalidOperationException>(
-            thrown.InnerException);
+        Assert.AreSame(failure, thrown.InnerException);
         CollectionAssert.Contains(
             ReportsForFile(),
             AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED);
