@@ -91,8 +91,7 @@ and each job exports every `_51DEGREES_` secret and organisation variable
 under its own name, with nothing copied from one name to another. The signing
 secrets reach only the job that builds the packages, and the publishing ones
 only the job that publishes. Each test reads the key it needs by its name.
-The resource keys are organization variables and the license keys are
-organization secrets:
+The resource keys and the license keys are organization secrets:
 
 - `_51DEGREES_LICENSE_KEY`, the data license. The shared `fetch-assets.ps1`
   downloads `TAC-HashV41.hash` and `51Degrees-EnterpriseIpiV41.ipi` from the
