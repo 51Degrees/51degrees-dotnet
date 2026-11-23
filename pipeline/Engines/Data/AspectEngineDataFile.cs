@@ -176,6 +176,10 @@ namespace FiftyOne.Pipeline.Engines.Data
             get { lock (TimerLock) { return _timerClosed; } }
         }
         internal FileSystemWatcher FileWatcher { get; set; }
+        // Held for every refresh of the engine the service makes, which
+        // checks TimerClosed under it first. Dispose takes it after closing
+        // the file, so the engine is not freed while it refreshes and is
+        // not refreshed after.
         internal object UpdateSyncLock { get; } = new object();
         internal DateTime LastUpdateFileModifiedTime { get; set; }
 
@@ -276,6 +280,11 @@ namespace FiftyOne.Pipeline.Engines.Data
                     {
                         _dataUpdateService.UnRegisterDataFile(this);
                         _dataUpdateService = null;
+                    }
+                    // Wait for a refresh that started before the file was
+                    // closed. The engine frees its native data after this.
+                    lock (UpdateSyncLock)
+                    {
                     }
                     if (FileWatcher != null)
                     {

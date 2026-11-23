@@ -413,6 +413,10 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// <param name="data">
 		/// The data to update with.
 		/// </param>
+		/// <returns>
+		/// Success, or not needed when the data file has been disposed, in
+		/// which case the engine is not refreshed.
+		/// </returns>
 		/// <exception cref="DataUpdateException">
 		/// Thrown if some problem occurs during the update process.
 		/// </exception>
@@ -457,8 +461,10 @@ namespace FiftyOne.Pipeline.Engines.Services
                 try
                 {
                     // Refresh the engine using the new data.
-                    dataFile.Engine.RefreshData(dataFile.Identifier, data);
-                    result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+                    result = RefreshEngine(
+                        dataFile,
+                        () => dataFile.Engine.RefreshData(
+                            dataFile.Identifier, data));
                 }
                 catch (Exception ex)
                 {
@@ -619,13 +625,15 @@ namespace FiftyOne.Pipeline.Engines.Services
 
 								// Make sure we can actually open the file for reading
 								// before notifying the engine, otherwise the copy
-								// may still be in progress.
+								// may still be in progress. Dispose waits for this
+								// lock, so stop waiting once the file is closed.
 								bool fileLockable = false;
 								bool fileGone = false;
 								DateTime timeout = DateTime.UtcNow.AddMinutes(10);
 
 								while (fileLockable == false &&
 									fileGone == false &&
+									dataFile.TimerClosed == false &&
 									timeout > DateTime.UtcNow)
 								{
 									try
@@ -650,7 +658,7 @@ namespace FiftyOne.Pipeline.Engines.Services
 									}
 								}
 
-								if (fileGone)
+								if (fileGone || dataFile.TimerClosed)
 								{
 									status = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
 								}
@@ -1034,8 +1042,11 @@ namespace FiftyOne.Pipeline.Engines.Services
 									LogInfoMessage(Messages.MessageAutoUpdateRefreshEngine, dataFile);
 									// Tell the engine to refresh itself with
 									// the new data.
-									dataFile.Engine.RefreshData(dataFile.Identifier, uncompressedStream);
-									result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+									result = RefreshEngine(
+										dataFile,
+										() => dataFile.Engine.RefreshData(
+											dataFile.Identifier,
+											uncompressedStream));
 								}
 								catch (Exception ex)
 								{
@@ -1230,9 +1241,10 @@ namespace FiftyOne.Pipeline.Engines.Services
 		}
 
 		/// <summary>
-		/// Called when a data update is available and the file at 
+		/// Called when a data update is available and the file at
 		/// engine.DataFilePath contains this new data. Refreshes the engine,
-		/// trying up to 10 times, and leaves the update timer alone.
+		/// trying up to 10 times, and leaves the update timer alone. Gives
+		/// not needed, with no refresh, once the file is disposed.
 		/// </summary>
 		/// <param name="dataFile"></param>
 		/// <returns></returns>
@@ -1254,8 +1266,14 @@ namespace FiftyOne.Pipeline.Engines.Services
 				{
 					try
 					{
-						dataFile.Engine.RefreshData(dataFile.Identifier);
-						result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+						result = RefreshEngine(
+							dataFile,
+							() => dataFile.Engine.RefreshData(
+								dataFile.Identifier));
+						if (result == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
+						{
+							return result;
+						}
 					}
 #pragma warning disable CA1031 // Do not catch general exception types
 					// The code executed by the RefreshData method could
@@ -1287,6 +1305,31 @@ namespace FiftyOne.Pipeline.Engines.Services
 			}
 
 			return result;
+		}
+
+		/// <summary>
+		/// Refreshes the data file's engine under the file's update lock,
+		/// unless the file has been disposed. Dispose waits for that lock,
+		/// so the engine is never freed while it refreshes, and once freed
+		/// it is never refreshed.
+		/// </summary>
+		/// <returns>
+		/// Success, or not needed when the file has been disposed and the
+		/// engine was left alone.
+		/// </returns>
+		private static AutoUpdateStatus RefreshEngine(
+			AspectEngineDataFile dataFile,
+			Action refresh)
+		{
+			lock (dataFile.UpdateSyncLock)
+			{
+				if (dataFile.TimerClosed)
+				{
+					return AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+				}
+				refresh();
+				return AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+			}
 		}
 
 		/// <summary>
