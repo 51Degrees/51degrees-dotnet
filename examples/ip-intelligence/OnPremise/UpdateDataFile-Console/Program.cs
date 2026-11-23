@@ -22,6 +22,7 @@
 
 using FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.Engines;
+using FiftyOne.Pipeline.Engines.FiftyOne.Data;
 using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -67,6 +68,9 @@ using System.Net.Http;
 ///    environment variable, then defaults to Constants.ENTERPRISE_IPI_DATA_FILE_NAME)
 /// 2. Second argument: License key (optional when using --data-update-url)
 /// 3. Option: --data-update-url for custom URL
+/// 4. Option: --data-update-product for the name of the product to download. A license key can
+///    hold more than one product, and the update on start-up runs before a data file is loaded,
+///    so the example names the product, which is 'IPIV4Enterprise' unless a custom URL is used
 ///
 /// With neither a license key nor a custom URL, the example shows the free Asn data file, which
 /// it downloads when it is missing, says what an update needs and where to ask for a key, and
@@ -224,9 +228,19 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
             /// <param name="interactive">
             /// If this example is being run in an interactive session, set this to true.
             /// </param>
-            public void Run(string dataFile, string licenseKey, string? dataUpdateUrl, bool interactive)
+            /// <param name="product">
+            /// The name of the product to download. If null, the default
+            /// product is named unless a custom URL is used.
+            /// </param>
+            public void Run(string dataFile, string licenseKey, string? dataUpdateUrl, bool interactive,
+                string? product = null)
             {
                 Logger.LogInformation("Starting example");
+
+                if (string.IsNullOrWhiteSpace(product))
+                {
+                    product = string.IsNullOrEmpty(dataUpdateUrl) ? DefaultProduct : null;
+                }
 
                 // Only check license key if no custom data update URL is provided
                 if (string.IsNullOrEmpty(dataUpdateUrl))
@@ -320,6 +334,15 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                     {
                         builder.SetDataUpdateUrl(dataUpdateUrl);
                         builder.SetDataUpdateVerifyMd5(false);
+                    }
+
+                    if (product is not null)
+                    {
+                        // Name the product to download. A license key can
+                        // hold more than one product, and the update on
+                        // start-up runs before a data file is loaded, so
+                        // the product cannot be taken from the file.
+                        builder.SetDataUpdateUrlFormatter(new FiftyOneUrlFormatter(product));
                     }
                     
                     // Build the pipeline.
@@ -436,6 +459,12 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
             }
         }
         
+        /// <summary>
+        /// The product the example downloads from the distributor service
+        /// unless another is named.
+        /// </summary>
+        public const string DefaultProduct = "IPIV4Enterprise";
+
         private const string KEY_SUBMISSION_ALT_PATH = $"as an environment variable named '{Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR}'";
         private const string KEY_SUBMISSION_PATHS = "as the second command line argument to this program, or " + KEY_SUBMISSION_ALT_PATH;
 
@@ -528,17 +557,25 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                 }
             });
             
+            Option<string?> dataUpdateProduct = new("--data-update-product")
+            {
+                Description = "Name of the product to download. Defaults to '"
+                              + DefaultProduct + "' for the 51degrees distributor service.",
+            };
+
             var rootCommand = new RootCommand("Data file update sample.");
 
             rootCommand.Arguments.Add(dataFile);
             rootCommand.Arguments.Add(licenseKey);
             rootCommand.Options.Add(dataUpdateUrl);
+            rootCommand.Options.Add(dataUpdateProduct);
 
             rootCommand.SetAction(parseResult =>
             {
                 string dataFilePath = parseResult.GetValue(dataFile)!;
                 string? licenseKeyValue = parseResult.GetValue(licenseKey);
                 string? dataUpdateUrlValue = parseResult.GetValue(dataUpdateUrl);
+                string? dataUpdateProductValue = parseResult.GetValue(dataUpdateProduct);
                 
                 // Validate license key only if no custom data update URL is provided
                 if (string.IsNullOrWhiteSpace(licenseKeyValue))
@@ -563,7 +600,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                     dataFilePath,
                     licenseKeyValue!,
                     dataUpdateUrlValue,
-                    true);
+                    true,
+                    dataUpdateProductValue);
                 return 0;
             });
 
@@ -586,7 +624,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
             "examples-ip-intelligence-onpremise-updatedatafile-console-program.cs";
 
         public static void Initialize(
-            string dataFile, string licenseKey, string? dataUpdateUrl, bool interactive)
+            string dataFile, string licenseKey, string? dataUpdateUrl, bool interactive,
+            string? product = null)
         {
             // Initialize a service collection, which will be used to create the services
             // required by the Pipeline and manage their lifetimes.
@@ -618,7 +657,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
 
             serviceProvider.GetRequiredService<HttpClient>().Timeout = TimeSpan.FromMinutes(20);
             var example = serviceProvider.GetRequiredService<Example>();
-            example.Run(dataFile, licenseKey, dataUpdateUrl, interactive);
+            example.Run(dataFile, licenseKey, dataUpdateUrl, interactive, product);
         }
     }
 }

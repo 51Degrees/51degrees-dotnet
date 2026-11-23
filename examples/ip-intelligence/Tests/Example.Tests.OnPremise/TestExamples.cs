@@ -501,7 +501,7 @@ public class TestExamples
         try
         {
             Examples.OnPremise.UpdateDataFile.Program.Initialize(
-                DataFile, LicenseKey, null, false);
+                DataFile, LicenseKey, null, false, "IPIV4Enterprise");
         }
         catch (Exception ex) when (IsDataFileVersionError(ex) || IsLicenseOrUpdateError(ex))
         {

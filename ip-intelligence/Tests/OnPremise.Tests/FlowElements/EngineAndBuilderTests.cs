@@ -77,6 +77,8 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
             swigEngine.Setup(e => e.getMetaData()).Returns(swigMetaData.Object);
             swigEngine.Setup(e => e.getPublishedTime()).Returns(date.Object);
             swigEngine.Setup(e => e.getUpdateAvailableTime()).Returns(date.Object);
+            swigEngine.Setup(e => e.getType()).Returns("IPIV41");
+            swigEngine.Setup(e => e.getProduct()).Returns("Enterprise");
 
             // Setup factory to create our mock engine rather than a real one
             var factory = new SwigFactory();
@@ -214,6 +216,22 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
             {
                 engine.SetCache(new DefaultFlowCache(new CacheConfiguration()));
             });
+        }
+
+        /// <summary>
+        /// The product a data update requests is made from the product
+        /// value held in the data file. The data source tier of the engine
+        /// is the value it has always been.
+        /// </summary>
+        [TestMethod]
+        public void Engine_DataUpdateProduct_ComesFromTheDataFile()
+        {
+            using var engine = _builder.Build(new MemoryStream());
+            Assert.AreEqual(
+                "IPIV4Enterprise",
+                new FiftyOneUrlFormatter().GetDataUpdateProduct(
+                    engine.DataFiles.ElementAt(0)));
+            Assert.AreEqual("IPIV41", engine.DataSourceTier);
         }
     }
 }

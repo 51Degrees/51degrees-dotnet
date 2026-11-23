@@ -1332,10 +1332,188 @@ namespace FiftyOne.Pipeline.Engines.Services
 			Stream tempStream,
 			out string expectedMd5Hash)
 		{
+			return DownloadFile(
+				dataFile, tempStream, out expectedMd5Hash, null);
+		}
+
+		/// <summary>
+		/// The response status that lists the products the license keys
+		/// hold, when the request named none and they hold several.
+		/// </summary>
+		private const int MultipleChoices = 300;
+
+		/// <summary>
+		/// Get the product names offered in a response that lists the URLs
+		/// available to the license keys.
+		/// </summary>
+		/// <param name="response">
+		/// The response to read.
+		/// </param>
+		/// <returns>
+		/// The value of the Product parameter of each URL listed, in the
+		/// order of the response, or null if the response has no such list.
+		/// </returns>
+		private static List<string> ReadProductsOffered(
+			HttpResponseMessage response)
+		{
+			var uris = new List<string>();
+			try
+			{
+				var body = response.Content.ReadAsStringAsync().Result;
+#if NET8_0_OR_GREATER
+				using (var document = System.Text.Json.JsonDocument.Parse(body))
+				{
+					if (document.RootElement.ValueKind !=
+							System.Text.Json.JsonValueKind.Object ||
+						document.RootElement.TryGetProperty(
+							"AvailableUris", out var list) == false ||
+						list.ValueKind != System.Text.Json.JsonValueKind.Array)
+					{
+						return null;
+					}
+					foreach (var item in list.EnumerateArray())
+					{
+						if (item.ValueKind == System.Text.Json.JsonValueKind.String)
+						{
+							uris.Add(item.GetString());
+						}
+					}
+				}
+#else
+				var list = Newtonsoft.Json.Linq.JObject.Parse(body)
+					["AvailableUris"] as Newtonsoft.Json.Linq.JArray;
+				if (list == null)
+				{
+					return null;
+				}
+				foreach (var item in list)
+				{
+					if (item.Type == Newtonsoft.Json.Linq.JTokenType.String)
+					{
+						uris.Add((string)item);
+					}
+				}
+#endif
+			}
+#pragma warning disable CA1031 // Do not catch general exception types
+			// A body that cannot be read as the list is not one.
+			catch (Exception)
+#pragma warning restore CA1031 // Do not catch general exception types
+			{
+				return null;
+			}
+
+			var products = new List<string>();
+			foreach (var uri in uris)
+			{
+				var query = uri.IndexOf('?');
+				if (query < 0)
+				{
+					continue;
+				}
+				foreach (var parameter in uri.Substring(query + 1).Split('&'))
+				{
+					if (parameter.StartsWith(
+						"Product=", StringComparison.OrdinalIgnoreCase))
+					{
+						products.Add(Uri.UnescapeDataString(
+							parameter.Substring("Product=".Length)));
+						break;
+					}
+				}
+			}
+			return products;
+		}
+
+		/// <summary>
+		/// Get the URL that repeats a request for the product of the data
+		/// file, from a response that lists the products the license keys
+		/// hold.
+		/// </summary>
+		/// <param name="dataFile">
+		/// The <see cref="AspectEngineDataFile"/> to use.
+		/// </param>
+		/// <param name="response">
+		/// The response to the request that named no product.
+		/// </param>
+		/// <param name="shownUrl">
+		/// The URL of that request, as it is shown in messages.
+		/// </param>
+		/// <returns>
+		/// The URL to request, or null if the response has no list of
+		/// products or the URL formatter cannot name a product.
+		/// </returns>
+		/// <exception cref="DataUpdateException">
+		/// Thrown if the product of the data file is not offered.
+		/// </exception>
+		private Uri GetProductUri(
+			AspectEngineDataFile dataFile,
+			HttpResponseMessage response,
+			string shownUrl)
+		{
+			var formatter = dataFile.Configuration.UrlFormatter
+				as IDataUpdateProductFormatter;
+			if (formatter == null)
+			{
+				return null;
+			}
+			var offered = ReadProductsOffered(response);
+			if (offered == null)
+			{
+				return null;
+			}
+			var needed = formatter.GetDataUpdateProduct(dataFile) ?? string.Empty;
+			var chosen = offered.FirstOrDefault(p => string.Equals(
+				p, needed, StringComparison.OrdinalIgnoreCase));
+			if (chosen == null)
+			{
+				throw new DataUpdateException(
+					$"Product '{needed}' is not offered by data update " +
+					$"service at '{shownUrl}' for engine " +
+					$"'{dataFile.EngineType?.Name}'. Products offered: " +
+					$"'{string.Join(",", offered)}'",
+					AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR);
+			}
+			_logger.LogInformation(
+				$"Requesting product '{chosen}' from '{shownUrl}' for " +
+				$"Engine '{dataFile.EngineType?.Name}'");
+			return formatter.GetFormattedDataUpdateUri(dataFile, chosen);
+		}
+
+		/// <summary>
+		/// Get the most recent data file available from the URL given, or
+		/// from the configured update URL if none is given.
+		/// </summary>
+		/// <param name="dataFile">
+		/// The <see cref="AspectEngineDataFile"/> to use.
+		/// </param>
+		/// <param name="tempStream">
+		/// The stream to write the data to.
+		/// </param>
+		/// <param name="expectedMd5Hash">
+		/// Used to output the md5 hash for the file from the
+		/// 'Content-MD5' header.
+		/// </param>
+		/// <param name="productUrl">
+		/// The URL that repeats the request for one product, or null for
+		/// the first request, which names none.
+		/// </param>
+		/// <returns>
+		/// An <see cref="AutoUpdateStatus"/> value indicating the result
+		/// </returns>
+		private AutoUpdateStatus DownloadFile(
+			AspectEngineDataFile dataFile,
+			Stream tempStream,
+			out string expectedMd5Hash,
+			Uri productUrl)
+		{
 			AutoUpdateStatus result = AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS;
 			expectedMd5Hash = null;
-			
-			Uri url = dataFile.FormattedUri;
+			// Set when the license keys hold several products and the
+			// request is to be repeated for one of them.
+			Uri repeatUrl = null;
+
+			Uri url = productUrl ?? dataFile.FormattedUri;
 			// The URL carries the license keys, which must not appear in full
 			// in a log entry or an error message.
 			var licenseKeys = dataFile.Configuration.DataUpdateLicenseKeys;
@@ -1440,6 +1618,14 @@ namespace FiftyOne.Pipeline.Engines.Services
 									}
 								}
 							}
+							else if ((int)response.StatusCode == MultipleChoices &&
+								productUrl == null &&
+								(repeatUrl = GetProductUri(
+									dataFile, response, shownUrl)) != null)
+							{
+								// The request is repeated below, once this
+								// response has been disposed of.
+							}
 							else
 							{
 								switch (response.StatusCode)
@@ -1471,6 +1657,12 @@ namespace FiftyOne.Pipeline.Engines.Services
 						}
 					}
 				}
+			}
+
+			if (repeatUrl != null)
+			{
+				result = DownloadFile(
+					dataFile, tempStream, out expectedMd5Hash, repeatUrl);
 			}
 
 			return result;
