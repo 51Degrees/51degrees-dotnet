@@ -307,6 +307,36 @@ public class DataUpdateServiceDisposeTests
         Assert.AreEqual(0, _refreshes);
     }
 
+    /// <summary>
+    /// The file is disposed while a check copies a downloaded data file over
+    /// it. The disposed watcher is not enabled again, the engine is not
+    /// refreshed, and the check reports not needed.
+    /// </summary>
+    [TestMethod]
+    public void CheckForUpdate_DisposedDuringCopy_LeavesWatcherAlone()
+    {
+        CountRefreshes(() => { });
+        var configuration = (DataFileConfiguration)_file.Configuration;
+        configuration.UpdateOnStartup = false;
+        configuration.VerifyMd5 = false;
+        configuration.DecompressContent = false;
+        var service = new DataUpdateService(
+            NullLogger<DataUpdateService>.Instance,
+            new HttpClient(_http),
+            new CopyHookFileSystem(() => _file.Dispose()),
+            (callback, state, dueTime) => null);
+        service.RegisterDataFile(_file);
+        _http.Respond = () => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(Encoding.ASCII.GetBytes(NewData)),
+        };
+
+        var status = service.CheckForUpdate(_engine.Object);
+
+        Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, status);
+        Assert.AreEqual(0, _refreshes);
+    }
+
     private void CountRefreshes(Action refresh)
     {
         _engine.Setup(e => e.RefreshData(It.IsAny<string>()))
@@ -379,6 +409,78 @@ public class DataUpdateServiceDisposeTests
         {
             stream.Write(bytes, 0, bytes.Length);
         }
+    }
+
+    // The real file system, apart from running an action before each copy.
+    private sealed class CopyHookFileSystem : IFileSystem
+    {
+        private readonly RealFileSystem _real = new RealFileSystem();
+
+        public CopyHookFileSystem(Action beforeCopy)
+        {
+            File = new CopyHookFileWrapper(beforeCopy);
+        }
+
+        public IFileWrapper File { get; }
+
+        public IDirectoryWrapper Directory => _real.Directory;
+
+        public IFileInfoWrapper GetFileInfo(FileInfo file) =>
+            _real.GetFileInfo(file);
+
+        public IFileInfoWrapper GetFileInfo(string fileName) =>
+            _real.GetFileInfo(fileName);
+
+        public IDirectoryInfoWrapper GetDirInfo(DirectoryInfo dir) =>
+            _real.GetDirInfo(dir);
+
+        public IDirectoryInfoWrapper GetDirInfo(string dirName) =>
+            _real.GetDirInfo(dirName);
+    }
+
+    private sealed class CopyHookFileWrapper : IFileWrapper
+    {
+        private readonly FileWrapper _real = new FileWrapper();
+        private readonly Action _beforeCopy;
+
+        public CopyHookFileWrapper(Action beforeCopy)
+        {
+            _beforeCopy = beforeCopy;
+        }
+
+        public void Copy(
+            string sourceFileName,
+            string destFileName,
+            bool overwrite = false)
+        {
+            _beforeCopy();
+            _real.Copy(sourceFileName, destFileName, overwrite);
+        }
+
+        public bool Exists(string path) => _real.Exists(path);
+        public string ReadAllText(string path) => _real.ReadAllText(path);
+        public void WriteAllBytes(string path, byte[] bytes) =>
+            _real.WriteAllBytes(path, bytes);
+        public void WriteAllText(string path, string contents) =>
+            _real.WriteAllText(path, contents);
+        public FileStream Create(string path) => _real.Create(path);
+        public StreamWriter CreateText(string path) => _real.CreateText(path);
+        public void Delete(string path) => _real.Delete(path);
+        public DateTime GetCreationTimeUtc(string path) =>
+            _real.GetCreationTimeUtc(path);
+        public DateTime GetLastAccessTimeUtc(string path) =>
+            _real.GetLastAccessTimeUtc(path);
+        public DateTime GetLastWriteTimeUtc(string path) =>
+            _real.GetLastWriteTimeUtc(path);
+        public void SetCreationTimeUtc(string path, DateTime creationTimeUtc) =>
+            _real.SetCreationTimeUtc(path, creationTimeUtc);
+        public void SetLastAccessTimeUtc(
+            string path, DateTime lastAccessTimeUtc) =>
+            _real.SetLastAccessTimeUtc(path, lastAccessTimeUtc);
+        public void SetLastWriteTimeUtc(
+            string path, DateTime lastWriteTimeUtc) =>
+            _real.SetLastWriteTimeUtc(path, lastWriteTimeUtc);
+        public Stream OpenRead(string path) => _real.OpenRead(path);
     }
 
     // Counts the requests the service sends, and answers each with not
