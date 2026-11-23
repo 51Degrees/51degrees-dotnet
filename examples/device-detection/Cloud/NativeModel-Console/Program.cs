@@ -197,38 +197,30 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
             }
             else
             {
-                // A resource key that includes the lookup but not every
-                // property this example displays stops the example part
-                // way, so it is reported plainly and the process exits
-                // non-zero.
+                // Each failure is reported in plain words and the example
+                // still ends with the Find out more section. A failed
+                // request to the cloud service, and a key that includes the
+                // lookup but not every property this example displays, end
+                // with exit code 1.
                 try
                 {
                     new Example().Run(
                         resourceKey, loggerFactory, Console.Out);
                 }
-                catch (PropertiesNotYetLoadedException exception)
+                catch (Exception exception)
+                    when (ExampleUtils.IsCloudFailure(exception))
                 {
-                    // The cloud service could not say which properties the
-                    // resource key includes, so nothing was looked up.
                     ExampleUtils.ReportCloudFailure(exception, Console.Out);
-                    loggerFactory.Dispose();
-                    Environment.Exit(1);
+                    Environment.ExitCode = 1;
                 }
                 catch (PipelineException exception)
-                    when (exception.GetType() == typeof(PipelineException))
+                    when (ExampleUtils.IsProductMissing(exception, "hardware"))
                 {
                     // FiftyOne.Pipeline.CloudRequestEngine 4.5.130 and
-                    // earlier throw while building the pipeline for a key
-                    // without the 'hardware' properties, rather than giving
-                    // the engine none.
-                    ExampleUtils.ReportMissingProperties(
-                        exception,
-                        Console.Out,
-                        "the 'hardware' properties a native model lookup " +
-                        "returns, which need a paid subscription",
-                        "https://51degrees.com/configure/QKyYH5XT?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
-                    loggerFactory.Dispose();
-                    Environment.Exit(1);
+                    // earlier throw this while building the pipeline for a
+                    // key without the 'hardware' properties, rather than
+                    // giving the engine none.
+                    Console.WriteLine(Example.NoHardwareLookup);
                 }
                 catch (PropertyMissingException exception)
                 {
@@ -238,8 +230,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                         "every 'hardware' property this example displays, " +
                         "which needs a paid subscription",
                         "https://51degrees.com/configure/QKyYH5XT?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=resource-key-required");
-                    loggerFactory.Dispose();
-                    Environment.Exit(1);
+                    Environment.ExitCode = 1;
                 }
             }
 

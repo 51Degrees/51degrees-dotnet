@@ -23,6 +23,7 @@
 using FiftyOne.Common;
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.CloudRequestEngine;
+using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
@@ -69,12 +70,43 @@ public static class ExampleUtils
         "to get a paid subscription with more properties.";
 
     /// <summary>
+    /// True when the exception, or one it wraps, comes from a request to
+    /// the cloud service that failed, including a failure to read which
+    /// properties the resource key includes.
+    /// </summary>
+    public static bool IsCloudFailure(Exception exception)
+    {
+        return Causes(exception).Any(e =>
+            e is CloudRequestException ||
+            e is PropertiesNotYetLoadedException);
+    }
+
+    /// <summary>
+    /// True when the exception is the one
+    /// FiftyOne.Pipeline.CloudRequestEngine 4.5.130 and earlier throw while
+    /// building the pipeline for a resource key that includes none of an
+    /// engine's properties. Later versions give the engine no properties
+    /// instead.
+    /// </summary>
+    /// <param name="exception">The exception the pipeline threw.</param>
+    /// <param name="elementDataKey">The engine's key, as "hardware".</param>
+    public static bool IsProductMissing(
+        Exception exception,
+        string elementDataKey)
+    {
+        return exception.GetType() == typeof(PipelineException) &&
+            exception.Message.StartsWith(
+                $"Failed to load properties for '{elementDataKey}'",
+                StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Reports in one line that a request to the cloud service failed,
-    /// with the service's own message and status code, rather than as an
-    /// unhandled exception and a stack trace. A failure to read which
-    /// properties the resource key includes is a fault in the request,
-    /// not a key without a property, so it is reported as one. The caller
-    /// ends with a non-zero exit code.
+    /// with the service's message and status code and the underlying cause,
+    /// rather than as an unhandled exception and a stack trace. A failure
+    /// to read which properties the resource key includes is a fault in
+    /// the request, not a key without a property, so it is reported as
+    /// one. The caller ends with a non-zero exit code.
     /// </summary>
     /// <param name="exception">
     /// The exception the pipeline threw.
@@ -86,14 +118,39 @@ public static class ExampleUtils
         Exception exception,
         TextWriter output)
     {
-        var cause = exception.InnerException ?? exception;
-        var status = cause is CloudRequestException cloud &&
-            cloud.HttpStatusCode > 0 ?
+        var cloud = Causes(exception).OfType<CloudRequestException>()
+            .FirstOrDefault();
+        var failure = (Exception)cloud ?? exception;
+        var status = cloud != null && cloud.HttpStatusCode > 0 ?
             $" (status code {cloud.HttpStatusCode})" :
+            string.Empty;
+        var root = failure.GetBaseException();
+        var cause = root != failure && root.Message != failure.Message ?
+            $" {root.Message}" :
             string.Empty;
         output.WriteLine(
             "The example stopped because the request to the cloud " +
-            $"service failed. {cause.Message}{status}");
+            $"service failed. {failure.Message}{status}{cause}");
+    }
+
+    /// <summary>
+    /// The exception and every exception it wraps, including each one an
+    /// <see cref="AggregateException"/> holds.
+    /// </summary>
+    private static IEnumerable<Exception> Causes(Exception exception)
+    {
+        if (exception == null)
+        {
+            yield break;
+        }
+        yield return exception;
+        var inner = exception is AggregateException aggregate ?
+            aggregate.InnerExceptions :
+            (IEnumerable<Exception>)new[] { exception.InnerException };
+        foreach (var cause in inner.SelectMany(Causes))
+        {
+            yield return cause;
+        }
     }
 
     /// <summary>
@@ -102,15 +159,12 @@ public static class ExampleUtils
     /// unhandled exception and a stack trace.
     /// <para>
     /// The cloud service refuses per property when a key carries some but
-    /// not all of the properties an example displays, and
-    /// FiftyOne.Pipeline.CloudRequestEngine 4.5.130 and earlier refuse
-    /// while the pipeline is built when a key carries none of an engine's
-    /// properties. Neither is a fault in the example but a subscription
-    /// that does not cover what the example asks for, so the person running
-    /// it needs to be told which properties are missing and that a paid
-    /// subscription supplies them. The caller decides the exit code, and it
-    /// must not be zero, because an example that could not do its work has
-    /// not succeeded.
+    /// not all of the properties an example displays. That is not a fault
+    /// in the example but a subscription that does not cover what the
+    /// example asks for, so the person running it needs to be told which
+    /// properties are missing and that a paid subscription supplies them.
+    /// The caller decides the exit code, and it must not be zero, because
+    /// an example that could not do its work has not succeeded.
     /// </para>
     /// </summary>
     /// <param name="exception">
