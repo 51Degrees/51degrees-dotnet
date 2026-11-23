@@ -105,24 +105,49 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         }
 
         /// <summary>
-        /// Test the NativeModelLookup Example
+        /// Runs the NativeModelLookup example and checks it lists a device
+        /// with a vendor and a model for each native model name it looks
+        /// up. A key without the lookup fails the test by name.
         /// </summary>
         [TestMethod]
         public void Example_Cloud_NativeModelLookup()
         {
             var example = new Examples.Cloud.NativeModelLookup.Program.Example();
-            example.Run(ResourceKey, new LoggerFactory(), TextWriter.Null, CloudEndPoint);
+            var output = new StringWriter();
+            using (var loggerFactory = new LoggerFactory())
+            {
+                example.Run(ResourceKey, loggerFactory, output, CloudEndPoint);
+            }
+            Console.WriteLine(output);
+            HardwareLookupOutput.AssertListsDevices(
+                output.ToString(),
+                KeyVariable,
+                "native model lookup",
+                "native model name",
+                Examples.Cloud.NativeModelLookup.Program.Example.NativeModel1,
+                Examples.Cloud.NativeModelLookup.Program.Example.NativeModel2);
         }
 
         /// <summary>
-        /// Test the TacLookup Example
+        /// Runs the TacLookup example and checks it lists a device with a
+        /// vendor and a model for each TAC it looks up. A key without the
+        /// lookup fails the test by name.
         /// </summary>
         [TestMethod]
         public void Example_Cloud_TacLookup()
         {
             var example = new Examples.Cloud.TacLookup.Program.Example();
             var options = CreateConfiguration(example.GetType(), ResourceKey, CloudEndPoint);
-            example.Run(options, TextWriter.Null);
+            var output = new StringWriter();
+            example.Run(options, output);
+            Console.WriteLine(output);
+            HardwareLookupOutput.AssertListsDevices(
+                output.ToString(),
+                KeyVariable,
+                "TAC lookup",
+                "TAC",
+                Examples.Cloud.TacLookup.Program.Example.Tac1,
+                Examples.Cloud.TacLookup.Program.Example.Tac2);
         }
 
         /// <summary>
@@ -151,7 +176,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         /// </summary>
         /// <param name="exampleType"></param>
         /// <returns></returns>
-        private static PipelineOptions CreateConfiguration(
+        internal static PipelineOptions CreateConfiguration(
             Type exampleType, string resourceKey, string cloudEndPoint = null)
         {
             // Write the contents of the configuration from the example to a temporary file.
