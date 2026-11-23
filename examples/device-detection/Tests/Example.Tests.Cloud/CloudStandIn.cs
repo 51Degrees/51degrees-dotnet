@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -33,7 +34,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud;
 /// <summary>
 /// How the stand-in for the cloud service answers.
 /// </summary>
-internal enum StandInAnswer
+public enum StandInAnswer
 {
     /// <summary>
     /// As for a resource key that does not include the hardware lookup.
@@ -61,6 +62,24 @@ internal enum StandInAnswer
     /// as <see cref="NoDevices"/>.
     /// </summary>
     FailsOnceThenNoDevices,
+
+    /// <summary>
+    /// With status 403 to every request for the key's properties, as the
+    /// service does for a key it refuses.
+    /// </summary>
+    RefusesTheKey,
+
+    /// <summary>
+    /// As <see cref="NoDevices"/> for the key's properties, then with
+    /// status 500 to every lookup.
+    /// </summary>
+    LookupFails,
+
+    /// <summary>
+    /// As <see cref="NoDevices"/>, with one more profile property whose
+    /// name and list type the SDK does not know.
+    /// </summary>
+    UnknownProfileProperty,
 }
 
 /// <summary>
@@ -101,6 +120,20 @@ internal sealed class CloudStandIn : IDisposable
         "\"Category\":\"Name\",\"DelayExecution\":false}]}]}}}";
 
     /// <summary>
+    /// <see cref="AccessiblePropertiesWithHardware"/> with one more profile
+    /// property of a name the SDK does not know and a list type.
+    /// </summary>
+    private const string AccessiblePropertiesWithUnknownProperty =
+        "{\"Products\":{\"hardware\":{\"DataTier\":\"CloudV5Bespoke\"," +
+        "\"Properties\":[{\"Name\":\"Profiles\",\"Type\":\"Array\"," +
+        "\"Category\":\"\",\"DelayExecution\":false," +
+        "\"EvidenceProperties\":[],\"ItemProperties\":[" +
+        "{\"Name\":\"HardwareVendor\",\"Type\":\"String\"," +
+        "\"Category\":\"Name\",\"DelayExecution\":false}," +
+        "{\"Name\":\"NoSuchListProperty\",\"Type\":\"Array\"," +
+        "\"Category\":\"Name\",\"DelayExecution\":false}]}]}}}";
+
+    /// <summary>
     /// The service's answer to a lookup that matches no device.
     /// </summary>
     private const string NoDevices = "{\"hardware\":{\"profiles\":[]}}";
@@ -127,6 +160,8 @@ internal sealed class CloudStandIn : IDisposable
     private readonly StandInAnswer _answer;
 
     private int _propertyRequests;
+
+    private volatile bool _stopping;
 
     /// <param name="answer">How the stand-in answers.</param>
     public CloudStandIn(StandInAnswer answer = StandInAnswer.NoHardware)
@@ -160,6 +195,9 @@ internal sealed class CloudStandIn : IDisposable
 
     public void Dispose()
     {
+        // Set first, because stopping the listener can end the wait for a
+        // request before the listener reports it has stopped.
+        _stopping = true;
         _listener.Stop();
         _listener.Close();
         _serving.Wait();
@@ -174,54 +212,77 @@ internal sealed class CloudStandIn : IDisposable
             {
                 context = await _listener.GetContextAsync();
             }
-            catch (Exception) when (_listener.IsListening == false)
+            catch (Exception) when (_stopping)
             {
                 // Stopping the listener ends the wait for a request.
                 return;
             }
-            var path = context.Request.Url.AbsolutePath;
-            lock (_paths)
+            try
             {
-                _paths.Add(path);
+                await Answer(context);
             }
-            var isProperties = path.EndsWith("/accessibleproperties",
-                StringComparison.Ordinal);
-            var failsOnce =
-                _answer == StandInAnswer.FailsOnceThenNoHardware ||
-                _answer == StandInAnswer.FailsOnceThenNoDevices;
-            var fail = _answer == StandInAnswer.Failing ||
-                (failsOnce && isProperties &&
-                    Interlocked.Increment(ref _propertyRequests) == 1);
-            var noDevices = _answer == StandInAnswer.NoDevices ||
-                _answer == StandInAnswer.FailsOnceThenNoDevices;
-            var body =
-                fail ? Failure :
-                isProperties ?
-                    (noDevices ?
-                        AccessiblePropertiesWithHardware :
-                        AccessibleProperties) :
-                path.EndsWith("/evidencekeys",
-                    StringComparison.Ordinal) ? EvidenceKeys :
-                path.EndsWith("/json",
-                    StringComparison.Ordinal) && noDevices ? NoDevices :
-                null;
-            if (body == null)
+            catch (Exception exception) when (
+                exception is HttpListenerException ||
+                exception is IOException ||
+                exception is ObjectDisposedException)
             {
-                context.Response.StatusCode = 404;
+                // An example that ends before its answer is written, or
+                // a listener that is stopping, ends only this answer.
             }
-            else
-            {
-                if (fail)
-                {
-                    context.Response.StatusCode = 500;
-                }
-                var bytes = Encoding.UTF8.GetBytes(body);
-                context.Response.ContentType = "application/json";
-                context.Response.ContentLength64 = bytes.Length;
-                await context.Response.OutputStream.WriteAsync(bytes);
-            }
-            context.Response.Close();
         }
+    }
+
+    private async Task Answer(HttpListenerContext context)
+    {
+        var path = context.Request.Url.AbsolutePath;
+        lock (_paths)
+        {
+            _paths.Add(path);
+        }
+        var isProperties = path.EndsWith("/accessibleproperties",
+            StringComparison.Ordinal);
+        var failsOnce =
+            _answer == StandInAnswer.FailsOnceThenNoHardware ||
+            _answer == StandInAnswer.FailsOnceThenNoDevices;
+        var isLookup = path.EndsWith("/json", StringComparison.Ordinal);
+        var refused = _answer == StandInAnswer.RefusesTheKey &&
+            isProperties;
+        var fail = _answer == StandInAnswer.Failing ||
+            (_answer == StandInAnswer.LookupFails && isLookup) ||
+            (failsOnce && isProperties &&
+                Interlocked.Increment(ref _propertyRequests) == 1);
+        var noDevices = _answer == StandInAnswer.NoDevices ||
+            _answer == StandInAnswer.FailsOnceThenNoDevices ||
+            _answer == StandInAnswer.LookupFails ||
+            _answer == StandInAnswer.UnknownProfileProperty;
+        var body =
+            fail || refused ? Failure :
+            isProperties ?
+                (_answer == StandInAnswer.UnknownProfileProperty ?
+                    AccessiblePropertiesWithUnknownProperty :
+                noDevices ?
+                    AccessiblePropertiesWithHardware :
+                    AccessibleProperties) :
+            path.EndsWith("/evidencekeys",
+                StringComparison.Ordinal) ? EvidenceKeys :
+            isLookup && noDevices ? NoDevices :
+            null;
+        if (body == null)
+        {
+            context.Response.StatusCode = 404;
+        }
+        else
+        {
+            if (fail || refused)
+            {
+                context.Response.StatusCode = refused ? 403 : 500;
+            }
+            var bytes = Encoding.UTF8.GetBytes(body);
+            context.Response.ContentType = "application/json";
+            context.Response.ContentLength64 = bytes.Length;
+            await context.Response.OutputStream.WriteAsync(bytes);
+        }
+        context.Response.Close();
     }
 
     private static int FreePort()
