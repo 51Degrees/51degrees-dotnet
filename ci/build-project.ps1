@@ -38,6 +38,42 @@ function Register-TestSigningKey([string]$Path) {
     Write-Host "Registered the public key token $token to skip strong name verification."
 }
 
+# A public signed assembly has the strong name signed flag in its CLI header
+# but no signature, and the .NET Framework checks the signature of any
+# assembly with that flag, whatever the skip entries say. Clearing the flag
+# leaves a delay signed assembly, which a skip entry does cover. This clears
+# it in each assembly in the folder that has the key in the public key file.
+$StrongNameSignedFlag = [int][Reflection.PortableExecutable.CorFlags]::StrongNameSigned
+$CorHeaderFlagsOffset = 16
+function Set-DelaySigned([string]$Bin, [string]$PublicKeyPath) {
+    $key = [IO.File]::ReadAllBytes($PublicKeyPath)
+    foreach ($dll in Get-ChildItem -Path $Bin -Filter *.dll -File) {
+        $bytes = [IO.File]::ReadAllBytes($dll.FullName)
+        $pe = [Reflection.PortableExecutable.PEReader]::new([IO.MemoryStream]::new($bytes))
+        try {
+            $header = $pe.PEHeaders.CorHeader
+            if (-not $header -or -not ($header.Flags -band $StrongNameSignedFlag)) {
+                continue
+            }
+            $metadata = [Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($pe)
+            if (-not $metadata.IsAssembly) {
+                continue
+            }
+            $assemblyKey = $metadata.GetBlobBytes($metadata.GetAssemblyDefinition().PublicKey)
+            if ([Convert]::ToHexString($assemblyKey) -ne [Convert]::ToHexString($key)) {
+                continue
+            }
+            $offset = $pe.PEHeaders.CorHeaderStartOffset + $CorHeaderFlagsOffset
+        } finally {
+            $pe.Dispose()
+        }
+        $flags = [int]$header.Flags -band -bnot $StrongNameSignedFlag
+        [BitConverter]::GetBytes($flags).CopyTo($bytes, $offset)
+        [IO.File]::WriteAllBytes($dll.FullName, $bytes)
+        Write-Host "Marked $($dll.Name) in $Bin as delay signed."
+    }
+}
+
 # Every folder is built against the projects next to it, so a change that
 # crosses packages is built and tested together. Package mode is what a
 # checkout and the examples use, and what install-package.ps1 tests.
@@ -91,13 +127,18 @@ try {
 # because the compiler has only been shown to load the x64 builds.
 if ($BuildMethod -eq "msbuild" -and $Arch -eq "x64") {
     # Only the job that builds the packages has the private key, so here
-    # every assembly is public signed. ASP.NET on the .NET Framework loads a
-    # public signed assembly only when its key is registered to skip strong
-    # name verification, as a delay signed assembly under test is. That
-    # covers this compile and the sites test-framework-sites.ps1 hosts later
-    # in the same job.
-    if (-not (Test-Path (Join-Path $RepoName "51Degrees.snk"))) {
-        Register-TestSigningKey (Join-Path $RepoName "51Degrees.publickey")
+    # every assembly is public signed. ASP.NET shadow copies a site's
+    # assemblies, so the .NET Framework checks their strong name signatures,
+    # which a public signed assembly does not have. The copies in each site's
+    # bin folder are therefore marked as delay signed and their key is
+    # registered to skip verification. That covers this compile and the
+    # sites test-framework-sites.ps1 hosts later in the same job.
+    # A full path, because .NET reads a relative one from the process's
+    # folder rather than the PowerShell location.
+    $publicKey = (Resolve-Path (Join-Path $RepoName "51Degrees.publickey")).Path
+    $publicSigned = -not (Test-Path (Join-Path $RepoName "51Degrees.snk"))
+    if ($publicSigned) {
+        Register-TestSigningKey $publicKey
     }
     $compiler = Join-Path $env:windir "Microsoft.NET/Framework64/v4.0.30319/aspnet_compiler.exe"
     $sites = @(git -C $RepoName ls-files |
@@ -109,6 +150,9 @@ if ($BuildMethod -eq "msbuild" -and $Arch -eq "x64") {
         if (-not (Test-Path (Join-Path $path "bin"))) {
             Write-Host "$site was not built, so its pages are not compiled"
             continue
+        }
+        if ($publicSigned) {
+            Set-DelaySigned (Join-Path $path "bin") $publicKey
         }
         $number++
         $target = Join-Path ([IO.Path]::GetTempPath()) "compiled-site-$number"
