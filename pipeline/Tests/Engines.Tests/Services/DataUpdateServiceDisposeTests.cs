@@ -23,8 +23,10 @@
 using FiftyOne.Common.Wrappers.IO;
 using FiftyOne.Pipeline.Engines.Configuration;
 using FiftyOne.Pipeline.Engines.Data;
+using FiftyOne.Pipeline.Engines.Exceptions;
 using FiftyOne.Pipeline.Engines.FlowElements;
 using FiftyOne.Pipeline.Engines.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -78,6 +80,7 @@ public class DataUpdateServiceDisposeTests
     private int _exited;
     private ConcurrentQueue<DataUpdateCompleteArgs> _reports;
     private CountingHandler _http;
+    private ErrorRecordingLogger _logger;
 
     [TestInitialize]
     public void Init()
@@ -88,8 +91,9 @@ public class DataUpdateServiceDisposeTests
         _path = Path.Combine(_directory, "data.dat");
         File.WriteAllText(_path, OldData);
         _http = new CountingHandler();
+        _logger = new ErrorRecordingLogger();
         _service = new DataUpdateService(
-            NullLogger<DataUpdateService>.Instance,
+            _logger,
             new HttpClient(_http),
             new RealFileSystem(),
             (callback, state, dueTime) => null);
@@ -239,6 +243,80 @@ public class DataUpdateServiceDisposeTests
     }
 
     /// <summary>
+    /// The engine's refresh fails while the file is disposed. Dispose waits
+    /// for the refresh, and the failure is reported rather than lost when
+    /// the next try finds the file closed.
+    /// </summary>
+    [TestMethod]
+    public void Watcher_RefreshFailsDuringDispose_ReportsTheFailure()
+    {
+        var refreshing = new ManualResetEventSlim();
+        CountRefreshes(() =>
+        {
+            refreshing.Set();
+            // Fails once dispose has closed the file.
+            SpinWait.SpinUntil(() => _file.TimerClosed, WaitMilliseconds);
+            throw new InvalidOperationException("The refresh failed.");
+        });
+        _service.RegisterDataFile(_file);
+
+        Replace(_path, NewData);
+        Assert.IsTrue(
+            refreshing.Wait(WaitMilliseconds),
+            "The watcher did not start a refresh.");
+        Assert.IsTrue(
+            Task.Run(() => _file.Dispose()).Wait(WaitMilliseconds),
+            "Dispose did not return once the refresh ended.");
+        WaitForWatcher();
+
+        var reports = ReportsForFile();
+        CollectionAssert.Contains(
+            reports,
+            AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED,
+            "Reported " + string.Join(", ", reports) + ".");
+        Assert.IsTrue(
+            _logger.Errors.Any(e => e?.InnerException
+                is InvalidOperationException),
+            "The failure was not logged with its cause.");
+        Assert.AreEqual(1, _refreshes);
+    }
+
+    /// <summary>
+    /// The engine's refresh fails, and the file is disposed before the next
+    /// try. A programmatic check throws the failure and reports it.
+    /// </summary>
+    [TestMethod]
+    public void CheckForUpdate_DisposedAfterFailedTry_ThrowsTheFailure()
+    {
+        CountRefreshes(() =>
+        {
+            // The next try finds the file closed.
+            _file.Dispose();
+            throw new InvalidOperationException("The refresh failed.");
+        });
+        var configuration = (DataFileConfiguration)_file.Configuration;
+        configuration.VerifyMd5 = false;
+        configuration.DecompressContent = false;
+        _http.Respond = () => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(Encoding.ASCII.GetBytes(NewData)),
+        };
+
+        var thrown = Assert.ThrowsExactly<DataUpdateException>(() =>
+            _service.CheckForUpdate(_engine.Object));
+
+        Assert.AreEqual(
+            AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED,
+            thrown.Status);
+        Assert.IsInstanceOfType<InvalidOperationException>(
+            thrown.InnerException);
+        CollectionAssert.Contains(
+            ReportsForFile(),
+            AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED);
+        Assert.AreEqual(1, _refreshes);
+    }
+
+    /// <summary>
     /// An update from memory for a disposed file fails, and neither writes
     /// the data file nor refreshes the engine.
     /// </summary>
@@ -309,8 +387,9 @@ public class DataUpdateServiceDisposeTests
 
     /// <summary>
     /// The file is disposed while a check copies a downloaded data file over
-    /// it. The disposed watcher is not enabled again, the engine is not
-    /// refreshed, and the check reports not needed.
+    /// it. The copy still writes the data file, the disposed watcher is not
+    /// enabled again, the engine is not refreshed, and the check reports not
+    /// needed.
     /// </summary>
     [TestMethod]
     public void CheckForUpdate_DisposedDuringCopy_LeavesWatcherAlone()
@@ -334,6 +413,9 @@ public class DataUpdateServiceDisposeTests
         var status = service.CheckForUpdate(_engine.Object);
 
         Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, status);
+        Assert.AreEqual(1, _http.Requests);
+        // The dispose came during the copy, which still wrote the file.
+        Assert.AreEqual(NewData, File.ReadAllText(_path));
         Assert.AreEqual(0, _refreshes);
     }
 
@@ -353,25 +435,33 @@ public class DataUpdateServiceDisposeTests
     // for this file are checked.
     private void AssertNotRefreshed()
     {
+        WaitForWatcher();
+        Assert.AreEqual(
+            0,
+            _refreshes,
+            "The engine was refreshed after its data file was disposed.");
+        var reports = ReportsForFile();
+        Assert.IsTrue(reports.Length > 0, "Nothing was reported.");
+        Assert.IsTrue(
+            reports.All(r => r == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED),
+            "Reported " + string.Join(", ", reports) + ".");
+    }
+
+    // Waits for every watcher event that started to end.
+    private void WaitForWatcher()
+    {
         Assert.IsTrue(
             SpinWait.SpinUntil(
                 () => Volatile.Read(ref _exited) ==
                     Volatile.Read(ref _entered),
                 WaitMilliseconds),
             "The watcher did not finish with the change.");
-        Assert.AreEqual(
-            0,
-            _refreshes,
-            "The engine was refreshed after its data file was disposed.");
-        var reports = _reports
-            .Where(r => ReferenceEquals(r.DataFile, _file))
-            .Select(r => r.Status)
-            .ToArray();
-        Assert.IsTrue(reports.Length > 0, "Nothing was reported.");
-        Assert.IsTrue(
-            reports.All(r => r == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED),
-            "Reported " + string.Join(", ", reports) + ".");
     }
+
+    private AutoUpdateStatus[] ReportsForFile() => _reports
+        .Where(r => ReferenceEquals(r.DataFile, _file))
+        .Select(r => r.Status)
+        .ToArray();
 
     // Opens the file so that it cannot be opened again until it is closed,
     // trying again while the write that changed it still has it open.
@@ -481,6 +571,32 @@ public class DataUpdateServiceDisposeTests
             string path, DateTime lastWriteTimeUtc) =>
             _real.SetLastWriteTimeUtc(path, lastWriteTimeUtc);
         public Stream OpenRead(string path) => _real.OpenRead(path);
+    }
+
+    // Records the exception of each error logged, from any thread.
+    private sealed class ErrorRecordingLogger : ILogger<DataUpdateService>
+    {
+        private readonly ConcurrentQueue<Exception> _errors =
+            new ConcurrentQueue<Exception>();
+
+        public Exception[] Errors => _errors.ToArray();
+
+        public IDisposable BeginScope<TState>(TState state) => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception exception,
+            Func<TState, Exception, string> formatter)
+        {
+            if (logLevel == LogLevel.Error)
+            {
+                _errors.Enqueue(exception);
+            }
+        }
     }
 
     // Counts the requests the service sends, and answers each with not

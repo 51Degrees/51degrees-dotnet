@@ -374,10 +374,17 @@ namespace FiftyOne.Pipeline.Engines.Services
         /// If the engine has only one data file then this parameter is ignored.
         /// </param>
         /// <returns>
-        /// The result of the update check. Not needed when the data file has
-        /// been disposed. Nothing is downloaded if it was disposed before the
-        /// call, and a download under way when it is disposed is not applied
-        /// to the engine.
+        /// The result of the update check. A data file disposed before any
+        /// try at refreshing the engine gives not needed, and the engine is
+        /// left alone. Nothing is downloaded if the file was disposed before
+        /// the call. A download under way when it was disposed is not
+        /// copied over the data file, though a copy already under way
+        /// finishes and writes it. A dispose during a try waits for that try
+        /// to end, and the check gives success if it worked. If that try
+        /// failed, or the dispose came after a failed try, the tries end and
+        /// the failure is thrown as a refresh failure. A dispose after the
+        /// engine is refreshed leaves the success. A failure to download or
+        /// copy is thrown whether or not the file was disposed.
         /// </returns>
         /// <exception cref="DataUpdateException">
         /// Thrown if some problem occurs during the update process.
@@ -1300,7 +1307,8 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// Called when a data update is available and the file at
 		/// engine.DataFilePath contains this new data. Refreshes the engine,
 		/// trying up to 10 times, and leaves the update timer alone. Gives
-		/// not needed, with no refresh, once the file is disposed.
+		/// not needed, with no refresh, once the file is disposed, unless an
+		/// earlier try failed, whose failure is then thrown.
 		/// </summary>
 		/// <param name="dataFile"></param>
 		/// <returns></returns>
@@ -1322,14 +1330,21 @@ namespace FiftyOne.Pipeline.Engines.Services
 				{
 					try
 					{
-						result = RefreshEngine(
+						var refreshed = RefreshEngine(
 							dataFile,
 							() => dataFile.Engine.RefreshData(
 								dataFile.Identifier));
-						if (result == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
+						if (refreshed == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
 						{
-							return result;
+							// Disposed. A failure from an earlier try is
+							// still thrown below.
+							if (exception == null)
+							{
+								return refreshed;
+							}
+							break;
 						}
+						result = refreshed;
 					}
 #pragma warning disable CA1031 // Do not catch general exception types
 					// The code executed by the RefreshData method could
