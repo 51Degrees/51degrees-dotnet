@@ -66,8 +66,8 @@ jobs:
       # environment, under the names common-ci's own Package job uses.
       - name: Package
         env:
-          _51DEGREES_ACCESS_TOKEN: ${{ secrets._51DEGREES_ACCESS_TOKEN }}
-          _51DEGREES_PUBLISH_NUGET_API_KEY: ${{ steps.nuget.outputs.NUGET_API_KEY }}
+          CI_ACCESS_TOKEN: ${{ secrets.CI_ACCESS_TOKEN }}
+          NUGET_API_KEY: ${{ steps.nuget.outputs.NUGET_API_KEY }}
         run: |
           $DryRun = [bool]::Parse( "${{ inputs.dryrun || false }}" )
           $Options = @{}

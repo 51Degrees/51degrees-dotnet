@@ -1,12 +1,15 @@
 # Environment variable names
 
 These are the environment variables that the packages, examples, tests and CI
-scripts of this repository read. Each name 51Degrees defines starts with
-`_51DEGREES_` and holds one thing, and no name is filled from another.
+scripts of this repository read. A name a customer uses, in the demos and the
+examples, starts with `_51DEGREES_`. A secret that only CI uses has no prefix,
+its name says what it does, and it is listed under "Secrets only CI reads".
+Each name holds one thing, and no name is filled from another.
 [`common/Test/EnvironmentVariableNamesTests.cs`](common/Test/EnvironmentVariableNamesTests.cs)
 reads the tables below. It fails on a `_51DEGREES_` name in the code that is
-not listed here, on a listed name that nothing uses, and on any other name
-that is read or set and is not in the last table.
+not listed here, on a listed name that nothing uses, on a secret only CI reads
+that has the prefix, and on any other name that is read or set and is in
+neither of the last two tables.
 
 ## Keys
 
@@ -50,14 +53,14 @@ in `ci/packages.json`.
 
 | Name | What it holds | Read by |
 | --- | --- | --- |
-| `_51DEGREES_ACCESS_TOKEN` | The GitHub token the publish pushes tags and makes releases with | The Package job in `.github/workflows/publish.yml` |
-| `_51DEGREES_PUBLISH_NUGET_API_KEY` | The nuget.org key, from nuget.org trusted publishing | `ci/publish-package.ps1` |
-| `_51DEGREES_SIGN_STRONG_NAME_KEY_BASE64` | The strong name key, base64 | `ci/build-package.ps1` |
-| `_51DEGREES_SIGN_KEY_VAULT_URL` | The address of the code signing key vault | `ci/build-package.ps1` |
-| `_51DEGREES_SIGN_KEY_VAULT_CLIENT_ID` | The client id the package build signs in to the key vault with | `ci/build-package.ps1` |
-| `_51DEGREES_SIGN_KEY_VAULT_TENANT_ID` | The tenant of that client | `ci/build-package.ps1` |
-| `_51DEGREES_SIGN_KEY_VAULT_CLIENT_SECRET` | The secret of that client | `ci/build-package.ps1` |
-| `_51DEGREES_SIGN_KEY_VAULT_CERTIFICATE_NAME` | The name of the code signing certificate in the key vault | `ci/build-package.ps1` |
+| `CI_ACCESS_TOKEN` | The GitHub token the publish pushes tags and makes releases with | The Package job in `.github/workflows/publish.yml` |
+| `NUGET_API_KEY` | The nuget.org key, from nuget.org trusted publishing | `ci/publish-package.ps1` |
+| `STRONG_NAME_KEY_BASE64` | The strong name key, base64 | `ci/build-package.ps1` |
+| `CODE_SIGNING_KEY_VAULT_URL` | The address of the code signing key vault | `ci/build-package.ps1` |
+| `CODE_SIGNING_KEY_VAULT_CLIENT_ID` | The client id the package build signs in to the key vault with | `ci/build-package.ps1` |
+| `CODE_SIGNING_KEY_VAULT_TENANT_ID` | The tenant of that client | `ci/build-package.ps1` |
+| `CODE_SIGNING_KEY_VAULT_CLIENT_SECRET` | The secret of that client | `ci/build-package.ps1` |
+| `CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME` | The name of the code signing certificate in the key vault | `ci/build-package.ps1` |
 
 ## Names other tools define
 

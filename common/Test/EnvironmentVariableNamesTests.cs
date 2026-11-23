@@ -33,13 +33,14 @@ namespace FiftyOne.Common.Tests;
 /// <summary>
 /// Every environment variable name this repository reads or sets is in
 /// environment-variables.md at the root, apart from the version property of
-/// each package, which ci/packages.json names. A name 51Degrees defines starts
+/// each package, which ci/packages.json names. A name a customer uses starts
 /// with an underscore and _51DEGREES_, because a POSIX shell cannot set a
-/// name that starts with a digit, and any other name is one that another
-/// tool defines, listed in the last table of that file. A workflow reads
-/// only _51DEGREES_ secrets and variables, and no _51DEGREES_ name is filled
-/// from another. The tests read every file git tracks, which leaves out
-/// build output and the submodules.
+/// name that starts with a digit. A secret that only CI uses has no prefix
+/// and is listed in the table of secrets only CI reads. Any other name is one
+/// that another tool defines, listed in the last table of that file. A
+/// workflow reads only _51DEGREES_ secrets and variables and the secrets only
+/// CI reads, and no _51DEGREES_ name is filled from another. The tests read
+/// every file git tracks, which leaves out build output and the submodules.
 /// </summary>
 [TestClass]
 public class EnvironmentVariableNamesTests
@@ -71,6 +72,12 @@ public class EnvironmentVariableNamesTests
     /// tools define.
     /// </summary>
     private const string OtherToolsHeading = "## Names other tools define";
+
+    /// <summary>
+    /// The heading in <see cref="NamesFile"/> of the table of secrets that
+    /// only CI uses, which have no prefix.
+    /// </summary>
+    private const string CiSecretsHeading = "## Secrets only CI reads";
 
     /// <summary>
     /// This file, whose tests use made up names.
@@ -278,17 +285,19 @@ public class EnvironmentVariableNamesTests
     }
 
     /// <summary>
-    /// The secrets and variables a workflow line reads that it may not:
-    /// any without the prefix, apart from GitHub's own token.
+    /// The secrets and variables a workflow line reads that it may not, being
+    /// any without the prefix, apart from GitHub's own token and the secrets
+    /// only CI reads.
     /// </summary>
-    private static List<string> OtherWorkflowNames(string line)
+    private static List<string> OtherWorkflowNames(
+        string line, ISet<string> ciSecrets)
     {
         var names = new List<string>();
         foreach (Match match in WorkflowName.Matches(line))
         {
             var name = match.Groups["name"].Value;
             if (!name.StartsWith(Prefix, StringComparison.Ordinal) &&
-                name != GitHubToken)
+                name != GitHubToken && !ciSecrets.Contains(name))
             {
                 names.Add(match.Value);
             }
@@ -320,29 +329,32 @@ public class EnvironmentVariableNamesTests
     }
 
     /// <summary>
-    /// The names <see cref="NamesFile"/> lists, as the 51Degrees names and
-    /// the names other tools define.
+    /// The names <see cref="NamesFile"/> lists, as the names customers use,
+    /// the secrets only CI reads and the names other tools define.
     /// </summary>
-    private static (HashSet<string> Ours, HashSet<string> OtherTools)
+    private static (HashSet<string> Ours, HashSet<string> Ci, HashSet<string> OtherTools)
         ListedNames(IEnumerable<string> lines)
     {
         var ours = new HashSet<string>(StringComparer.Ordinal);
+        var ci = new HashSet<string>(StringComparer.Ordinal);
         var other = new HashSet<string>(StringComparer.Ordinal);
-        var inOther = false;
+        var table = ours;
         foreach (var raw in lines)
         {
             var line = raw.TrimEnd('\r');
             if (line.StartsWith("## ", StringComparison.Ordinal))
             {
-                inOther = line == OtherToolsHeading;
+                table = line == OtherToolsHeading ? other
+                    : line == CiSecretsHeading ? ci
+                    : ours;
             }
             var listed = ListedName.Match(line);
             if (listed.Success)
             {
-                (inOther ? other : ours).Add(listed.Groups["name"].Value);
+                table.Add(listed.Groups["name"].Value);
             }
         }
-        return (ours, other);
+        return (ours, ci, other);
     }
 
     /// <summary>
@@ -385,8 +397,8 @@ public class EnvironmentVariableNamesTests
     private static readonly Lazy<List<TrackedFile>> Files =
         new Lazy<List<TrackedFile>>(TrackedFiles);
 
-    private static readonly Lazy<(HashSet<string> Ours, HashSet<string> OtherTools)>
-        Listed = new Lazy<(HashSet<string>, HashSet<string>)>(() =>
+    private static readonly Lazy<(HashSet<string> Ours, HashSet<string> Ci, HashSet<string> OtherTools)>
+        Listed = new Lazy<(HashSet<string>, HashSet<string>, HashSet<string>)>(() =>
             ListedNames(File.ReadAllLines(
                 Path.Combine(Repository.Root(), NamesFile))));
 
@@ -514,29 +526,35 @@ public class EnvironmentVariableNamesTests
                 "${{ secrets.MADE_UP }} ${{ vars.MADE_UP }} " +
                 $"${{{{ secrets.{Prefix}MADE_UP }}}} " +
                 $"${{{{ vars.{Prefix}MADE_UP }}}} " +
-                "${{ secrets.GITHUB_TOKEN }} secrets: inherit"));
+                "${{ secrets.MADE_UP_CI_SECRET }} " +
+                "${{ secrets.GITHUB_TOKEN }} secrets: inherit",
+                new HashSet<string> { "MADE_UP_CI_SECRET" }));
     }
 
     [TestMethod]
-    public void TheNamesFileListsBothKinds()
+    public void TheNamesFileListsEachKind()
     {
-        var (ours, other) = ListedNames(new[]
+        var (ours, ci, other) = ListedNames(new[]
         {
             "## Keys",
             $"| `{Prefix}MADE_UP` | A key | Tests |",
             "| Name | What it holds | Read by |",
+            CiSecretsHeading,
+            "| `MADE_UP_CI_SECRET` | A token | CI |",
             OtherToolsHeading,
             "| `MADE_UP` | A tool |",
         });
         CollectionAssert.AreEqual(new[] { Prefix + "MADE_UP" }, ours.ToArray());
+        CollectionAssert.AreEqual(new[] { "MADE_UP_CI_SECRET" }, ci.ToArray());
         CollectionAssert.AreEqual(new[] { "MADE_UP" }, other.ToArray());
 
-        var (listedOurs, listedOther) = Listed.Value;
+        var (listedOurs, listedCi, listedOther) = Listed.Value;
         Assert.IsTrue(listedOurs.Count > 0, "No 51Degrees name is listed.");
+        Assert.IsTrue(listedCi.Count > 0, "No secret only CI reads is listed.");
         Assert.IsTrue(listedOther.Count > 0, "No other tool's name is listed.");
         var wrongTable = listedOurs
             .Where(n => !n.StartsWith(Prefix, StringComparison.Ordinal))
-            .Concat(listedOther
+            .Concat(listedCi.Concat(listedOther)
                 .Where(n => n.StartsWith(Prefix, StringComparison.Ordinal)))
             .ToList();
         Assert.AreEqual(
@@ -571,12 +589,12 @@ public class EnvironmentVariableNamesTests
     [TestMethod]
     public void EveryNameTheCodeReadsIsListed()
     {
-        var (ours, other) = Listed.Value;
+        var (ours, ci, other) = Listed.Value;
         var versions = VersionProperties.Value;
         var found = CodeNames()
             .Where(n => n.Name.StartsWith(Prefix, StringComparison.Ordinal)
                 ? !ours.Contains(n.Name) && !versions.Contains(n.Name)
-                : !other.Contains(n.Name))
+                : !ci.Contains(n.Name) && !other.Contains(n.Name))
             .Select(n => $"{n.Where}: {n.Name}")
             .ToList();
         Assert.AreEqual(
@@ -584,17 +602,19 @@ public class EnvironmentVariableNamesTests
             found.Count,
             $"{found.Count} names are read or set that {NamesFile} does " +
             $"not list. A name 51Degrees defines starts {Prefix} and is " +
-            "listed with what it holds, and another tool's name is listed " +
-            "in its last table:\n" + string.Join("\n", found));
+            "listed with what it holds, a secret only CI reads is listed " +
+            "without the prefix, and another tool's name is listed in its " +
+            "last table:\n" + string.Join("\n", found));
     }
 
     [TestMethod]
     public void EveryListedNameIsUsed()
     {
-        var (ours, other) = Listed.Value;
+        var (ours, ci, other) = Listed.Value;
         var used = new HashSet<string>(
             CodeNames().Select(n => n.Name), StringComparer.Ordinal);
-        var unused = ours.Concat(other).Where(n => !used.Contains(n)).ToList();
+        var unused = ours.Concat(ci).Concat(other)
+            .Where(n => !used.Contains(n)).ToList();
         Assert.AreEqual(
             0,
             unused.Count,
@@ -603,14 +623,15 @@ public class EnvironmentVariableNamesTests
     }
 
     [TestMethod]
-    public void EveryWorkflowReadsOnlyPrefixedSecretsAndVariables()
+    public void EveryWorkflowReadsOnlyPrefixedSecretsAndVariablesOrCiSecrets()
     {
+        var ci = Listed.Value.Ci;
         var found = new List<string>();
         foreach (var file in Files.Value.Where(f => f.IsWorkflow))
         {
             for (var index = 0; index < file.Lines.Length; index++)
             {
-                foreach (var name in OtherWorkflowNames(file.Lines[index]))
+                foreach (var name in OtherWorkflowNames(file.Lines[index], ci))
                 {
                     found.Add($"{file.Relative}:{index + 1}: {name}");
                 }
@@ -620,7 +641,8 @@ public class EnvironmentVariableNamesTests
             0,
             found.Count,
             $"{found.Count} secrets or variables named in the workflows " +
-            $"do not start {Prefix}:\n" + string.Join("\n", found));
+            $"neither start {Prefix} nor are secrets only CI reads:\n" +
+            string.Join("\n", found));
     }
 
     [TestMethod]

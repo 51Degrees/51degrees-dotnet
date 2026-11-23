@@ -9,13 +9,13 @@ BeforeAll {
     $script:BuildPackage = Join-Path $PSScriptRoot 'build-package.ps1'
     $script:PublishPackage = Join-Path $PSScriptRoot 'publish-package.ps1'
     $script:SigningNames = @(
-        '_51DEGREES_SIGN_STRONG_NAME_KEY_BASE64',
-        '_51DEGREES_SIGN_KEY_VAULT_URL',
-        '_51DEGREES_SIGN_KEY_VAULT_CLIENT_ID',
-        '_51DEGREES_SIGN_KEY_VAULT_TENANT_ID',
-        '_51DEGREES_SIGN_KEY_VAULT_CLIENT_SECRET',
-        '_51DEGREES_SIGN_KEY_VAULT_CERTIFICATE_NAME')
-    $script:PublishName = '_51DEGREES_PUBLISH_NUGET_API_KEY'
+        'STRONG_NAME_KEY_BASE64',
+        'CODE_SIGNING_KEY_VAULT_URL',
+        'CODE_SIGNING_KEY_VAULT_CLIENT_ID',
+        'CODE_SIGNING_KEY_VAULT_TENANT_ID',
+        'CODE_SIGNING_KEY_VAULT_CLIENT_SECRET',
+        'CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME')
+    $script:PublishName = 'NUGET_API_KEY'
 
     function Invoke-Script([string]$Path, [string[]]$Arguments) {
         $folder = Join-Path ([IO.Path]::GetTempPath()) "signing-$([Guid]::NewGuid())"
@@ -51,18 +51,18 @@ Describe 'the secrets the package build and the publish read' {
         $result = Invoke-Script $BuildPackage @('-RepoName', 'repo', '-Version', '4.5.0')
 
         $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match '_51DEGREES_SIGN_STRONG_NAME_KEY_BASE64 is not set'
+        $result.Output | Should -Match 'STRONG_NAME_KEY_BASE64 is not set'
     }
 
     It 'stops the package build naming the one signing secret that is not set' {
         foreach ($name in $SigningNames) { Set-Item "Env:$name" 'value' }
-        Remove-Item Env:_51DEGREES_SIGN_KEY_VAULT_CERTIFICATE_NAME
+        Remove-Item Env:CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME
 
         $result = Invoke-Script $BuildPackage @('-RepoName', 'repo', '-Version', '4.5.0')
 
         $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match '_51DEGREES_SIGN_KEY_VAULT_CERTIFICATE_NAME is not set'
-        $result.Output | Should -Not -Match '_51DEGREES_SIGN_KEY_VAULT_URL is not set'
+        $result.Output | Should -Match 'CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME is not set'
+        $result.Output | Should -Not -Match 'CODE_SIGNING_KEY_VAULT_URL is not set'
     }
 
     It 'stops the publish naming the NuGet key before pushing anything' {

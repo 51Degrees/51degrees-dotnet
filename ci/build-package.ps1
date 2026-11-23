@@ -9,11 +9,11 @@ $PSNativeCommandUseErrorActionPreference = $true
 
 # The job that signs the packages has the signing secrets under these names,
 # and nothing is packed unless every one is set.
-foreach ($name in '_51DEGREES_SIGN_STRONG_NAME_KEY_BASE64',
-    '_51DEGREES_SIGN_KEY_VAULT_URL', '_51DEGREES_SIGN_KEY_VAULT_CLIENT_ID',
-    '_51DEGREES_SIGN_KEY_VAULT_TENANT_ID',
-    '_51DEGREES_SIGN_KEY_VAULT_CLIENT_SECRET',
-    '_51DEGREES_SIGN_KEY_VAULT_CERTIFICATE_NAME') {
+foreach ($name in 'STRONG_NAME_KEY_BASE64',
+    'CODE_SIGNING_KEY_VAULT_URL', 'CODE_SIGNING_KEY_VAULT_CLIENT_ID',
+    'CODE_SIGNING_KEY_VAULT_TENANT_ID',
+    'CODE_SIGNING_KEY_VAULT_CLIENT_SECRET',
+    'CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME') {
     if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
         throw "$name is not set, so the packages cannot be signed."
     }
@@ -25,7 +25,7 @@ $RepoPath = [IO.Path]::Combine($pwd, $RepoName)
 $PackagesFolder = New-Item -ItemType Directory -Force "$pwd/package"
 
 # The strong name key, so the assemblies are fully signed.
-[IO.File]::WriteAllBytes("$RepoPath/51Degrees.snk", [Convert]::FromBase64String($env:_51DEGREES_SIGN_STRONG_NAME_KEY_BASE64))
+[IO.File]::WriteAllBytes("$RepoPath/51Degrees.snk", [Convert]::FromBase64String($env:STRONG_NAME_KEY_BASE64))
 
 # The native libraries every platform built, which the engine projects pack
 # from <product>/<os>/<arch>/ as runtimes.
@@ -119,11 +119,11 @@ foreach ($package in $packages) {
         --file-digest sha256 `
         --timestamp-digest sha256 `
         --timestamp-rfc3161 http://rfc3161timestamp.globalsign.com/advanced `
-        --azure-key-vault-url $env:_51DEGREES_SIGN_KEY_VAULT_URL `
-        --azure-key-vault-client-id $env:_51DEGREES_SIGN_KEY_VAULT_CLIENT_ID `
-        --azure-key-vault-tenant-id $env:_51DEGREES_SIGN_KEY_VAULT_TENANT_ID `
-        --azure-key-vault-client-secret $env:_51DEGREES_SIGN_KEY_VAULT_CLIENT_SECRET `
-        --azure-key-vault-certificate $env:_51DEGREES_SIGN_KEY_VAULT_CERTIFICATE_NAME
+        --azure-key-vault-url $env:CODE_SIGNING_KEY_VAULT_URL `
+        --azure-key-vault-client-id $env:CODE_SIGNING_KEY_VAULT_CLIENT_ID `
+        --azure-key-vault-tenant-id $env:CODE_SIGNING_KEY_VAULT_TENANT_ID `
+        --azure-key-vault-client-secret $env:CODE_SIGNING_KEY_VAULT_CLIENT_SECRET `
+        --azure-key-vault-certificate $env:CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME
 }
 foreach ($package in $packages) {
     dotnet nuget verify $package.FullName
