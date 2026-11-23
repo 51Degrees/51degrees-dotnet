@@ -123,16 +123,17 @@ function Invoke-ContractTests {
         $example = dotnet run --no-build --project $Project @BuildArgs --no-launch-profile 2>&1 &
         curl -sS -o $(if ($IsWindows) { 'NUL' } else { '/dev/null' }) --retry 60 --retry-delay 2 --retry-connrefused "http://localhost:$Port"
         # The suite reads the address and language of the running example
-        # under the names it defines.
-        $env:EXAMPLE_URL = "http://localhost:$Port"
-        $env:EXAMPLE_LANG = 'dotnet'
+        # under its _51DEGREES_ names. Without _51DEGREES_EXAMPLE_URL it
+        # launches an example of its own.
+        ${env:_51DEGREES_EXAMPLE_URL} = "http://localhost:$Port"
+        ${env:_51DEGREES_EXAMPLE_LANG} = 'dotnet'
         dotnet test selenium-api-tests -c Release --filter TestCategory=Contract
     } catch {
         if ($example) { Write-Host ">>> $Label example output >>>"; Receive-Job $example | Out-Host; Write-Host "<<< example output <<<" }
         throw
     } finally {
         if ($example) { Remove-Job -Force $example }
-        Remove-Item Env:ASPNETCORE_URLS, Env:EXAMPLE_URL -ErrorAction SilentlyContinue
+        Remove-Item Env:ASPNETCORE_URLS, Env:_51DEGREES_EXAMPLE_URL -ErrorAction SilentlyContinue
         foreach ($variable in $previous.Keys) {
             if ($null -eq $previous[$variable]) {
                 Remove-Item -Path "Env:$variable" -ErrorAction SilentlyContinue
@@ -175,7 +176,7 @@ if ($Arch -eq 'x86') {
         $failed += 'on-premise'
     }
 }
-Remove-Item Env:EXAMPLE_LANG -ErrorAction SilentlyContinue
+Remove-Item Env:_51DEGREES_EXAMPLE_LANG -ErrorAction SilentlyContinue
 if ($failed) {
     throw "The Selenium contract failed against the $($failed -join ' and ') example."
 }
