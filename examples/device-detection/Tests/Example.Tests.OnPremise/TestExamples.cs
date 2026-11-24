@@ -23,10 +23,17 @@
 // Ignore Spelling: Offline Yaml Metadata
 
 using FiftyOne.DeviceDetection.Examples;
+using FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile;
+using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
+using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
 {
@@ -41,13 +48,6 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
     [TestClass]
     public class TestExamples
     {
-        /// <summary>
-        /// The Device Detection product the CI license key holds. The key
-        /// holds more than one product, and the update on start-up runs
-        /// before a data file is loaded, so the update test names it.
-        /// </summary>
-        private const string CiLicenseKeyProduct = "V4TAC";
-
         private string LicenseKey;
 
         private string DataFile;
@@ -127,17 +127,141 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
 
         /// <summary>
         /// Test the UpdateDataFile Example. It asks for the product in
-        /// '_51DEGREES_DD_PRODUCT' when that is set, and otherwise for the
-        /// product the CI license key holds.
+        /// '_51DEGREES_DD_PRODUCT' when that is set, and otherwise names no
+        /// product. A license key that holds several products needs the
+        /// product named, as the update on start-up runs before a data file
+        /// is loaded.
         /// </summary>
         [TestMethod]
         public void Example_OnPremise_UpdateDataFile()
         {
             VerifyLicenseKeyAvailable();
-            Examples.OnPremise.UpdateDataFile.Program.Initialize(
-                DataFile, LicenseKey, false,
-                Examples.OnPremise.UpdateDataFile.Program
-                    .ProductFromEnvironment() ?? CiLicenseKeyProduct);
+            var product = Examples.OnPremise.UpdateDataFile.Program
+                .ProductFromEnvironment();
+            AutoUpdateStatus status;
+            try
+            {
+                status = Examples.OnPremise.UpdateDataFile.Program.Initialize(
+                    DataFile, LicenseKey, false, product);
+            }
+            catch (Exception ex)
+            {
+                throw new AssertFailedException(
+                    UpdateFailed(product, ex), ex);
+            }
+            if (status == AutoUpdateStatus.AUTO_UPDATE_ERR_429_TOO_MANY_ATTEMPTS)
+            {
+                Assert.Inconclusive("The data update service answered 429, " +
+                    "too many attempts, so the example stopped before the " +
+                    "engine was refreshed.");
+            }
+            Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_SUCCESS, status,
+                "The engine should be refreshed from the data file the " +
+                "update on start-up gave.");
+        }
+
+        /// <summary>
+        /// When the data update service answers 429, too many attempts, the
+        /// UpdateDataFile example stops and returns that status, so a caller
+        /// can tell that no update happened.
+        /// </summary>
+        [TestMethod]
+        public void Example_OnPremise_UpdateDataFile_TooManyAttempts()
+        {
+            var folder = Path.Combine(Path.GetTempPath(),
+                $"51Degrees-UpdateDataFile-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(folder);
+            try
+            {
+                using (var loggerFactory = new LoggerFactory())
+                using (var httpClient = new HttpClient(
+                    new StatusHandler((HttpStatusCode)429)))
+                {
+                    var service = new DataUpdateService(
+                        loggerFactory.CreateLogger<DataUpdateService>(),
+                        httpClient);
+                    var example = new Program.Example(
+                        new DeviceDetectionPipelineBuilder(
+                            loggerFactory, httpClient, service),
+                        new DeviceDetectionHashEngineBuilder(
+                            loggerFactory, service),
+                        new CompletionListener(service),
+                        loggerFactory.CreateLogger<Program.Example>());
+
+                    var status = example.Run(
+                        Path.Combine(folder, "Enterprise-HashV41.hash"),
+                        "XXXX", false, "V4TAC");
+
+                    Assert.AreEqual(
+                        AutoUpdateStatus.AUTO_UPDATE_ERR_429_TOO_MANY_ATTEMPTS,
+                        status);
+                }
+            }
+            finally
+            {
+                Directory.Delete(folder, true);
+            }
+        }
+
+        /// <summary>
+        /// Answers every request with the same status code and no content.
+        /// </summary>
+        private class StatusHandler : HttpMessageHandler
+        {
+            private readonly HttpStatusCode _status;
+
+            public StatusHandler(HttpStatusCode status)
+            {
+                _status = status;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(
+                HttpRequestMessage request,
+                CancellationToken cancellationToken)
+            {
+                return Task.FromResult(new HttpResponseMessage(_status)
+                {
+                    RequestMessage = request,
+                });
+            }
+        }
+
+        /// <summary>
+        /// A failed update names the product it asked for and the setting
+        /// that product came from.
+        /// </summary>
+        [TestMethod]
+        public void Example_OnPremise_UpdateDataFile_FailureNamesTheProduct()
+        {
+            var failure = new InvalidOperationException("Update failed.");
+            var named = UpdateFailed("V4TAC", failure);
+            StringAssert.Contains(named, "'V4TAC'");
+            StringAssert.Contains(named, Constants.DATA_UPDATE_PRODUCT_ENV_VAR);
+            StringAssert.Contains(named, "Update failed.");
+
+            var unnamed = UpdateFailed(null, failure);
+            StringAssert.Contains(unnamed, "no product");
+            StringAssert.Contains(unnamed,
+                $"'{Constants.DATA_UPDATE_PRODUCT_ENV_VAR}' is not set");
+            StringAssert.Contains(unnamed, "Update failed.");
+        }
+
+        /// <summary>
+        /// Without a license key the update test is inconclusive, except in
+        /// GitHub Actions, where the key is always given, so it fails.
+        /// </summary>
+        [TestMethod]
+        public void Example_OnPremise_UpdateDataFile_NoKey()
+        {
+            Assert.ThrowsException<AssertInconclusiveException>(
+                () => VerifyLicenseKeyAvailable("!!YOUR_LICENSE_KEY!!", false));
+            var failed = Assert.ThrowsException<AssertFailedException>(
+                () => VerifyLicenseKeyAvailable("!!YOUR_LICENSE_KEY!!", true));
+            StringAssert.Contains(failed.Message,
+                Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR);
+            Assert.ThrowsException<AssertFailedException>(
+                () => VerifyLicenseKeyAvailable(null, true));
+            VerifyLicenseKeyAvailable("XXXX", true);
         }
 
         /// <summary>
@@ -180,13 +304,45 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
 
         private void VerifyLicenseKeyAvailable()
         {
-            if (string.IsNullOrWhiteSpace(LicenseKey) == true ||
-                LicenseKey.StartsWith("!!") == true)
+            VerifyLicenseKeyAvailable(LicenseKey,
+                Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true");
+        }
+
+        /// <summary>
+        /// Stops the test when there is no license key. In GitHub Actions
+        /// the key is always given, so a missing key fails the test there,
+        /// and anywhere else the test is inconclusive.
+        /// </summary>
+        private static void VerifyLicenseKeyAvailable(
+            string licenseKey, bool inGitHubActions)
+        {
+            if (string.IsNullOrWhiteSpace(licenseKey) == true ||
+                licenseKey.StartsWith("!!") == true)
             {
-                Assert.Inconclusive("This test requires a 51Degrees license key. This can be " +
+                var message = "This test requires a 51Degrees license key. This can be " +
                     "specified in the TestHashExamples.Init method or by setting an Environment " +
-                    $"variable called '{Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR}'");
+                    $"variable called '{Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR}'";
+                if (inGitHubActions)
+                {
+                    Assert.Fail(message);
+                }
+                Assert.Inconclusive(message);
             }
+        }
+
+        /// <summary>
+        /// What a failed update says: the product it asked for and where
+        /// that came from, then the failure.
+        /// </summary>
+        private static string UpdateFailed(string product, Exception failure)
+        {
+            var asked = product == null ?
+                "The update named no product, as " +
+                    $"'{Constants.DATA_UPDATE_PRODUCT_ENV_VAR}' is not set. " +
+                    "A license key that holds several products needs it." :
+                $"The update asked for the product '{product}', from " +
+                    $"'{Constants.DATA_UPDATE_PRODUCT_ENV_VAR}'.";
+            return $"{asked} {failure.Message}";
         }
     }
 }

@@ -222,8 +222,17 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             /// products. If null, the environment variable is used, and if that is not set
             /// no product is named.
             /// </param>
-            public void Run(string dataFile, string licenseKey, bool interactive,
-                string product = null)
+            /// <returns>
+            /// The status of the refresh from the modified data file, which
+            /// is AUTO_UPDATE_SUCCESS when the engine was refreshed, or
+            /// AUTO_UPDATE_TIMEOUT when it was not refreshed in time. When
+            /// the data update service answers 429, too many attempts, the
+            /// example stops and returns AUTO_UPDATE_ERR_429_TOO_MANY_ATTEMPTS.
+            /// When the update is declined in an interactive session, it
+            /// returns UNSPECIFIED.
+            /// </returns>
+            public AutoUpdateStatus Run(string dataFile, string licenseKey,
+                bool interactive, string product = null)
             {
                 Logger.LogInformation("Starting example");
 
@@ -262,7 +271,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                     if (key.Key != ConsoleKey.Y)
                     {
                         Logger.LogInformation("Stopping example without download");
-                        return;
+                        return AutoUpdateStatus.UNSPECIFIED;
                     }
                 }
 
@@ -325,6 +334,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                     // Build the pipeline.
                     using (var pipeline = builder.Build())
                     {
+                        AutoUpdateStatus refreshed;
                         // thread blocks till update checking is complete - or if there is an
                         // exception we don't get this far
                         Logger.LogInformation("Update on start-up complete - status - " +
@@ -354,11 +364,13 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                             try
                             {
                                 CompletionListener.WaitForComplete(_updateTimeout);
+                                refreshed = CompletionListener.Result.Status;
                                 Logger.LogInformation($"Update on file modification complete, " +
-                                                      $"status: {CompletionListener.Result.Status}");
+                                                      $"status: {refreshed}");
                             }
                             catch (TimeoutException)
                             {
+                                refreshed = AutoUpdateStatus.AUTO_UPDATE_TIMEOUT;
                                 Logger.LogError("Timeout waiting for engine to refresh data.");
                             }
                         }
@@ -370,6 +382,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                         }
 
                         Logger.LogInformation("Finished Example");
+                        return refreshed;
                     }
                 }
                 catch (Pipeline.Engines.Exceptions.DataUpdateException ex)
@@ -380,6 +393,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                     }
                     Logger.LogWarning("Auto update failed with 429 status code, " +
                                       "abandoning example");
+                    return ex.Status;
                 }
             }
 
@@ -649,7 +663,13 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             }
         }
 
-        public static void Initialize(
+        /// <summary>
+        /// Runs the example with the services it needs.
+        /// </summary>
+        /// <returns>
+        /// The status <see cref="Example.Run"/> returns.
+        /// </returns>
+        public static AutoUpdateStatus Initialize(
             string dataFile, string licenseKey, bool interactive,
             string product = null)
         {
@@ -687,7 +707,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                 .BuildServiceProvider())
             {
                 var example = serviceProvider.GetRequiredService<Example>();
-                example.Run(dataFile, licenseKey, interactive, product);
+                return example.Run(dataFile, licenseKey, interactive, product);
             }
         }
     }
