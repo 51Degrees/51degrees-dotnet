@@ -60,12 +60,21 @@ message(STATUS "OS name: ${OS}")
 set(_51DEGREES_BUILD_IP_INTELLIGENCE OFF)
 
 # Every target, the cxx libraries included, warns at the level the cxx tests
-# use, and every warning is an error, on each compiler.
+# use, and every warning is an error, on each compiler and linker. The
+# configure step runs with -Werror=dev -Werror=deprecated, and using a
+# deprecated CMake feature is an error here as well.
+set(CMAKE_ERROR_DEPRECATED ON)
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 if (MSVC)
     add_compile_options(/W4)
+    add_link_options(/WX)
+    string(APPEND CMAKE_STATIC_LINKER_FLAGS " /WX")
+elseif (APPLE)
+    add_compile_options(-Wall -Wextra)
+    add_link_options(-Wl,-fatal_warnings)
 else()
     add_compile_options(-Wall -Wextra)
+    add_link_options(-Wl,--fatal-warnings)
 endif()
 include(${CMAKE_CURRENT_LIST_DIR}/../../cxx/CMakeLists.txt NO_POLICY_SCOPE)
 

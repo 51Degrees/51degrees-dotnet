@@ -51,7 +51,7 @@ try {
 		# the fiftyone-hash-dotnet.vxproj file to ensure it includes /O2 and
 		# other optimisations in Release configuration.
 
-		cmake ../../.. -A $Arch -DRebuildSwig=Off -DBUILD_TESTING=Off
+		cmake ../../.. -Werror=dev -Werror=deprecated -A $Arch -DRebuildSwig=Off -DBUILD_TESTING=Off
 		cmake --build . -t fiftyone-hash-dotnet --config $BuildType $Jargs
 		
 	}
@@ -65,7 +65,7 @@ try {
 		if ($Arch -eq "x86") {
 			$Is32 = "on"
 		}
-		cmake ../../.. "-D_51DEGREES_32BIT=$Is32" "-DCMAKE_BUILD_TYPE=$BuildType" -DRebuildSwig=Off -DBUILD_TESTING=Off
+		cmake ../../.. -Werror=dev -Werror=deprecated "-D_51DEGREES_32BIT=$Is32" "-DCMAKE_BUILD_TYPE=$BuildType" -DRebuildSwig=Off -DBUILD_TESTING=Off
 		cmake --build . -t fiftyone-hash-dotnet $Jargs
 
 	}
