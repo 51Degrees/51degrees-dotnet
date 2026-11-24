@@ -1,7 +1,8 @@
 # Tests of the warnings the two on-premise engines' native libraries build
 # with, run with Pester 5 or later. Every C and C++ warning is an error on
 # every compiler, at the level the cxx submodule builds its own tests with,
-# and nothing in these files turns a warning off.
+# and nothing in these files or in the cxx sources the engines compile turns
+# a warning off.
 
 BeforeDiscovery {
     $Engines = @(
@@ -16,6 +17,23 @@ BeforeDiscovery {
             Interface = 'ipi_csharp.i'
         }
     )
+
+    # The cxx sources and CMake files the engines include. An empty list
+    # means the cxx submodule is not checked out, which fails below.
+    $Top = Join-Path $PSScriptRoot '..'
+    $CxxSrc = Join-Path $Top 'cxx/src'
+    $CxxFiles = @()
+    if (Test-Path $CxxSrc) {
+        $CxxFiles = @(
+            Get-ChildItem -File -Recurse $CxxSrc |
+                Where-Object { $_.Extension -in '.c', '.h', '.cpp', '.hpp', '.i' -or
+                    $_.Name -eq 'CMakeLists.txt' } |
+                ForEach-Object {
+                    [IO.Path]::GetRelativePath($Top, $_.FullName).Replace('\', '/')
+                }
+            'cxx/CMakeLists.txt'
+        )
+    }
 }
 
 BeforeAll {
@@ -81,10 +99,16 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
         [version]$Matches['v'] | Should -BeGreaterOrEqual ([version]'3.24')
     }
 
-    It 'warns at /W4 and -Wall on every target' {
+    It 'warns at /W4 and -Wall -Wextra on every target' {
         $before = (Get-LinesBeforeCxx $CMake) -join "`n"
         $before | Should -MatchExactly 'add_compile_options\([^)]*/W4'
-        $before | Should -MatchExactly 'add_compile_options\([^)]*-Wall'
+        $before | Should -MatchExactly 'add_compile_options\([^)]*-Wall\b'
+        $before | Should -MatchExactly 'add_compile_options\([^)]*-Wextra\b'
+    }
+
+    It 'warns at -Wall -Wextra on the wrapper' {
+        $code = (Get-Code $CMake) -join "`n"
+        $code | Should -MatchExactly 'target_compile_options\([^)]*"-Wall"[^)]*"-Wextra"[^)]*"-Werror"'
     }
 
     It 'makes every warning an error' {
@@ -108,5 +132,29 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
         $code = (Get-Code "$Folder/PreBuild.ps1") -join "`n"
         $code | Should -Match '(?m)^\s*\$ErrorActionPreference\s*=\s*"Stop"'
         $code | Should -Match '(?m)^\s*\$PSNativeCommandUseErrorActionPreference\s*=\s*\$true'
+    }
+}
+
+Describe 'the cxx sources the native engines compile' {
+    It 'has the cxx submodule checked out' {
+        Join-Path $Root 'cxx/src/common/CMakeLists.txt' | Should -Exist
+    }
+
+    # Every line is read whole, comments included, because # starts a
+    # preprocessor line in C and SWIG files.
+    It 'turns no warning off in <_>' -ForEach $CxxFiles {
+        $found = @(
+            $number = 0
+            foreach ($line in Get-Content (Join-Path $Root $_)) {
+                $number++
+                foreach ($pattern in $Hiding) {
+                    if ($line -cmatch $pattern) {
+                        "${_}:${number}: $($line.Trim())"
+                        break
+                    }
+                }
+            }
+        )
+        $found | Should -BeNullOrEmpty
     }
 }

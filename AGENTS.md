@@ -250,7 +250,7 @@ on the wrapper's include path. `RebuildSwig` is off in CI, so the committed
 wrappers are what ships.
 
 Every C and C++ warning is an error. The engine's `CMakeLists.txt` sets `/W4`
-(MSVC) or `-Wall` (GCC, Clang) and `CMAKE_COMPILE_WARNING_AS_ERROR` before it
+(MSVC) or `-Wall -Wextra` (GCC, Clang) and `CMAKE_COMPILE_WARNING_AS_ERROR` before it
 includes cxx, so the cxx libraries build that way too. The wrapper adds `/WX`
 or `-Werror`, and the SWIG macros that keep the warnings its prelude would
 turn off. Fix a warning where it comes from, and a warning in `cxx/` in the

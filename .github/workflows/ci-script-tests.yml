@@ -3,12 +3,18 @@ name: CI script tests
 # Runs the Pester tests of the scripts in ci on Linux and Windows, where the
 # builds run them, with common-ci checked out beside the repository for the
 # release plan tests, which is where ci/packages.ps1 finds it.
+# native-warnings.Tests.ps1 reads the native engine build files and the cxx
+# sources they compile, so a change to those, or a move of the cxx
+# submodule, runs the tests too.
 
 on:
   pull_request:
     paths:
       - 'ci/**'
       - '.github/workflows/ci-script-tests.yml'
+      - 'device-detection/Hash.Engine.OnPremise/**'
+      - 'ip-intelligence/Engine.OnPremise/**'
+      - 'cxx'
   push:
     branches:
       - main
@@ -16,6 +22,9 @@ on:
     paths:
       - 'ci/**'
       - '.github/workflows/ci-script-tests.yml'
+      - 'device-detection/Hash.Engine.OnPremise/**'
+      - 'ip-intelligence/Engine.OnPremise/**'
+      - 'cxx'
   workflow_dispatch:
 
 permissions:
@@ -36,6 +45,12 @@ jobs:
           path: repository
           fetch-depth: 0
           persist-credentials: false
+
+      # native-warnings.Tests.ps1 reads the cxx sources. Their data files
+      # are not needed.
+      - name: Check out the cxx submodule
+        working-directory: repository
+        run: git submodule update --init --depth 1 cxx
 
       - name: Checkout common-ci
         uses: actions/checkout@v4
