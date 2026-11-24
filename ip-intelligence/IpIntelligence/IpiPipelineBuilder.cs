@@ -50,15 +50,15 @@ namespace FiftyOne.IpIntelligence
         /// The factory to use for creating loggers within the pipeline.
         /// </param>
         public IpiPipelineBuilder(
-            ILoggerFactory loggerFactory)
-        {
-            _loggerFactory = loggerFactory;
-            _httpClient = new HttpClient();
-            // The data update service makes its own HTTP client, which
-            // does not follow redirects.
-            _dataUpdateService = new DataUpdateService(
-                _loggerFactory.CreateLogger<DataUpdateService>());
-        }
+            ILoggerFactory loggerFactory) :
+            this(
+                loggerFactory,
+                new HttpClient(),
+                // The data update service makes its own HTTP client, which
+                // does not follow redirects.
+                new DataUpdateService(
+                    loggerFactory.CreateLogger<DataUpdateService>()))
+        { }
 
         /// <summary>
         /// Constructor
