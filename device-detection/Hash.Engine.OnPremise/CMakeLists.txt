@@ -58,6 +58,15 @@ message(STATUS "OS name: ${OS}")
 # The C and C++ code is the cxx submodule at the repository root. Only Device
 # Detection is built here.
 set(_51DEGREES_BUILD_IP_INTELLIGENCE OFF)
+
+# Every target, the cxx libraries included, warns at the level the cxx tests
+# use, and every warning is an error, on each compiler.
+set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+if (MSVC)
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall)
+endif()
 include(${CMAKE_CURRENT_LIST_DIR}/../../cxx/CMakeLists.txt NO_POLICY_SCOPE)
 
 if (RebuildSwig)
@@ -98,11 +107,16 @@ endif()
 # The wrapper includes through cxx/, so the repository root is on its include path.
 target_include_directories(fiftyone-hash-dotnet PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../..)
 target_link_libraries(fiftyone-hash-dotnet fiftyone-hash-cxx)
+# These macros stop the SWIG wrapper from turning compiler warnings off.
+target_compile_definitions(fiftyone-hash-dotnet PRIVATE
+    SWIG_MSC_UNSUPPRESS_4505
+    SWIG_NO_CRT_SECURE_NO_DEPRECATE
+    SWIG_NO_SCL_SECURE_NO_DEPRECATE)
 if (MSVC)
-    # /wd4100 needed to disable "unreferenced formal parameter" which comes from the SWIG file
-    target_compile_options(fiftyone-hash-dotnet PRIVATE "/D_CRT_SECURE_NO_WARNINGS" "/W4" "/WX" "/wd4100")
+    target_compile_options(fiftyone-hash-dotnet PRIVATE "/W4" "/WX")
+    target_link_options(fiftyone-hash-dotnet PRIVATE "/WX")
 else()
-    add_compile_options(-fPIC)
+    target_compile_options(fiftyone-hash-dotnet PRIVATE "-Wall" "-Werror")
     target_compile_options(fiftyone-hash-dotnet INTERFACE "-static-libgcc -static-libstdc++")
     target_link_options(fiftyone-hash-dotnet INTERFACE "-static-libgcc -static-libstdc++")
 endif()

@@ -4,6 +4,11 @@ Param (
 	[string]$Arch = 'x64'
 )
 
+# A failed cmake step stops the build, so a compiler warning, which is an
+# error, fails it.
+$ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $true
+
 # Work out the OS folder
 if ($IsWindows) {
 	$OS = "windows"
