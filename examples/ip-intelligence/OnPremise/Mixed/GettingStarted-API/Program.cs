@@ -221,9 +221,15 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI
             // Add the hash engine builder to services so that the system can find the builder
             // when it needs to.
             // builder.Services.AddTransient<IDataUpdateService, DataUpdateService>();
+            // The client does not follow redirects. The data update service
+            // reads the answer that lists the products the license key
+            // holds, which has a Location header.
             builder.Services.AddHttpClient<IDataUpdateService, DataUpdateService>(client =>
             {
                 client.Timeout = TimeSpan.FromMinutes(20);
+            }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler()
+            {
+                AllowAutoRedirect = false,
             });
             builder.Services.AddSingleton<IpiOnPremiseEngineBuilder>();
             builder.Services.AddSingleton<DeviceDetectionHashEngineBuilder>();

@@ -52,34 +52,30 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         private const string Identifier = "data";
 
         /// <summary>
-        /// A URL formatter that names the product 'V4TAC'.
+        /// A URL formatter that names no product.
         /// </summary>
-        private class ProductFormatter : IDataUpdateProductFormatter
+        private class DownloadFormatter : IDataUpdateUrlFormatter
         {
-            public string GetDataUpdateProduct(IAspectEngineDataFile dataFile)
-            {
-                return "V4TAC";
-            }
-
             public Uri GetFormattedDataUpdateUri(IAspectEngineDataFile dataFile)
             {
-                return GetFormattedDataUpdateUri(dataFile, null);
-            }
-
-            public Uri GetFormattedDataUpdateUri(
-                IAspectEngineDataFile dataFile, string product)
-            {
                 return new Uri(
-                    dataFile.Configuration.DataUpdateUrl + "?Download=True" +
-                    (product == null ? "" : "&Product=" + product));
+                    dataFile.Configuration.DataUpdateUrl + "?Download=True");
             }
 
             [Obsolete("Use the GetFormattedDataUpdateUri method instead.")]
             public string GetFormattedDataUpdateUrl(
                 IAspectEngineDataFile dataFile)
             {
-                return GetFormattedDataUpdateUri(dataFile, null).AbsoluteUri;
+                return GetFormattedDataUpdateUri(dataFile).AbsoluteUri;
             }
+        }
+
+        /// <summary>
+        /// A data file of the product 'V4TAC'.
+        /// </summary>
+        private class TacDataFile : AspectEngineDataFile
+        {
+            public override string DataUpdateProduct => "V4TAC";
         }
 
         /// <summary>
@@ -141,6 +137,33 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
         [TestMethod]
         public void CheckForUpdate_SeveralProducts_LocationIsNotFollowed()
         {
+            CheckLocationIsNotFollowed(false);
+        }
+
+        /// <summary>
+        /// The service made with only a logger, as the pipeline builders
+        /// and the .NET Framework web pipeline make it, does not follow
+        /// the Location header of the answer either.
+        /// </summary>
+        [TestMethod]
+        public void CheckForUpdate_ServiceWithOwnClient_LocationIsNotFollowed()
+        {
+            CheckLocationIsNotFollowed(true);
+        }
+
+        /// <summary>
+        /// Runs an update against a local server whose first answer lists
+        /// the products with a Location header, and checks that only the
+        /// update URL was requested, first with no product and then with
+        /// the product of the data file.
+        /// </summary>
+        /// <param name="serviceMakesClient">
+        /// True to make the service with only a logger, so that it makes
+        /// its own HTTP client. False to give it the client that
+        /// <see cref="DataUpdateService.CreateHttpClient"/> makes.
+        /// </param>
+        private static void CheckLocationIsNotFollowed(bool serviceMakesClient)
+        {
             var root =
                 $"http://localhost:{TestHttpListener.GetRandomUnusedPort()}/";
             var download = root + "download";
@@ -150,7 +173,7 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             fileSystem.Setup(f => f.Directory).Returns(
                 new Mock<IDirectoryWrapper>().Object);
             var engine = new Mock<IOnPremiseAspectEngine>();
-            var file = new AspectEngineDataFile()
+            var file = new TacDataFile()
             {
                 Identifier = Identifier,
                 Engine = engine.Object,
@@ -158,7 +181,7 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
                 {
                     Identifier = Identifier,
                     DataUpdateUrl = download,
-                    UrlFormatter = new ProductFormatter(),
+                    UrlFormatter = new DownloadFormatter(),
                     MemoryOnly = true,
                     DecompressContent = false,
                     VerifyMd5 = false,
@@ -176,19 +199,32 @@ namespace FiftyOne.Pipeline.Engines.Tests.Services
             try
             {
                 var serving = Serve(listener, download, requests);
-                using (var client = DataUpdateService.CreateHttpClient())
+                if (serviceMakesClient)
                 {
                     var dataUpdate = new DataUpdateService(
-                        new TestLogger<DataUpdateService>(),
-                        client,
-                        fileSystem.Object,
-                        new Mock<Func<TimerCallback, object, TimeSpan, Timer>>()
-                            .Object);
+                        new TestLogger<DataUpdateService>());
 
                     var status = dataUpdate.CheckForUpdate(engine.Object);
 
                     Assert.AreEqual(
                         AutoUpdateStatus.AUTO_UPDATE_SUCCESS, status);
+                }
+                else
+                {
+                    using (var client = DataUpdateService.CreateHttpClient())
+                    {
+                        var dataUpdate = new DataUpdateService(
+                            new TestLogger<DataUpdateService>(),
+                            client,
+                            fileSystem.Object,
+                            new Mock<Func<TimerCallback, object, TimeSpan, Timer>>()
+                                .Object);
+
+                        var status = dataUpdate.CheckForUpdate(engine.Object);
+
+                        Assert.AreEqual(
+                            AutoUpdateStatus.AUTO_UPDATE_SUCCESS, status);
+                    }
                 }
             }
             finally

@@ -70,5 +70,79 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                 _dataDownloadType = value;
             }
         }
+
+        /// <summary>
+        /// The start of the 'Type' of a Device Detection data file.
+        /// </summary>
+        private const string DeviceDetectionType = "Hash";
+
+        /// <summary>
+        /// The start of the product name of a Device Detection data file.
+        /// </summary>
+        private const string DeviceDetectionPrefix = "V4";
+
+        /// <summary>
+        /// The start of the 'Type' of an IP Intelligence data file.
+        /// </summary>
+        private const string IpIntelligenceType = "IPI";
+
+        /// <summary>
+        /// The start of the product name of an IP Intelligence data file.
+        /// </summary>
+        private const string IpIntelligencePrefix = "IPIV4";
+
+        /// <summary>
+        /// The name the distributor gives the product of the data file the
+        /// engine has loaded. The name is a prefix for the kind of data
+        /// file, 'V4' for Device Detection and 'IPIV4' for IP Intelligence,
+        /// followed by the product value held in the data file. A value
+        /// that already starts with the prefix is the product name as it
+        /// is. For example, 'V4TAC' or 'IPIV4Enterprise'.
+        /// </summary>
+        /// <remarks>
+        /// No product name is known, and the value is null, when no data
+        /// file is loaded, when the data file holds no product value, or
+        /// when the kind of data file has no prefix. A prefix alone is not
+        /// a product name.
+        /// </remarks>
+        public override string DataUpdateProduct
+        {
+            get
+            {
+                // An engine that gives the product value of its data file
+                // apart from its tier is asked for that value.
+                var value =
+                    (Engine as IDataFileProductEngine)
+                        ?.GetDataFileProduct(Identifier) ??
+                    Engine?.DataSourceTier;
+                if (string.IsNullOrEmpty(value))
+                {
+                    return null;
+                }
+
+                var type = DataDownloadType;
+                string prefix = null;
+                if (type != null && type.StartsWith(
+                    IpIntelligenceType, StringComparison.OrdinalIgnoreCase))
+                {
+                    prefix = IpIntelligencePrefix;
+                }
+                else if (type != null && type.StartsWith(
+                    DeviceDetectionType, StringComparison.OrdinalIgnoreCase))
+                {
+                    prefix = DeviceDetectionPrefix;
+                }
+                if (prefix == null ||
+                    string.Equals(
+                        value, prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
+
+                return value.StartsWith(
+                    prefix, StringComparison.OrdinalIgnoreCase) ?
+                    value : prefix + value;
+            }
+        }
     }
 }

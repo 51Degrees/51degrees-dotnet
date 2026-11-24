@@ -30,6 +30,8 @@ neither of the last two tables.
 | `_51DEGREES_CLOUD_ENDPOINT` | The address of the cloud service to call, ending `/api/v4/` | The public cloud service |
 | `_51DEGREES_DD_PATH` | The path of a Device Detection data file | The free file in `cxx/data/device-detection` |
 | `_51DEGREES_IPI_PATH` | The path of an IP Intelligence data file | The free file in `cxx/data/ip-intelligence` |
+| `_51DEGREES_DD_PRODUCT` | The product the Device Detection data file update example asks for, such as `V4TAC`, for a license key that holds several products | The example names no product |
+| `_51DEGREES_IPI_PRODUCT` | The product the IP Intelligence data file update example asks for, such as `IPIV4Enterprise`, for a license key that holds several products | The example names no product |
 | `_51DEGREES_EVIDENCE_YAML` | The path of a YAML evidence file for the on-premise example tests | `20000 Evidence Records.yml` for Device Detection and `evidence.yml` for IP Intelligence, found by name under `cxx/data` |
 | `_51DEGREES_EXAMPLE_HTTP_PORTS` | The HTTP port, or ports, a web example listens on | 5151 |
 | `_51DEGREES_EXAMPLE_HTTPS_PORTS` | The HTTPS ports a web example listens on | 5001 and 5002 |

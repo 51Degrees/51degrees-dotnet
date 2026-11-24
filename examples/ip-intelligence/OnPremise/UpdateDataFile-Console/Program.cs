@@ -22,7 +22,6 @@
 
 using FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.Engines;
-using FiftyOne.Pipeline.Engines.FiftyOne.Data;
 using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -68,9 +67,12 @@ using System.Net.Http;
 ///    environment variable, then defaults to Constants.ENTERPRISE_IPI_DATA_FILE_NAME)
 /// 2. Second argument: License key (optional when using --data-update-url)
 /// 3. Option: --data-update-url for custom URL
-/// 4. Option: --data-update-product for the name of the product to download. A license key can
-///    hold more than one product, and the update on start-up runs before a data file is loaded,
-///    so the example names the product, which is 'IPIV4Enterprise' unless a custom URL is used
+/// 4. Option: --data-update-product for the name of the product to download, such as
+///    'IPIV4Enterprise'. It can also be given in the '_51DEGREES_IPI_PRODUCT' environment
+///    variable. A license key that holds more than one product needs it, because the update
+///    on start-up runs before a data file is loaded. The example then sets the complete
+///    update URL, with the product in it, and uses no URL formatter. With no product given
+///    the example names none, and with --data-update-url the product is not used
 ///
 /// With neither a license key nor a custom URL, the example shows the free Asn data file, which
 /// it downloads when it is missing, says what an update needs and where to ask for a key, and
@@ -229,8 +231,9 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
             /// If this example is being run in an interactive session, set this to true.
             /// </param>
             /// <param name="product">
-            /// The name of the product to download. If null, the default
-            /// product is named unless a custom URL is used.
+            /// The name of the product to download, for a license key that holds several
+            /// products. If null, the environment variable is used, and if that is not set
+            /// no product is named.
             /// </param>
             public void Run(string dataFile, string licenseKey, string? dataUpdateUrl, bool interactive,
                 string? product = null)
@@ -239,7 +242,7 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
 
                 if (string.IsNullOrWhiteSpace(product))
                 {
-                    product = string.IsNullOrEmpty(dataUpdateUrl) ? DefaultProduct : null;
+                    product = ProductFromEnvironment();
                 }
 
                 // Only check license key if no custom data update URL is provided
@@ -335,14 +338,16 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                         builder.SetDataUpdateUrl(dataUpdateUrl);
                         builder.SetDataUpdateVerifyMd5(false);
                     }
-
-                    if (product is not null)
+                    else if (!string.IsNullOrWhiteSpace(product))
                     {
                         // Name the product to download. A license key can
                         // hold more than one product, and the update on
                         // start-up runs before a data file is loaded, so
-                        // the product cannot be taken from the file.
-                        builder.SetDataUpdateUrlFormatter(new FiftyOneUrlFormatter(product));
+                        // the product cannot be taken from the file. The
+                        // complete update URL is set, so no URL formatter
+                        // is used.
+                        builder.SetDataUpdateUrl(DataUpdateUrl(licenseKey, product));
+                        builder.SetDataUpdateUrlFormatter(null!);
                     }
                     
                     // Build the pipeline.
@@ -460,10 +465,33 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
         }
         
         /// <summary>
-        /// The product the example downloads from the distributor service
-        /// unless another is named.
+        /// The product to download from the environment, which is the
+        /// value of '_51DEGREES_IPI_PRODUCT', or null when it is not set.
         /// </summary>
-        public const string DefaultProduct = "IPIV4Enterprise";
+        public static string? ProductFromEnvironment()
+        {
+            var product = Examples.ExampleUtils.FromEnvironment(
+                Constants.DATA_UPDATE_PRODUCT_ENV_VAR);
+            return string.IsNullOrWhiteSpace(product) ? null : product;
+        }
+
+        /// <summary>
+        /// The complete URL that downloads the IP Intelligence data file
+        /// of a product with a license key.
+        /// </summary>
+        /// <param name="licenseKey">
+        /// The license key to use.
+        /// </param>
+        /// <param name="product">
+        /// The name of the product, such as 'IPIV4Enterprise'.
+        /// </param>
+        public static string DataUpdateUrl(string licenseKey, string product)
+        {
+            return "https://distributor.51degrees.com/api/v2/download" +
+                "?LicenseKeys=" + Uri.EscapeDataString(licenseKey) +
+                "&Download=True&Type=IPIV41" +
+                "&Product=" + Uri.EscapeDataString(product);
+        }
 
         private const string KEY_SUBMISSION_ALT_PATH = $"as an environment variable named '{Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR}'";
         private const string KEY_SUBMISSION_PATHS = "as the second command line argument to this program, or " + KEY_SUBMISSION_ALT_PATH;
@@ -559,8 +587,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
             
             Option<string?> dataUpdateProduct = new("--data-update-product")
             {
-                Description = "Name of the product to download. Defaults to '"
-                              + DefaultProduct + "' for the 51degrees distributor service.",
+                Description = "Name of the product to download, for a license key"
+                              + " that holds several products.",
             };
 
             var rootCommand = new RootCommand("Data file update sample.");
@@ -643,8 +671,13 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.UpdateDataFile
                              && (c?.StartsWith(progName) == true && l >= LogLevel.Information))))
                 )
                 // Add an HttpClient instance. This is used for making requests to the
-                // data update end point.
-                .AddSingleton<HttpClient>()
+                // data update end point. It does not follow redirects, so the
+                // data update service reads the answer that lists the
+                // products the license key holds, which has a Location header.
+                .AddSingleton(_ => new HttpClient(new HttpClientHandler()
+                {
+                    AllowAutoRedirect = false,
+                }))
                 // We want to use the standard data update service
                 .AddSingleton<IDataUpdateService, DataUpdateService>()
                 // Add the builders we're going to need.

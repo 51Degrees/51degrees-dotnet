@@ -211,7 +211,16 @@ namespace FiftyOne.Pipeline.Engines.Data
         }
 
         /// <summary>
-        /// Returns true if this file has been registered with the 
+        /// The name the data update service gives the product of the data
+        /// this file holds, or null if it is not known. The data update
+        /// service asks for this product when the license keys hold
+        /// several products and the request named none.
+        /// By default, no product name is known.
+        /// </summary>
+        public virtual string DataUpdateProduct => null;
+
+        /// <summary>
+        /// Returns true if this file has been registered with the
         /// data update service. False if not.
         /// </summary>
         public bool IsRegistered

@@ -1371,7 +1371,8 @@ namespace FiftyOne.Pipeline.Engines.Services
 			out string expectedMd5Hash)
 		{
 			return DownloadFile(
-				dataFile, tempStream, out expectedMd5Hash, null);
+				dataFile, tempStream, out expectedMd5Hash,
+				dataFile.FormattedUri, true, 0);
 		}
 
 		/// <summary>
@@ -1381,6 +1382,92 @@ namespace FiftyOne.Pipeline.Engines.Services
 		private const int MultipleChoices = 300;
 
 		/// <summary>
+		/// The most redirects that one check follows itself.
+		/// </summary>
+		private const int MaxRedirects = 20;
+
+		/// <summary>
+		/// The most bytes read of a response that lists products.
+		/// </summary>
+		private const int MaxProductListBytes = 65536;
+
+		/// <summary>
+		/// The name of the query parameter that names a product.
+		/// </summary>
+		private const string ProductParameter = "Product";
+
+		/// <summary>
+		/// Get the value of the Product parameter in the query of a URL.
+		/// The name of the parameter is matched ignoring case.
+		/// </summary>
+		/// <param name="url">
+		/// The URL to read.
+		/// </param>
+		/// <returns>
+		/// The product named, or null if the URL has no Product parameter
+		/// or its value is empty.
+		/// </returns>
+		private static string ProductOf(string url)
+		{
+			var query = url.IndexOf('?');
+			if (query < 0)
+			{
+				return null;
+			}
+			var end = url.IndexOf('#', query);
+			var parameters = end < 0 ?
+				url.Substring(query + 1) :
+				url.Substring(query + 1, end - query - 1);
+			foreach (var parameter in parameters.Split('&'))
+			{
+				if (parameter.StartsWith(
+					ProductParameter + "=",
+					StringComparison.OrdinalIgnoreCase))
+				{
+					var value = Uri.UnescapeDataString(
+						parameter.Substring(ProductParameter.Length + 1));
+					if (value.Length > 0)
+					{
+						return value;
+					}
+				}
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// Get a URL with the Product parameter added as the last parameter
+		/// of its query, percent-encoded. A Product parameter with an empty
+		/// value is taken out, so the URL names the product once. The rest
+		/// of the query is unchanged.
+		/// </summary>
+		/// <param name="url">
+		/// The URL to add to.
+		/// </param>
+		/// <param name="product">
+		/// The product to name.
+		/// </param>
+		/// <returns>
+		/// The URL that asks for the product.
+		/// </returns>
+		private static Uri WithProduct(Uri url, string product)
+		{
+			var text = url.GetLeftPart(UriPartial.Query);
+			var query = text.IndexOf('?');
+			var path = query < 0 ? text : text.Substring(0, query);
+			var parameters = query < 0 ?
+				new List<string>() :
+				text.Substring(query + 1).Split('&')
+					.Where(p => p.Length > 0 && string.Equals(
+						p, ProductParameter + "=",
+						StringComparison.OrdinalIgnoreCase) == false)
+					.ToList();
+			parameters.Add(
+				ProductParameter + "=" + Uri.EscapeDataString(product));
+			return new Uri(path + "?" + string.Join("&", parameters));
+		}
+
+		/// <summary>
 		/// Get the product names offered in a response that lists the URLs
 		/// available to the license keys.
 		/// </summary>
@@ -1388,8 +1475,9 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// The response to read.
 		/// </param>
 		/// <returns>
-		/// The value of the Product parameter of each URL listed, in the
-		/// order of the response, or null if the response has no such list.
+		/// The value of the Product parameter of each URL listed that has
+		/// one, in the order of the response, or null if the response has
+		/// no such list.
 		/// </returns>
 		private static List<string> ReadProductsOffered(
 			HttpResponseMessage response)
@@ -1397,7 +1485,22 @@ namespace FiftyOne.Pipeline.Engines.Services
 			var uris = new List<string>();
 			try
 			{
-				var body = response.Content.ReadAsStringAsync().Result;
+				string body;
+				using (var stream = response.Content.ReadAsStreamAsync().Result)
+				using (var bytes = new MemoryStream())
+				{
+					var buffer = new byte[4096];
+					int read;
+					while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+					{
+						bytes.Write(buffer, 0, read);
+						if (bytes.Length > MaxProductListBytes)
+						{
+							return null;
+						}
+					}
+					body = Encoding.UTF8.GetString(bytes.ToArray());
+				}
 #if NET8_0_OR_GREATER
 				using (var document = System.Text.Json.JsonDocument.Parse(body))
 				{
@@ -1444,93 +1547,202 @@ namespace FiftyOne.Pipeline.Engines.Services
 			var products = new List<string>();
 			foreach (var uri in uris)
 			{
-				var query = uri.IndexOf('?');
-				if (query < 0)
+				var product = ProductOf(uri);
+				if (product != null)
 				{
-					continue;
-				}
-				foreach (var parameter in uri.Substring(query + 1).Split('&'))
-				{
-					if (parameter.StartsWith(
-						"Product=", StringComparison.OrdinalIgnoreCase))
-					{
-						products.Add(Uri.UnescapeDataString(
-							parameter.Substring("Product=".Length)));
-						break;
-					}
+					products.Add(product);
 				}
 			}
 			return products;
 		}
 
 		/// <summary>
-		/// Get the URL that repeats a request for the product of the data
-		/// file, from a response that lists the products the license keys
-		/// hold.
+		/// Get the name the update service gives the product of the data
+		/// file the engine has loaded.
+		/// </summary>
+		/// <param name="dataFile">
+		/// The <see cref="AspectEngineDataFile"/> to use.
+		/// </param>
+		/// <returns>
+		/// The product name, or null if it is not known.
+		/// </returns>
+		private static string ProductNeeded(AspectEngineDataFile dataFile)
+		{
+			try
+			{
+				var product = dataFile.DataUpdateProduct;
+				return string.IsNullOrEmpty(product) ? null : product;
+			}
+#pragma warning disable CA1031 // Do not catch general exception types
+			// The engine can be any implementation. A product that cannot
+			// be read is a product that is not known.
+			catch (Exception)
+#pragma warning restore CA1031 // Do not catch general exception types
+			{
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// The error for a product that the update service does not offer.
+		/// </summary>
+		private static DataUpdateException ProductNotOffered(
+			AspectEngineDataFile dataFile,
+			string needed,
+			string shownUrl,
+			IEnumerable<string> offered)
+		{
+			return new DataUpdateException(
+				$"Product '{needed}' is not offered by data update " +
+				$"service at '{shownUrl}' for engine " +
+				$"'{dataFile.EngineType?.Name}'. Products offered: " +
+				$"'{string.Join(",", offered)}'",
+				AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR);
+		}
+
+		/// <summary>
+		/// Get the URL to request next when the response to a request is
+		/// not the one to act on. That is the case when the license keys
+		/// hold several products and the request named none, and when the
+		/// response is a redirect that the HTTP client did not follow.
 		/// </summary>
 		/// <param name="dataFile">
 		/// The <see cref="AspectEngineDataFile"/> to use.
 		/// </param>
 		/// <param name="response">
-		/// The response to the request that named no product.
+		/// The response to the request.
+		/// </param>
+		/// <param name="url">
+		/// The URL requested.
+		/// </param>
+		/// <param name="answered">
+		/// The URL the response came from, which differs from the URL
+		/// requested when the HTTP client followed a redirect.
 		/// </param>
 		/// <param name="shownUrl">
-		/// The URL of that request, as it is shown in messages.
+		/// The URL requested, as it is shown in messages.
+		/// </param>
+		/// <param name="chooseProduct">
+		/// True if a product may be chosen for this request.
+		/// </param>
+		/// <param name="redirects">
+		/// The number of redirects this check has followed itself.
+		/// </param>
+		/// <param name="chooseProductNext">
+		/// Set to true if a product may be chosen for the next request.
 		/// </param>
 		/// <returns>
-		/// The URL to request, or null if the response lists no product,
-		/// the URL formatter cannot name a product, or the request
-		/// already named the product.
+		/// The URL to request next, or null to act on this response.
 		/// </returns>
 		/// <exception cref="DataUpdateException">
 		/// Thrown if the product of the data file is not offered.
 		/// </exception>
-		private Uri GetProductUri(
+		private Uri GetNextUrl(
 			AspectEngineDataFile dataFile,
 			HttpResponseMessage response,
-			string shownUrl)
+			Uri url,
+			Uri answered,
+			string shownUrl,
+			bool chooseProduct,
+			int redirects,
+			out bool chooseProductNext)
 		{
-			var formatter = dataFile.Configuration.UrlFormatter
-				as IDataUpdateProductFormatter;
-			if (formatter == null)
+			chooseProductNext = false;
+			var status = (int)response.StatusCode;
+
+			// A product named in the URL requested is the one asked for,
+			// so no other is chosen.
+			if (chooseProduct && ProductOf(url.AbsoluteUri) == null)
 			{
-				return null;
+				// An HTTP client that follows redirects has followed the
+				// Location header of the answer that lists the products,
+				// which names the first of them. The answer in hand comes
+				// from that address and not from the update URL, so it is
+				// not used, whatever its status and whichever product the
+				// address names.
+				var followed = answered != null && answered != url ?
+					ProductOf(answered.AbsoluteUri) : null;
+				if (followed != null)
+				{
+					var needed = ProductNeeded(dataFile);
+					if (needed == null)
+					{
+						throw ProductNotOffered(
+							dataFile, string.Empty, shownUrl,
+							new[] { followed });
+					}
+					LogProductRequested(dataFile, needed, shownUrl);
+					return WithProduct(url, needed);
+				}
+
+				if (status == MultipleChoices)
+				{
+					var offered = ReadProductsOffered(response);
+					if (offered != null && offered.Count > 0)
+					{
+						// The HTTP client can have followed a redirect to
+						// the address that answered 300. The request for
+						// the product goes to that address, and the
+						// messages name it.
+						var from = answered ?? url;
+						var shownFrom = from == url ? shownUrl :
+							LicenseKeyMask.MaskUri(
+								from,
+								dataFile.Configuration.DataUpdateLicenseKeys);
+						var needed = ProductNeeded(dataFile);
+						var chosen = needed == null ? null :
+							offered.FirstOrDefault(p => string.Equals(
+								p, needed, StringComparison.OrdinalIgnoreCase));
+						if (chosen == null)
+						{
+							throw ProductNotOffered(
+								dataFile, needed ?? string.Empty, shownFrom,
+								offered);
+						}
+						LogProductRequested(dataFile, chosen, shownFrom);
+						return WithProduct(from, chosen);
+					}
+				}
 			}
-			var offered = ReadProductsOffered(response);
-			// A list that gives no product is not one to choose from.
-			if (offered == null || offered.Count == 0)
+
+			// A redirect that the HTTP client did not follow is followed
+			// here, so a client set not to follow redirects still reaches
+			// an update URL that has moved. A redirect from https to http
+			// is not followed.
+			if ((status == 301 || status == 302 || status == 303 ||
+					status == 307 || status == 308) &&
+				response.Headers.Location != null &&
+				redirects < MaxRedirects)
 			{
-				return null;
+				var from = answered ?? url;
+				var to = response.Headers.Location.IsAbsoluteUri ?
+					response.Headers.Location :
+					new Uri(from, response.Headers.Location);
+				if (from.Scheme == Uri.UriSchemeHttps &&
+					to.Scheme == Uri.UriSchemeHttp)
+				{
+					return null;
+				}
+				chooseProductNext = chooseProduct;
+				return to;
 			}
-			var needed = formatter.GetDataUpdateProduct(dataFile) ?? string.Empty;
-			// A request that already named the product, as it does when
-			// one is configured, is not repeated.
-			if (needed.Length > 0 &&
-				formatter.GetFormattedDataUpdateUri(dataFile, needed)
-					.Equals(dataFile.FormattedUri))
-			{
-				return null;
-			}
-			var chosen = offered.FirstOrDefault(p => string.Equals(
-				p, needed, StringComparison.OrdinalIgnoreCase));
-			if (chosen == null)
-			{
-				throw new DataUpdateException(
-					$"Product '{needed}' is not offered by data update " +
-					$"service at '{shownUrl}' for engine " +
-					$"'{dataFile.EngineType?.Name}'. Products offered: " +
-					$"'{string.Join(",", offered)}'",
-					AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR);
-			}
-			_logger.LogInformation(
-				$"Requesting product '{chosen}' from '{shownUrl}' for " +
-				$"Engine '{dataFile.EngineType?.Name}'");
-			return formatter.GetFormattedDataUpdateUri(dataFile, chosen);
+
+			return null;
 		}
 
 		/// <summary>
-		/// Get the most recent data file available from the URL given, or
-		/// from the configured update URL if none is given.
+		/// Log that the request is repeated for a product.
+		/// </summary>
+		private void LogProductRequested(
+			AspectEngineDataFile dataFile, string product, string shownUrl)
+		{
+			_logger.LogInformation(
+				$"Requesting product '{product}' from '{shownUrl}' for " +
+				$"Engine '{dataFile.EngineType?.Name}'");
+		}
+
+		/// <summary>
+		/// Get the most recent data file available from the URL given.
 		/// </summary>
 		/// <param name="dataFile">
 		/// The <see cref="AspectEngineDataFile"/> to use.
@@ -1542,9 +1754,15 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// Used to output the md5 hash for the file from the
 		/// 'Content-MD5' header.
 		/// </param>
-		/// <param name="productUrl">
-		/// The URL that repeats the request for one product, or null for
-		/// the first request, which names none.
+		/// <param name="url">
+		/// The URL to request.
+		/// </param>
+		/// <param name="chooseProduct">
+		/// True if the request may be repeated for the product of the
+		/// loaded data file. False for a request that is such a repeat.
+		/// </param>
+		/// <param name="redirects">
+		/// The number of redirects this check has followed itself.
 		/// </param>
 		/// <returns>
 		/// An <see cref="AutoUpdateStatus"/> value indicating the result
@@ -1553,15 +1771,18 @@ namespace FiftyOne.Pipeline.Engines.Services
 			AspectEngineDataFile dataFile,
 			Stream tempStream,
 			out string expectedMd5Hash,
-			Uri productUrl)
+			Uri url,
+			bool chooseProduct,
+			int redirects)
 		{
 			AutoUpdateStatus result = AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS;
 			expectedMd5Hash = null;
-			// Set when the license keys hold several products and the
-			// request is to be repeated for one of them.
-			Uri repeatUrl = null;
+			// Set when another URL is to be requested in place of acting
+			// on the response to this one.
+			Uri nextUrl = null;
+			bool chooseProductNext = false;
+			int redirectsNext = redirects;
 
-			Uri url = productUrl ?? dataFile.FormattedUri;
 			// The URL carries the license keys, which must not appear in full
 			// in a log entry or an error message.
 			var licenseKeys = dataFile.Configuration.DataUpdateLicenseKeys;
@@ -1624,7 +1845,25 @@ namespace FiftyOne.Pipeline.Engines.Services
 						}
 						else
 						{
-							if (response.IsSuccessStatusCode)
+							if ((nextUrl = GetNextUrl(
+								dataFile,
+								response,
+								url,
+								response.RequestMessage?.RequestUri ??
+									message.RequestUri,
+								shownUrl,
+								chooseProduct,
+								redirects,
+								out chooseProductNext)) != null)
+							{
+								// The next URL is requested below, once this
+								// response has been disposed of.
+								if (chooseProductNext == chooseProduct)
+								{
+									redirectsNext = redirects + 1;
+								}
+							}
+							else if (response.IsSuccessStatusCode)
 							{
 								// If the response is successful then save the content to a 
 								// temporary file
@@ -1666,14 +1905,6 @@ namespace FiftyOne.Pipeline.Engines.Services
 									}
 								}
 							}
-							else if ((int)response.StatusCode == MultipleChoices &&
-								productUrl == null &&
-								(repeatUrl = GetProductUri(
-									dataFile, response, shownUrl)) != null)
-							{
-								// The request is repeated below, once this
-								// response has been disposed of.
-							}
 							else
 							{
 								switch (response.StatusCode)
@@ -1697,9 +1928,20 @@ namespace FiftyOne.Pipeline.Engines.Services
 											$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
 									default:
 										result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
+										// The error names the address that
+										// answered, which differs from the URL
+										// requested when the HTTP client
+										// followed a redirect.
+										var answeredBy =
+											response.RequestMessage?.RequestUri;
+										var shownAnswer =
+											answeredBy == null || answeredBy == url ?
+											shownUrl :
+											LicenseKeyMask.MaskUri(
+												answeredBy, licenseKeys);
 										throw new DataUpdateException($"HTTP status code '{response.StatusCode}' " +
 											$"from data update service at " +
-											$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
+											$"'{shownAnswer}' for engine '{dataFile.EngineType?.Name}'", result);
 								}
 							}
 						}
@@ -1707,10 +1949,11 @@ namespace FiftyOne.Pipeline.Engines.Services
 				}
 			}
 
-			if (repeatUrl != null)
+			if (nextUrl != null)
 			{
 				result = DownloadFile(
-					dataFile, tempStream, out expectedMd5Hash, repeatUrl);
+					dataFile, tempStream, out expectedMd5Hash,
+					nextUrl, chooseProductNext, redirectsNext);
 			}
 
 			return result;

@@ -500,8 +500,13 @@ public class TestExamples
         VerifyDataFileAvailable();
         try
         {
+            // The product in '_51DEGREES_IPI_PRODUCT' when that is set,
+            // otherwise no product, so a license key that holds several
+            // products gets the product of the loaded data file.
             Examples.OnPremise.UpdateDataFile.Program.Initialize(
-                DataFile, LicenseKey, null, false, "IPIV4Enterprise");
+                DataFile, LicenseKey, null, false,
+                Examples.OnPremise.UpdateDataFile.Program
+                    .ProductFromEnvironment());
         }
         catch (Exception ex) when (IsDataFileVersionError(ex) || IsLicenseOrUpdateError(ex))
         {

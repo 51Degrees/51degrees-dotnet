@@ -21,7 +21,6 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.Engines.Data;
-using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using System;
 using System.Collections.Generic;
 
@@ -31,12 +30,12 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
     /// 51Degrees specific URL formatter. This formats a data file download URL
     /// using the parameters required by the 51Degrees distributor.
     /// </summary>
-    public class FiftyOneUrlFormatter : IDataUpdateProductFormatter
+    public class FiftyOneUrlFormatter : IDataUpdateUrlFormatter
     {
         /// <summary>
-        /// Constructor for a formatter that names no product. The product
-        /// is taken from the data file the engine has loaded when the
-        /// distributor needs one.
+        /// Constructor for a formatter that names no product. When the
+        /// license keys hold several products, the data update service
+        /// asks for the product of the data file the engine has loaded.
         /// </summary>
         public FiftyOneUrlFormatter()
         {
@@ -44,16 +43,20 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
 
         /// <summary>
         /// Constructor for a formatter that names the product to request.
-        /// Use it for an update on start-up, which runs before a data file
-        /// is loaded, when the license keys hold more than one product.
+        /// Every request then asks for that product, and the product of the
+        /// loaded data file is not used. Use it when the license keys hold
+        /// several products, for an update on start-up, which runs before
+        /// a data file is loaded, or to ask for a product other than the
+        /// one of the loaded data file.
         /// </summary>
         /// <param name="product">
-        /// The name the distributor gives the product. For example,
-        /// 'V4TAC' or 'IPIV4Enterprise'.
+        /// The name the distributor gives the product, which is sent as it
+        /// is given. For example, 'V4TAC' or 'IPIV4Enterprise'. Null or
+        /// empty names no product.
         /// </param>
         public FiftyOneUrlFormatter(string product)
         {
-            Product = product;
+            Product = string.IsNullOrEmpty(product) ? null : product;
         }
 
         /// <summary>
@@ -99,30 +102,6 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// </exception>
         public Uri GetFormattedDataUpdateUri(IAspectEngineDataFile dataFile)
         {
-            return GetFormattedDataUpdateUri(dataFile, Product);
-        }
-
-        /// <summary>
-        /// Get the URL to call to request an updated version of the
-        /// supplied data file for the product named. The URL is the one
-        /// <see cref="GetFormattedDataUpdateUri(IAspectEngineDataFile)"/>
-        /// gives, with the Product parameter added.
-        /// </summary>
-        /// <param name="dataFile">
-        /// The data file to build an update URL for.
-        /// </param>
-        /// <param name="product">
-        /// The product name to request, or null to name no product.
-        /// </param>
-        /// <returns>
-        /// The URL to call in order to check for and download an update.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown if the supplied data file is null
-        /// </exception>
-        public Uri GetFormattedDataUpdateUri(
-            IAspectEngineDataFile dataFile, string product)
-        {
             if (dataFile == null)
             {
                 throw new ArgumentNullException(nameof(dataFile));
@@ -137,9 +116,9 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                 "Download=True",
                 "Type=" + fiftyOneDataFile.DataDownloadType,
                 };
-                if (string.IsNullOrEmpty(product) == false)
+                if (Product != null)
                 {
-                    parameters.Add("Product=" + Uri.EscapeDataString(product));
+                    parameters.Add("Product=" + Uri.EscapeDataString(Product));
                 }
                 return new Uri($"{dataFile.Configuration.DataUpdateUrl}?{string.Join("&", parameters)}");
             }
@@ -148,91 +127,5 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
                 return new Uri(dataFile.Configuration.DataUpdateUrl);
             }
         }
-
-        /// <summary>
-        /// Get the name the distributor gives the product of the supplied
-        /// data file. It is the <see cref="Product"/> if one was given.
-        /// Otherwise the name is a prefix for the kind of data file, 'V4'
-        /// for Device Detection and 'IPIV4' for IP Intelligence, followed
-        /// by the tier of the data the engine has loaded. A tier that
-        /// already starts with the prefix is the product name as it is.
-        /// For example, 'V4TAC' or 'IPIV4Enterprise'.
-        /// </summary>
-        /// <param name="dataFile">
-        /// The data file to name the product of.
-        /// </param>
-        /// <returns>
-        /// The product name, or null if no data file is loaded, its tier
-        /// is empty, or it is of a kind that has no prefix.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown if the supplied data file is null
-        /// </exception>
-        public string GetDataUpdateProduct(IAspectEngineDataFile dataFile)
-        {
-            if (dataFile == null)
-            {
-                throw new ArgumentNullException(nameof(dataFile));
-            }
-
-            if (string.IsNullOrEmpty(Product) == false)
-            {
-                return Product;
-            }
-
-            // An engine that gives the product value of its data file apart
-            // from its tier is asked for that value.
-            var tier =
-                (dataFile.Engine as IDataFileProductEngine)
-                    ?.GetDataFileProduct(dataFile.Identifier) ??
-                dataFile.Engine?.DataSourceTier;
-            if (string.IsNullOrEmpty(tier))
-            {
-                return null;
-            }
-            var type = (dataFile as IFiftyOneDataFile)?.DataDownloadType;
-            // A kind of data file with no prefix has no product name.
-            if (type == null)
-            {
-                return null;
-            }
-            string prefix;
-            if (type.StartsWith(
-                IpIntelligenceType, StringComparison.OrdinalIgnoreCase))
-            {
-                prefix = IpIntelligencePrefix;
-            }
-            else if (type.StartsWith(
-                DeviceDetectionType, StringComparison.OrdinalIgnoreCase))
-            {
-                prefix = DeviceDetectionPrefix;
-            }
-            else
-            {
-                return null;
-            }
-            return tier.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ?
-                tier : prefix + tier;
-        }
-
-        /// <summary>
-        /// The start of the 'Type' of an IP Intelligence data file.
-        /// </summary>
-        private const string IpIntelligenceType = "IPI";
-
-        /// <summary>
-        /// The start of the 'Type' of a Device Detection Hash data file.
-        /// </summary>
-        private const string DeviceDetectionType = "Hash";
-
-        /// <summary>
-        /// The start of the product name of an IP Intelligence data file.
-        /// </summary>
-        private const string IpIntelligencePrefix = "IPIV4";
-
-        /// <summary>
-        /// The start of the product name of a Device Detection data file.
-        /// </summary>
-        private const string DeviceDetectionPrefix = "V4";
     }
 }

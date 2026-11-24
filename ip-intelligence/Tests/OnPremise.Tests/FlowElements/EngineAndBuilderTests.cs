@@ -229,8 +229,8 @@ namespace FiftyOne.IpIntelligence.OnPremise.Tests.Core.FlowElements
             using var engine = _builder.Build(new MemoryStream());
             Assert.AreEqual(
                 "IPIV4Enterprise",
-                new FiftyOneUrlFormatter().GetDataUpdateProduct(
-                    engine.DataFiles.ElementAt(0)));
+                ((FiftyOneDataFile)engine.DataFiles.ElementAt(0))
+                    .DataUpdateProduct);
             Assert.AreEqual("IPIV41", engine.DataSourceTier);
         }
     }
