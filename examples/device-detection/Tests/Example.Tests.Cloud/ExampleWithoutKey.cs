@@ -52,6 +52,29 @@ internal static class ExampleWithoutKey
     /// </summary>
     private const string KeyVariable = "_51DEGREES_RESOURCE_KEY";
 
+    /// <summary>
+    /// The runtime settings a crash dump collector gives the test host, which
+    /// make an example that ends on an unhandled exception write a dump of
+    /// itself before it exits. Some tests expect an example to end that way,
+    /// so the dump would only add to the time the example takes and leave a
+    /// file for the test run to collect.
+    /// </summary>
+    private static readonly string[] CrashDumpVariables =
+    {
+        "DbgEnableMiniDump",
+        "DbgEnableElfDumpOnMacOS",
+        "DbgMiniDumpType",
+        "DbgMiniDumpName",
+    };
+
+    /// <summary>
+    /// The prefixes the runtime reads its settings under.
+    /// </summary>
+    private static readonly string[] RuntimeSettingPrefixes =
+    {
+        "COMPlus_",
+        "DOTNET_",
+    };
 
     /// <summary>
     /// A link to where a resource key is created, tagged as example output.
@@ -88,8 +111,9 @@ internal static class ExampleWithoutKey
     /// <summary>
     /// Runs the example built from the project in the folder, relative to
     /// the repository root, with no resource key in its environment unless
-    /// the environment given here sets one, and returns its exit code and
-    /// everything it wrote.
+    /// the environment given here sets one, and without the test host's
+    /// crash dump settings, and returns its exit code and everything it
+    /// wrote.
     /// </summary>
     /// <param name="environment">
     /// Variables to set in the example's environment, or null for none.
@@ -119,6 +143,13 @@ internal static class ExampleWithoutKey
             start.ArgumentList.Add(dll);
         }
         start.Environment.Remove(KeyVariable);
+        foreach (var prefix in RuntimeSettingPrefixes)
+        {
+            foreach (var setting in CrashDumpVariables)
+            {
+                start.Environment.Remove(prefix + setting);
+            }
+        }
         foreach (var variable in environment ??
             new Dictionary<string, string>())
         {
