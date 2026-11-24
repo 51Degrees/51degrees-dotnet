@@ -654,8 +654,9 @@ namespace FiftyOne.Pipeline.Engines.Services
 		}
 
         /// <summary>
-        /// Refreshes the engine from the file the watcher reported, then
-        /// raises <see cref="CheckForUpdateComplete"/> with the result.
+        /// Refreshes the engine from the file the watcher reported when the
+        /// file's data is newer, then raises
+        /// <see cref="CheckForUpdateComplete"/> with the result.
         /// </summary>
         /// <remarks>
         /// A failed update is logged before the event is raised, as on the
@@ -735,8 +736,11 @@ namespace FiftyOne.Pipeline.Engines.Services
 								}
 								else if (fileLockable)
 								{
-									// Complete the update
-									status = UpdatedDataAvailable(dataFile);
+									status = IsNewerThanLoaded(
+										dataFile,
+										dataFile.DataFilePath) ?
+										UpdatedDataAvailable(dataFile) :
+										AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
 								}
 								else
 								{
@@ -979,10 +983,10 @@ namespace FiftyOne.Pipeline.Engines.Services
 						var tempFileWriteTime = _fileSystem.File.GetLastWriteTimeUtc(
 							dataFile.TempDataFilePath);
 
-						// If the data file is newer than the temp file currently
-						// being used by the engine the we need to tell the engine
-						// to refresh itself.
-						if (fileWriteTime > tempFileWriteTime)
+						// A data file written after the temp file the engine
+						// uses is loaded when its data is newer.
+						if (fileWriteTime > tempFileWriteTime &&
+							IsNewerThanLoaded(dataFile, dataFile.DataFilePath))
 						{
 							newDataAvailable = true;
 						}
@@ -1200,6 +1204,14 @@ namespace FiftyOne.Pipeline.Engines.Services
 						result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
 					}
 
+					// A download whose data is not newer leaves the data
+					// file as it is.
+					if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS &&
+						IsNewerThanLoaded(dataFile, uncompressedTempFile) == false)
+					{
+						result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+					}
+
 					if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS)
 					{
 						// If this engine has a data file watcher then we need to
@@ -1340,6 +1352,46 @@ namespace FiftyOne.Pipeline.Engines.Services
 			}
 
 			return result;
+		}
+
+		/// <summary>
+		/// True when the published date in the header of the file at
+		/// <paramref name="filePath"/> is later than that of the data the
+		/// engine has loaded. The file counts as newer when the engine has
+		/// loaded no data, is not an
+		/// <see cref="IDataFilePublishedDateEngine"/>, or cannot read the
+		/// file's header. Such a file is loaded, so a file the engine cannot
+		/// use fails and is reported as any failed refresh is.
+		/// </summary>
+		private bool IsNewerThanLoaded(
+			AspectEngineDataFile dataFile,
+			string filePath)
+		{
+			if (dataFile.Engine is IDataFilePublishedDateEngine reader &&
+				dataFile.DataPublishedDateTime > DateTime.MinValue)
+			{
+				DateTime published;
+				try
+				{
+					published = reader.GetDataFilePublishedDate(
+						dataFile.Identifier,
+						filePath);
+				}
+#pragma warning disable CA1031 // Do not catch general exception types
+				// Loading the file reports why it cannot be used.
+				catch (Exception ex)
+#pragma warning restore CA1031 // Do not catch general exception types
+				{
+					LogDebugMessage(() => $"No published date read from " +
+						$"'{filePath}': {ex.Message}", dataFile);
+					return true;
+				}
+				LogDebugMessage(() => $"Data in '{filePath}' published " +
+					$"{published:O}, loaded data published " +
+					$"{dataFile.DataPublishedDateTime:O}", dataFile);
+				return published > dataFile.DataPublishedDateTime;
+			}
+			return true;
 		}
 
 		/// <summary>
