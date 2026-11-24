@@ -41,6 +41,13 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
     [TestClass]
     public class TestExamples
     {
+        /// <summary>
+        /// The Device Detection product the CI license key holds. The key
+        /// holds more than one product, and the update on start-up runs
+        /// before a data file is loaded, so the update test names it.
+        /// </summary>
+        private const string CiLicenseKeyProduct = "V4TAC";
+
         private string LicenseKey;
 
         private string DataFile;
@@ -120,9 +127,8 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
 
         /// <summary>
         /// Test the UpdateDataFile Example. It asks for the product in
-        /// '_51DEGREES_DD_PRODUCT' when that is set, and otherwise names no
-        /// product, so a license key that holds several products gets the
-        /// product of the loaded data file.
+        /// '_51DEGREES_DD_PRODUCT' when that is set, and otherwise for the
+        /// product the CI license key holds.
         /// </summary>
         [TestMethod]
         public void Example_OnPremise_UpdateDataFile()
@@ -131,7 +137,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
             Examples.OnPremise.UpdateDataFile.Program.Initialize(
                 DataFile, LicenseKey, false,
                 Examples.OnPremise.UpdateDataFile.Program
-                    .ProductFromEnvironment());
+                    .ProductFromEnvironment() ?? CiLicenseKeyProduct);
         }
 
         /// <summary>
