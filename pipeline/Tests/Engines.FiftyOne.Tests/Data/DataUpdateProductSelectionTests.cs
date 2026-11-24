@@ -794,6 +794,14 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
             Encoding.ASCII.GetBytes("data file of another product");
 
         /// <summary>
+        /// Held while a local server runs. The test methods run in
+        /// parallel, and HttpListener refuses or resets connections when
+        /// listeners in one process start and stop at the same time, so
+        /// one local server runs at a time.
+        /// </summary>
+        private static readonly object LocalServerLock = new object();
+
+        /// <summary>
         /// Run an update of a TAC Device Detection data file through an
         /// HTTP client against a local server that answers as given.
         /// </summary>
@@ -815,6 +823,22 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
             Func<string, Uri, LocalAnswer> answer,
             out List<string> served,
             bool clientFollowsRedirects = true)
+        {
+            lock (LocalServerLock)
+            {
+                return UpdateFromLocalServerAlone(
+                    answer, out served, clientFollowsRedirects);
+            }
+        }
+
+        /// <summary>
+        /// The body of <see cref="UpdateFromLocalServer"/>, run while
+        /// <see cref="LocalServerLock"/> is held.
+        /// </summary>
+        private AutoUpdateStatus UpdateFromLocalServerAlone(
+            Func<string, Uri, LocalAnswer> answer,
+            out List<string> served,
+            bool clientFollowsRedirects)
         {
             HttpListener listener = null;
             string address = null;
