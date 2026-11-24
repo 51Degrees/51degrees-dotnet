@@ -31,24 +31,14 @@ using System.Threading.Tasks;
 namespace FiftyOne.HumanConfidence.Examples.Tests;
 
 /// <summary>
-/// The two calls the example's server makes for the passive level, made
-/// against the live cloud service with a key from the environment. The
-/// first checks that the key carries the property, the way the example
-/// does before it serves its page, against the cloud in
-/// _51DEGREES_CLOUD_ENDPOINT. The second asks for the passive level with
-/// the evidence passed on as it is, and reads the source and the level,
-/// and a key outside the Bespoke product is asked the same and gets no
-/// source. The passive call and the call with the key outside Bespoke need
-/// a cloud that serves HumanConfidenceSource and a passive level, which the
-/// production cloud does not yet, so their tests are in the
-/// <see cref="StagingCategory"/> category and call the staging cloud in
-/// CLOUD_STAGING_ENDPOINT, with the Bespoke key in
-/// RESOURCE_KEY_BESPOKE_STAGING. Only CI holds those two names, and
-/// .github/workflows/cloud-human-confidence.yml runs that category.
-/// Nothing here says how the cloud reaches the level. Without a name it
-/// needs, a test skips and names it, and never passes, because a cloud
-/// test that passes without calling the cloud has proved nothing. The key
-/// is never printed.
+/// The calls the example's server makes to the live cloud, with keys from
+/// the environment. One test checks that the Bespoke key carries
+/// HumanConfidence. The passive call and the call with a key outside
+/// Bespoke need HumanConfidenceSource and a passive level, which the
+/// production cloud does not serve yet, so those tests are in the
+/// <see cref="StagingCategory"/> category and call the staging cloud. A
+/// test without a name it needs skips and names it rather than pass
+/// without calling the cloud, and the key is never printed.
 /// </summary>
 [TestClass]
 public class LiveCloudTests
@@ -246,16 +236,29 @@ public class LiveCloudTests
         Assert.AreEqual(200, status,
             "The passive call did not succeed: " + Redact(body, key));
         using var document = JsonDocument.Parse(body);
-        var source = document.RootElement.TryGetProperty("derived", out var derived)
-            && derived.TryGetProperty("humanconfidencesource", out var value)
-            ? value : default;
-        if (source.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
-        {
-            Assert.Fail(
-                "A key outside the Bespoke product should get no " +
-                "humanconfidencesource, but the answer has " +
-                Redact(source.GetRawText(), key) + ".");
-        }
+        Assert.IsTrue(
+            document.RootElement.TryGetProperty("derived", out var derived),
+            "The answer has no derived object: " + Redact(body, key));
+        Assert.IsTrue(
+            derived.TryGetProperty("humanconfidencesource", out var source),
+            "The answer has no humanconfidencesource at all, so this cloud " +
+            "does not serve HumanConfidenceSource: " +
+            Redact(derived.GetRawText(), key));
+        Assert.AreEqual(JsonValueKind.Null, source.ValueKind,
+            "A key outside the Bespoke product should get a null " +
+            "humanconfidencesource, but the answer has " +
+            Redact(source.GetRawText(), key) + ".");
+        Assert.IsTrue(
+            derived.TryGetProperty(
+                "humanconfidencesourcenullreason", out var reason),
+            "The null humanconfidencesource has no " +
+            "humanconfidencesourcenullreason: " +
+            Redact(derived.GetRawText(), key));
+        Assert.AreEqual(JsonValueKind.String, reason.ValueKind,
+            "humanconfidencesourcenullreason should be a string, but the " +
+            "answer has " + Redact(reason.GetRawText(), key) + ".");
+        TestContext.WriteLine(
+            "No source, because: " + Redact(reason.GetString()!, key));
     }
 
     /// <summary>

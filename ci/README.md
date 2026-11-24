@@ -116,18 +116,22 @@ The resource keys and the license keys are organization secrets:
 
 A live cloud test with no key skips and names the variable it needs.
 
-Two names only CI uses have no prefix, so the shared workflows never receive
-them. `CLOUD_STAGING_ENDPOINT`, an organization variable, names the staging
-cloud, and `RESOURCE_KEY_BESPOKE_STAGING`, an organization secret, is a
-resource key that carries every property and that the staging cloud resolves.
+The shared workflows never receive `CLOUD_STAGING_ENDPOINT` or
+`RESOURCE_KEY_BESPOKE_STAGING`, because common-ci passes on only `_51DEGREES_`
+names and the CI names on its own list, such as `CI_ACCESS_TOKEN`, and these
+two are neither. `CLOUD_STAGING_ENDPOINT`, an organization variable, names the
+staging cloud, and `RESOURCE_KEY_BESPOKE_STAGING`, an organization secret, is
+a resource key that carries every property and that the staging cloud
+resolves.
 The Human Confidence tests in the `CloudStaging` category check what the
 production cloud does not serve yet, so they call the staging cloud with those
 names and `_51DEGREES_RESOURCE_KEY_BASIC`. `run-integration-tests.ps1` leaves
 that category out, and
 [`.github/workflows/cloud-human-confidence.yml`](../.github/workflows/cloud-human-confidence.yml)
 runs it nightly and on a pull request that changes the Human Confidence
-example or its tests. The step fails when a name is empty, and when a test
-skipped or none ran. `cloud-human-confidence.Tests.ps1` tests the step's
+example or its tests. The step fails when a name is empty, and unless each
+target framework of the test project wrote one results file in which both
+staging tests passed. `cloud-human-confidence.Tests.ps1` tests the step's
 script, run with Pester 5 or later.
 
 `build-package.ps1` reads the strong name key as

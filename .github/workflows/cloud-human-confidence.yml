@@ -12,9 +12,10 @@ name: Cloud Human Confidence Tests
 # leave the category out (ci/run-integration-tests.ps1), so this is the
 # only place these tests run.
 #
-# The step fails when a name is empty, and when a test was skipped or none
-# ran. A cloud test that passes without calling the cloud reports success
-# having proved nothing, and that is worse than a red job.
+# The step fails when a name is empty, and unless each target framework of
+# the test project wrote one results file in which both staging tests
+# passed. A cloud test that passes without calling the cloud reports
+# success having proved nothing, and that is worse than a red job.
 
 on:
   workflow_dispatch:
@@ -66,7 +67,19 @@ jobs:
           if ($empty) { exit 1 }
           $project = 'pipeline/Tests/HumanConfidence.Examples.Tests/' +
             'FiftyOne.HumanConfidence.Examples.Tests.csproj'
+          # The two tests in the CloudStaging category.
+          $expected = 2
+          $xml = [xml](Get-Content -Raw -LiteralPath $project)
+          $properties = $xml.Project.PropertyGroup
+          $frameworks = @($properties.TargetFrameworks -split ';' |
+            ForEach-Object { $_.Trim() } | Where-Object { $_ })
+          if ($frameworks.Count -eq 0) {
+            Write-Host "::error::$project names no target frameworks."
+            exit 1
+          }
           $results = Join-Path $PWD 'test-results' 'cloud-human-confidence'
+          Remove-Item -LiteralPath $results -Recurse -Force `
+            -ErrorAction SilentlyContinue
           dotnet build $project -c Release --nologo
           if ($LASTEXITCODE -ne 0) { exit 1 }
           dotnet test $project -c Release --no-build --nologo `
@@ -76,14 +89,19 @@ jobs:
             --logger 'console;verbosity=normal'
           $failed = $LASTEXITCODE -ne 0
           # A test without a name it needs skips, and a skip passes the run,
-          # so each framework's results are read as well.
-          $reports = @(Get-ChildItem -Path $results -Filter *.trx -File `
-            -ErrorAction SilentlyContinue)
-          if ($reports.Count -eq 0) {
-            Write-Host '::error::The tests wrote no results, so none ran.'
-            exit 1
-          }
-          foreach ($report in $reports) {
+          # so each target framework's results file is read as well, and
+          # must show every staging test passed.
+          foreach ($framework in $frameworks) {
+            $reports = @(Get-ChildItem -Path $results `
+              -Filter "*_$($framework)_*.trx" -File `
+              -ErrorAction SilentlyContinue)
+            if ($reports.Count -ne 1) {
+              Write-Host ("::error::The tests wrote $($reports.Count) " +
+                "results files for $framework, where one is expected.")
+              $failed = $true
+              continue
+            }
+            $report = $reports[0]
             $run = ([xml](Get-Content -Raw -LiteralPath $report.FullName)).TestRun
             $total = [int]$run.ResultSummary.Counters.total
             $passed = [int]$run.ResultSummary.Counters.passed
@@ -99,6 +117,10 @@ jobs:
                   Write-Host "  $($result.testName): $($result.outcome)"
                 }
               }
+              $failed = $true
+            } elseif ($total -ne $expected) {
+              Write-Host ("::error::$($report.Name) holds $total tests, " +
+                "where the CloudStaging category has $expected.")
               $failed = $true
             }
           }
