@@ -85,7 +85,13 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
             public void Run(string deviceDataFile, string ipDataFile, ILoggerFactory loggerFactory, TextWriter output)
             {
                 _needsEnterprise = false;
-                using (var httpClient = new HttpClient())
+                // The client does not follow redirects. The data update
+                // service reads the answer that lists the products the
+                // license key holds, which has a Location header.
+                using (var httpClient = new HttpClient(new HttpClientHandler()
+                {
+                    AllowAutoRedirect = false,
+                }))
                 {
                     var dataUpdateService = new DataUpdateService(loggerFactory.CreateLogger<DataUpdateService>(), httpClient);
                     

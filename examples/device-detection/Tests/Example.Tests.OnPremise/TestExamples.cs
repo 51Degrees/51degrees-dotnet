@@ -119,14 +119,33 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
         }
 
         /// <summary>
-        /// Test the UpdateDataFile Example
+        /// Test the UpdateDataFile Example. It asks for the product in
+        /// '_51DEGREES_DD_PRODUCT' when that is set, and otherwise names no
+        /// product, so a license key that holds several products gets the
+        /// product of the loaded data file.
         /// </summary>
         [TestMethod]
         public void Example_OnPremise_UpdateDataFile()
         {
             VerifyLicenseKeyAvailable();
             Examples.OnPremise.UpdateDataFile.Program.Initialize(
-                DataFile, LicenseKey, false);
+                DataFile, LicenseKey, false,
+                Examples.OnPremise.UpdateDataFile.Program
+                    .ProductFromEnvironment());
+        }
+
+        /// <summary>
+        /// The update URL the UpdateDataFile example sets for a product
+        /// names the license key, the type and the product.
+        /// </summary>
+        [TestMethod]
+        public void Example_OnPremise_UpdateDataFile_UrlNamesProduct()
+        {
+            Assert.AreEqual(
+                "https://distributor.51degrees.com/api/v2/download" +
+                "?LicenseKeys=XXXX&Download=True&Type=HashV41&Product=V4TAC",
+                Examples.OnPremise.UpdateDataFile.Program.DataUpdateUrl(
+                    "XXXX", "V4TAC"));
         }
 
         /// <summary>

@@ -234,9 +234,10 @@ namespace FiftyOne.Pipeline.Web.Framework
             // Set up common services.
             var loggerFactory = new LoggerFactory();
             var httpClient = new System.Net.Http.HttpClient();
+            // The data update service makes its own HTTP client, which
+            // does not follow redirects.
             var updateService = new DataUpdateService(
-                loggerFactory.CreateLogger<DataUpdateService>(),
-                httpClient);
+                loggerFactory.CreateLogger<DataUpdateService>());
             var services = new FiftyOneServiceProvider();
             // Add data update and missing property services.
             services.AddService(loggerFactory);
