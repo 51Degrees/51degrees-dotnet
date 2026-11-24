@@ -48,11 +48,16 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
         /// The path of the file to read.
         /// </param>
         /// <returns>
-        /// The published date in the file's header, in UTC.
+        /// The published date in the file's header, in UTC. The data update
+        /// service compares dates in UTC: it converts a local date and takes
+        /// a date of unspecified kind to be UTC. It treats a returned
+        /// <c>default(DateTime)</c> as no date and loads the file.
         /// </returns>
         /// <exception cref="Exception">
-        /// The file is missing, cannot be read, or is not a data file of the
-        /// engine's kind.
+        /// The file is missing, cannot be read, is not a data file of the
+        /// engine's kind, or its header has no published date. The data
+        /// update service then loads the file, so the refresh reports why
+        /// it cannot be used.
         /// </exception>
         DateTime GetDataFilePublishedDate(
             string dataFileIdentifier,

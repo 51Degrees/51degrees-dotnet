@@ -1359,9 +1359,10 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// <paramref name="filePath"/> is later than that of the data the
 		/// engine has loaded. The file counts as newer when the engine has
 		/// loaded no data, is not an
-		/// <see cref="IDataFilePublishedDateEngine"/>, or cannot read the
-		/// file's header. Such a file is loaded, so a file the engine cannot
-		/// use fails and is reported as any failed refresh is.
+		/// <see cref="IDataFilePublishedDateEngine"/>, cannot read the
+		/// file's header, or finds no published date in it. Such a file is
+		/// loaded, so a file the engine cannot use fails and is reported as
+		/// any failed refresh is.
 		/// </summary>
 		private bool IsNewerThanLoaded(
 			AspectEngineDataFile dataFile,
@@ -1386,12 +1387,30 @@ namespace FiftyOne.Pipeline.Engines.Services
 						$"'{filePath}': {ex.Message}", dataFile);
 					return true;
 				}
+				if (published == default(DateTime))
+				{
+					LogDebugMessage(() => $"No published date in " +
+						$"'{filePath}'", dataFile);
+					return true;
+				}
 				LogDebugMessage(() => $"Data in '{filePath}' published " +
 					$"{published:O}, loaded data published " +
 					$"{dataFile.DataPublishedDateTime:O}", dataFile);
-				return published > dataFile.DataPublishedDateTime;
+				return ToUtc(published) >
+					ToUtc(dataFile.DataPublishedDateTime);
 			}
 			return true;
+		}
+
+		/// <summary>
+		/// The date in UTC. A local date is converted and a date of
+		/// unspecified kind is taken to be UTC already.
+		/// </summary>
+		private static DateTime ToUtc(DateTime value)
+		{
+			return value.Kind == DateTimeKind.Local ?
+				value.ToUniversalTime() :
+				DateTime.SpecifyKind(value, DateTimeKind.Utc);
 		}
 
 		/// <summary>

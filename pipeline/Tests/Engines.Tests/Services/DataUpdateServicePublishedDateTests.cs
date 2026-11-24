@@ -293,6 +293,113 @@ public class DataUpdateServicePublishedDateTests
     }
 
     /// <summary>
+    /// A file whose header gives no published date is loaded, as a file
+    /// whose header cannot be read is.
+    /// </summary>
+    [TestMethod]
+    public void DataUpdateService_PublishedDate_HeaderWithoutDate()
+    {
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        engine.As<IDataFilePublishedDateEngine>()
+            .Setup(r => r.GetDataFilePublishedDate(
+                It.IsAny<string>(),
+                It.IsAny<string>()))
+            .Returns(default(DateTime));
+        var file = CreatePolledFile(engine);
+        var service = CreateService(_fileSystem.Object);
+
+        var status = service.CheckForUpdate(engine.Object);
+
+        Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_SUCCESS, status);
+        AssertOutcome(engine, file, true);
+    }
+
+    /// <summary>
+    /// Published dates are compared in UTC. A local date is converted to
+    /// UTC and a date of unspecified kind is taken to be UTC, so only a
+    /// date that is later in UTC is loaded.
+    /// </summary>
+    [TestMethod]
+    [DataRow(DateTimeKind.Local, 1)]
+    [DataRow(DateTimeKind.Local, 0)]
+    [DataRow(DateTimeKind.Local, -1)]
+    [DataRow(DateTimeKind.Unspecified, 1)]
+    [DataRow(DateTimeKind.Unspecified, 0)]
+    [DataRow(DateTimeKind.Unspecified, -1)]
+    public void DataUpdateService_PublishedDate_DateKind(
+        DateTimeKind kind,
+        int days)
+    {
+        var utc = LoadedPublished.AddDays(days);
+        var published = kind == DateTimeKind.Local ?
+            utc.ToLocalTime() :
+            DateTime.SpecifyKind(utc, DateTimeKind.Unspecified);
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        engine.As<IDataFilePublishedDateEngine>()
+            .Setup(r => r.GetDataFilePublishedDate(
+                It.IsAny<string>(),
+                It.IsAny<string>()))
+            .Returns(published);
+        var file = CreatePolledFile(engine);
+        var service = CreateService(_fileSystem.Object);
+
+        var status = service.CheckForUpdate(engine.Object);
+
+        Assert.AreEqual(
+            IsLater(days) ?
+                AutoUpdateStatus.AUTO_UPDATE_SUCCESS :
+                AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED,
+            status);
+        AssertOutcome(engine, file, IsLater(days));
+    }
+
+    /// <summary>
+    /// The loaded data's published date is compared in UTC too.
+    /// </summary>
+    [TestMethod]
+    [DataRow(1)]
+    [DataRow(0)]
+    [DataRow(-1)]
+    public void DataUpdateService_PublishedDate_LoadedDateLocal(int days)
+    {
+        var engine = CreateEngine(days);
+        var file = CreatePolledFile(engine);
+        file.DataPublishedDateTime = LoadedPublished.ToLocalTime();
+        var service = CreateService(_fileSystem.Object);
+
+        var status = service.CheckForUpdate(engine.Object);
+
+        Assert.AreEqual(
+            IsLater(days) ?
+                AutoUpdateStatus.AUTO_UPDATE_SUCCESS :
+                AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED,
+            status);
+        AssertOutcome(engine, file, IsLater(days));
+    }
+
+    /// <summary>
+    /// A data file checked without a watcher, modified after the copy the
+    /// engine uses.
+    /// </summary>
+    private AspectEngineDataFile CreatePolledFile(
+        Mock<IOnPremiseAspectEngine> engine)
+    {
+        string dataFilePath = Path.Combine(_folder, "data.dat");
+        string tempFilePath = Path.Combine(_folder, "temp.dat");
+        var file = CreateDataFile(engine, new DataFileConfiguration
+        {
+            FileSystemWatcherEnabled = false,
+            DataFilePath = dataFilePath
+        });
+        file.TempDataFilePath = tempFilePath;
+        _fileWrapper.Setup(w => w.GetLastWriteTimeUtc(dataFilePath))
+            .Returns(LoadedPublished.AddDays(2));
+        _fileWrapper.Setup(w => w.GetLastWriteTimeUtc(tempFilePath))
+            .Returns(LoadedPublished.AddDays(1));
+        return file;
+    }
+
+    /// <summary>
     /// An engine whose new files are published the given number of days
     /// after the data it has loaded.
     /// </summary>
