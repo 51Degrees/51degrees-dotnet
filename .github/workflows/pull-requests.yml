@@ -9,6 +9,10 @@ on:
       dryrun:
         type: boolean
         default: false
+      prs:
+        description: 'Comma-separated pull request numbers to build, drafts included (default: every non-draft pull request into rc)'
+        type: string
+        default: ''
       full-matrix:
         description: 'Build every configuration, not only those the changes need'
         type: boolean
@@ -22,6 +26,7 @@ jobs:
       repo-name: ${{ github.event.repository.name }}
       org-name: ${{ github.event.repository.owner.login }}
       dryrun: ${{ inputs.dryrun || false }}
+      prs: ${{ inputs.prs }}
       cache-assets: true
       # Each pull request is built on the configurations its changes need,
       # as ci/select-options.ps1 chooses, and one that fails does not cancel
