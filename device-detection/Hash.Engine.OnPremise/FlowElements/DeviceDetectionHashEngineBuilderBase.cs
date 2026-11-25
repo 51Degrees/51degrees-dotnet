@@ -497,6 +497,21 @@ namespace FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements
         /// data files.
         /// </summary>
         protected override string DefaultDataDownloadType => "HashV41";
+
+        /// <summary>
+        /// Reads the product name from the header of a Hash data file
+        /// without loading it.
+        /// </summary>
+        /// <param name="fileName">
+        /// The path of the data file.
+        /// </param>
+        /// <returns>
+        /// The product name, 'V4' and the tier, such as 'V4TAC'.
+        /// </returns>
+        protected override string GetProductFromFile(string fileName)
+        {
+            return EngineHashSwig.getProductFromFile(fileName);
+        }
         #endregion
 
         #region Abstract Methods
