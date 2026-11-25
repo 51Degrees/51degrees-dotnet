@@ -329,16 +329,23 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                             new FiftyOneUrlFormatter(product));
                     }
 
+                    // Record the result of the update on start-up, which the
+                    // data update service reports on this thread while it
+                    // builds the pipeline. A check by the polling timer can
+                    // end at any time and must not be taken for it.
+                    CompletionListener.WatchStartup();
+
                     // Build the pipeline.
                     using (var pipeline = builder.Build())
                     {
                         // thread blocks till update checking is complete - or if there is an
                         // exception we don't get this far
+                        var startup = CompletionListener.StartupResult?.Status;
                         Logger.LogInformation("Update on start-up complete - status - " +
-                            CompletionListener.Result.Status);
+                            startup);
 
-                        if (CompletionListener.Result.Status == AutoUpdateStatus.AUTO_UPDATE_SUCCESS ||
-                            CompletionListener.Result.Status == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
+                        if (startup == AutoUpdateStatus.AUTO_UPDATE_SUCCESS ||
+                            startup == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
                         {
                             Logger.LogInformation("Modifying downloaded file to trigger reload ... " +
                                                   "please wait for that to complete");
@@ -373,7 +380,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                         {
                             Logger.LogError("Auto update was not successful, abandoning example");
                             throw new InvalidOperationException("Auto update failed: " +
-                                                                CompletionListener.Result.Status);
+                                                                startup);
                         }
 
                         Logger.LogInformation("Finished Example");
