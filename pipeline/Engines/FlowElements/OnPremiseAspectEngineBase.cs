@@ -175,9 +175,10 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
                 throw new ArgumentNullException(nameof(dataFile));
             }
 
-            if (_dataFiles.Any(f => f.Identifier == dataFile.Identifier) == false)
+            var added =
+                _dataFiles.Any(f => f.Identifier == dataFile.Identifier) == false;
+            if (added)
             {
-                dataFile.Engine = this;
                 _dataFiles.Add(dataFile);
             }
             if (dataFile.Configuration.DataStream != null)
@@ -189,6 +190,13 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
             else
             {
                 RefreshData(dataFile.Identifier);
+            }
+            // The data file names this engine only once the engine has loaded
+            // its data, so a check for an update that runs while the data is
+            // loading finds no engine rather than one with no data.
+            if (added)
+            {
+                dataFile.Engine = this;
             }
         }
     }
