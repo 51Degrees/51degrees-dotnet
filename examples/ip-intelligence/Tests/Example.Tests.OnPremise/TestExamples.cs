@@ -23,6 +23,8 @@
 
 // Ignore Spelling: Metadata Offline
 
+using FiftyOne.Example.Tests.Shared;
+using FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements;
 using FiftyOne.IpIntelligence.Examples;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -64,29 +66,19 @@ public class TestExamples
     private StringBuilder OutputString { get; set; }
     private StringWriter OutputWriter { get; set; }
 
-    private string LicenseKey;
-
     private string DataFile;
 
     private string EvidenceFile;
     private string GeoIpTruthEvidenceFile;
 
     /// <summary>
-    /// Init method - specify License Key to run examples here or
-    /// set a License Key in an environment variable called 'ResourceKey'.
-    /// Set data file for hash examples.
+    /// Init method - set the data file for the examples.
     /// </summary>
     [TestInitialize]
     public void Init()
     {
         OutputString = new StringBuilder();
         OutputWriter = new StringWriter(OutputString);
-        // Set license key for autoupdate examples, read as the data file
-        // update example reads it.
-        var licenseKey = Examples.OnPremise.UpdateDataFile.Program
-            .LicenseKeyFromEnvironment();
-        LicenseKey = string.IsNullOrWhiteSpace(licenseKey) == false ?
-            licenseKey: "!!YOUR_LICENSE_KEY!!";
 
         // Set IP Intelligence Data file
         DataFile = ExampleUtils.FindDataFile(
@@ -174,26 +166,6 @@ public class TestExamples
         for (var e = ex; e != null; e = e.InnerException)
         {
             if (e is OperationCanceledException)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// Returns true if the exception (or any inner exception) indicates the
-    /// configured license key was rejected by the 51Degrees data update service
-    /// (e.g. it is not entitled to IP Intelligence data). This is an environment
-    /// / credential limitation rather than a fault in the example.
-    /// </summary>
-    private static bool IsLicenseOrUpdateError(Exception ex)
-    {
-        for (var e = ex; e != null; e = e.InnerException)
-        {
-            if (e.GetType().Name.Contains("DataUpdateException", StringComparison.OrdinalIgnoreCase) ||
-                e.Message.Contains("license key", StringComparison.OrdinalIgnoreCase) ||
-                e.Message.Contains("data update service", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -488,44 +460,122 @@ public class TestExamples
     }
 
     /// <summary>
-    /// Test the UpdateDataFile Example.
-    /// This requires a 51Degrees license key; when one is not configured the
-    /// test reports inconclusive (rather than being permanently ignored) so the
-    /// gap is visible in CI.
+    /// Test the UpdateDataFile Example against a stand-in for the
+    /// Distributor, with no product named. The stand-in lists two products,
+    /// as the Distributor does for a license key that holds several, and the
+    /// example asks for the product of the data file it starts from.
     /// </summary>
     [TestMethod]
     public void Example_OnPremise_UpdateDataFile()
     {
-        VerifyLicenseKeyAvailable();
-        VerifyDataFileAvailable();
-        try
-        {
-            // The product in '_51DEGREES_IPI_PRODUCT' when that is set,
-            // otherwise no product, so a license key that holds several
-            // products gets the product of the loaded data file.
-            Examples.OnPremise.UpdateDataFile.Program.Initialize(
-                DataFile, LicenseKey, null, false,
-                Examples.OnPremise.UpdateDataFile.Program
-                    .ProductFromEnvironment());
-        }
-        catch (Exception ex) when (IsDataFileVersionError(ex) || IsLicenseOrUpdateError(ex))
-        {
-            Assert.Inconclusive(
-                "The UpdateDataFile example could not complete because the " +
-                "configured license key was not accepted by the 51Degrees data " +
-                "update service (it must be a key entitled to IP Intelligence " +
-                $"data). Details: {ex.Message}");
-        }
+        var product = DataFileProduct();
+        var requests = RunUpdateExample(product, null);
+        Assert.IsGreaterThan(1, requests.Count,
+            "The example should have asked the stand-in twice.");
+        Assert.AreEqual(new DataUpdateRequest(null, 300), requests[0],
+            "The first request should name no product, and get the list " +
+            "of products.");
+        Assert.AreEqual(new DataUpdateRequest(product, 304), requests[1],
+            "The second request should ask for the product of the data " +
+            "file, and get 304 (Not modified).");
     }
 
-    private void VerifyLicenseKeyAvailable()
+    /// <summary>
+    /// Test the UpdateDataFile Example against a stand-in for the
+    /// Distributor, with the product named as an argument. The first request
+    /// asks for that product.
+    /// </summary>
+    [TestMethod]
+    public void Example_OnPremise_UpdateDataFile_ProductArgument()
     {
-        if (string.IsNullOrWhiteSpace(LicenseKey) == true ||
-            LicenseKey.StartsWith("!!") == true)
+        var product = DataFileProduct();
+        var requests = RunUpdateExample(product, product);
+        Assert.IsGreaterThan(0, requests.Count,
+            "The example should have asked the stand-in.");
+        Assert.AreEqual(new DataUpdateRequest(product, 304), requests[0],
+            "The first request should ask for the product given, and get " +
+            "304 (Not modified).");
+        Assert.IsFalse(requests.Any(r => r.Product == null),
+            "No request should leave out the product given.");
+    }
+
+    /// <summary>
+    /// The license key the update example sends the stand-in, which answers
+    /// whatever key it is sent.
+    /// </summary>
+    private const string StandInLicenseKey = "STANDINLICENSEKEY";
+
+    /// <summary>
+    /// A product the stand-in lists beside the data file's own, as the
+    /// Distributor does for a license key that holds a Device Detection and
+    /// an IP Intelligence product.
+    /// </summary>
+    private const string OtherProduct = "V4TAC";
+
+    /// <summary>
+    /// The product of the data file, named by the library's own rule from
+    /// an engine that has loaded the file, such as 'IPIV4Enterprise' for
+    /// '51Degrees-EnterpriseIpiV41.ipi'. The update example refuses a free
+    /// data file, so the test needs a file the Distributor serves, which CI
+    /// fetches and names in '_51DEGREES_IPI_PATH'.
+    /// </summary>
+    private string DataFileProduct()
+    {
+        VerifyDataFileAvailable();
+        using var loggerFactory = new LoggerFactory();
+        using var engine = new IpiOnPremiseEngineBuilder(loggerFactory)
+            .SetPerformanceProfile(
+                FiftyOne.Pipeline.Engines.PerformanceProfiles.LowMemory)
+            .SetAutoUpdate(false)
+            .SetDataFileSystemWatcher(false)
+            .SetDataUpdateOnStartup(false)
+            .Build(DataFile, false);
+        var dataFile = (FiftyOne.Pipeline.Engines.Data.AspectEngineDataFile)
+            engine.DataFiles[0];
+        var product = dataFile.DataUpdateProduct;
+        Assert.IsNotNull(product,
+            $"The data file '{DataFile}' has no product name.");
+        return product;
+    }
+
+    /// <summary>
+    /// Runs the UpdateDataFile example on the data file, with its update URL
+    /// pointed at a stand-in for the Distributor. The data file is several
+    /// gigabytes, so the stand-in answers a request for an offered product
+    /// with 304 (Not modified) rather than serving a copy. The example
+    /// throws when its update on start-up fails, so the update has completed
+    /// when the example returns.
+    /// </summary>
+    /// <param name="product">
+    /// The product of the data file, which the stand-in lists.
+    /// </param>
+    /// <param name="productArgument">
+    /// The product to give the example, or null for none.
+    /// </param>
+    /// <returns>
+    /// The requests the stand-in received.
+    /// </returns>
+    private IReadOnlyList<DataUpdateRequest> RunUpdateExample(
+        string product, string productArgument)
+    {
+        // The example copies the data file beside itself before it starts.
+        var copy = DataFile + ".bak";
+        var copied = File.Exists(copy) == false;
+        try
         {
-            Assert.Inconclusive("This test requires a 51Degrees license key. This can be " +
-                "specified in the TestHashExamples.Init method or by setting an Environment " +
-                $"variable called '{Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR}'");
+            using var standIn = new DataUpdateStandIn(
+                new[] { product, OtherProduct }, null);
+            Examples.OnPremise.UpdateDataFile.Program.Initialize(
+                DataFile, StandInLicenseKey, standIn.Url, false,
+                productArgument);
+            return standIn.Requests;
+        }
+        finally
+        {
+            if (copied && File.Exists(copy))
+            {
+                File.Delete(copy);
+            }
         }
     }
 

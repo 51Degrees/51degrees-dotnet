@@ -60,15 +60,9 @@ namespace FiftyOne.IpIntelligence.Examples
 
         /// <summary>
         /// Environment variable key for the licence key the data file update
-        /// example and its test use.
+        /// example uses.
         /// </summary>
         public const string DATA_UPDATE_LICENSE_KEY_ENV_VAR = "_51DEGREES_LICENSE_KEY";
-
-        /// <summary>
-        /// Environment variable key for the product the data file update
-        /// example asks for, when the licence key holds several.
-        /// </summary>
-        public const string DATA_UPDATE_PRODUCT_ENV_VAR = "_51DEGREES_IPI_PRODUCT";
 
         /// <summary>
         /// Environment variable key used to supply an explicit path to the

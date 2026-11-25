@@ -20,7 +20,7 @@ and is in neither of the last two tables.
 | `_51DEGREES_RESOURCE_KEY_BESPOKE` | A resource key that carries every property | The live cloud tests, and the tests that run the cloud examples |
 | `_51DEGREES_RESOURCE_KEY_BASIC` | A resource key on the basic data tier | The 51Did entitlement test, and the Human Confidence test of a key outside the Bespoke product, which calls the staging cloud in `CLOUD_STAGING_ENDPOINT` |
 | `_51DEGREES_RESOURCE_KEY_51DID` | A resource key carrying 51Did | The live 51Did tests |
-| `_51DEGREES_LICENSE_KEY` | A 51Degrees license key. CI downloads the paid data files with it. | The data file update examples, and the web examples that read a result with a license key |
+| `_51DEGREES_LICENSE_KEY` | A 51Degrees license key. CI downloads the paid data files with it. | The data file update examples as a customer runs them, and the web examples that read a result with a license key. The tests of the update examples need none, as they update from a local stand-in for the Distributor. |
 | `_51DEGREES_LICENSE_KEY_51DID` | The license key that reads results sealed with `_51DEGREES_RESOURCE_KEY_51DID` | The live 51Did tests |
 | `_51DEGREES_LICENSE_KEY_BESPOKE` | A license key that carries every property | The Accept-CH tests of the cloud web examples |
 
@@ -31,8 +31,6 @@ and is in neither of the last two tables.
 | `_51DEGREES_CLOUD_ENDPOINT` | The address of the cloud service to call, ending `/api/v4/` | The public cloud service |
 | `_51DEGREES_DD_PATH` | The path of a Device Detection data file | The free file in `cxx/data/device-detection` |
 | `_51DEGREES_IPI_PATH` | The path of an IP Intelligence data file | The free file in `cxx/data/ip-intelligence` |
-| `_51DEGREES_DD_PRODUCT` | The product the Device Detection data file update example asks for, such as `V4TAC`, for a license key that holds several products | The example names no product |
-| `_51DEGREES_IPI_PRODUCT` | The product the IP Intelligence data file update example asks for, such as `IPIV4Enterprise`, for a license key that holds several products | The example names no product |
 | `_51DEGREES_EVIDENCE_YAML` | The path of a YAML evidence file for the on-premise example tests | `20000 Evidence Records.yml` for Device Detection and `evidence.yml` for IP Intelligence, found by name under `cxx/data` |
 | `_51DEGREES_EXAMPLE_HTTP_PORTS` | The HTTP port, or ports, a web example listens on | 5151 |
 | `_51DEGREES_EXAMPLE_HTTPS_PORTS` | The HTTPS ports a web example listens on | 5001 and 5002 |

@@ -48,4 +48,10 @@
              Link="TestDiscoveryGuard.cs" />
   </ItemGroup>
 
+  <!-- The stand-in for the Distributor that the update example tests use. -->
+  <ItemGroup>
+    <Compile Include="..\Shared\DataUpdateStandIn.cs"
+             Link="DataUpdateStandIn.cs" />
+  </ItemGroup>
+
 </Project>
