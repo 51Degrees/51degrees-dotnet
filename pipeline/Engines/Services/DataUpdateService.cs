@@ -633,6 +633,14 @@ namespace FiftyOne.Pipeline.Engines.Services
 				}
 
 				DataFileUpdatedInternal(sender, e, dataFile);
+				// A write that lands while the event is handled can raise no
+				// event of its own, as the watcher on macOS merges changes to
+				// one file it has not yet delivered. So the write time is
+				// read again, and a later write is handled here.
+				while (WrittenSinceLastUpdate(dataFile, e.FullPath))
+				{
+					DataFileUpdatedInternal(sender, e, dataFile);
+				}
             }
 #pragma warning disable CA1031 // Do not catch general exception types
 			catch (Exception ex)
@@ -767,6 +775,23 @@ namespace FiftyOne.Pipeline.Engines.Services
 				Status = status
 			});
 		}
+
+        /// <summary>
+        /// True when the file was written after the write time the last
+        /// update recorded, and the data file is still open.
+        /// </summary>
+        private bool WrittenSinceLastUpdate(
+            AspectEngineDataFile dataFile,
+            string path)
+        {
+            if (dataFile == null || dataFile.TimerClosed)
+            {
+                return false;
+            }
+            var written = _fileSystem.File.GetLastWriteTimeUtc(path);
+            return written > MissingFileWriteTime &&
+                written > dataFile.LastUpdateFileModifiedTime;
+        }
 
 		private void DebugDescribeException(Exception x, bool deep = false)
 		{
