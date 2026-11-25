@@ -20,6 +20,8 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using System;
+
 namespace FiftyOne.Did.Client
 {
     /// <summary>
@@ -28,6 +30,14 @@ namespace FiftyOne.Did.Client
     /// the identifier, one describes the service that checked it, and the
     /// rest describe the redemption itself, being why no verdict could be
     /// read this time.
+    /// <para>
+    /// The four that describe the redemption (<see cref="Expired"/>,
+    /// <see cref="Replayed"/>, <see cref="Unreadable"/> and
+    /// <see cref="Unconfirmed"/>) are obsolete, because the redeem
+    /// endpoint now says what happened in its own <c>status</c> field,
+    /// which <see cref="RedeemResult.Outcome"/> reads. They keep their
+    /// values and are still read from <c>context</c>.
+    /// </para>
     /// </summary>
     public enum ContextOutcome
     {
@@ -64,13 +74,25 @@ namespace FiftyOne.Did.Client
         /// The sealed result was presented after the service's freshness
         /// window closed. <see cref="RedeemResult.VerifiedAt"/> says when
         /// the verification happened.
+        /// <para>
+        /// Obsolete. Read <see cref="RedeemResult.Outcome"/>, which is
+        /// <see cref="RedemptionOutcome.Expired"/>. Still read, because the
+        /// cloud still writes the reason to <c>context</c>.
+        /// </para>
         /// </summary>
+        [Obsolete("Use RedeemResult.Outcome, which is RedemptionOutcome.Expired.")]
         Expired,
 
         /// <summary>
         /// The sealed result had already been redeemed on this service
         /// instance.
+        /// <para>
+        /// Obsolete. Read <see cref="RedeemResult.Outcome"/>, which is
+        /// <see cref="RedemptionOutcome.Replayed"/>. Still read, because the
+        /// cloud still writes the reason to <c>context</c>.
+        /// </para>
         /// </summary>
+        [Obsolete("Use RedeemResult.Outcome, which is RedemptionOutcome.Replayed.")]
         Replayed,
 
         /// <summary>
@@ -81,13 +103,25 @@ namespace FiftyOne.Did.Client
         /// finer is available. A <c>context</c> string this client does not
         /// recognise also maps here, with the raw string kept in
         /// <see cref="RedeemResult.ContextValue"/>.
+        /// <para>
+        /// Obsolete. Read <see cref="RedeemResult.Outcome"/>, which is
+        /// <see cref="RedemptionOutcome.Unreadable"/>. Still read, because
+        /// the cloud still writes the reason to <c>context</c>.
+        /// </para>
         /// </summary>
+        [Obsolete("Use RedeemResult.Outcome, which is RedemptionOutcome.Unreadable.")]
         Unreadable,
 
         /// <summary>
         /// The service could not confirm first use of the sealed result and
         /// answered 503. Not a verdict. The caller may retry.
+        /// <para>
+        /// Obsolete. Read <see cref="RedeemResult.Outcome"/>, which is
+        /// <see cref="RedemptionOutcome.Unconfirmed"/>. Still read, because
+        /// the cloud still writes the reason to <c>context</c>.
+        /// </para>
         /// </summary>
+        [Obsolete("Use RedeemResult.Outcome, which is RedemptionOutcome.Unconfirmed.")]
         Unconfirmed,
 
         /// <summary>

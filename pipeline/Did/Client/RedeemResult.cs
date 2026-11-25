@@ -29,7 +29,7 @@ namespace FiftyOne.Did.Client
 {
     /// <summary>
     /// The typed answer from the cloud's redeem endpoint, built by
-    /// <see cref="DidClient.RedeemAsync(string, string, string, System.Threading.CancellationToken)"/>
+    /// <see cref="DidClient.RedeemSealedResultAsync(string, string, string, System.Threading.CancellationToken)"/>
     /// from the JSON body. <see cref="Raw"/> keeps the body as received and
     /// <see cref="StatusCode"/> the HTTP status, so nothing the cloud said
     /// is lost in the mapping.
@@ -43,8 +43,11 @@ namespace FiftyOne.Did.Client
         public const string VerifiedAtFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
         /// <summary>
-        /// Creates a result from its parts. Callers normally get one from
-        /// <see cref="FromResponse"/> rather than building one.
+        /// Creates a result from its parts, for an answer without
+        /// <c>status</c> or <c>humanConfidence</c>. <see cref="Outcome"/> is
+        /// taken from <paramref name="context"/>, and
+        /// <see cref="HumanConfidence"/> is null. Callers normally get one
+        /// from <see cref="FromResponse"/> rather than building one.
         /// </summary>
         /// <param name="context">The mapped context verdict.</param>
         /// <param name="contextValue">The raw <c>context</c> string.</param>
@@ -63,6 +66,42 @@ namespace FiftyOne.Did.Client
             int? secondsSinceVerified,
             int statusCode,
             string raw)
+            : this(
+                context, contextValue, signature, factors, verifiedAt,
+                secondsSinceVerified, statusCode, raw,
+                OutcomeFromContext(context), null, null, null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a result from its parts. Callers normally get one from
+        /// <see cref="FromResponse"/> rather than building one.
+        /// </summary>
+        /// <param name="context">The mapped context verdict.</param>
+        /// <param name="contextValue">The raw <c>context</c> string.</param>
+        /// <param name="signature">The mapped signature outcome.</param>
+        /// <param name="factors">The per-factor outcomes, or null.</param>
+        /// <param name="verifiedAt">When the result was sealed, or null.</param>
+        /// <param name="secondsSinceVerified">The result's age, or null.</param>
+        /// <param name="statusCode">The HTTP status.</param>
+        /// <param name="raw">The response body.</param>
+        /// <param name="outcome">What happened to the sealed result.</param>
+        /// <param name="statusValue">The raw <c>status</c> string, or null.</param>
+        /// <param name="humanConfidence">The Human Confidence Value, or null.</param>
+        /// <param name="humanConfidenceNullReason">Why there is no Value, or null.</param>
+        public RedeemResult(
+            ContextOutcome context,
+            string? contextValue,
+            SignatureOutcome signature,
+            IReadOnlyDictionary<string, FactorOutcome>? factors,
+            DateTime? verifiedAt,
+            int? secondsSinceVerified,
+            int statusCode,
+            string raw,
+            RedemptionOutcome outcome,
+            string? statusValue,
+            HumanConfidenceValue? humanConfidence,
+            string? humanConfidenceNullReason)
         {
             Context = context;
             ContextValue = contextValue;
@@ -72,13 +111,63 @@ namespace FiftyOne.Did.Client
             SecondsSinceVerified = secondsSinceVerified;
             StatusCode = statusCode;
             Raw = raw ?? string.Empty;
+            Outcome = outcome;
+            StatusValue = statusValue;
+            HumanConfidence = humanConfidence;
+            HumanConfidenceNullReason = humanConfidenceNullReason;
         }
+
+        /// <summary>
+        /// What happened to the sealed result, mapped from the
+        /// <c>status</c> string. Only <see cref="RedemptionOutcome.Success"/>
+        /// carries a verdict in <see cref="Context"/>. A <c>status</c>
+        /// string this client does not recognise maps to
+        /// <see cref="RedemptionOutcome.Unreadable"/>, so an unexpected
+        /// answer never reads as a success.
+        /// <para>
+        /// A cloud release that predates <c>status</c> writes the same word
+        /// to <c>context</c> instead, so where the answer carries no
+        /// <c>status</c> this is taken from <c>context</c>. A failure word
+        /// gives that outcome and a verdict gives
+        /// <see cref="RedemptionOutcome.Success"/>. Read this rather than
+        /// the failure members of <see cref="ContextOutcome"/>, which are
+        /// obsolete.
+        /// </para>
+        /// </summary>
+        public RedemptionOutcome Outcome { get; }
+
+        /// <summary>
+        /// The <c>status</c> string exactly as the cloud sent it, or null
+        /// when the body carried none.
+        /// </summary>
+        public string? StatusValue { get; }
+
+        /// <summary>
+        /// The Human Confidence Value the 51Did carries, returned beside the
+        /// verdict whatever the verdict is. Present only on
+        /// <see cref="RedemptionOutcome.Success"/> for a call that presented
+        /// a License Key valid for Human Confidence. Null when the cloud
+        /// sent no <c>humanConfidence</c>, which a cloud release that
+        /// predates the field never does, or sent a word this client does
+        /// not recognise, which stays in <see cref="Raw"/>.
+        /// </summary>
+        public HumanConfidenceValue? HumanConfidence { get; }
+
+        /// <summary>
+        /// The cloud's reason for giving no Human Confidence Value on a
+        /// success, such as a call made without a License Key valid for
+        /// Human Confidence, or null when the cloud sent none.
+        /// </summary>
+        public string? HumanConfidenceNullReason { get; }
 
         /// <summary>
         /// The creator context verdict, mapped from the <c>context</c>
         /// string. A string this client does not recognise maps to
         /// <see cref="ContextOutcome.Unreadable"/>, so an unexpected answer
-        /// never reads as a pass.
+        /// never reads as a pass. On an outcome other than
+        /// <see cref="RedemptionOutcome.Success"/> the cloud writes the
+        /// reason here too, as it always has, so read
+        /// <see cref="Outcome"/> first.
         /// </summary>
         public ContextOutcome Context { get; }
 
@@ -123,7 +212,7 @@ namespace FiftyOne.Did.Client
 
         /// <summary>
         /// The HTTP status the cloud answered with, 200 for every verdict
-        /// and 503 for <see cref="ContextOutcome.Unconfirmed"/>.
+        /// and 503 for <see cref="RedemptionOutcome.Unconfirmed"/>.
         /// </summary>
         public int StatusCode { get; }
 
@@ -134,7 +223,8 @@ namespace FiftyOne.Did.Client
         /// Builds a result from a redeem response. A body that is not a
         /// JSON object, or carries no <c>context</c>, gives
         /// <see cref="ContextOutcome.Unreadable"/> with the body kept in
-        /// <see cref="Raw"/>.
+        /// <see cref="Raw"/>. Fields this client does not read, such as
+        /// <c>obsolete</c>, are ignored and kept in <see cref="Raw"/>.
         /// </summary>
         /// <param name="statusCode">The HTTP status.</param>
         /// <param name="body">The response body.</param>
@@ -166,15 +256,81 @@ namespace FiftyOne.Did.Client
                 {
                     seconds = parsedAge;
                 }
+                var context = ParseContext(contextValue);
+                var statusValue = ReadString(root, "status");
                 return new RedeemResult(
-                    ParseContext(contextValue),
+                    context,
                     contextValue,
                     ParseSignature(ReadString(root, "signature")),
                     ReadFactors(root),
                     ReadVerifiedAt(root),
                     seconds,
                     statusCode,
-                    body);
+                    body,
+                    statusValue is null
+                        ? OutcomeFromContext(context)
+                        : ParseStatus(statusValue),
+                    statusValue,
+                    HumanConfidenceFields.ReadValue(root),
+                    HumanConfidenceFields.ReadNullReason(root));
+            }
+        }
+
+        /// <summary>
+        /// Maps a <c>status</c> string to its outcome, in any case. Anything
+        /// not recognised, including null, is
+        /// <see cref="RedemptionOutcome.Unreadable"/>.
+        /// </summary>
+        /// <param name="value">The <c>status</c> string.</param>
+        /// <returns>The outcome.</returns>
+        public static RedemptionOutcome ParseStatus(string? value)
+        {
+            switch (value?.ToLowerInvariant())
+            {
+                case "success": return RedemptionOutcome.Success;
+                case "expired": return RedemptionOutcome.Expired;
+                case "replayed": return RedemptionOutcome.Replayed;
+                case "unconfirmed": return RedemptionOutcome.Unconfirmed;
+                default: return RedemptionOutcome.Unreadable;
+            }
+        }
+
+        /// <summary>
+        /// The <c>status</c> string the cloud uses for an outcome, the
+        /// inverse of <see cref="ParseStatus"/>.
+        /// </summary>
+        /// <param name="outcome">The outcome.</param>
+        /// <returns>The cloud's word for it.</returns>
+        public static string ToStatusValue(RedemptionOutcome outcome)
+        {
+            switch (outcome)
+            {
+                case RedemptionOutcome.Success: return "success";
+                case RedemptionOutcome.Expired: return "expired";
+                case RedemptionOutcome.Replayed: return "replayed";
+                case RedemptionOutcome.Unconfirmed: return "unconfirmed";
+                default: return "unreadable";
+            }
+        }
+
+        // The failure members of ContextOutcome are obsolete for callers,
+        // but the cloud still writes those words to context, so this class
+        // still reads and writes them.
+#pragma warning disable CS0618
+
+        /// <summary>
+        /// The outcome an answer without <c>status</c> gives, from the word
+        /// in <c>context</c>.
+        /// </summary>
+        private static RedemptionOutcome OutcomeFromContext(ContextOutcome context)
+        {
+            switch (context)
+            {
+                case ContextOutcome.Expired: return RedemptionOutcome.Expired;
+                case ContextOutcome.Replayed: return RedemptionOutcome.Replayed;
+                case ContextOutcome.Unconfirmed: return RedemptionOutcome.Unconfirmed;
+                case ContextOutcome.Unreadable: return RedemptionOutcome.Unreadable;
+                default: return RedemptionOutcome.Success;
             }
         }
 
@@ -246,6 +402,8 @@ namespace FiftyOne.Did.Client
             => new RedeemResult(
                 ContextOutcome.Unreadable, null, SignatureOutcome.Unknown,
                 null, null, null, statusCode, body);
+
+#pragma warning restore CS0618
 
         private static IReadOnlyDictionary<string, FactorOutcome>? ReadFactors(
             JsonElement root)

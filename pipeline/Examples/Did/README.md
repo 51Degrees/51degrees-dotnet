@@ -62,7 +62,7 @@ using var client = new DidClient(resource, licence);
 var fodId = FodId.FromBase64(did);
 var serverSignature = await client.VerifySignatureAsync(fodId)
     ? "verified" : "invalid";
-var redeemed = await client.RedeemAsync(fodId, result, challenge);
+var redeemed = await client.RedeemSealedResultAsync(fodId, result, challenge);
 ```
 
 `did`, `result` and `challenge` arrive from the page as the query
@@ -74,12 +74,16 @@ route binds it with `[FromQuery(Name = "51did")] string did`), and
 key. The client reads the cloud base from `_51DEGREES_CLOUD_ENDPOINT` itself.
 `VerifySignatureAsync` checks the signature offline against the
 published signing keys, which the client fetches and caches, and
-`RedeemAsync` returns a typed `RedeemResult` with `Signature`,
-`Context`, `Factors` when the cloud sends them, `VerifiedAt` and
-`SecondsSinceVerified`. The route answers the page with the cloud's
+`RedeemSealedResultAsync` returns a typed `RedeemResult` with `Outcome`,
+`Signature`, `Context`, `Factors` when the cloud sends them,
+`HumanConfidence` or `HumanConfidenceNullReason` when the cloud sends
+them, `VerifiedAt` and `SecondsSinceVerified`. It sends the sealed
+result and the transaction as `sealedResult` and `transaction`, and
+again as `result` and `challenge`, so it works against every cloud
+release. The route answers the page with the cloud's
 status and a JSON body in the cloud's own shape built from that result,
 plus one extra field, `serverSignature`, carrying the offline outcome,
-which the page ignores. A host without the feature makes `RedeemAsync`
+which the page ignores. A host without the feature makes `RedeemSealedResultAsync`
 throw `NotSupportedException`, which the route turns into a 404 with a
 text body, and an unreachable cloud makes it throw
 `HttpRequestException`, which becomes a 502 with an `error` field, so

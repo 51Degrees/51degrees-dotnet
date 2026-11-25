@@ -379,16 +379,41 @@ The four steps, in the order a server takes them.
    bool genuine = await client.VerifyAsync(fodId);
    ```
 
-4. **Redeem a sealed creator context result.** The page's call to
-   `verify-full` (or `verify-context`) returns the verdict only inside
-   an encrypted `result` the page cannot read or forge. The page hands
-   that to your server, which redeems it with the licence key and reads
-   the true verdict. The `challenge` is the single-use value your server
-   gave the page for that verification, or null where none was.
+   `VerifyDetailedAsync` makes the same check and returns a
+   `DidVerification` with `Valid` and the Human Confidence Value the
+   51Did carries in `HumanConfidence`: `High`, `Medium`, `Low` or
+   `Absent`. `Absent` means the 51Did carries no Value, as every 51Did
+   made before the cloud added it does. The cloud returns the Value only
+   to a call that presents a License Key valid for Human Confidence, so
+   where the client holds a licence key the call is a POST with the key
+   in the form body. Any other call gets `HumanConfidence` null and the
+   cloud's reason in `HumanConfidenceNullReason`.
 
    ```csharp
-   RedeemResult redeemed = await client.RedeemAsync(fodId, result, challenge);
-   if (redeemed.Signature == SignatureOutcome.Verified
+   DidVerification verification = await client.VerifyDetailedAsync(fodId);
+   if (verification.Valid
+       && verification.HumanConfidence == HumanConfidenceValue.High)
+   {
+       // Genuine, and made with high confidence that a human was present.
+   }
+   ```
+
+4. **Redeem a sealed result.** The page's call to `verify-full` (or
+   `verify-context`) returns the creator context verdict only inside a
+   sealed result the page cannot read or forge, as `sealedResult`. The
+   page hands that to your server, which redeems it with the licence key
+   and reads the unsealed result. The `transaction` is the single-use
+   value your server gave the page for that verification, or null where
+   none was.
+
+   ```csharp
+   RedeemResult redeemed = await client.RedeemSealedResultAsync(
+       fodId, sealedResult, transaction);
+   if (redeemed.Outcome != RedemptionOutcome.Success)
+   {
+       // No verdict this time. redeemed.Outcome says why.
+   }
+   else if (redeemed.Signature == SignatureOutcome.Verified
        && redeemed.Context == ContextOutcome.Verified)
    {
        // Genuine, and presented from the browser and connection it was
@@ -400,17 +425,37 @@ The four steps, in the order a server takes them.
    }
    ```
 
+   `Outcome` says what happened to the sealed result, from the cloud's
+   `status`: `Success`, `Expired`, `Replayed`, `Unconfirmed` or
+   `Unreadable`. Only `Success` carries a verdict. Against a cloud
+   release that predates `status`, `Outcome` is read from `context`,
+   which then holds the same word. On success
    `Context` is one of `Verified`, `Mismatch`, `NoContext`,
-   `Misconfigured`, `InvalidDate`, `NotCheckable`, `Expired`, `Replayed`,
-   `Unreadable` or `Unconfirmed`,
+   `Misconfigured`, `InvalidDate` or `NotCheckable`,
    `Signature` is `Verified`, `Invalid` or `Unknown`, and `VerifiedAt`
    and `SecondsSinceVerified` say when the verification happened.
+   `HumanConfidence` is the Human Confidence Value the 51Did carries,
+   whatever the verdict, for a client holding a License Key valid for
+   Human Confidence, and `HumanConfidenceNullReason` gives the cloud's
+   reason otherwise.
    `Unconfirmed` arrives with status 503 and may be retried. A host that
    does not offer the creator context answers 404, which raises
    `NotSupportedException`, and a 400 for a malformed identifier raises
    `ArgumentException` with the cloud's message. Every cryptographic
    failure is reported as the one word `Unreadable` by design, so the
    client does not try to tell them apart either.
+
+   Both redeem methods send the sealed result as `sealedResult` and the
+   transaction as `transaction`, and each again under its obsolete name,
+   `result` and `challenge`, so a cloud release that reads only those
+   still answers. A release that takes the new names uses them and adds
+   an `obsolete` field to its answer, which the client ignores.
+   `RedeemAsync`, which takes `result` and `challenge`, is obsolete and
+   still works. Use `RedeemSealedResultAsync` in its place. The
+   `Expired`, `Replayed`, `Unreadable` and `Unconfirmed` members of
+   `ContextOutcome` are obsolete too, because `Outcome` replaces them.
+   They keep their values, and `Context` still reads them, because the
+   cloud still writes the reason to `context`.
 
    `Factors` maps each creator context factor to `Verified`, `Mismatch`,
    `Misconfigured` or `NotRecorded`, and is present on a mismatch, on a
@@ -431,7 +476,8 @@ The four steps, in the order a server takes them.
    upgrade, whilst a mismatched name means a different operating system
    or browser.
 
-The string overloads of `VerifyAsync` and `RedeemAsync` also refuse a
+The string overloads of `VerifyAsync`, `VerifyDetailedAsync`,
+`RedeemSealedResultAsync` and `RedeemAsync` also refuse a
 value longer than 4096 characters before parsing it. That figure is
 the client's own policy, deliberately arbitrary and generous, so that
 the client does no work for a value that cannot be an identifier. It

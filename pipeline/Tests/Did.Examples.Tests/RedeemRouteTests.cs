@@ -164,9 +164,104 @@ namespace FiftyOne.Did.Examples.Tests
             Assert.AreEqual(HttpMethod.Post, redeem.Method);
             Assert.AreEqual(Endpoint + "id/redeem", redeem.Uri.AbsoluteUri);
             StringAssert.Contains(redeem.Body, "51did=" + fodId.AsBase64Url());
+            StringAssert.Contains(redeem.Body, "sealedResult=sealed");
+            StringAssert.Contains(redeem.Body, "transaction=abc");
             StringAssert.Contains(redeem.Body, "result=sealed");
             StringAssert.Contains(redeem.Body, "challenge=abc");
             StringAssert.Contains(redeem.Body, "license=licence-key");
+        }
+
+        /// <summary>
+        /// The current cloud adds <c>status</c>, <c>humanConfidence</c> and,
+        /// for the obsolete names the client also sends, <c>obsolete</c>. The
+        /// route answers the page with every field it gave before, the same,
+        /// and passes <c>status</c> and <c>humanConfidence</c> on.
+        /// </summary>
+        [TestMethod]
+        public async Task Redeem_CurrentAnswer_KeepsTheOldFieldsAndAddsTheNew()
+        {
+            QueueKeys(_publicPem);
+            _handler.Enqueue(HttpStatusCode.OK,
+                "{\"signature\":\"verified\",\"context\":\"verified\","
+                + "\"verifiedAt\":\"2026-08-07T09:15:32Z\",\"secondsSinceVerified\":2}");
+            // The second call fetches the keys again, because the
+            // identifier is dated after the newest key's start.
+            QueueKeys(_publicPem);
+            _handler.Enqueue(HttpStatusCode.OK,
+                "{\"signature\":\"verified\",\"context\":\"verified\","
+                + "\"humanConfidence\":\"High\",\"status\":\"success\","
+                + "\"verifiedAt\":\"2026-08-07T09:15:32Z\",\"secondsSinceVerified\":2,"
+                + "\"obsolete\":[\"result is obsolete. Use sealedResult.\","
+                + "\"challenge is obsolete. Use transaction.\"]}");
+            var did = Signed().AsBase64Url();
+
+            var before = Parse(await RedeemRoute.HandleAsync(_client, did, "sealed", "abc"));
+            var now = Parse(await RedeemRoute.HandleAsync(_client, did, "sealed", "abc"));
+
+            foreach (var field in before.EnumerateObject())
+            {
+                Assert.AreEqual(
+                    field.Value.GetRawText(),
+                    now.GetProperty(field.Name).GetRawText(),
+                    field.Name);
+            }
+            Assert.IsFalse(before.TryGetProperty("status", out _));
+            Assert.IsFalse(before.TryGetProperty("humanConfidence", out _));
+            Assert.AreEqual("success", now.GetProperty("status").GetString());
+            Assert.AreEqual("High", now.GetProperty("humanConfidence").GetString());
+            Assert.IsFalse(now.TryGetProperty("obsolete", out _));
+
+            // The route sends the current names and, with the same values,
+            // the obsolete ones every cloud release reads.
+            var redeem = _handler.Requests[3];
+            Assert.AreEqual(Endpoint + "id/redeem", redeem.Uri.AbsoluteUri);
+            StringAssert.Contains(redeem.Body, "sealedResult=sealed");
+            StringAssert.Contains(redeem.Body, "transaction=abc");
+            StringAssert.Contains(redeem.Body, "result=sealed");
+            StringAssert.Contains(redeem.Body, "challenge=abc");
+        }
+
+        [TestMethod]
+        public async Task Redeem_CurrentFailureAnswers_PassStatusOn()
+        {
+            QueueKeys(_publicPem);
+            _handler.Enqueue(HttpStatusCode.OK,
+                "{\"context\":\"replayed\",\"status\":\"replayed\"}");
+            QueueKeys(_publicPem);
+            _handler.Enqueue(HttpStatusCode.ServiceUnavailable,
+                "{\"context\":\"unconfirmed\",\"status\":\"unconfirmed\"}");
+            var did = Signed().AsBase64Url();
+
+            var replayed = await RedeemRoute.HandleAsync(_client, did, "sealed", "abc");
+            var unconfirmed = await RedeemRoute.HandleAsync(_client, did, "sealed", "abc");
+
+            Assert.AreEqual(200, replayed.StatusCode);
+            Assert.AreEqual("replayed", Parse(replayed).GetProperty("context").GetString());
+            Assert.AreEqual("replayed", Parse(replayed).GetProperty("status").GetString());
+            Assert.AreEqual(503, unconfirmed.StatusCode);
+            Assert.AreEqual("unconfirmed", Parse(unconfirmed).GetProperty("context").GetString());
+            Assert.AreEqual("unconfirmed", Parse(unconfirmed).GetProperty("status").GetString());
+        }
+
+        [TestMethod]
+        public async Task Redeem_NoHumanConfidenceLicence_PassesTheReasonOn()
+        {
+            const string reason =
+                "humanConfidence is a paid feature. You need a License Key valid "
+                + "for Human Confidence, presented on this call, to retrieve it. "
+                + "Visit https://51degrees.com/pricing for details";
+            QueueKeys(_publicPem);
+            _handler.Enqueue(HttpStatusCode.OK,
+                "{\"signature\":\"verified\",\"context\":\"verified\","
+                + "\"humanConfidenceNullReason\":\"" + reason + "\","
+                + "\"status\":\"success\","
+                + "\"verifiedAt\":\"2026-08-07T09:15:32Z\",\"secondsSinceVerified\":2}");
+
+            var json = Parse(await RedeemRoute.HandleAsync(
+                _client, Signed().AsBase64Url(), "sealed", "abc"));
+
+            Assert.AreEqual(reason, json.GetProperty("humanConfidenceNullReason").GetString());
+            Assert.IsFalse(json.TryGetProperty("humanConfidence", out _));
         }
 
         [TestMethod]

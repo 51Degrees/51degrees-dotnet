@@ -35,6 +35,11 @@ using System.Threading.Tasks;
 using System.Web;
 using static FiftyOne.Did.Tests.FodIdTestFactory;
 
+// These tests pin the obsolete RedeemAsync and the obsolete failure
+// members of ContextOutcome, which keep working. The current names
+// are tested in DidClientSealedResultTests.
+#pragma warning disable CS0618
+
 namespace FiftyOne.Did.Tests
 {
     /// <summary>
@@ -1666,7 +1671,7 @@ namespace FiftyOne.Did.Tests
             Assert.IsNull(form["license"]);
             Assert.AreEqual(Resource, form["resource"]);
             CollectionAssert.AreEquivalent(
-                new[] { "resource", "51did", "result", "challenge" },
+                new[] { "resource", "51did", "sealedResult", "transaction", "result", "challenge" },
                 form.AllKeys);
         }
 

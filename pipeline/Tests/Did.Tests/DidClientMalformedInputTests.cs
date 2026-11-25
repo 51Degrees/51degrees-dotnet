@@ -32,6 +32,9 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using static FiftyOne.Did.Tests.FodIdTestFactory;
 
+// The obsolete RedeemAsync keeps refusing malformed input as before.
+#pragma warning disable CS0618
+
 namespace FiftyOne.Did.Tests
 {
     /// <summary>

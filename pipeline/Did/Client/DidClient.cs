@@ -26,6 +26,7 @@ using Owid.Client.Model;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
@@ -144,8 +145,10 @@ namespace FiftyOne.Did.Client
         /// </param>
         /// <param name="licenceKey">
         /// A licence key of the same account, server side only. Needed to
-        /// redeem where the account holds licence keys, and sent only in
-        /// the redeem form body.
+        /// redeem where the account holds licence keys, and to be given the
+        /// Human Confidence Value a 51Did carries. Sent only in the form
+        /// body of a redeem or of
+        /// <see cref="VerifyDetailedAsync(FodId, CancellationToken)"/>.
         /// </param>
         /// <param name="endpoint">
         /// The API base including <c>/api/v4/</c>. When null the
@@ -387,7 +390,8 @@ namespace FiftyOne.Did.Client
             ArgumentNullException.ThrowIfNull(fodId);
             // A parsed identifier is already known to be a 51Did, so the
             // string surface's local check is not repeated.
-            return VerifyEncodedAsync(fodId.AsBase64Url(), cancellationToken);
+            return ValidAsync(
+                VerifyEncodedAsync(fodId.AsBase64Url(), false, cancellationToken));
         }
 
         /// <summary>
@@ -415,29 +419,117 @@ namespace FiftyOne.Did.Client
             CancellationToken cancellationToken = default)
         {
             ValidateEncodedValue(fodId, nameof(fodId));
-            return VerifyEncodedAsync(fodId, cancellationToken);
+            return ValidAsync(VerifyEncodedAsync(fodId, false, cancellationToken));
         }
 
-        private async Task<bool> VerifyEncodedAsync(
+        private static async Task<bool> ValidAsync(
+            Task<DidVerification> verification)
+            => (await verification.ConfigureAwait(false)).Valid;
+
+        /// <summary>
+        /// Verifies the identifier's signature through the cloud's verify
+        /// endpoint, as <see cref="VerifyAsync(FodId, CancellationToken)"/>
+        /// does, and returns the whole answer, including the Human
+        /// Confidence Value the 51Did carries. The cloud returns the Value
+        /// only to a call that presents a License Key valid for Human
+        /// Confidence, so where the client was given a licence key it is
+        /// sent in a POST form body. Otherwise the call is the same as
+        /// <see cref="VerifyAsync(FodId, CancellationToken)"/> makes.
+        /// Counts as one use.
+        /// </summary>
+        /// <param name="fodId">The identifier.</param>
+        /// <param name="cancellationToken">Cancels the call.</param>
+        /// <returns>
+        /// The typed answer. <see cref="DidVerification.HumanConfidence"/>
+        /// is present when the signature is valid and the client was given
+        /// a License Key valid for Human Confidence.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="fodId"/> is null.
+        /// </exception>
+        /// <exception cref="HttpRequestException">
+        /// Thrown when the cloud cannot be reached or answers with an
+        /// unexpected status.
+        /// </exception>
+        public Task<DidVerification> VerifyDetailedAsync(
+            FodId fodId,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(fodId);
+            return VerifyEncodedAsync(fodId.AsBase64Url(), true, cancellationToken);
+        }
+
+        /// <summary>
+        /// Verifies a 51Did string's signature through the cloud's verify
+        /// endpoint, as <see cref="VerifyAsync(string, CancellationToken)"/>
+        /// does, and returns the whole answer, including the Human
+        /// Confidence Value the 51Did carries. See
+        /// <see cref="VerifyDetailedAsync(FodId, CancellationToken)"/>.
+        /// </summary>
+        /// <param name="fodId">The identifier as base64.</param>
+        /// <param name="cancellationToken">Cancels the call.</param>
+        /// <returns>
+        /// The typed answer. <see cref="DidVerification.HumanConfidence"/>
+        /// is present when the signature is valid and the client was given
+        /// a License Key valid for Human Confidence.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when the value is not a 51Did, before any call is made,
+        /// or with the cloud's message when the cloud refused it.
+        /// </exception>
+        /// <exception cref="HttpRequestException">
+        /// Thrown when the cloud cannot be reached or answers with an
+        /// unexpected status.
+        /// </exception>
+        public Task<DidVerification> VerifyDetailedAsync(
             string fodId,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateEncodedValue(fodId, nameof(fodId));
+            return VerifyEncodedAsync(fodId, true, cancellationToken);
+        }
+
+        private async Task<DidVerification> VerifyEncodedAsync(
+            string fodId,
+            bool presentLicence,
             CancellationToken cancellationToken)
         {
             // The documented parameter is 51did. The same value is sent
             // again as owid, the name the verify endpoint first went live
             // under, which a service that predates the 51did name reads
             // and a current one accepts as an alias, so both answer.
-            var encoded = Uri.EscapeDataString(fodId);
-            var request = NewRequest(
-                HttpMethod.Get,
-                "id/verify/" + Uri.EscapeDataString(ResourceKey)
-                + "?51did=" + encoded + "&owid=" + encoded);
+            HttpRequestMessage request;
+            if (presentLicence && _licenceKey is not null)
+            {
+                // The cloud returns the Human Confidence Value only to a
+                // call that presents a License Key valid for it. The licence
+                // key never travels in a URL, so this call is a POST to the
+                // bare path with everything in the form body, as redeem is.
+                request = NewRequest(HttpMethod.Post, "id/verify");
+                request.Content = new FormUrlEncodedContent(
+                    new List<KeyValuePair<string, string>>
+                    {
+                        new KeyValuePair<string, string>("resource", ResourceKey),
+                        new KeyValuePair<string, string>("51did", fodId),
+                        new KeyValuePair<string, string>("owid", fodId),
+                        new KeyValuePair<string, string>("license", _licenceKey),
+                    });
+            }
+            else
+            {
+                var encoded = Uri.EscapeDataString(fodId);
+                request = NewRequest(
+                    HttpMethod.Get,
+                    "id/verify/" + Uri.EscapeDataString(ResourceKey)
+                    + "?51did=" + encoded + "&owid=" + encoded);
+            }
             var (status, body) = await SendAsync(request, cancellationToken)
                 .ConfigureAwait(false);
             if (status == HttpStatusCode.OK || status == HttpStatusCode.BadRequest)
             {
-                if (TryReadValid(body, out var valid))
+                if (TryReadVerification(status, body, out var verification))
                 {
-                    return valid;
+                    return verification;
                 }
                 if (status == HttpStatusCode.BadRequest)
                 {
@@ -452,16 +544,120 @@ namespace FiftyOne.Did.Client
         }
 
         /// <summary>
+        /// Redeems a sealed result against the identifier it was made for,
+        /// sending the licence key where one was given. The sealed result
+        /// is sent as <c>sealedResult</c> and the transaction as
+        /// <c>transaction</c>, and each again under its obsolete name,
+        /// <c>result</c> and <c>challenge</c>, so a cloud release that reads
+        /// only those still answers. Counts as one use, the second of the
+        /// two a browser-based context check costs.
+        /// </summary>
+        /// <param name="fodId">The identifier the caller knows independently.</param>
+        /// <param name="sealedResult">
+        /// The sealed result the browser relayed, exactly as the
+        /// <c>verify-context</c> or <c>verify-full</c> endpoint returned it.
+        /// </param>
+        /// <param name="transaction">
+        /// The single-use transaction value given to the verify call, or
+        /// null where none was.
+        /// </param>
+        /// <param name="cancellationToken">Cancels the call.</param>
+        /// <returns>
+        /// The typed answer. <see cref="RedeemResult.Outcome"/> says what
+        /// happened, and on success <see cref="RedeemResult.Context"/>
+        /// holds the verdict and <see cref="RedeemResult.HumanConfidence"/>
+        /// the Human Confidence Value, for a client given a License Key
+        /// valid for Human Confidence.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="fodId"/> is null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown, with the cloud's message, when the cloud answered 400
+        /// because the identifier was malformed.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// Thrown when the host answered 404, meaning it does not offer the
+        /// creator context.
+        /// </exception>
+        /// <exception cref="HttpRequestException">
+        /// Thrown when the cloud cannot be reached or answers with any
+        /// other unexpected status.
+        /// </exception>
+        public Task<RedeemResult> RedeemSealedResultAsync(
+            FodId fodId,
+            string sealedResult,
+            string? transaction = null,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(fodId);
+            // A parsed identifier is already known to be a 51Did, so the
+            // string surface's local check is not repeated.
+            return RedeemEncodedAsync(
+                fodId.AsBase64Url(), sealedResult, transaction,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Redeems a sealed result against a 51Did string, in either base64
+        /// alphabet. See
+        /// <see cref="RedeemSealedResultAsync(FodId, string, string, CancellationToken)"/>.
+        /// </summary>
+        /// <param name="fodId">The identifier as base64.</param>
+        /// <param name="sealedResult">
+        /// The sealed result the browser relayed, exactly as the
+        /// <c>verify-context</c> or <c>verify-full</c> endpoint returned it.
+        /// </param>
+        /// <param name="transaction">
+        /// The single-use transaction value given to the verify call, or
+        /// null where none was.
+        /// </param>
+        /// <param name="cancellationToken">Cancels the call.</param>
+        /// <returns>The typed answer.</returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="fodId"/> is empty or does not parse
+        /// as a 51Did, naming the <see cref="FodIdParseStatus"/>, before
+        /// any call is made, or with the cloud's message when the cloud
+        /// answered 400.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// Thrown when the host answered 404, meaning it does not offer the
+        /// creator context.
+        /// </exception>
+        /// <exception cref="HttpRequestException">
+        /// Thrown when the cloud cannot be reached or answers with any
+        /// other unexpected status.
+        /// </exception>
+        public Task<RedeemResult> RedeemSealedResultAsync(
+            string fodId,
+            string sealedResult,
+            string? transaction = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateEncodedValue(fodId, nameof(fodId));
+            return RedeemEncodedAsync(
+                fodId, sealedResult, transaction, cancellationToken);
+        }
+
+        /// <summary>
         /// Redeems a sealed creator context result against the identifier
         /// it was made for, sending the licence key where one was given.
         /// Counts as one use, the second of the two a browser-based context
         /// check costs.
+        /// <para>
+        /// Obsolete. Use
+        /// <see cref="RedeemSealedResultAsync(FodId, string, string, CancellationToken)"/>,
+        /// which takes <c>sealedResult</c> and <c>transaction</c>. This
+        /// method still works, and makes the same call.
+        /// </para>
         /// </summary>
         /// <param name="fodId">The identifier the caller knows independently.</param>
-        /// <param name="result">The sealed result the browser relayed.</param>
+        /// <param name="result">
+        /// Obsolete name for the sealed result the browser relayed.
+        /// </param>
         /// <param name="challenge">
-        /// The single-use challenge given to the verify call, or null where
-        /// none was.
+        /// Obsolete name for the single-use transaction value given to the
+        /// verify call, or null where none was.
         /// </param>
         /// <param name="cancellationToken">Cancels the call.</param>
         /// <returns>The typed verdict.</returns>
@@ -480,6 +676,7 @@ namespace FiftyOne.Did.Client
         /// Thrown when the cloud cannot be reached or answers with any
         /// other unexpected status.
         /// </exception>
+        [Obsolete("Use RedeemSealedResultAsync, which takes sealedResult and transaction.")]
         public Task<RedeemResult> RedeemAsync(
             FodId fodId,
             string result,
@@ -497,12 +694,20 @@ namespace FiftyOne.Did.Client
         /// Redeems a sealed creator context result against a 51Did string,
         /// in either base64 alphabet. See
         /// <see cref="RedeemAsync(FodId, string, string, CancellationToken)"/>.
+        /// <para>
+        /// Obsolete. Use
+        /// <see cref="RedeemSealedResultAsync(string, string, string, CancellationToken)"/>,
+        /// which takes <c>sealedResult</c> and <c>transaction</c>. This
+        /// method still works, and makes the same call.
+        /// </para>
         /// </summary>
         /// <param name="fodId">The identifier as base64.</param>
-        /// <param name="result">The sealed result the browser relayed.</param>
+        /// <param name="result">
+        /// Obsolete name for the sealed result the browser relayed.
+        /// </param>
         /// <param name="challenge">
-        /// The single-use challenge given to the verify call, or null where
-        /// none was.
+        /// Obsolete name for the single-use transaction value given to the
+        /// verify call, or null where none was.
         /// </param>
         /// <param name="cancellationToken">Cancels the call.</param>
         /// <returns>The typed verdict.</returns>
@@ -520,6 +725,7 @@ namespace FiftyOne.Did.Client
         /// Thrown when the cloud cannot be reached or answers with any
         /// other unexpected status.
         /// </exception>
+        [Obsolete("Use RedeemSealedResultAsync, which takes sealedResult and transaction.")]
         public Task<RedeemResult> RedeemAsync(
             string fodId,
             string result,
@@ -532,20 +738,29 @@ namespace FiftyOne.Did.Client
 
         private async Task<RedeemResult> RedeemEncodedAsync(
             string fodId,
-            string result,
-            string? challenge,
+            string sealedResult,
+            string? transaction,
             CancellationToken cancellationToken)
         {
             // Everything travels in the form body, the resource key
             // included, because the redeem endpoint's POST route is the bare
             // path and reads its parameters from the form. Nothing here is
             // written to an access log.
+            // The sealed result and the transaction are each sent under the
+            // current name and the obsolete one, with the same value. A
+            // cloud release that reads only the obsolete names (result and
+            // challenge) reads those, and one that takes the current names
+            // uses them and adds an obsolete field, which is ignored.
+            var sealedValue = sealedResult ?? string.Empty;
+            var transactionValue = transaction ?? string.Empty;
             var form = new List<KeyValuePair<string, string>>
             {
                 new KeyValuePair<string, string>("resource", ResourceKey),
                 new KeyValuePair<string, string>("51did", fodId),
-                new KeyValuePair<string, string>("result", result ?? string.Empty),
-                new KeyValuePair<string, string>("challenge", challenge ?? string.Empty),
+                new KeyValuePair<string, string>("sealedResult", sealedValue),
+                new KeyValuePair<string, string>("transaction", transactionValue),
+                new KeyValuePair<string, string>("result", sealedValue),
+                new KeyValuePair<string, string>("challenge", transactionValue),
             };
             if (_licenceKey is not null)
             {
@@ -995,9 +1210,17 @@ namespace FiftyOne.Did.Client
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
 
-        private static bool TryReadValid(string body, out bool valid)
+        /// <summary>
+        /// Reads a verify answer, which carries <c>valid</c> and, from a
+        /// cloud release that returns it, the Human Confidence fields.
+        /// Other fields are ignored and kept in the raw body.
+        /// </summary>
+        private static bool TryReadVerification(
+            HttpStatusCode status,
+            string body,
+            [NotNullWhen(true)] out DidVerification? verification)
         {
-            valid = false;
+            verification = null;
             try
             {
                 using (var document = JsonDocument.Parse(body ?? string.Empty))
@@ -1008,7 +1231,12 @@ namespace FiftyOne.Did.Client
                         && (element.ValueKind == JsonValueKind.True
                             || element.ValueKind == JsonValueKind.False))
                     {
-                        valid = element.GetBoolean();
+                        verification = new DidVerification(
+                            element.GetBoolean(),
+                            HumanConfidenceFields.ReadValue(root),
+                            HumanConfidenceFields.ReadNullReason(root),
+                            (int)status,
+                            body ?? string.Empty);
                         return true;
                     }
                 }

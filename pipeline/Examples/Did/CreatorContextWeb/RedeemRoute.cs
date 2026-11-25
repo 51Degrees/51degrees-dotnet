@@ -92,7 +92,10 @@ public static class RedeemRoute
             //    browser never sees it. The verdict the page shows
             //    (unconfirmed, replayed, expired) can arrive on a non-2xx
             //    status, which is passed on as received.
-            var redeemed = await client.RedeemAsync(
+            //    The client sends the sealed result and the transaction
+            //    under their current names and their obsolete ones, so this
+            //    works against every cloud release.
+            var redeemed = await client.RedeemSealedResultAsync(
                 fodId, result ?? string.Empty, challenge);
             return new RedeemAnswer(
                 redeemed.StatusCode, Json, ToJson(redeemed, serverSignature));
@@ -120,10 +123,12 @@ public static class RedeemRoute
 
     /// <summary>
     /// The cloud's own shape (<c>signature</c>, <c>context</c>,
-    /// <c>factors</c> when present, <c>verifiedAt</c> and
-    /// <c>secondsSinceVerified</c> when present) rebuilt from the typed
-    /// result, plus <c>serverSignature</c>. The page ignores fields it
-    /// does not know, so it needs no change.
+    /// <c>factors</c> when present, <c>humanConfidence</c> or
+    /// <c>humanConfidenceNullReason</c> and <c>status</c> when the cloud
+    /// sent them, <c>verifiedAt</c> and <c>secondsSinceVerified</c> when
+    /// present) rebuilt from the typed result, plus
+    /// <c>serverSignature</c>. The page ignores fields it does not know, so
+    /// it needs no change.
     /// </summary>
     public static string ToJson(RedeemResult redeemed, string serverSignature)
     {
@@ -152,6 +157,20 @@ public static class RedeemRoute
                 };
             }
             body["factors"] = factors;
+        }
+        if (redeemed.HumanConfidence is HumanConfidenceValue humanConfidence)
+        {
+            // The enumeration's names are the cloud's own words: High,
+            // Medium, Low and Absent.
+            body["humanConfidence"] = humanConfidence.ToString();
+        }
+        else if (redeemed.HumanConfidenceNullReason is string nullReason)
+        {
+            body["humanConfidenceNullReason"] = nullReason;
+        }
+        if (redeemed.StatusValue is not null)
+        {
+            body["status"] = RedeemResult.ToStatusValue(redeemed.Outcome);
         }
         if (redeemed.VerifiedAt is DateTime verifiedAt)
         {

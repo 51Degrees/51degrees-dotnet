@@ -29,6 +29,10 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 
+// These tests call the live cloud, so they keep the obsolete names
+// that every cloud release reads.
+#pragma warning disable CS0618
+
 namespace FiftyOne.Did.Tests
 {
     /// <summary>
