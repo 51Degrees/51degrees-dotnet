@@ -437,8 +437,9 @@ The four steps, in the order a server takes them.
    `HumanConfidence` is the Human Confidence Value the 51Did carries,
    whatever the verdict, for a client holding a License Key valid for
    Human Confidence, and `HumanConfidenceNullReason` gives the cloud's
-   reason otherwise.
-   `Unconfirmed` arrives with status 503 and may be retried. A host that
+   reason otherwise. A word the client does not know reads as `Absent`.
+   `Unconfirmed` arrives with status 503 and may be retried. A 503 is
+   always `Unconfirmed`, whatever its body says. A host that
    does not offer the creator context answers 404, which raises
    `NotSupportedException`, and a 400 for a malformed identifier raises
    `ArgumentException` with the cloud's message. Every cryptographic

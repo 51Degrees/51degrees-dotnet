@@ -67,8 +67,9 @@ namespace FiftyOne.Did.Client
         /// signature is valid and the call presented a License Key valid
         /// for Human Confidence. Null when the cloud sent no
         /// <c>humanConfidence</c>, which a cloud release that predates the
-        /// field never does, or sent a word this client does not recognise,
-        /// which stays in <see cref="Raw"/>.
+        /// field never does. A word this client does not recognise reads as
+        /// <see cref="HumanConfidenceValue.Absent"/>, and the word stays in
+        /// <see cref="Raw"/>.
         /// </summary>
         public HumanConfidenceValue? HumanConfidence { get; }
 
@@ -103,23 +104,42 @@ namespace FiftyOne.Did.Client
 
         /// <summary>
         /// Maps a <c>humanConfidence</c> string to its Value, in any case.
-        /// Anything not recognised, including null, is null.
+        /// Null is null. Any other word not recognised is
+        /// <see cref="HumanConfidenceValue.Absent"/>, so an unexpected word
+        /// never reads as a Value or as an answer without the field.
         /// </summary>
         internal static HumanConfidenceValue? Parse(string? value)
         {
-            switch (value?.ToLowerInvariant())
+            if (value is null)
+            {
+                return null;
+            }
+            switch (value.ToLowerInvariant())
             {
                 case "high": return HumanConfidenceValue.High;
                 case "medium": return HumanConfidenceValue.Medium;
                 case "low": return HumanConfidenceValue.Low;
-                case "absent": return HumanConfidenceValue.Absent;
-                default: return null;
+                default: return HumanConfidenceValue.Absent;
             }
         }
 
-        /// <summary>The Value in an answer, or null.</summary>
+        /// <summary>
+        /// The Value in an answer. Null when the answer has no
+        /// <c>humanConfidence</c> or it is JSON null. A field that is there
+        /// but is not a word this client knows, including one that is not a
+        /// string, is <see cref="HumanConfidenceValue.Absent"/>.
+        /// </summary>
         internal static HumanConfidenceValue? ReadValue(JsonElement root)
-            => Parse(ReadString(root, Value));
+        {
+            if (root.TryGetProperty(Value, out var element) == false
+                || element.ValueKind == JsonValueKind.Null)
+            {
+                return null;
+            }
+            return element.ValueKind == JsonValueKind.String
+                ? Parse(element.GetString())
+                : HumanConfidenceValue.Absent;
+        }
 
         /// <summary>The reason in an answer, or null.</summary>
         internal static string? ReadNullReason(JsonElement root)

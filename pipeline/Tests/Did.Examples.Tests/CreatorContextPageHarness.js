@@ -4,7 +4,9 @@
 // Usage: node creator_context_page_harness.js <page.html> [51did]
 //
 // The optional second argument is the identifier the page is opened with,
-// which is the transplant path. Without it the page creates one.
+// which is the transplant path. Without it the page creates one. The
+// VERIFY_ANSWER environment variable, when set, is the JSON the verify
+// call answers with.
 //
 // The stand in gives the page a document, a window, a location and a
 // fetch. Inserting a script element stands for loading the 51Degrees
@@ -124,7 +126,11 @@ function fetchStub(url) {
     record.fetches.push(url);
     if (url.indexOf('id/verify-full') !== -1
         || url.indexOf('id/verify-context') !== -1) {
-        return response({ result: 'sealed-result' });
+        // The answer of a cloud release before sealedResult, unless the
+        // VERIFY_ANSWER environment variable gives the answer as JSON.
+        return response(process.env.VERIFY_ANSWER
+            ? JSON.parse(process.env.VERIFY_ANSWER)
+            : { result: 'sealed-result' });
     }
     if (url.indexOf('/redeem') !== -1) {
         return response({

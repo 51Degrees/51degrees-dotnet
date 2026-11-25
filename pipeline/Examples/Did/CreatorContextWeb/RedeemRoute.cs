@@ -123,12 +123,12 @@ public static class RedeemRoute
 
     /// <summary>
     /// The cloud's own shape (<c>signature</c>, <c>context</c>,
-    /// <c>factors</c> when present, <c>humanConfidence</c> or
-    /// <c>humanConfidenceNullReason</c> and <c>status</c> when the cloud
-    /// sent them, <c>verifiedAt</c> and <c>secondsSinceVerified</c> when
-    /// present) rebuilt from the typed result, plus
-    /// <c>serverSignature</c>. The page ignores fields it does not know, so
-    /// it needs no change.
+    /// <c>factors</c> when present, <c>status</c> when the cloud sent it,
+    /// <c>verifiedAt</c> and <c>secondsSinceVerified</c> when present)
+    /// rebuilt from the typed result, plus <c>serverSignature</c>. The
+    /// Human Confidence Value and the reason in its place stay on the
+    /// server and are never sent to the page. The page ignores fields it
+    /// does not know, so it needs no change.
     /// </summary>
     public static string ToJson(RedeemResult redeemed, string serverSignature)
     {
@@ -158,16 +158,10 @@ public static class RedeemRoute
             }
             body["factors"] = factors;
         }
-        if (redeemed.HumanConfidence is HumanConfidenceValue humanConfidence)
-        {
-            // The enumeration's names are the cloud's own words: High,
-            // Medium, Low and Absent.
-            body["humanConfidence"] = humanConfidence.ToString();
-        }
-        else if (redeemed.HumanConfidenceNullReason is string nullReason)
-        {
-            body["humanConfidenceNullReason"] = nullReason;
-        }
+        // RedeemResult.HumanConfidence, and the reason in its place, are
+        // left out on purpose. The Value is for the publisher's server to
+        // act on, under the licence key this server holds, and is never
+        // sent to the browser.
         if (redeemed.StatusValue is not null)
         {
             body["status"] = RedeemResult.ToStatusValue(redeemed.Outcome);

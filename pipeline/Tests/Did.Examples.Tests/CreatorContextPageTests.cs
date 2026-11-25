@@ -71,6 +71,15 @@ namespace FiftyOne.Did.Examples.Tests
         /// test with everything it printed when it does not succeed.
         /// </summary>
         private static string Run(string program, params string[] arguments)
+            => Run(program, null, arguments);
+
+        /// <summary>
+        /// Runs a program with environment variables of its own added.
+        /// </summary>
+        private static string Run(
+            string program,
+            IDictionary<string, string>? environment,
+            params string[] arguments)
         {
             var start = new ProcessStartInfo(program)
             {
@@ -81,6 +90,13 @@ namespace FiftyOne.Did.Examples.Tests
             foreach (var argument in arguments)
             {
                 start.ArgumentList.Add(argument);
+            }
+            if (environment != null)
+            {
+                foreach (var variable in environment)
+                {
+                    start.Environment[variable.Key] = variable.Value;
+                }
             }
             Process? process;
             try
@@ -117,7 +133,13 @@ namespace FiftyOne.Did.Examples.Tests
         /// The identifier the page is opened with, which is the
         /// transplant path. Null creates one instead.
         /// </param>
-        private static JsonElement RunPage(string? given = null)
+        /// <param name="verifyAnswer">
+        /// The JSON the verify call answers with. Null gives the answer of
+        /// a cloud release before <c>sealedResult</c>.
+        /// </param>
+        private static JsonElement RunPage(
+            string? given = null,
+            string? verifyAnswer = null)
         {
             var arguments = new List<string>
             {
@@ -128,7 +150,10 @@ namespace FiftyOne.Did.Examples.Tests
             {
                 arguments.Add(given);
             }
-            var printed = Run("node", arguments.ToArray())
+            var environment = verifyAnswer == null
+                ? null
+                : new Dictionary<string, string> { ["VERIFY_ANSWER"] = verifyAnswer };
+            var printed = Run("node", environment, arguments.ToArray())
                 .Trim()
                 .Split('\n')
                 .Last()
@@ -259,6 +284,25 @@ namespace FiftyOne.Did.Examples.Tests
             Assert.AreEqual(1, redeem.Count);
             StringAssert.Contains(redeem[0], "result=sealed-result");
             Assert.AreEqual("verified", Row(record, "s-signature"));
+            Assert.AreEqual("verified", Row(record, "s-context"));
+        }
+
+        /// <summary>
+        /// The current cloud names the sealed result <c>sealedResult</c>, so
+        /// the page reads that name first and falls back to <c>result</c>.
+        /// </summary>
+        [TestMethod]
+        [DataRow("{\"sealedResult\":\"sealed-new\"}")]
+        [DataRow("{\"sealedResult\":\"sealed-new\",\"result\":\"sealed-old\"}")]
+        public void TheSealedResultIsReadFirst(string verifyAnswer)
+        {
+            var record = RunPage(verifyAnswer: verifyAnswer);
+            var redeem = Strings(record, "fetches")
+                .Where(address => address.StartsWith("/redeem?"))
+                .ToList();
+            Assert.AreEqual(1, redeem.Count);
+            StringAssert.Contains(redeem[0], "result=sealed-new");
+            Assert.IsFalse(redeem[0].Contains("sealed-old"), redeem[0]);
             Assert.AreEqual("verified", Row(record, "s-context"));
         }
 

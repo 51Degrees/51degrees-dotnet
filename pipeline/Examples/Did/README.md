@@ -83,7 +83,10 @@ again as `result` and `challenge`, so it works against every cloud
 release. The route answers the page with the cloud's
 status and a JSON body in the cloud's own shape built from that result,
 plus one extra field, `serverSignature`, carrying the offline outcome,
-which the page ignores. A host without the feature makes `RedeemSealedResultAsync`
+which the page ignores. `HumanConfidence` and `HumanConfidenceNullReason`
+stay on the server and are never sent to the page. The page reads the
+sealed result from `sealedResult`, and from `result` where an older cloud
+release sends only that. A host without the feature makes `RedeemSealedResultAsync`
 throw `NotSupportedException`, which the route turns into a 404 with a
 text body, and an unreachable cloud makes it throw
 `HttpRequestException`, which becomes a 502 with an `error` field, so

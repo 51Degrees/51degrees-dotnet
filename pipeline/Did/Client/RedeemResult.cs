@@ -43,6 +43,14 @@ namespace FiftyOne.Did.Client
         public const string VerifiedAtFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
         /// <summary>
+        /// The HTTP status the cloud answers with when it could not confirm
+        /// first use of the sealed result. It gives
+        /// <see cref="RedemptionOutcome.Unconfirmed"/> whatever the body
+        /// says.
+        /// </summary>
+        private const int UnconfirmedStatusCode = 503;
+
+        /// <summary>
         /// Creates a result from its parts, for an answer without
         /// <c>status</c> or <c>humanConfidence</c>. <see cref="Outcome"/> is
         /// taken from <paramref name="context"/>, and
@@ -123,7 +131,9 @@ namespace FiftyOne.Did.Client
         /// carries a verdict in <see cref="Context"/>. A <c>status</c>
         /// string this client does not recognise maps to
         /// <see cref="RedemptionOutcome.Unreadable"/>, so an unexpected
-        /// answer never reads as a success.
+        /// answer never reads as a success. An HTTP 503 is
+        /// <see cref="RedemptionOutcome.Unconfirmed"/> whatever the body
+        /// says.
         /// <para>
         /// A cloud release that predates <c>status</c> writes the same word
         /// to <c>context</c> instead, so where the answer carries no
@@ -148,8 +158,9 @@ namespace FiftyOne.Did.Client
         /// <see cref="RedemptionOutcome.Success"/> for a call that presented
         /// a License Key valid for Human Confidence. Null when the cloud
         /// sent no <c>humanConfidence</c>, which a cloud release that
-        /// predates the field never does, or sent a word this client does
-        /// not recognise, which stays in <see cref="Raw"/>.
+        /// predates the field never does. A word this client does not
+        /// recognise reads as <see cref="HumanConfidenceValue.Absent"/>, and
+        /// the word stays in <see cref="Raw"/>.
         /// </summary>
         public HumanConfidenceValue? HumanConfidence { get; }
 
@@ -224,7 +235,10 @@ namespace FiftyOne.Did.Client
         /// JSON object, or carries no <c>context</c>, gives
         /// <see cref="ContextOutcome.Unreadable"/> with the body kept in
         /// <see cref="Raw"/>. Fields this client does not read, such as
-        /// <c>obsolete</c>, are ignored and kept in <see cref="Raw"/>.
+        /// <c>obsolete</c>, are ignored and kept in <see cref="Raw"/>. A 503
+        /// gives <see cref="RedemptionOutcome.Unconfirmed"/> whatever the
+        /// body says, because the status is the service's own statement
+        /// that it could not confirm first use.
         /// </summary>
         /// <param name="statusCode">The HTTP status.</param>
         /// <param name="body">The response body.</param>
@@ -267,9 +281,11 @@ namespace FiftyOne.Did.Client
                     seconds,
                     statusCode,
                     body,
-                    statusValue is null
-                        ? OutcomeFromContext(context)
-                        : ParseStatus(statusValue),
+                    statusCode == UnconfirmedStatusCode
+                        ? RedemptionOutcome.Unconfirmed
+                        : statusValue is null
+                            ? OutcomeFromContext(context)
+                            : ParseStatus(statusValue),
                     statusValue,
                     HumanConfidenceFields.ReadValue(root),
                     HumanConfidenceFields.ReadNullReason(root));
@@ -401,7 +417,11 @@ namespace FiftyOne.Did.Client
         private static RedeemResult Unreadable(int statusCode, string body)
             => new RedeemResult(
                 ContextOutcome.Unreadable, null, SignatureOutcome.Unknown,
-                null, null, null, statusCode, body);
+                null, null, null, statusCode, body,
+                statusCode == UnconfirmedStatusCode
+                    ? RedemptionOutcome.Unconfirmed
+                    : RedemptionOutcome.Unreadable,
+                null, null, null);
 
 #pragma warning restore CS0618
 

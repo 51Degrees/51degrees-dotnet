@@ -533,7 +533,7 @@ namespace FiftyOne.Did.Tests
         }
 
         [TestMethod]
-        public void Redeem_HumanConfidence_AbsentFieldOrUnknownWord_IsNull()
+        public void Redeem_HumanConfidence_MissingField_IsNull()
         {
             foreach (var (name, status, before, _) in Answers)
             {
@@ -541,14 +541,70 @@ namespace FiftyOne.Did.Tests
                 Assert.IsNull(old.HumanConfidence, name);
                 Assert.IsNull(old.HumanConfidenceNullReason, name);
             }
+            var jsonNull = RedeemResult.FromResponse(200,
+                "{\"context\":\"verified\",\"humanConfidence\":null,"
+                + "\"status\":\"success\"}");
+            Assert.IsNull(jsonNull.HumanConfidence);
+            var withReason = RedeemResult.FromResponse(200,
+                "{\"context\":\"verified\",\"humanConfidenceNullReason\":\""
+                + NullReason + "\",\"status\":\"success\"}");
+            Assert.IsNull(withReason.HumanConfidence);
+            Assert.AreEqual(NullReason, withReason.HumanConfidenceNullReason);
+        }
+
+        /// <summary>
+        /// A <c>humanConfidence</c> field that is there with a word this
+        /// client does not know reads as Absent, never as a missing field
+        /// or as a Value, and the word stays in <see cref="RedeemResult.Raw"/>.
+        /// </summary>
+        [TestMethod]
+        public void Redeem_HumanConfidence_UnknownWord_IsAbsent()
+        {
             var unknown = RedeemResult.FromResponse(200,
                 "{\"context\":\"verified\",\"humanConfidence\":\"Certain\","
                 + "\"status\":\"success\"}");
-            Assert.IsNull(unknown.HumanConfidence);
+            Assert.AreEqual(HumanConfidenceValue.Absent, unknown.HumanConfidence);
+            Assert.IsNull(unknown.HumanConfidenceNullReason);
             StringAssert.Contains(unknown.Raw, "Certain");
             var notAString = RedeemResult.FromResponse(200,
                 "{\"context\":\"verified\",\"humanConfidence\":3}");
-            Assert.IsNull(notAString.HumanConfidence);
+            Assert.AreEqual(HumanConfidenceValue.Absent, notAString.HumanConfidence);
+            var empty = RedeemResult.FromResponse(200,
+                "{\"context\":\"verified\",\"humanConfidence\":\"\"}");
+            Assert.AreEqual(HumanConfidenceValue.Absent, empty.HumanConfidence);
+        }
+
+        /// <summary>
+        /// A 503 is the service saying it could not confirm first use, so it
+        /// is Unconfirmed whatever the body says.
+        /// </summary>
+        [TestMethod]
+        [DataRow("{\"context\":\"verified\",\"status\":\"success\"}")]
+        [DataRow("{\"context\":\"verified\"}")]
+        [DataRow("{\"context\":\"replayed\",\"status\":\"replayed\"}")]
+        [DataRow("{\"status\":\"something-new\"}")]
+        [DataRow("{}")]
+        [DataRow("<html>busy</html>")]
+        [DataRow("")]
+        public void Redeem_503_IsUnconfirmedWhateverTheBodySays(string body)
+        {
+            var redeemed = RedeemResult.FromResponse(503, body);
+
+            Assert.AreEqual(RedemptionOutcome.Unconfirmed, redeemed.Outcome);
+            Assert.AreEqual(503, redeemed.StatusCode);
+            Assert.AreEqual(body, redeemed.Raw);
+        }
+
+        [TestMethod]
+        public async Task RedeemSealedResult_503WithASuccessBody_IsUnconfirmed()
+        {
+            _handler.Enqueue(HttpStatusCode.ServiceUnavailable, Answers[0].Now);
+            using var client = NewClient();
+
+            var redeemed = await client.RedeemSealedResultAsync(Signed(), "sealed");
+
+            Assert.AreEqual(RedemptionOutcome.Unconfirmed, redeemed.Outcome);
+            Assert.AreEqual(503, redeemed.StatusCode);
         }
 
         [TestMethod]
@@ -682,6 +738,40 @@ namespace FiftyOne.Did.Tests
             Assert.IsTrue(verification.Valid);
             Assert.IsNull(verification.HumanConfidence);
             Assert.IsNull(verification.HumanConfidenceNullReason);
+        }
+
+        /// <summary>
+        /// A <c>humanConfidence</c> field that is there with a word this
+        /// client does not know reads as Absent, apart from an answer with
+        /// no field, which reads as null.
+        /// </summary>
+        [TestMethod]
+        [DataRow("{\"valid\":true,\"humanConfidence\":\"Certain\"}")]
+        [DataRow("{\"valid\":true,\"humanConfidence\":\"\"}")]
+        [DataRow("{\"valid\":true,\"humanConfidence\":3}")]
+        public async Task VerifyDetailed_UnknownWord_IsAbsent(string body)
+        {
+            _handler.Enqueue(HttpStatusCode.OK, body);
+            using var client = NewClient();
+
+            var verification = await client.VerifyDetailedAsync(Signed());
+
+            Assert.IsTrue(verification.Valid);
+            Assert.AreEqual(HumanConfidenceValue.Absent, verification.HumanConfidence);
+            Assert.IsNull(verification.HumanConfidenceNullReason);
+            Assert.AreEqual(body, verification.Raw);
+        }
+
+        [TestMethod]
+        public async Task VerifyDetailed_NullField_IsNull()
+        {
+            _handler.Enqueue(HttpStatusCode.OK, "{\"valid\":true,\"humanConfidence\":null}");
+            using var client = NewClient();
+
+            var verification = await client.VerifyDetailedAsync(Signed());
+
+            Assert.IsTrue(verification.Valid);
+            Assert.IsNull(verification.HumanConfidence);
         }
 
         [TestMethod]

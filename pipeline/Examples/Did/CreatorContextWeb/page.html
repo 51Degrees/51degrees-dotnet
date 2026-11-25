@@ -433,7 +433,11 @@
         + owid + "?challenge=" + CHALLENGE + snippetQuery())
       .then(asJson)
       .then(function (verified) {
-        if (!verified.result) {
+        // The cloud names the encrypted result sealedResult, and a
+        // release before that name calls it result, so the new name is
+        // read first.
+        var sealed = verified.sealedResult || verified.result;
+        if (!sealed) {
           // A deployment holding no context secret answers in the
           // open, so there is nothing to redeem and both answers
           // are already here.
@@ -451,7 +455,7 @@
         // 3. Redeem on OUR server, which adds the licence key the
         // browser never sees.
         return fetch("/redeem?51did=" + owid
-            + "&result=" + encodeURIComponent(verified.result)
+            + "&result=" + encodeURIComponent(sealed)
             + "&challenge=" + CHALLENGE)
           .then(asJson)
           .then(function (redeemed) {

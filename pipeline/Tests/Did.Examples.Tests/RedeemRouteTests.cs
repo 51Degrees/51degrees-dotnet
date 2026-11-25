@@ -175,7 +175,8 @@ namespace FiftyOne.Did.Examples.Tests
         /// The current cloud adds <c>status</c>, <c>humanConfidence</c> and,
         /// for the obsolete names the client also sends, <c>obsolete</c>. The
         /// route answers the page with every field it gave before, the same,
-        /// and passes <c>status</c> and <c>humanConfidence</c> on.
+        /// and passes <c>status</c> on. The Human Confidence Value stays on
+        /// the server.
         /// </summary>
         [TestMethod]
         public async Task Redeem_CurrentAnswer_KeepsTheOldFieldsAndAddsTheNew()
@@ -208,7 +209,8 @@ namespace FiftyOne.Did.Examples.Tests
             Assert.IsFalse(before.TryGetProperty("status", out _));
             Assert.IsFalse(before.TryGetProperty("humanConfidence", out _));
             Assert.AreEqual("success", now.GetProperty("status").GetString());
-            Assert.AreEqual("High", now.GetProperty("humanConfidence").GetString());
+            Assert.IsFalse(now.TryGetProperty("humanConfidence", out _));
+            Assert.IsFalse(now.TryGetProperty("humanConfidenceNullReason", out _));
             Assert.IsFalse(now.TryGetProperty("obsolete", out _));
 
             // The route sends the current names and, with the same values,
@@ -243,25 +245,35 @@ namespace FiftyOne.Did.Examples.Tests
             Assert.AreEqual("unconfirmed", Parse(unconfirmed).GetProperty("status").GetString());
         }
 
+        /// <summary>
+        /// The page never gets the Human Confidence Value or the reason in
+        /// its place, whatever the cloud answers.
+        /// </summary>
         [TestMethod]
-        public async Task Redeem_NoHumanConfidenceLicence_PassesTheReasonOn()
+        [DataRow("\"humanConfidence\":\"High\",")]
+        [DataRow("\"humanConfidence\":\"Low\",")]
+        [DataRow("\"humanConfidence\":\"Absent\",")]
+        [DataRow("\"humanConfidenceNullReason\":\"humanConfidence is a paid feature. "
+            + "You need a License Key valid for Human Confidence, presented on this "
+            + "call, to retrieve it. Visit https://51degrees.com/pricing for details\",")]
+        public async Task Redeem_HumanConfidence_IsNotSentToThePage(string field)
         {
-            const string reason =
-                "humanConfidence is a paid feature. You need a License Key valid "
-                + "for Human Confidence, presented on this call, to retrieve it. "
-                + "Visit https://51degrees.com/pricing for details";
             QueueKeys(_publicPem);
             _handler.Enqueue(HttpStatusCode.OK,
                 "{\"signature\":\"verified\",\"context\":\"verified\","
-                + "\"humanConfidenceNullReason\":\"" + reason + "\","
+                + field
                 + "\"status\":\"success\","
                 + "\"verifiedAt\":\"2026-08-07T09:15:32Z\",\"secondsSinceVerified\":2}");
 
-            var json = Parse(await RedeemRoute.HandleAsync(
-                _client, Signed().AsBase64Url(), "sealed", "abc"));
+            var answer = await RedeemRoute.HandleAsync(
+                _client, Signed().AsBase64Url(), "sealed", "abc");
 
-            Assert.AreEqual(reason, json.GetProperty("humanConfidenceNullReason").GetString());
+            var json = Parse(answer);
+            Assert.AreEqual("verified", json.GetProperty("context").GetString());
+            Assert.AreEqual("success", json.GetProperty("status").GetString());
             Assert.IsFalse(json.TryGetProperty("humanConfidence", out _));
+            Assert.IsFalse(json.TryGetProperty("humanConfidenceNullReason", out _));
+            Assert.IsFalse(answer.Body.Contains("humanConfidence"), answer.Body);
         }
 
         [TestMethod]
