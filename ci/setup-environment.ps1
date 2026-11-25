@@ -3,7 +3,10 @@ param (
     [string]$Name = "Release_x64",
     [string]$Arch = "x64",
     [string]$Configuration = "Release",
-    [string]$BuildMethod = "dotnet"
+    [string]$BuildMethod = "dotnet",
+    # False on the Intel macOS entry, as live cloud tests run once per
+    # operating system and the arm64 entry runs them for macOS.
+    [bool]$LiveCloudTests = $true
 )
 $ErrorActionPreference = "Stop"
 
@@ -27,6 +30,15 @@ dotnet dev-certs https
 # The data files fetch-assets.ps1 put in the data submodule of cxx.
 $env:_51DEGREES_DD_PATH = "$RepoPath/cxx/data/device-detection/TAC-HashV41.hash"
 $env:_51DEGREES_IPI_PATH = "$RepoPath/cxx/data/ip-intelligence/51Degrees-EnterpriseIpiV41.ipi"
+
+# Every live cloud test skips without a resource key, and the later steps run
+# in this process, so removing the keys here leaves them out of the whole job.
+if (-not $LiveCloudTests) {
+    foreach ($key in @(Get-ChildItem Env:_51DEGREES_RESOURCE_KEY*)) {
+        Remove-Item "Env:$($key.Name)"
+        Write-Host "Live cloud tests are not run here, so $($key.Name) is removed"
+    }
+}
 
 # The keys are not set here. The shared workflow exports each secret under
 # its own _51DEGREES_ name before this script runs, and each test reads the
