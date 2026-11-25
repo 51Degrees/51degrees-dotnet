@@ -55,6 +55,15 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         private string CloudEndPoint;
 
         /// <summary>
+        /// The seconds the tests let a request to the cloud service take.
+        /// The examples keep the default of 2 seconds, which the live
+        /// service sometimes takes longer than on CI's slower runners, so
+        /// the tests allow more and fail only a service that does not
+        /// answer. The build log has the time of each request.
+        /// </summary>
+        private const int CloudRequestTimeoutSeconds = 15;
+
+        /// <summary>
         /// Reads the resource key from <see cref="KeyVariable"/>, skipping
         /// the test when it is not set, and the cloud endpoint from its
         /// environment variable, or the default when that is not set.
@@ -90,7 +99,11 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         public void Example_Cloud_GetAllProperties()
         {
             var example = new Examples.Cloud.GetAllProperties.Program.Example();
-            example.Run(ResourceKey, CloudEndPoint);
+            example.Run(
+                ResourceKey,
+                CloudEndPoint,
+                CloudRequestTimeoutSeconds,
+                TimedHttpHandler.CreateClient());
         }
 
         /// <summary>
@@ -101,7 +114,8 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         {
             var example = new Examples.Cloud.GettingStartedConsole.Program.Example();
             var options = CreateConfiguration(example.GetType(), ResourceKey);
-            example.Run(options, TextWriter.Null);
+            example.Run(
+                options, TextWriter.Null, TimedHttpHandler.CreateClient());
         }
 
         /// <summary>
@@ -116,7 +130,13 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
             var output = new StringWriter();
             using (var loggerFactory = new LoggerFactory())
             {
-                example.Run(ResourceKey, loggerFactory, output, CloudEndPoint);
+                example.Run(
+                    ResourceKey,
+                    loggerFactory,
+                    output,
+                    CloudEndPoint,
+                    CloudRequestTimeoutSeconds,
+                    TimedHttpHandler.CreateClient());
             }
             Console.WriteLine(output);
             HardwareLookupOutput.AssertListsDevices(
@@ -139,7 +159,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
             var example = new Examples.Cloud.TacLookup.Program.Example();
             var options = CreateConfiguration(example.GetType(), ResourceKey, CloudEndPoint);
             var output = new StringWriter();
-            example.Run(options, output);
+            example.Run(options, output, TimedHttpHandler.CreateClient());
             Console.WriteLine(output);
             HardwareLookupOutput.AssertListsDevices(
                 output.ToString(),
@@ -157,7 +177,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         public void Example_Cloud_Metadata()
         {
             var example = new Examples.Cloud.Metadata.Program.Example();
-            example.Run(ResourceKey, new LoggerFactory(), TextWriter.Null);
+            example.Run(
+                ResourceKey,
+                new LoggerFactory(),
+                TextWriter.Null,
+                CloudRequestTimeoutSeconds,
+                TimedHttpHandler.CreateClient());
         }
 
         /// <summary>
@@ -166,7 +191,11 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         [TestMethod]
         public void Example_Cloud_Configurator()
         {
-            Examples.Cloud.Configurator.Program.Example.Run(ResourceKey, TextWriter.Null);
+            Examples.Cloud.Configurator.Program.Example.Run(
+                ResourceKey,
+                TextWriter.Null,
+                CloudRequestTimeoutSeconds,
+                TimedHttpHandler.CreateClient());
         }
 
         /// <summary>
@@ -198,6 +227,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
 
             // Override the resource key in the config file with the one to use for testing.
             options.SetResourceKey(resourceKey);
+
+            // The cloud request engine gets the tests' timeout.
+            var cloudRequestEngine = options.Elements.Single(e =>
+                e.BuilderName == "CloudRequestEngine");
+            cloudRequestEngine.BuildParameters["TimeOutSeconds"] =
+                CloudRequestTimeoutSeconds;
 
             // Also override the cloud end point if one has been supplied.
             if(string.IsNullOrEmpty(cloudEndPoint) == false)
