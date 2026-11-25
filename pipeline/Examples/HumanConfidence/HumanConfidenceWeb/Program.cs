@@ -169,12 +169,12 @@ app.MapGet("/passive", async (HttpContext context) =>
     }
 });
 
-// Redeem: the page sends the sealed value, and this server redeems it with
+// Redeem: the page sends the sealed result, and this server redeems it with
 // the License Key. The answer goes back to the page as the cloud gave it.
 app.MapPost("/redeem", async (HttpRequest request) =>
 {
     var form = await request.ReadFormAsync();
-    var answer = await cloud.RedeemAsync(form["value"].ToString());
+    var answer = await cloud.RedeemAsync(form["sealedResult"].ToString());
     if (answer.Error != null)
     {
         return Results.Json(new { error = answer.Error }, statusCode: answer.StatusCode);

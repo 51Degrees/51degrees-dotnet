@@ -196,9 +196,10 @@ public class CloudCallsTests
     }
 
     [TestMethod]
-    public async Task Redeem_PostsTheValueAndTheLicenseToHcRedeem_AndReturnsTheAnswerAsItCame()
+    public async Task Redeem_PostsTheSealedResultAndTheLicenseToHcRedeem_AndReturnsTheAnswerAsItCame()
     {
-        var body = "{\"humanConfidence\":\"High\",\"secondsSinceVerified\":2}";
+        var body = "{\"humanConfidence\":\"High\",\"status\":\"success\","
+            + "\"verifiedAt\":\"2026-11-25T09:15:32Z\",\"secondsSinceVerified\":2}";
         _handler.Enqueue(HttpStatusCode.OK, body);
 
         var answer = await _cloud.RedeemAsync("sealed-value");
@@ -207,11 +208,13 @@ public class CloudCallsTests
         Assert.AreEqual("POST", request.Method);
         Assert.AreEqual(Api + "hc/redeem", request.Url);
         var form = HttpUtility.ParseQueryString(request.Body);
+        Assert.AreEqual("sealed-value", form["sealedResult"],
+            "The sealed result is sent as it came from the page.");
         Assert.AreEqual("sealed-value", form["value"],
-            "The sealed value is sent as it came from the page.");
+            "The same text goes as value, the name earlier cloud releases read.");
         Assert.AreEqual(License, form["license"],
             "The License Key goes with it, from the server only.");
-        Assert.AreEqual(2, form.Count);
+        Assert.AreEqual(3, form.Count);
         Assert.IsNull(answer.Error);
         Assert.AreEqual(200, answer.StatusCode);
         Assert.AreEqual(body, answer.Body,
@@ -219,17 +222,20 @@ public class CloudCallsTests
     }
 
     [TestMethod]
-    public async Task Redeem_WithoutALicense_SendsOnlyTheValue()
+    public async Task Redeem_WithoutALicense_SendsOnlyTheSealedResult()
     {
         var cloud = new HumanConfidenceCloud(
             new HttpClient(_handler), Api, Resource, null);
-        _handler.Enqueue(HttpStatusCode.OK, "{\"result\":\"unreadable\"}");
+        _handler.Enqueue(HttpStatusCode.OK,
+            "{\"humanConfidence\":\"Medium\",\"status\":\"unreadable\"}");
 
         await cloud.RedeemAsync("sealed-value");
 
         var form = HttpUtility.ParseQueryString(_handler.Requests[0].Body);
-        Assert.AreEqual(1, form.Count);
+        Assert.AreEqual(2, form.Count);
+        Assert.AreEqual("sealed-value", form["sealedResult"]);
         Assert.AreEqual("sealed-value", form["value"]);
+        Assert.IsNull(form["challenge"]);
     }
 
     [TestMethod]

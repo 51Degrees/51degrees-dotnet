@@ -27,11 +27,16 @@ it is and never works a level out itself.
    cloud. When the script completes, `HumanConfidenceSource` is `Active` and
    `HumanConfidence` holds a sealed value. The browser can't read it or
    change it.
-3. **Redeem.** The page hands the sealed value to the server, which sends
+3. **Redeem.** The page hands the sealed result to the server, which sends
    it to the cloud's `hc/redeem` with the account's License Key and gets the
-   true level back. A sealed value redeems once, within ten seconds of the
-   tests. A later redeem answers `expired`. The page then offers to redeem
-   the same value again, which answers `replayed`.
+   true Value back. The server sends it as `sealedResult`, and again as
+   `value`, the name earlier cloud releases read, so the example works
+   against either. The answer's `status` says what happened: `success`,
+   `expired`, `replayed`, `unconfirmed` or `unreadable`. Only `success`
+   carries the true Value in `humanConfidence`. A sealed result redeems
+   once, within ten seconds of the tests. A later redeem answers `expired`.
+   The page then offers to redeem the same sealed result again, which
+   answers `replayed`.
 
 This is the same two-step pattern as the 51Did creator context check in
 `../Did`: the browser carries a result it can't read, and your server

@@ -153,12 +153,19 @@ public sealed class HumanConfidenceCloud
     }
 
     /// <summary>
-    /// Redeem: posts the sealed value, with the License Key where there is
+    /// Redeem: posts the sealed result, with the License Key where there is
     /// one, to hc/redeem, and returns the cloud's answer as it gave it.
+    /// The sealed result goes as sealedResult, the name the cloud reads,
+    /// and again as value, the name earlier cloud releases read, so the
+    /// example works against either.
     /// </summary>
-    public async Task<RedeemAnswer> RedeemAsync(string value)
+    public async Task<RedeemAnswer> RedeemAsync(string sealedResult)
     {
-        var fields = new Dictionary<string, string> { ["value"] = value };
+        var fields = new Dictionary<string, string>
+        {
+            ["sealedResult"] = sealedResult,
+            ["value"] = sealedResult,
+        };
         if (string.IsNullOrWhiteSpace(_license) == false)
         {
             fields["license"] = _license;
