@@ -31,17 +31,26 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web;
 /// resource key from the environment, when its host is built and, for some
 /// examples, on each request, so the key from
 /// <see cref="ExampleResourceKey.Name"/> stays in the example's variable
-/// until the factory is disposed.
+/// until the factory is disposed. Without a key the factory throws, so the
+/// tests fail, unless <see cref="ExampleResourceKey.RunHere"/> is false, when
+/// it takes no key and the tests skip with <see cref="NotRunHere"/>.
 /// </summary>
 /// <typeparam name="T">The example's entry point.</typeparam>
 public class CloudExampleFactory<T> : WebApplicationFactory<T>
     where T : class
 {
-    private readonly ExampleResourceKey _key = ExampleResourceKey.Set();
+    private readonly ExampleResourceKey _key =
+        ExampleResourceKey.RunHere ? ExampleResourceKey.Set() : null;
+
+    /// <summary>
+    /// The reason the tests skip, or null when they run.
+    /// </summary>
+    public string NotRunHere { get; } =
+        ExampleResourceKey.RunHere ? null : ExampleResourceKey.NotRunHere;
 
     public CloudExampleFactory()
     {
-        if (_key == null)
+        if (_key == null && NotRunHere == null)
         {
             throw new InvalidOperationException(ExampleResourceKey.NoKey);
         }

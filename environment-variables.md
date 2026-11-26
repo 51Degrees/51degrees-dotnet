@@ -83,6 +83,7 @@ reach only the workflow that names them.
 | `CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME` | The name of the code signing certificate in the key vault | `ci/build-package.ps1` |
 | `CLOUD_STAGING_ENDPOINT` | The address of the staging cloud service, ending `/api/v4/`. An organization variable. It has no default. | `.github/workflows/cloud-human-confidence.yml`, and the Human Confidence tests in the `CloudStaging` category |
 | `RESOURCE_KEY_BESPOKE_STAGING` | A resource key that carries every property and that the staging cloud resolves. An organization secret. | `.github/workflows/cloud-human-confidence.yml`, and the Human Confidence tests in the `CloudStaging` category |
+| `LIVE_CLOUD_TESTS` | `false` on a build entry that leaves out the live cloud tests. `ci/setup-environment.ps1` sets it from `LiveCloudTests` in `ci/options.json`, and removes the resource keys there too. | The tests that run the cloud web examples, which skip when it is `false` |
 
 ## Names other tools define
 

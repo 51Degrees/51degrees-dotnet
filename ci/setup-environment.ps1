@@ -31,9 +31,12 @@ dotnet dev-certs https
 $env:_51DEGREES_DD_PATH = "$RepoPath/cxx/data/device-detection/TAC-HashV41.hash"
 $env:_51DEGREES_IPI_PATH = "$RepoPath/cxx/data/ip-intelligence/51Degrees-EnterpriseIpiV41.ipi"
 
-# Every live cloud test skips without a resource key, and the later steps run
-# in this process, so removing the keys here leaves them out of the whole job.
+# The later steps run in this process, so what is set here holds for the whole
+# job. The tests that would fail without a key skip on LIVE_CLOUD_TESTS, and
+# every other live cloud test skips once its key is removed.
 if (-not $LiveCloudTests) {
+    $env:LIVE_CLOUD_TESTS = "false"
+    Write-Host "Live cloud tests are not run here, so LIVE_CLOUD_TESTS is false"
     foreach ($key in @(Get-ChildItem Env:_51DEGREES_RESOURCE_KEY*)) {
         Remove-Item "Env:$($key.Name)"
         Write-Host "Live cloud tests are not run here, so $($key.Name) is removed"
