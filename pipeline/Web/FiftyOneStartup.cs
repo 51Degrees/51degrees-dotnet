@@ -25,7 +25,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.FileProviders;
 using FiftyOne.Pipeline.Web.Services;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Core.Configuration;
@@ -80,27 +79,11 @@ namespace FiftyOne.Pipeline.Web
             services.AddOptions<PipelineWebIntegrationOptions>()
                 .Configure(o => BindWebIntegrationOptions(configuration, o));
 
-#if NETCOREAPP2_0 || NETCOREAPP2_1 || NETCOREAPP2_2
-            // Set up a file provider that will allow the client web 
-            // application to find the 51D views embedded in our assembly
-            // when it needs them
-            services.Configure<RazorViewEngineOptions>(o =>
-            {
-                o.FileProviders.Add(new EmbeddedFileProvider(
-                    typeof(FiftyOneJSViewComponent).GetTypeInfo().Assembly,
-                    "FiftyOne.Pipeline.Web"));
-            });
-#else
-            // Set up a file provider that will allow the client web 
-            // application to find the 51D views embedded in our assembly
-            // when it needs them
-            services.AddMvc().AddRazorRuntimeCompilation(o =>
-            {
-                o.FileProviders.Add(new EmbeddedFileProvider(
-                    typeof(FiftyOneJSViewComponent).Assembly, 
-                    "FiftyOne.Pipeline.Web"));
-            });
-#endif
+            // The FiftyOneJS view is compiled into this assembly, so MVC
+            // finds it with the view component and nothing is compiled when
+            // the app runs. MVC is still added here, as apps that use the
+            // package have relied on it to add MVC for them.
+            services.AddMvc();
 
             // Set up our DI mappings
             services.AddSingleton<HttpClient>();
