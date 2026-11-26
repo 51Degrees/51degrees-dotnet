@@ -74,8 +74,21 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                 "https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-nativemodel-console-program.cs&utm_term=no-hardware-lookup" +
                 ".";
 
+            /// <summary>
+            /// Runs the example.
+            /// </summary>
+            /// <param name="cloudRequestTimeoutSeconds">
+            /// The seconds a request to the cloud service may take, or null
+            /// for the default of 2 seconds. The tests give a longer one.
+            /// </param>
+            /// <param name="httpClient">
+            /// The client that sends requests to the cloud service, or null
+            /// for a new one.
+            /// </param>
             public void Run(string resourceKey, ILoggerFactory loggerFactory, 
-                TextWriter output, string cloudEndPoint = "")
+                TextWriter output, string cloudEndPoint = "",
+                int? cloudRequestTimeoutSeconds = null,
+                HttpClient httpClient = null)
             {
                 output.WriteLine("This example shows the details of devices " +
                     "associated with a given 'native model name'.");
@@ -87,7 +100,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                     $"https://gist.github.com/soapyigu/c99e1f45553070726f14c1bb0a54053b#file-machinename-swift");
                 output.WriteLine("----------------------------------------");
 
-                HttpClient httpClient = new HttpClient();
+                httpClient = httpClient ?? new HttpClient();
 
                 // This example creates the pipeline and engines in code. For a demonstration
                 // of how to do this using a configuration file instead, see the TacLookup example.
@@ -101,6 +114,11 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.NativeModelLookup
                 if (string.IsNullOrWhiteSpace(cloudEndPoint) == false)
                 {
                     cloudRequestEngineBuilder.SetEndPoint(cloudEndPoint);
+                }
+                if (cloudRequestTimeoutSeconds.HasValue)
+                {
+                    cloudRequestEngineBuilder.SetTimeOutSeconds(
+                        cloudRequestTimeoutSeconds.Value);
                 }
 
                 // Create the cloud request engine.

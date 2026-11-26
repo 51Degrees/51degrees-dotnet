@@ -218,11 +218,14 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
 
             foreach (var dataFile in DataFiles)
             {
-                dataFile.Engine = engine;
                 if (engine != null)
                 {
                     engine.AddDataFile(dataFile);
                 }
+                // Set once the engine has loaded the data file, so a check
+                // for an update while it loads does not reach an engine with
+                // no data.
+                dataFile.Engine = engine;
                 // The data stream will have been read by now so dispose 
                 // of it if this has not already been done.
                 if(dataFile.Configuration.DataStream != null)

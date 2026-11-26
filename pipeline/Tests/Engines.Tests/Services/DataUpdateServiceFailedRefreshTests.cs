@@ -231,6 +231,67 @@ public class DataUpdateServiceFailedRefreshTests
     }
 
     /// <summary>
+    /// A file written while the service handles the watcher's event for an
+    /// earlier one is applied, although the watcher raises no event for it.
+    /// On macOS the watcher merges changes to one file that it has not yet
+    /// delivered, so a write that lands as an event is being handled can
+    /// raise nothing of its own.
+    /// </summary>
+    /// <remarks>
+    /// The write times come from a stand-in and the event is raised once by
+    /// hand, so the later write is seen only through its write time.
+    /// </remarks>
+    [TestMethod]
+    public void Watcher_FileWrittenDuringRefresh_IsAppliedWithoutItsOwnEvent()
+    {
+        var path = Path.Combine(_directory, "data.dat");
+        File.WriteAllText(path, GoodData);
+        var first = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+        var writeTicks = first.Ticks;
+        var fileWrapper = new Mock<IFileWrapper>();
+        fileWrapper.Setup(w => w.GetLastWriteTimeUtc(It.IsAny<string>()))
+            .Returns(() => new DateTime(
+                Interlocked.Read(ref writeTicks), DateTimeKind.Utc));
+        fileWrapper.Setup(w => w.OpenRead(It.IsAny<string>()))
+            .Returns(() => Stream.Null);
+        var fileSystem = new Mock<IFileSystem>();
+        fileSystem.Setup(f => f.File).Returns(fileWrapper.Object);
+        var service = new DataUpdateService(
+            new CapturingLogger(), new HttpClient(), fileSystem.Object, NoTimer);
+        var refreshes = 0;
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        engine.Setup(e => e.RefreshData(It.IsAny<string>())).Callback(() =>
+        {
+            if (Interlocked.Increment(ref refreshes) == 1)
+            {
+                Interlocked.Exchange(
+                    ref writeTicks, first.AddSeconds(2).Ticks);
+            }
+        });
+        var file = WatchedFile(engine, path);
+        var reports = Collect(service);
+
+        try
+        {
+            service.RegisterDataFile(file);
+
+            Interlocked.Exchange(ref writeTicks, first.AddSeconds(1).Ticks);
+            RaiseChanged(service, file, path);
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
+                "The file the watcher reported was not applied.");
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
+                "The file written during the refresh was not applied.");
+            Assert.AreEqual(2, Volatile.Read(ref refreshes));
+        }
+        finally
+        {
+            file.Dispose();
+        }
+    }
+
+    /// <summary>
     /// The watcher reports a file that is no longer there, which .NET gives
     /// the write time 1 January 1601. A file that is not there is not newer
     /// than the current one, so the check is reported as not needed at once
@@ -533,6 +594,29 @@ public class DataUpdateServiceFailedRefreshTests
         };
         engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
         return file;
+    }
+
+    // Raises the watcher's Changed event for the file once, as the watcher
+    // would, on a thread of its own.
+    private static void RaiseChanged(
+        DataUpdateService service,
+        AspectEngineDataFile file,
+        string path)
+    {
+        var handler = typeof(DataUpdateService).GetMethod(
+            "DataFileUpdated",
+            System.Reflection.BindingFlags.Instance |
+            System.Reflection.BindingFlags.NonPublic);
+        Assert.IsNotNull(handler, "The watcher's handler was not found.");
+        Assert.IsNotNull(file.FileWatcher, "The file has no watcher.");
+        var e = new FileSystemEventArgs(
+            WatcherChangeTypes.Changed,
+            Path.GetDirectoryName(path),
+            Path.GetFileName(path));
+        new Thread(() => handler.Invoke(service, new object[] { file.FileWatcher, e }))
+        {
+            IsBackground = true
+        }.Start();
     }
 
     private static BlockingCollection<AutoUpdateStatus> Collect(DataUpdateService service)

@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using Ex = Examples;
 
 namespace FiftyOne.Pipeline.CloudRequestEngine.Examples.Tests
@@ -31,19 +32,54 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Examples.Tests
     /// <remarks>
     /// Note that these test do not generally ensure the correctness 
     /// of the example, only that the example will run without 
-    /// crashing or throwing any unhandled exceptions.
+    /// crashing or throwing any unhandled exceptions. The test reads the
+    /// Resource Key from _51DEGREES_RESOURCE_KEY_BESPOKE, gives it to the
+    /// example in _51DEGREES_RESOURCE_KEY, and is skipped when it is not
+    /// set. It changes the environment of the whole process, so it runs
+    /// apart from the other tests.
     /// </remarks>
     [TestClass]
+    [DoNotParallelize]
     public class TestExamples
     {
         /// <summary>
-        /// Test that the caching example runs successfully.
+        /// The environment variable the test reads the key from.
+        /// </summary>
+        private const string KeyVariable = "_51DEGREES_RESOURCE_KEY_BESPOKE";
+
+        /// <summary>
+        /// The environment variable the example reads its key from.
+        /// </summary>
+        private const string ExampleKeyVariable = "_51DEGREES_RESOURCE_KEY";
+
+        /// <summary>
+        /// Test that the cloud engine example runs successfully against the
+        /// live cloud service.
         /// </summary>
         [TestMethod]
         public void TestCloudEngineExample()
         {
-            var example = new Ex.CloudEngine.Program();
-            example.RunExample();
+            var key = Environment.GetEnvironmentVariable(KeyVariable);
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                Assert.Inconclusive(
+                    "This test runs the cloud engine example against the " +
+                    "live cloud service, so it needs a Resource Key, and " +
+                    $"{KeyVariable} is not set.");
+            }
+            var previous = Environment.GetEnvironmentVariable(
+                ExampleKeyVariable);
+            Environment.SetEnvironmentVariable(ExampleKeyVariable, key);
+            try
+            {
+                var example = new Ex.CloudEngine.Program();
+                example.RunExample();
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(
+                    ExampleKeyVariable, previous);
+            }
         }
     }
 }

@@ -53,6 +53,29 @@ public sealed class ExampleResourceKey : IDisposable
         "This test runs a cloud example against the live 51Degrees cloud " +
         "service, so it needs a resource key, and " + Name + " is not set.";
 
+    /// <summary>
+    /// The environment variable CI sets to false on a build entry that
+    /// leaves out the live cloud tests.
+    /// </summary>
+    public const string LiveCloudTestsVariable = "LIVE_CLOUD_TESTS";
+
+    /// <summary>
+    /// What a test skips with when <see cref="LiveCloudTestsVariable"/> is
+    /// false.
+    /// </summary>
+    public const string NotRunHere =
+        "Live cloud tests are not run on this build entry, as " +
+        LiveCloudTestsVariable + " is false.";
+
+    /// <summary>
+    /// False when <see cref="LiveCloudTestsVariable"/> is false, so the live
+    /// cloud tests skip instead of failing for want of a key.
+    /// </summary>
+    public static bool RunHere => string.Equals(
+        Environment.GetEnvironmentVariable(LiveCloudTestsVariable),
+        "false",
+        StringComparison.OrdinalIgnoreCase) == false;
+
     private readonly string _previous;
     private bool _disposed;
 
@@ -88,7 +111,7 @@ public sealed class ExampleResourceKey : IDisposable
     /// Starts a server with the key in <see cref="ExampleName"/>, and puts
     /// the earlier value back once the server has stopped, because an
     /// example can read the variable on each request. Skips the test when
-    /// <see cref="Name"/> is not set.
+    /// <see cref="Name"/> is not set, or when <see cref="RunHere"/> is false.
     /// </summary>
     /// <param name="start">Starts the example's server.</param>
     /// <param name="stop">Stops the server.</param>
@@ -97,6 +120,10 @@ public sealed class ExampleResourceKey : IDisposable
         Func<CancellationToken, Task> start,
         CancellationToken stop)
     {
+        if (RunHere == false)
+        {
+            Assert.Inconclusive(NotRunHere);
+        }
         var key = Set();
         if (key == null)
         {

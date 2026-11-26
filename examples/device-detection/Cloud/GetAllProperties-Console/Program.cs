@@ -25,6 +25,8 @@ using FiftyOne.Pipeline.Engines.Data;
 using System;
 using System.Collections;
 using System.Linq;
+using System.Net.Http;
+using Microsoft.Extensions.Logging;
 /// <summary>
 /// @example Cloud/GetAllProperties-Console/Program.cs
 /// 
@@ -43,9 +45,25 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GetAllProperties
                 "AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/10.1 " +
                 "Chrome/71.0.3578.99 Mobile Safari/537.36";
 
-            public void Run(string resourceKey, string cloudEndPoint = "")
+            /// <summary>
+            /// Runs the example.
+            /// </summary>
+            /// <param name="cloudRequestTimeoutSeconds">
+            /// The seconds a request to the cloud service may take, or null
+            /// for the default of 2 seconds. The tests give a longer one.
+            /// </param>
+            /// <param name="httpClient">
+            /// The client that sends requests to the cloud service, or null
+            /// for a new one.
+            /// </param>
+            public void Run(
+                string resourceKey,
+                string cloudEndPoint = "",
+                int? cloudRequestTimeoutSeconds = null,
+                HttpClient httpClient = null)
             {
-                var builder = new DeviceDetectionPipelineBuilder()
+                var builder = new DeviceDetectionPipelineBuilder(
+                    new LoggerFactory(), httpClient ?? new HttpClient())
                     // Tell it that we want to use cloud and pass our resource key.
                     .UseCloud(resourceKey);
 
@@ -54,6 +72,11 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GetAllProperties
                 if (string.IsNullOrWhiteSpace(cloudEndPoint) == false) 
                 {
                     builder.SetEndPoint(cloudEndPoint);
+                }
+                if (cloudRequestTimeoutSeconds.HasValue)
+                {
+                    builder.SetCloudRequestTimeOutSeconds(
+                        cloudRequestTimeoutSeconds.Value);
                 }
 
                 // Create the pipeline

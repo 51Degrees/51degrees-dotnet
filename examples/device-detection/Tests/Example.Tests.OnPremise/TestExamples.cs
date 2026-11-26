@@ -23,10 +23,14 @@
 // Ignore Spelling: Offline Yaml Metadata
 
 using FiftyOne.DeviceDetection.Examples;
+using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
+using FiftyOne.Example.Tests.Shared;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
 {
@@ -41,28 +45,17 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
     [TestClass]
     public class TestExamples
     {
-        private string LicenseKey;
-
         private string DataFile;
 
         private string EvidenceFile;
 
         /// <summary>
-        /// Init method - specify License Key to run examples here or 
-        /// set a License Key in an environment variable called 'ResourceKey'.
-        /// Set data file for hash examples and additionally a User-Agents file
-        /// for the performance example.
+        /// Init method - set the data file for hash examples and additionally
+        /// a User-Agents file for the performance example.
         /// </summary>
         [TestInitialize]
         public void Init()
         {
-            // Set license key for autoupdate examples, read as the data
-            // file update example reads it.
-            var licenseKey = Examples.OnPremise.UpdateDataFile.Program
-                .LicenseKeyFromEnvironment();
-            LicenseKey = string.IsNullOrWhiteSpace(licenseKey) == false ?
-                licenseKey: "!!YOUR_LICENSE_KEY!!";
-
             // Set Device Data file
             DataFile = ExampleUtils.FindDataFile(
                 Constants.LITE_HASH_DATA_FILE_NAME);
@@ -119,14 +112,44 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
         }
 
         /// <summary>
-        /// Test the UpdateDataFile Example
+        /// Test the UpdateDataFile Example against a stand-in for the
+        /// Distributor, with no product named. The stand-in lists two
+        /// products, as the Distributor does for a license key that holds
+        /// several, and the example asks for the product of the data file it
+        /// starts from.
         /// </summary>
         [TestMethod]
         public void Example_OnPremise_UpdateDataFile()
         {
-            VerifyLicenseKeyAvailable();
-            Examples.OnPremise.UpdateDataFile.Program.Initialize(
-                DataFile, LicenseKey, false);
+            var product = DataFileProduct();
+            var requests = RunUpdateExample(product, null);
+            Assert.IsTrue(requests.Count >= 2,
+                "The example should have asked the stand-in twice.");
+            Assert.AreEqual(new DataUpdateRequest(null, 300), requests[0],
+                "The first request should name no product, and get the " +
+                "list of products.");
+            Assert.AreEqual(new DataUpdateRequest(product, 200), requests[1],
+                "The second request should ask for the product of the data " +
+                "file, and get the newer data file.");
+        }
+
+        /// <summary>
+        /// Test the UpdateDataFile Example against a stand-in for the
+        /// Distributor, with the product named as an argument. The first
+        /// request asks for that product.
+        /// </summary>
+        [TestMethod]
+        public void Example_OnPremise_UpdateDataFile_ProductArgument()
+        {
+            var product = DataFileProduct();
+            var requests = RunUpdateExample(product, product);
+            Assert.IsTrue(requests.Count >= 1,
+                "The example should have asked the stand-in.");
+            Assert.AreEqual(new DataUpdateRequest(product, 200), requests[0],
+                "The first request should ask for the product given, and " +
+                "get the newer data file.");
+            Assert.IsFalse(requests.Any(r => r.Product == null),
+                "No request should leave out the product given.");
         }
 
         /// <summary>
@@ -153,14 +176,110 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
             }
         }
 
-        private void VerifyLicenseKeyAvailable()
+        /// <summary>
+        /// The license key the update example sends the stand-in, which
+        /// serves the data file whatever key it is sent.
+        /// </summary>
+        private const string StandInLicenseKey = "STANDINLICENSEKEY";
+
+        /// <summary>
+        /// A product the stand-in lists beside the data file's own, as the
+        /// Distributor does for a license key that holds a Device Detection
+        /// and an IP Intelligence product.
+        /// </summary>
+        private const string OtherProduct = "IPIV4Enterprise";
+
+        /// <summary>
+        /// The product of the data file, named by the library's own rule
+        /// from an engine that has loaded the file, such as 'V4TAC' for
+        /// 'TAC-HashV41.hash'. The update example refuses the free Lite
+        /// data file, so the test needs a file the Distributor serves, which
+        /// CI fetches and names in '_51DEGREES_DD_PATH'.
+        /// </summary>
+        private string DataFileProduct()
         {
-            if (string.IsNullOrWhiteSpace(LicenseKey) == true ||
-                LicenseKey.StartsWith("!!") == true)
+            using (var loggerFactory = new LoggerFactory())
+            using (var engine = new DeviceDetectionHashEngineBuilder(
+                    loggerFactory)
+                .SetPerformanceProfile(
+                    Pipeline.Engines.PerformanceProfiles.LowMemory)
+                .SetAutoUpdate(false)
+                .SetDataFileSystemWatcher(false)
+                .SetDataUpdateOnStartup(false)
+                .Build(DataFile, false))
             {
-                Assert.Inconclusive("This test requires a 51Degrees license key. This can be " +
-                    "specified in the TestHashExamples.Init method or by setting an Environment " +
-                    $"variable called '{Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR}'");
+                Assert.AreNotEqual("Lite", engine.DataSourceTier,
+                    $"The update example needs a data file other than the " +
+                    $"free Lite file, such as 'TAC-HashV41.hash', given in " +
+                    $"'{Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR}'.");
+                var dataFile = (Pipeline.Engines.Data.AspectEngineDataFile)
+                    engine.DataFiles[0];
+                var product = dataFile.DataUpdateProduct;
+                Assert.IsNotNull(product,
+                    $"The data file '{DataFile}' has no product name.");
+                return product;
+            }
+        }
+
+        /// <summary>
+        /// Runs the UpdateDataFile example on a copy of the data file, with
+        /// its update URL pointed at a stand-in for the Distributor. The
+        /// stand-in serves another copy of the data file with its published
+        /// date moved on to tomorrow, so the copy is newer than anything the
+        /// example starts from. The update has completed when the example's
+        /// data file holds that date.
+        /// </summary>
+        /// <param name="product">
+        /// The product of the data file, which the stand-in lists.
+        /// </param>
+        /// <param name="productArgument">
+        /// The product to give the example, or null for none.
+        /// </param>
+        /// <returns>
+        /// The requests the stand-in received.
+        /// </returns>
+        private IReadOnlyList<DataUpdateRequest> RunUpdateExample(
+            string product, string productArgument)
+        {
+            var directory = Directory.CreateTempSubdirectory(
+                "51Degrees-UpdateDataFile-");
+            try
+            {
+                var dataFile = Path.Combine(
+                    directory.FullName, Path.GetFileName(DataFile));
+                File.Copy(DataFile, dataFile);
+                var served = Path.Combine(
+                    directory.FullName, "served" + Path.GetExtension(DataFile));
+                File.Copy(DataFile, served);
+                var newer = DateTime.UtcNow.Date.AddDays(1);
+                DataUpdateStandIn.WritePublished(served, newer);
+
+                using (var standIn = new DataUpdateStandIn(
+                    new[] { OtherProduct, product }, served))
+                {
+                    Examples.OnPremise.UpdateDataFile.Program.Initialize(
+                        dataFile, StandInLicenseKey, false, productArgument,
+                        standIn.Url);
+                    Assert.AreEqual(
+                        newer,
+                        DataUpdateStandIn.ReadPublished(dataFile),
+                        "The example's data file should hold the newer data " +
+                        "the stand-in served.");
+                    return standIn.Requests;
+                }
+            }
+            finally
+            {
+                try
+                {
+                    directory.Delete(true);
+                }
+                catch (Exception ex) when (
+                    ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    // A file the engine has not yet released is left for
+                    // the system to clear from the temporary folder.
+                }
             }
         }
     }

@@ -24,6 +24,7 @@ using FiftyOne.DeviceDetection.Cloud.FlowElements;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.Data;
 using Microsoft.Extensions.Logging;
+using System.Net.Http;
 using System;
 using System.IO;
 
@@ -60,11 +61,33 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Metadata
     {
         public class Example : ExampleBase
         {
-            public void Run(string resourceKey, ILoggerFactory loggerFactory, TextWriter output)
+            /// <summary>
+            /// Runs the example.
+            /// </summary>
+            /// <param name="cloudRequestTimeoutSeconds">
+            /// The seconds a request to the cloud service may take, or null
+            /// for the default of 2 seconds. The tests give a longer one.
+            /// </param>
+            /// <param name="httpClient">
+            /// The client that sends requests to the cloud service, or null
+            /// for a new one.
+            /// </param>
+            public void Run(
+                string resourceKey,
+                ILoggerFactory loggerFactory,
+                TextWriter output,
+                int? cloudRequestTimeoutSeconds = null,
+                HttpClient httpClient = null)
             {
-                using (var pipeline = new DeviceDetectionPipelineBuilder(loggerFactory)
-                    .UseCloud(resourceKey)
-                    .Build())
+                var builder = new DeviceDetectionPipelineBuilder(
+                    loggerFactory, httpClient ?? new HttpClient())
+                    .UseCloud(resourceKey);
+                if (cloudRequestTimeoutSeconds.HasValue)
+                {
+                    builder.SetCloudRequestTimeOutSeconds(
+                        cloudRequestTimeoutSeconds.Value);
+                }
+                using (var pipeline = builder.Build())
                 {
                     OutputProperties(pipeline.GetElement<DeviceDetectionCloudEngine>(), output);
                     // We use the CloudRequestEngine to get evidence key details, rather than the

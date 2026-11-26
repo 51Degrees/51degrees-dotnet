@@ -2,10 +2,10 @@ param (
     [Parameter(Mandatory)][string]$RepoName
 )
 # Hosts each .NET Framework example site with IIS Express, asks for its page
-# with no settings, as someone would after a fresh clone, and checks that the
-# page answers 200 and shows the text each site must show. A cloud site has
-# no resource key here, so it must say how to get one rather than fail. The
-# sites must already have been built with msbuild.
+# with no resource key and the free data files, and checks that the page
+# answers 200 and shows the text each site must show. A cloud site must say
+# how to get a resource key rather than fail. The sites must already have
+# been built with msbuild.
 $ErrorActionPreference = "Stop"
 
 $IisExpress = Join-Path $env:ProgramFiles "IIS Express/iisexpress.exe"
@@ -23,9 +23,12 @@ $NoKey = @(
 $FindOutMore = @(
     "Find out more",
     "51degrees.com/contact-us?utm_source=code&amp;utm_medium=example")
-# The free data file each on-premise site looks for by name in the folders
-# above its own.
-$FreeFiles = @("51Degrees-LiteV4.1.hash", "51Degrees-LiteV41.ipi")
+# The free data file each on-premise site is given, by the variable the site
+# reads its data file path from.
+$FreeFiles = [ordered]@{
+    _51DEGREES_DD_PATH = "51Degrees-LiteV4.1.hash"
+    _51DEGREES_IPI_PATH = "51Degrees-LiteV41.ipi"
+}
 $Sites = @(
     @{
         Path = "examples/device-detection/OnPremise/Framework-Web"
@@ -71,31 +74,34 @@ if (-not (Test-Path $IisExpress)) {
     exit 1
 }
 
-# Each on-premise site looks for its free data file by name, so the run says
-# which file is missing rather than failing inside a site.
-foreach ($file in $FreeFiles) {
-    $found = Get-ChildItem -Path $RepoName -Recurse -File -Filter $file `
+# CI fetched the free data files into the data submodule of cxx, so the run
+# says which file is missing rather than failing inside a site.
+$data = Join-Path $RepoName "cxx/data"
+$paths = @{}
+foreach ($name in $FreeFiles.Keys) {
+    $file = $FreeFiles[$name]
+    $found = Get-ChildItem -Path $data -Recurse -File -Filter $file `
         -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $found) {
-        Write-Host ("::error::$file is not under $RepoName, so the " +
+        Write-Host ("::error::$file is not under $data, so the " +
             "on-premise sites cannot run on the free data files")
         exit 1
     }
-    Write-Host "Build log: $file is at $($found.FullName)"
+    Write-Host "Build log: $name is $($found.FullName)"
+    $paths[$name] = $found.FullName
 }
 
-# No settings means no resource key and no data file path, so the variables
-# the sites read them from are taken out for the sites and put back after.
-# Each on-premise site then finds the free data file beside the repository,
-# as it does from a fresh clone, and says what a paid file adds.
-$WithoutSettings = @('_51DEGREES_RESOURCE_KEY', '_51DEGREES_DD_PATH', '_51DEGREES_IPI_PATH')
+# Each on-premise site is given its free data file by path, so it never
+# downloads one, and says what a paid file adds. The resource key is taken
+# out, so each cloud site says how to get one. Every variable is put back
+# after the sites.
 $saved = @{}
-foreach ($name in $WithoutSettings) {
-    $value = [Environment]::GetEnvironmentVariable($name)
-    if ($null -ne $value) {
-        $saved[$name] = $value
-        Remove-Item "env:$name"
-    }
+foreach ($name in @('_51DEGREES_RESOURCE_KEY') + @($FreeFiles.Keys)) {
+    $saved[$name] = [Environment]::GetEnvironmentVariable($name)
+}
+Remove-Item env:_51DEGREES_RESOURCE_KEY -ErrorAction SilentlyContinue
+foreach ($name in $paths.Keys) {
+    Set-Item "env:$name" $paths[$name]
 }
 
 $failed = @()
@@ -144,7 +150,11 @@ try {
     }
 } finally {
     foreach ($name in $saved.Keys) {
-        Set-Item "env:$name" $saved[$name]
+        if ($null -eq $saved[$name]) {
+            Remove-Item "env:$name" -ErrorAction SilentlyContinue
+        } else {
+            Set-Item "env:$name" $saved[$name]
+        }
     }
 }
 

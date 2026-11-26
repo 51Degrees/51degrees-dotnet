@@ -22,6 +22,7 @@
 
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.Engines;
+using FiftyOne.Pipeline.Engines.FiftyOne.Data;
 using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -133,6 +134,24 @@ using System.Net.Http;
 ///    .SetUpdateRandomisationMax(10*60)
 /// ```
 /// 
+/// # Product
+/// A license key can hold more than one product. With no product named, the data update service
+/// asks for the product of the data file at the location given, which it reads from the file's
+/// header before the engine loads it. 'TAC-HashV41.hash', for example, gives 'V4TAC'. To ask for
+/// another product, or when there is no data file there yet, give its name as the third command
+/// line argument. The example then names it with the URL formatter.
+/// ``` {c#}
+///    .SetDataUpdateUrlFormatter(new FiftyOneUrlFormatter("V4TAC"))
+/// ```
+///
+/// # Update URL
+/// The example downloads from the 51Degrees Distributor. To download from another address that
+/// answers as the Distributor does, such as a copy you host, give it as the fourth command line
+/// argument.
+/// ``` {c#}
+///    .SetDataUpdateUrl("https://example.com/api/v2/download")
+/// ```
+///
 /// # Location
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/device-detection/OnPremise/UpdateDataFile-Console/Program.cs).
 /// </summary>
@@ -204,7 +223,15 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             /// <param name="interactive">
             /// If this example is being run in an interactive session, set this to true.
             /// </param>
-            public void Run(string dataFile, string licenseKey, bool interactive)
+            /// <param name="product">
+            /// The name of the product to download, such as 'V4TAC'. If null, the data
+            /// update service asks for the product of the data file.
+            /// </param>
+            /// <param name="dataUpdateUrl">
+            /// The address to download updates from. If null, the Distributor's is used.
+            /// </param>
+            public void Run(string dataFile, string licenseKey, bool interactive,
+                string product = null, string dataUpdateUrl = null)
             {
                 Logger.LogInformation("Starting example");
 
@@ -255,7 +282,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                 // automatic updates.
                 try
                 {
-                    using (var pipeline = PipelineBuilder
+                    var builder = PipelineBuilder
                         // specify the filename for the data file. When using update on start-up
                         // the file need not exist, but the directory it is in must exist.
                         // Any file that is present is overwritten. Because the file will be
@@ -283,17 +310,42 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                         // For the purposes of this example we are setting the time
                         // between checks to see if the file has changed to 1 second.
                         // By default this is 30 mins.
-                        .SetUpdatePollingInterval(1)
-                        // Build the pipeline.
-                        .Build())
+                        .SetUpdatePollingInterval(1);
+
+                    if (string.IsNullOrWhiteSpace(dataUpdateUrl) == false)
+                    {
+                        // Download from this address in place of the
+                        // Distributor's. The URL formatter still adds the
+                        // license key, the type and any product named.
+                        builder.SetDataUpdateUrl(dataUpdateUrl);
+                    }
+
+                    if (string.IsNullOrWhiteSpace(product) == false)
+                    {
+                        // Name the product to download. Without this, the
+                        // data update service asks for the product of the
+                        // data file, which it reads from the file's header.
+                        builder.SetDataUpdateUrlFormatter(
+                            new FiftyOneUrlFormatter(product));
+                    }
+
+                    // Record the result of the update on start-up, which the
+                    // data update service reports on this thread while it
+                    // builds the pipeline. A check by the polling timer can
+                    // end at any time and must not be taken for it.
+                    CompletionListener.WatchStartup();
+
+                    // Build the pipeline.
+                    using (var pipeline = builder.Build())
                     {
                         // thread blocks till update checking is complete - or if there is an
                         // exception we don't get this far
+                        var startup = CompletionListener.StartupResult?.Status;
                         Logger.LogInformation("Update on start-up complete - status - " +
-                            CompletionListener.Result.Status);
+                            startup);
 
-                        if (CompletionListener.Result.Status == AutoUpdateStatus.AUTO_UPDATE_SUCCESS ||
-                            CompletionListener.Result.Status == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
+                        if (startup == AutoUpdateStatus.AUTO_UPDATE_SUCCESS ||
+                            startup == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
                         {
                             Logger.LogInformation("Modifying downloaded file to trigger reload ... " +
                                                   "please wait for that to complete");
@@ -328,7 +380,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                         {
                             Logger.LogError("Auto update was not successful, abandoning example");
                             throw new InvalidOperationException("Auto update failed: " +
-                                                                CompletionListener.Result.Status);
+                                                                startup);
                         }
 
                         Logger.LogInformation("Finished Example");
@@ -441,6 +493,10 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             var dataFile = args.Length > 0 ? args[0] : null;
             var licenseKey = args.Length > 1 ? args[1] :
                 LicenseKeyFromEnvironment();
+            // The product to download, in place of the data file's own.
+            var product = args.Length > 2 ? args[2] : null;
+            // The address to download from, in place of the Distributor's.
+            var dataUpdateUrl = args.Length > 3 ? args[3] : null;
 
             if (string.IsNullOrWhiteSpace(licenseKey))
             {
@@ -449,7 +505,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                 ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
                 return;
             }
-            Initialize(dataFile, licenseKey, true);
+            Initialize(dataFile, licenseKey, true, product, dataUpdateUrl);
 
             ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
         }
@@ -518,7 +574,13 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             try
             {
                 using (var loggerFactory = new LoggerFactory())
-                using (var httpClient = new HttpClient())
+                // The client does not follow redirects. The data update
+                // service reads the answer that lists the products the
+                // license key holds, which has a Location header.
+                using (var httpClient = new HttpClient(new HttpClientHandler()
+                {
+                    AllowAutoRedirect = false,
+                }))
                 {
                     var dataUpdateService = new DataUpdateService(
                         loggerFactory.CreateLogger<DataUpdateService>(),
@@ -575,7 +637,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
         }
 
         public static void Initialize(
-            string dataFile, string licenseKey, bool interactive)
+            string dataFile, string licenseKey, bool interactive,
+            string product = null, string dataUpdateUrl = null)
         {
             // Initialize a service collection, which will be used to create the services
             // required by the Pipeline and manage their lifetimes.
@@ -593,8 +656,13 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                             (c.StartsWith(typeof(Program).FullName) && l >= LogLevel.Information);
                     }))
                 // Add an HttpClient instance. This is used for making requests to the
-                // data update end point.
-                .AddSingleton<HttpClient>()
+                // data update end point. It does not follow redirects, so the
+                // data update service reads the answer that lists the
+                // products the license key holds, which has a Location header.
+                .AddSingleton(_ => new HttpClient(new HttpClientHandler()
+                {
+                    AllowAutoRedirect = false,
+                }))
                 // We want to use the standard data update service
                 .AddSingleton<IDataUpdateService, DataUpdateService>()
                 // Add the builders we're going to need.
@@ -606,7 +674,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                 .BuildServiceProvider())
             {
                 var example = serviceProvider.GetRequiredService<Example>();
-                example.Run(dataFile, licenseKey, interactive);
+                example.Run(
+                    dataFile, licenseKey, interactive, product, dataUpdateUrl);
             }
         }
     }

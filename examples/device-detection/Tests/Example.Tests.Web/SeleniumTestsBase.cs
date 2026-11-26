@@ -24,10 +24,16 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenQA.Selenium;
 using OpenQA.Selenium.BiDi;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Chromium;
 using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Firefox;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -98,6 +104,29 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         protected static BiDiNetworkAdapter Network { get; private set; }
 
         /// <summary>
+        /// The log file of the Chrome or Edge driver, written at the verbose
+        /// level, or null for Firefox. Read only when a test fails, see
+        /// <see cref="WriteDriverLog"/>.
+        /// </summary>
+        private static string DriverLogPath;
+
+        /// <summary>
+        /// The length of <see cref="DriverLogPath"/> when this test started,
+        /// so a failure shows only what the driver did for this test.
+        /// </summary>
+        private long _driverLogStart;
+
+        /// <summary>
+        /// True once the driver log has been written for this test.
+        /// </summary>
+        private bool _driverLogWritten;
+
+        /// <summary>
+        /// Set by MSTest.
+        /// </summary>
+        public TestContext TestContext { get; set; }
+
+        /// <summary>
         /// Used to stop the server when the test is finished.
         /// </summary>
         private readonly CancellationTokenSource StopSource = 
@@ -122,8 +151,17 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         [TestInitialize]
         public void TestServerInitialize()
         {
+            _driverLogStart = DriverLogLength();
             ServerTask = StartServerFunc(StopSource.Token);
-            ResetBrowserState();
+            try
+            {
+                ResetBrowserState();
+            }
+            catch
+            {
+                WriteDriverLog("resetting the browser");
+                throw;
+            }
         }
 
         /// <summary>
@@ -176,6 +214,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         [TestCleanup]
         public void TestCleanup()
         {
+            if (TestContext != null &&
+                TestContext.CurrentTestOutcome != UnitTestOutcome.Passed &&
+                TestContext.CurrentTestOutcome != UnitTestOutcome.Inconclusive)
+            {
+                WriteDriverLog("the test");
+            }
             if (ServerTask != null)
             {
                 StopSource.Cancel(true);
@@ -227,6 +271,207 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             Driver.Dispose();
             Driver = null;
             Network = null;
+            if (DriverLogPath != null)
+            {
+                try
+                {
+                    File.Delete(DriverLogPath);
+                }
+                catch (IOException)
+                {
+                    // Left in the temporary folder.
+                }
+                DriverLogPath = null;
+            }
+        }
+
+        /// <summary>
+        /// Has the Chrome or Edge driver write a verbose log, with a time on
+        /// each line, to a new file in the temporary folder. It holds every
+        /// DevTools command the driver and its BiDi mapper send to the
+        /// browser and when each one was answered.
+        /// </summary>
+        private static void LogDriver(ChromiumDriverService service)
+        {
+            DriverLogPath = Path.Combine(
+                Path.GetTempPath(),
+                $"51degrees-driver-{Guid.NewGuid():N}.log");
+            service.LogPath = DriverLogPath;
+            service.EnableVerboseLogging = true;
+            service.ReadableTimestamp = true;
+        }
+
+        private static long DriverLogLength()
+        {
+            try
+            {
+                return DriverLogPath != null && File.Exists(DriverLogPath)
+                    ? new FileInfo(DriverLogPath).Length
+                    : 0;
+            }
+            catch (IOException)
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Writes what the driver logged since this test started, keeping
+        /// the commands and their answers and leaving out the events, so a
+        /// failure that comes down to the browser not answering shows which
+        /// command it did not answer and for how long. Keys are replaced
+        /// before anything is written. Only a diagnostic, so it never
+        /// throws.
+        /// </summary>
+        /// <param name="what">What failed.</param>
+        private void WriteDriverLog(string what)
+        {
+            if (_driverLogWritten || DriverLogPath == null)
+            {
+                return;
+            }
+            _driverLogWritten = true;
+            Console.WriteLine(
+                $"Build log: Selenium tests, {what} failed. The thread " +
+                $"pool has {ThreadPool.ThreadCount} threads and " +
+                $"{ThreadPool.PendingWorkItemCount} queued items.");
+            try
+            {
+                var lines = new List<string>();
+                using (var stream = new FileStream(
+                    DriverLogPath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.ReadWrite | FileShare.Delete))
+                {
+                    stream.Seek(
+                        Math.Min(_driverLogStart, stream.Length),
+                        SeekOrigin.Begin);
+                    using var reader = new StreamReader(stream);
+                    var entry = new StringBuilder();
+                    string line;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        if (EntryStart.IsMatch(line) && entry.Length > 0)
+                        {
+                            AddSummary(lines, entry.ToString());
+                            entry.Clear();
+                        }
+                        entry.AppendLine(line);
+                    }
+                    if (entry.Length > 0)
+                    {
+                        AddSummary(lines, entry.ToString());
+                    }
+                }
+                const int head = 50, tail = 250;
+                Console.WriteLine(
+                    $"Build log: the driver's commands and answers for " +
+                    $"this test, {lines.Count} lines:");
+                var shown = lines.Count <= head + tail
+                    ? lines
+                    : lines.Take(head)
+                        .Append($"... {lines.Count - head - tail} lines ...")
+                        .Concat(lines.Skip(lines.Count - tail));
+                foreach (var summary in shown)
+                {
+                    Console.WriteLine(Redact(summary));
+                }
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(
+                    $"Build log: the driver log could not be read: " +
+                    exception.Message);
+            }
+        }
+
+        /// <summary>
+        /// The start of an entry in the driver log, which is its time.
+        /// </summary>
+        private static readonly Regex EntryStart = new Regex(
+            @"^\[\d\d-\d\d-\d{4} [\d:.]+\]", RegexOptions.CultureInvariant);
+
+        private static readonly Regex Method = new Regex(
+            @"""method"":\s*""(?<m>[A-Za-z.]+)""", RegexOptions.CultureInvariant);
+
+        private static readonly Regex BiDiMethod = new Regex(
+            @"\\""id\\"":(?<id>\d+),\\""method\\"":\\""(?<m>[A-Za-z.]+)",
+            RegexOptions.CultureInvariant);
+
+        private static readonly Regex Id = new Regex(
+            @"""id"":\s*(?<id>\d+)", RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Adds one line for a driver log entry that is a command, an
+        /// answer, or a DevTools message the BiDi mapper in the browser
+        /// sent or was answered, and nothing for anything else. The mapper
+        /// reports each DevTools message it sends and receives back to the
+        /// driver, which logs it as an event.
+        /// </summary>
+        private static void AddSummary(List<string> lines, string entry)
+        {
+            var newLine = entry.IndexOf('\n');
+            var first = (newLine < 0 ? entry : entry.Substring(0, newLine))
+                .TrimEnd('\r');
+            if (first.Length > 200)
+            {
+                first = first.Substring(0, 200);
+            }
+            var time = EntryStart.Match(first).Value;
+            if (first.Contains(" COMMAND ") || first.Contains(" RESPONSE ") ||
+                first.Contains("WebSocket Response:"))
+            {
+                lines.Add(first);
+            }
+            else if (first.Contains("WebSocket Command:"))
+            {
+                var bidi = BiDiMethod.Match(entry);
+                lines.Add(bidi.Success
+                    ? $"{time} BiDi command {bidi.Groups["id"].Value} " +
+                        $"{bidi.Groups["m"].Value} sent to the mapper"
+                    : first);
+            }
+            else if (first.Contains("Runtime.bindingCalled"))
+            {
+                if (entry.Contains("\"sendBidiResponse\""))
+                {
+                    lines.Add($"{time} the mapper answered a BiDi command");
+                }
+                else if (entry.Contains("cdp:SEND"))
+                {
+                    lines.Add($"{time} mapper sent DevTools " +
+                        $"{Id.Match(entry).Groups["id"].Value} " +
+                        Method.Match(entry).Groups["m"].Value);
+                }
+                else if (entry.Contains("cdp:RECV") &&
+                    Method.IsMatch(entry) == false && Id.IsMatch(entry))
+                {
+                    lines.Add($"{time} mapper got the answer to DevTools " +
+                        Id.Match(entry).Groups["id"].Value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Replaces the value of every key in the environment, as the
+        /// driver logs the address of each page and script, and a client
+        /// only page loads a script named after its resource key.
+        /// </summary>
+        private static string Redact(string line)
+        {
+            foreach (var value in Environment.GetEnvironmentVariables()
+                .Cast<System.Collections.DictionaryEntry>()
+                .Where(e => e.Key.ToString().StartsWith(
+                    "_51DEGREES_", StringComparison.Ordinal) &&
+                    e.Key.ToString().Contains(
+                        "KEY", StringComparison.Ordinal))
+                .Select(e => e.Value?.ToString())
+                .Where(v => string.IsNullOrEmpty(v) == false && v.Length > 4))
+            {
+                line = line.Replace(value, "<key>", StringComparison.Ordinal);
+            }
+            return line;
         }
 
 
@@ -252,7 +497,9 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             chromeOptions.SetLoggingPreference(LogType.Browser, LogLevel.All);
             try
             {
-                Driver = new ChromeDriver(chromeOptions);
+                var service = ChromeDriverService.CreateDefaultService();
+                LogDriver(service);
+                Driver = new ChromeDriver(service, chromeOptions);
             }
             catch (WebDriverException exception)
             {
@@ -288,7 +535,9 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             edgeOptions.SetLoggingPreference(LogType.Browser, LogLevel.All);
             try
             {
-                Driver = new EdgeDriver(edgeOptions);
+                var service = EdgeDriverService.CreateDefaultService();
+                LogDriver(service);
+                Driver = new EdgeDriver(service, edgeOptions);
             }
             catch (WebDriverException exception)
             {

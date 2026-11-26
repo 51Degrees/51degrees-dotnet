@@ -44,14 +44,27 @@ BeforeAll {
         '}'
     ) + $body)
 
-    # A results file as dotnet test writes it, with a result for each
-    # outcome given.
-    function New-Report([string]$Name, [string[]]$Outcomes) {
+    # The test project the step reads its target frameworks from, at the
+    # path the step names.
+    $script:Project = Join-Path $Root 'pipeline' 'Tests' 'HumanConfidence.Examples.Tests' 'FiftyOne.HumanConfidence.Examples.Tests.csproj'
+    New-Item -ItemType Directory -Path (Split-Path $Project) | Out-Null
+    function Set-Project([string]$Frameworks) {
+        Set-Content -LiteralPath $script:Project -Value (
+            '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>' +
+            "<TargetFrameworks>$Frameworks</TargetFrameworks>" +
+            '</PropertyGroup><PropertyGroup><IsPackable>false</IsPackable>' +
+            '</PropertyGroup></Project>')
+    }
+
+    # A results file for the framework given, named as dotnet test names it
+    # with the step's LogFilePrefix, with a result for each outcome given.
+    function New-Report([string]$Framework, [string[]]$Outcomes) {
+        $name = "human-confidence_$($Framework)_20261123000000.trx"
         $passed = @($Outcomes | Where-Object { $_ -eq 'Passed' }).Count
         $results = for ($i = 0; $i -lt $Outcomes.Count; $i++) {
             "<UnitTestResult testName=`"Test$i`" outcome=`"$($Outcomes[$i])`" />"
         }
-        Set-Content -LiteralPath (Join-Path $script:Reports $Name) -Value (
+        Set-Content -LiteralPath (Join-Path $script:Reports $name) -Value (
             '<?xml version="1.0" encoding="utf-8"?>' +
             '<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">' +
             "<Results>$($results -join '')</Results>" +
@@ -90,6 +103,7 @@ Describe 'the Cloud Human Confidence step' {
         Remove-Item -LiteralPath $script:Calls -ErrorAction SilentlyContinue
         Remove-Item -Path (Join-Path $script:Reports '*') -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath (Join-Path $script:Root 'test-results') -Recurse -Force -ErrorAction SilentlyContinue
+        Set-Project 'net8.0;net10.0'
         $env:CLOUD_STAGING_ENDPOINT = 'https://staging.example.test/api/v4/'
         $env:RESOURCE_KEY_BESPOKE_STAGING = 'resource-bespoke-staging'
         $env:_51DEGREES_RESOURCE_KEY_BASIC = 'resource-basic'
@@ -104,7 +118,8 @@ Describe 'the Cloud Human Confidence step' {
     }
 
     It 'runs only the staging category, with the three names and no other' {
-        New-Report 'net8.0.trx' 'Passed', 'Passed'
+        New-Report 'net8.0' 'Passed', 'Passed'
+        New-Report 'net10.0' 'Passed', 'Passed'
 
         $result = Invoke-Step
 
@@ -134,8 +149,8 @@ Describe 'the Cloud Human Confidence step' {
     }
 
     It 'passes when every test of each framework passed' {
-        New-Report 'net8.0.trx' 'Passed', 'Passed'
-        New-Report 'net10.0.trx' 'Passed', 'Passed'
+        New-Report 'net8.0' 'Passed', 'Passed'
+        New-Report 'net10.0' 'Passed', 'Passed'
 
         $result = Invoke-Step
 
@@ -144,29 +159,61 @@ Describe 'the Cloud Human Confidence step' {
     }
 
     It 'fails when a test was skipped' {
-        New-Report 'net8.0.trx' 'Passed', 'Passed'
-        New-Report 'net10.0.trx' 'Passed', 'NotExecuted'
+        New-Report 'net8.0' 'Passed', 'Passed'
+        New-Report 'net10.0' 'Passed', 'NotExecuted'
 
         $result = Invoke-Step
 
         $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match '::error::1 of 2 tests in net10\.0\.trx did not pass'
+        $result.Output | Should -Match '::error::1 of 2 tests in human-confidence_net10\.0_\d+\.trx did not pass'
         $result.Output | Should -Match 'Test1: NotExecuted'
     }
 
     It 'fails when no test ran' {
-        New-Report 'net8.0.trx' @()
+        New-Report 'net8.0' @()
+        New-Report 'net10.0' 'Passed', 'Passed'
 
         $result = Invoke-Step
 
         $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match '::error::No test ran in net8\.0\.trx'
+        $result.Output | Should -Match '::error::No test ran in human-confidence_net8\.0_\d+\.trx'
+    }
+
+    It 'fails when a framework ran fewer than the two staging tests' {
+        New-Report 'net8.0' 'Passed', 'Passed'
+        New-Report 'net10.0' 'Passed'
+
+        $result = Invoke-Step
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match '::error::human-confidence_net10\.0_\d+\.trx holds 1 tests, where the CloudStaging category has 2'
+    }
+
+    It 'fails when only one framework wrote results' {
+        New-Report 'net8.0' 'Passed', 'Passed'
+
+        $result = Invoke-Step
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match '::error::The tests wrote 0 results files for net10\.0, where one is expected'
+        $result.Output | Should -Not -Match 'for net8\.0'
     }
 
     It 'fails when the tests wrote no results' {
         $result = Invoke-Step
 
         $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match '::error::The tests wrote no results'
+        $result.Output | Should -Match '::error::The tests wrote 0 results files for net8\.0'
+        $result.Output | Should -Match '::error::The tests wrote 0 results files for net10\.0'
+    }
+
+    It 'fails before building when the project names no target frameworks' {
+        Set-Project ''
+
+        $result = Invoke-Step
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match '::error::pipeline/Tests/HumanConfidence\.Examples\.Tests/FiftyOne\.HumanConfidence\.Examples\.Tests\.csproj names no target frameworks'
+        $result.Calls | Should -BeNullOrEmpty
     }
 }

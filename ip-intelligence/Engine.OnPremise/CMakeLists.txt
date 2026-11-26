@@ -6,9 +6,11 @@ set (CMAKE_CXX_STANDARD 11)
 # Include the C API
 project(IpIntelligenceEngine VERSION 4.3.0 LANGUAGES CXX C)
 
-if (NOT MSVC)
-    add_compile_options(-fPIC)
-endif()
+# Position independent code, which the shared library needs, for every
+# target. CMake 4.5 and later report add_compile_options and the other
+# directory-wide directives as an author warning, which is an error here, so
+# the settings below use variables instead.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if (MSVC)
     if (CMAKE_GENERATOR_PLATFORM)
@@ -65,16 +67,21 @@ set(_51DEGREES_BUILD_DEVICE_DETECTION OFF)
 # ci/cmake-warning-args.ps1 writes.
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 if (MSVC)
-    add_compile_options(/W4)
-    add_link_options(/WX)
+    set(_51DEGREES_WARNINGS " /W4")
+    set(_51DEGREES_LINK_WARNINGS " /WX")
     string(APPEND CMAKE_STATIC_LINKER_FLAGS " /WX")
 elseif (APPLE)
-    add_compile_options(-Wall -Wextra)
-    add_link_options(-Wl,-fatal_warnings)
+    set(_51DEGREES_WARNINGS " -Wall -Wextra")
+    set(_51DEGREES_LINK_WARNINGS " -Wl,-fatal_warnings")
 else()
-    add_compile_options(-Wall -Wextra)
-    add_link_options(-Wl,--fatal-warnings)
+    set(_51DEGREES_WARNINGS " -Wall -Wextra")
+    set(_51DEGREES_LINK_WARNINGS " -Wl,--fatal-warnings")
 endif()
+string(APPEND CMAKE_C_FLAGS "${_51DEGREES_WARNINGS}")
+string(APPEND CMAKE_CXX_FLAGS "${_51DEGREES_WARNINGS}")
+string(APPEND CMAKE_EXE_LINKER_FLAGS "${_51DEGREES_LINK_WARNINGS}")
+string(APPEND CMAKE_SHARED_LINKER_FLAGS "${_51DEGREES_LINK_WARNINGS}")
+string(APPEND CMAKE_MODULE_LINKER_FLAGS "${_51DEGREES_LINK_WARNINGS}")
 include(${CMAKE_CURRENT_LIST_DIR}/../../cxx/CMakeLists.txt NO_POLICY_SCOPE)
 
 if (RebuildSwig)

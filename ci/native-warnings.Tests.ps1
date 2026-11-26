@@ -133,9 +133,24 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
 
     It 'warns at /W4 and -Wall -Wextra on every target' {
         $before = (Get-LinesBeforeCxx $CMake) -join "`n"
-        $before | Should -MatchExactly 'add_compile_options\([^)]*/W4'
-        $before | Should -MatchExactly 'add_compile_options\([^)]*-Wall\b'
-        $before | Should -MatchExactly 'add_compile_options\([^)]*-Wextra\b'
+        $before | Should -MatchExactly 'set\(_51DEGREES_WARNINGS\s+"\s*/W4"\)'
+        $before | Should -MatchExactly 'set\(_51DEGREES_WARNINGS\s+"\s*-Wall -Wextra"\)'
+        $before | Should -MatchExactly 'string\(APPEND\s+CMAKE_C_FLAGS\s+"\$\{_51DEGREES_WARNINGS\}"\)'
+        $before | Should -MatchExactly 'string\(APPEND\s+CMAKE_CXX_FLAGS\s+"\$\{_51DEGREES_WARNINGS\}"\)'
+    }
+
+    # CMake 4.5 and later report each directory-wide directive as an author
+    # warning, which the configure arguments make an error.
+    It 'uses no directory-wide directive' {
+        $code = (Get-Code $CMake) -join "`n"
+        $code | Should -Not -Match ('(?m)^\s*(add_compile_options|add_link_options|' +
+            'add_definitions|add_compile_definitions|include_directories|' +
+            'link_directories|link_libraries)\s*\(')
+    }
+
+    It 'builds position independent code for every target' {
+        $before = (Get-LinesBeforeCxx $CMake) -join "`n"
+        $before | Should -Match 'set\(\s*CMAKE_POSITION_INDEPENDENT_CODE\s+ON\s*\)'
     }
 
     It 'warns at -Wall -Wextra on the wrapper' {
@@ -154,10 +169,14 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
 
     It 'makes every linker warning an error on every target' {
         $before = (Get-LinesBeforeCxx $CMake) -join "`n"
-        $before | Should -MatchExactly 'add_link_options\([^)]*/WX'
+        $before | Should -MatchExactly 'set\(_51DEGREES_LINK_WARNINGS\s+"\s*/WX"\)'
         $before | Should -MatchExactly 'string\(APPEND\s+CMAKE_STATIC_LINKER_FLAGS\s+"[^"]*/WX'
-        $before | Should -MatchExactly 'add_link_options\([^)]*-Wl,--fatal-warnings'
-        $before | Should -MatchExactly 'add_link_options\([^)]*-Wl,-fatal_warnings'
+        $before | Should -MatchExactly 'set\(_51DEGREES_LINK_WARNINGS\s+"\s*-Wl,--fatal-warnings"\)'
+        $before | Should -MatchExactly 'set\(_51DEGREES_LINK_WARNINGS\s+"\s*-Wl,-fatal_warnings"\)'
+        foreach ($kind in 'EXE', 'SHARED', 'MODULE') {
+            $before | Should -MatchExactly (
+                "string\(APPEND\s+CMAKE_${kind}_LINKER_FLAGS\s+`"\`$\{_51DEGREES_LINK_WARNINGS\}`"\)")
+        }
     }
 
     # CMake 4.4 and later ignore these variables and warn when they are set.

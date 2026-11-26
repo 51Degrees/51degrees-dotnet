@@ -60,7 +60,7 @@ namespace FiftyOne.IpIntelligence.Examples
 
         /// <summary>
         /// Environment variable key for the licence key the data file update
-        /// example and its test use.
+        /// example uses.
         /// </summary>
         public const string DATA_UPDATE_LICENSE_KEY_ENV_VAR = "_51DEGREES_LICENSE_KEY";
 

@@ -67,6 +67,18 @@ internal class EngineHashSwig : EngineDeviceDetectionSwig {
     return ret;
   }
 
+  public static Date getPublishedTimeFromFile(string fileName) {
+    Date ret = new Date(DeviceDetectionHashEngineModulePINVOKE.EngineHashSwig_getPublishedTimeFromFile(fileName), true);
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
+  public static string getProductFromFile(string fileName) {
+    string ret = DeviceDetectionHashEngineModulePINVOKE.EngineHashSwig_getProductFromFile(fileName);
+    if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
   public override string getDataFilePath() {
     string ret = DeviceDetectionHashEngineModulePINVOKE.EngineHashSwig_getDataFilePath(swigCPtr);
     if (DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Pending) throw DeviceDetectionHashEngineModulePINVOKE.SWIGPendingException.Retrieve();

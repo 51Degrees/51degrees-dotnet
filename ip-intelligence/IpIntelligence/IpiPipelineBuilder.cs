@@ -51,7 +51,13 @@ namespace FiftyOne.IpIntelligence
         /// </param>
         public IpiPipelineBuilder(
             ILoggerFactory loggerFactory) :
-            this(loggerFactory, new HttpClient())
+            this(
+                loggerFactory,
+                new HttpClient(),
+                // The data update service makes its own HTTP client, which
+                // does not follow redirects.
+                new DataUpdateService(
+                    loggerFactory.CreateLogger<DataUpdateService>()))
         { }
 
         /// <summary>

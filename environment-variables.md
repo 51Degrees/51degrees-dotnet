@@ -20,7 +20,7 @@ and is in neither of the last two tables.
 | `_51DEGREES_RESOURCE_KEY_BESPOKE` | A resource key that carries every property | The live cloud tests, and the tests that run the cloud examples |
 | `_51DEGREES_RESOURCE_KEY_BASIC` | A resource key on the basic data tier | The 51Did entitlement test, and the Human Confidence test of a key outside the Bespoke product, which calls the staging cloud in `CLOUD_STAGING_ENDPOINT` |
 | `_51DEGREES_RESOURCE_KEY_51DID` | A resource key carrying 51Did | The live 51Did tests |
-| `_51DEGREES_LICENSE_KEY` | A 51Degrees license key. CI downloads the paid data files with it. | The data file update examples, and the web examples that read a result with a license key |
+| `_51DEGREES_LICENSE_KEY` | A 51Degrees license key. CI downloads the paid data files with it. | The data file update examples as a customer runs them, and the web examples that read a result with a license key. The tests of the update examples need none, as they update from a local stand-in for the Distributor. |
 | `_51DEGREES_LICENSE_KEY_51DID` | The license key that reads results sealed with `_51DEGREES_RESOURCE_KEY_51DID` | The live 51Did tests |
 | `_51DEGREES_LICENSE_KEY_BESPOKE` | A license key that carries every property | The Accept-CH tests of the cloud web examples |
 
@@ -83,6 +83,7 @@ reach only the workflow that names them.
 | `CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME` | The name of the code signing certificate in the key vault | `ci/build-package.ps1` |
 | `CLOUD_STAGING_ENDPOINT` | The address of the staging cloud service, ending `/api/v4/`. An organization variable. It has no default. | `.github/workflows/cloud-human-confidence.yml`, and the Human Confidence tests in the `CloudStaging` category |
 | `RESOURCE_KEY_BESPOKE_STAGING` | A resource key that carries every property and that the staging cloud resolves. An organization secret. | `.github/workflows/cloud-human-confidence.yml`, and the Human Confidence tests in the `CloudStaging` category |
+| `LIVE_CLOUD_TESTS` | `false` on a build entry that leaves out the live cloud tests. `ci/setup-environment.ps1` sets it from `LiveCloudTests` in `ci/options.json`, and removes the resource keys there too. | The tests that run the cloud web examples, which skip when it is `false` |
 
 ## Names other tools define
 

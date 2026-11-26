@@ -29,6 +29,7 @@ using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.Caching;
 using FiftyOne.Pipeline.Engines.FiftyOne.Data;
+using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -42,7 +43,8 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
     /// other relevant HTTP headers and returns properties about the IP
     /// range that the IP address fall within
     /// </summary>
-    public class IpiOnPremiseEngine : OnPremiseIpiEngineBase<IIpDataOnPremise>
+    public class IpiOnPremiseEngine : OnPremiseIpiEngineBase<IIpDataOnPremise>,
+        IDataFileProductEngine
     {
         /// <summary>
         /// Factory used to create a new <see cref="IEngineSwigWrapper"/> when
@@ -640,6 +642,23 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         public override string GetDataDownloadType(string identifier)
         {
             return _engine.getType();
+        }
+
+        /// <summary>
+        /// Get the product value held in the data file being used by the
+        /// engine, for example 'Enterprise'. The data update service
+        /// makes the name of the product to request from it.
+        /// </summary>
+        /// <param name="identifier">
+        /// The identifier of the data file to get the product for.
+        /// This engine only uses one file so this parameter is ignored.
+        /// </param>
+        /// <returns>
+        /// A string
+        /// </returns>
+        string IDataFileProductEngine.GetDataFileProduct(string identifier)
+        {
+            return _engine.getProduct();
         }
     }
 }
