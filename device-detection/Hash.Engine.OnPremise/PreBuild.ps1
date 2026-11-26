@@ -34,6 +34,9 @@ if ($(Test-Path -Path $BuildPath) -eq $False) {
 
 }
 
+# CMake's own developer and deprecation warnings are errors too.
+$CMakeWarnings = @(& "$PSScriptRoot/../../ci/cmake-warning-args.ps1")
+
 # Change the current directory to the build path
 Push-Location $BuildPath
 
@@ -51,7 +54,7 @@ try {
 		# the fiftyone-hash-dotnet.vxproj file to ensure it includes /O2 and
 		# other optimisations in Release configuration.
 
-		cmake ../../.. -Werror=dev -Werror=deprecated -A $Arch -DRebuildSwig=Off -DBUILD_TESTING=Off
+		cmake ../../.. @CMakeWarnings -A $Arch -DRebuildSwig=Off -DBUILD_TESTING=Off
 		cmake --build . -t fiftyone-hash-dotnet --config $BuildType $Jargs
 		
 	}
@@ -65,7 +68,7 @@ try {
 		if ($Arch -eq "x86") {
 			$Is32 = "on"
 		}
-		cmake ../../.. -Werror=dev -Werror=deprecated "-D_51DEGREES_32BIT=$Is32" "-DCMAKE_BUILD_TYPE=$BuildType" -DRebuildSwig=Off -DBUILD_TESTING=Off
+		cmake ../../.. @CMakeWarnings "-D_51DEGREES_32BIT=$Is32" "-DCMAKE_BUILD_TYPE=$BuildType" -DRebuildSwig=Off -DBUILD_TESTING=Off
 		cmake --build . -t fiftyone-hash-dotnet $Jargs
 
 	}

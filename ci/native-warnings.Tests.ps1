@@ -1,8 +1,8 @@
 # Tests of the warnings the two on-premise engines' native libraries build
 # with, run with Pester 5 or later. Every C and C++ warning is an error on
 # every compiler, at the level the cxx submodule builds its own tests with,
-# and nothing in these files or in the cxx sources the engines compile turns
-# a warning off.
+# linker and CMake warnings are errors too, and nothing in these files or in
+# the cxx code the engines' builds compile turns a warning off.
 
 BeforeDiscovery {
     $Engines = @(
@@ -18,14 +18,18 @@ BeforeDiscovery {
         }
     )
 
-    # The cxx sources and CMake files the engines include. An empty list
-    # means the cxx submodule is not checked out, which fails below.
+    # The cxx sources and CMake files the engines include. The release build
+    # of the native libraries also compiles the cxx tests, examples and
+    # tools. An empty list means the cxx submodule is not checked out, which
+    # fails below.
     $Top = Join-Path $PSScriptRoot '..'
-    $CxxSrc = Join-Path $Top 'cxx/src'
+    $CxxFolders = @('src', 'test', 'examples', 'tools') |
+        ForEach-Object { Join-Path $Top "cxx/$_" } |
+        Where-Object { Test-Path $_ }
     $CxxFiles = @()
-    if (Test-Path $CxxSrc) {
+    if (Test-Path (Join-Path $Top 'cxx/src')) {
         $CxxFiles = @(
-            Get-ChildItem -File -Recurse $CxxSrc |
+            Get-ChildItem -File -Recurse $CxxFolders |
                 Where-Object { $_.Extension -in '.c', '.h', '.cpp', '.hpp', '.i' -or
                     $_.Name -eq 'CMakeLists.txt' } |
                 ForEach-Object {
@@ -39,16 +43,20 @@ BeforeDiscovery {
 BeforeAll {
     $Root = Join-Path $PSScriptRoot '..'
 
-    # The lines of a file without its comments, which start with # in CMake
-    # and PowerShell and with // in a SWIG interface.
+    # A line without its comment, which starts with # in CMake and
+    # PowerShell and with // in a SWIG interface.
+    function Remove-Comment([string]$Path, [string]$Line) {
+        if ($Path -like '*.i') {
+            $Line -replace '//.*$', ''
+        } else {
+            $Line -replace '#.*$', ''
+        }
+    }
+
+    # The lines of a file without their comments.
     function Get-Code([string]$Path) {
-        @(Get-Content (Join-Path $Root $Path) | ForEach-Object {
-            if ($Path -like '*.i') {
-                $_ -replace '//.*$', ''
-            } else {
-                $_ -replace '#.*$', ''
-            }
-        })
+        @(Get-Content (Join-Path $Root $Path) |
+            ForEach-Object { Remove-Comment $Path $_ })
     }
 
     # The CMake lines before the file includes cxx. They apply to every
@@ -77,6 +85,33 @@ BeforeAll {
         'compile-no-warning-as-error'
         'CMAKE_COMPILE_WARNING_AS_ERROR\s*=\s*(OFF|FALSE|0)'
     )
+
+    # A warning that only a public API change could clear, and that is only
+    # about naming, may be turned off where it arises. The line, or the line
+    # before it, then says "Naming exception:" and why, in at least ten
+    # characters.
+    $NamingException = 'Naming exception:\s*\S.{9,}'
+
+    # Each line of the file that turns a warning off, as path:line: text.
+    # With -Code the comments are left out before the patterns are applied.
+    # Lines with a naming exception are printed and not returned.
+    function Find-Hiding([string]$Path, [switch]$Code) {
+        $lines = @(Get-Content (Join-Path $Root $Path))
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            $text = $Code ? (Remove-Comment $Path $lines[$i]) : $lines[$i]
+            $hides = $Hiding.Where({ $text -cmatch $_ }, 'First').Count -gt 0
+            if (-not $hides) {
+                continue
+            }
+            $where = "${Path}:$($i + 1): $($lines[$i].Trim())"
+            if ($lines[$i] -cmatch $NamingException -or
+                ($i -gt 0 -and $lines[$i - 1] -cmatch $NamingException)) {
+                Write-Host "Naming exception accepted at $where"
+            } else {
+                $where
+            }
+        }
+    }
 }
 
 Describe 'the <Engine> engine native build' -ForEach $Engines {
@@ -86,10 +121,7 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
 
     It 'turns no warning off in <_>' -ForEach @(
         'CMakeLists.txt', 'PreBuild.ps1', $Interface) {
-        $code = (Get-Code "$Folder/$_") -join "`n"
-        foreach ($pattern in $Hiding) {
-            $code | Should -Not -MatchExactly $pattern
-        }
+        Find-Hiding "$Folder/$_" -Code | Should -BeNullOrEmpty
     }
 
     It 'needs a CMake that leaves the warning level out of the default flags' {
@@ -120,6 +152,29 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
         $code | Should -MatchExactly 'target_link_options\([^)]*/WX'
     }
 
+    It 'makes every linker warning an error on every target' {
+        $before = (Get-LinesBeforeCxx $CMake) -join "`n"
+        $before | Should -MatchExactly 'add_link_options\([^)]*/WX'
+        $before | Should -MatchExactly 'string\(APPEND\s+CMAKE_STATIC_LINKER_FLAGS\s+"[^"]*/WX'
+        $before | Should -MatchExactly 'add_link_options\([^)]*-Wl,--fatal-warnings'
+        $before | Should -MatchExactly 'add_link_options\([^)]*-Wl,-fatal_warnings'
+    }
+
+    # CMake 4.4 and later ignore these variables and warn when they are set.
+    It 'leaves the deprecation variables to the configure arguments' {
+        $code = (Get-Code $CMake) -join "`n"
+        $code | Should -Not -MatchExactly 'CMAKE_(ERROR|WARN)_DEPRECATED'
+    }
+
+    It 'configures with CMake warnings as errors in PreBuild.ps1' {
+        $code = Get-Code "$Folder/PreBuild.ps1"
+        ($code -join "`n") | Should -MatchExactly (
+            '\$CMakeWarnings\s*=\s*@\(&\s*"\$PSScriptRoot/\.\./\.\./ci/cmake-warning-args\.ps1"\)')
+        $configures = @($code -cmatch '^\s*cmake\s+\.\./\.\./\.\.\s')
+        $configures.Count | Should -Be 2
+        $configures | ForEach-Object { $_ | Should -MatchExactly '\s@CMakeWarnings\s' }
+    }
+
     It 'keeps the warnings the SWIG wrapper would turn off' {
         $code = (Get-Code $CMake) -join "`n"
         foreach ($name in 'SWIG_MSC_UNSUPPRESS_4505',
@@ -135,7 +190,42 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
     }
 }
 
-Describe 'the cxx sources the native engines compile' {
+Describe 'the package requirements build' {
+    It 'configures with CMake warnings as errors' {
+        $code = (Get-Code 'ci/build-package-requirements.ps1') -join "`n"
+        $code | Should -MatchExactly (
+            '\$extra\s*=\s*@\(&\s*"\$PSScriptRoot/cmake-warning-args\.ps1"\)')
+        $code | Should -MatchExactly 'build-project\.ps1\s[^\n]*-ExtraArgs\s+\$extra\b'
+    }
+}
+
+Describe 'ci/cmake-warning-args.ps1' {
+    BeforeAll {
+        $Script = Join-Path $Root 'ci/cmake-warning-args.ps1'
+    }
+
+    It 'names the developer warnings <Name> for CMake <Version>' -ForEach @(
+        @{ Version = '3.24.0'; Name = '-Werror=dev' }
+        @{ Version = '3.31.6'; Name = '-Werror=dev' }
+        @{ Version = '4.3.2'; Name = '-Werror=dev' }
+        @{ Version = '4.4'; Name = '-Werror=author' }
+        @{ Version = '4.4.5'; Name = '-Werror=author' }
+        @{ Version = '4.5.0'; Name = '-Werror=author' }
+    ) {
+        $written = @(& $Script -Version $Version)
+        $written | Should -Be @($Name, '-Werror=deprecated')
+    }
+
+    It 'reads the version of the cmake on the path' -Skip:(
+        -not (Get-Command cmake -ErrorAction SilentlyContinue)) {
+        $written = @(& $Script)
+        $written.Count | Should -Be 2
+        $written[0] | Should -BeIn '-Werror=dev', '-Werror=author'
+        $written[1] | Should -Be '-Werror=deprecated'
+    }
+}
+
+Describe 'the cxx code the native engines build' {
     It 'has the cxx submodule checked out' {
         Join-Path $Root 'cxx/src/common/CMakeLists.txt' | Should -Exist
     }
@@ -143,18 +233,6 @@ Describe 'the cxx sources the native engines compile' {
     # Every line is read whole, comments included, because # starts a
     # preprocessor line in C and SWIG files.
     It 'turns no warning off in <_>' -ForEach $CxxFiles {
-        $found = @(
-            $number = 0
-            foreach ($line in Get-Content (Join-Path $Root $_)) {
-                $number++
-                foreach ($pattern in $Hiding) {
-                    if ($line -cmatch $pattern) {
-                        "${_}:${number}: $($line.Trim())"
-                        break
-                    }
-                }
-            }
-        )
-        $found | Should -BeNullOrEmpty
+        Find-Hiding $_ | Should -BeNullOrEmpty
     }
 }

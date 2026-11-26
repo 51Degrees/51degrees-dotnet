@@ -18,7 +18,7 @@ $RepoPath = [IO.Path]::Combine($pwd, $RepoName)
 foreach ($engine in $NativeEngines) {
     Write-Host "::group::Building $($engine.Library) for $os $Arch"
     # CMake's own developer and deprecation warnings are errors too.
-    $extra = @("-Werror=dev", "-Werror=deprecated")
+    $extra = @(& "$PSScriptRoot/cmake-warning-args.ps1")
     if ($Arch -eq "x86") {
         $extra += "-D_51DEGREES_32BIT=on"
     }

@@ -61,9 +61,8 @@ set(_51DEGREES_BUILD_IP_INTELLIGENCE OFF)
 
 # Every target, the cxx libraries included, warns at the level the cxx tests
 # use, and every warning is an error, on each compiler and linker. The
-# configure step runs with -Werror=dev -Werror=deprecated, and using a
-# deprecated CMake feature is an error here as well.
-set(CMAKE_ERROR_DEPRECATED ON)
+# configure step makes CMake's own warnings errors with the arguments
+# ci/cmake-warning-args.ps1 writes.
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 if (MSVC)
     add_compile_options(/W4)

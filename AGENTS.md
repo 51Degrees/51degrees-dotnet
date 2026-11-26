@@ -253,8 +253,12 @@ Every C and C++ warning is an error. The engine's `CMakeLists.txt` sets `/W4`
 (MSVC) or `-Wall -Wextra` (GCC, Clang) and `CMAKE_COMPILE_WARNING_AS_ERROR` before it
 includes cxx, so the cxx libraries build that way too. The wrapper adds `/WX`
 or `-Werror`, and the SWIG macros that keep the warnings its prelude would
-turn off. Fix a warning where it comes from, and a warning in `cxx/` in the
-cxx repository. Never turn one off. `ci/native-warnings.Tests.ps1` checks this.
+turn off. Linker warnings are errors too (`/WX`, `-Wl,--fatal-warnings` or
+`-Wl,-fatal_warnings`), and so are CMake's own developer and deprecation
+warnings, through the configure arguments `ci/cmake-warning-args.ps1` writes
+for the installed CMake. Fix a warning where it comes from, and a warning in
+`cxx/` in the cxx repository. Never turn one off. `ci/native-warnings.Tests.ps1`
+checks this.
 
 ## Data files
 
