@@ -100,8 +100,27 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.FlowElements
         {
             return new FiftyOneDataFile(typeof(TEngine))
             {
-                DataDownloadType = _dataDownloadType ?? DefaultDataDownloadType
+                DataDownloadType = _dataDownloadType ?? DefaultDataDownloadType,
+                ProductFromFile = GetProductFromFile
             };
+        }
+
+        /// <summary>
+        /// Reads the product name from the header of a data file without
+        /// loading it, so the data update service can ask for the product
+        /// of a data file before the engine has loaded one. An engine that
+        /// cannot read it leaves this returning null.
+        /// </summary>
+        /// <param name="fileName">
+        /// The path of the data file.
+        /// </param>
+        /// <returns>
+        /// The product name the Distributor knows the file by, such as
+        /// 'V4TAC', or null.
+        /// </returns>
+        protected virtual string GetProductFromFile(string fileName)
+        {
+            return null;
         }
     }
 }

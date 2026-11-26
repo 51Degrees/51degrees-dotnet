@@ -22,6 +22,7 @@
 
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
 using FiftyOne.Pipeline.Engines;
+using FiftyOne.Pipeline.Engines.FiftyOne.Data;
 using FiftyOne.Pipeline.Engines.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -134,17 +135,22 @@ using System.Net.Http;
 /// ```
 /// 
 /// # Product
-/// A license key can hold more than one product. An update on start-up runs before a data file
-/// is loaded, so with such a key the example needs the name of the product to download, such as
-/// 'V4TAC'. Give it as the third command line argument, or in the environment variable
-/// '_51DEGREES_DD_PRODUCT'. The example then sets the complete update URL, with the product in
-/// it, and uses no URL formatter.
+/// A license key can hold more than one product. With no product named, the data update service
+/// asks for the product of the data file at the location given, which it reads from the file's
+/// header before the engine loads it. 'TAC-HashV41.hash', for example, gives 'V4TAC'. To ask for
+/// another product, or when there is no data file there yet, give its name as the third command
+/// line argument. The example then names it with the URL formatter.
 /// ``` {c#}
-///    .SetDataUpdateUrl("https://distributor.51degrees.com/api/v2/download?LicenseKeys=<your_license_key>&Download=True&Type=HashV41&Product=V4TAC")
-///    .SetDataUpdateUrlFormatter(null)
+///    .SetDataUpdateUrlFormatter(new FiftyOneUrlFormatter("V4TAC"))
 /// ```
-/// With no product given the example names none, which suits a license key that holds one
-/// product.
+///
+/// # Update URL
+/// The example downloads from the 51Degrees Distributor. To download from another address that
+/// answers as the Distributor does, such as a copy you host, give it as the fourth command line
+/// argument.
+/// ``` {c#}
+///    .SetDataUpdateUrl("https://example.com/api/v2/download")
+/// ```
 ///
 /// # Location
 /// This example is available in full on [GitHub](https://github.com/51Degrees/51degrees-dotnet/blob/main/examples/device-detection/OnPremise/UpdateDataFile-Console/Program.cs).
@@ -218,19 +224,16 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             /// If this example is being run in an interactive session, set this to true.
             /// </param>
             /// <param name="product">
-            /// The name of the product to download, for a license key that holds several
-            /// products. If null, the environment variable is used, and if that is not set
-            /// no product is named.
+            /// The name of the product to download, such as 'V4TAC'. If null, the data
+            /// update service asks for the product of the data file.
+            /// </param>
+            /// <param name="dataUpdateUrl">
+            /// The address to download updates from. If null, the Distributor's is used.
             /// </param>
             public void Run(string dataFile, string licenseKey, bool interactive,
-                string product = null)
+                string product = null, string dataUpdateUrl = null)
             {
                 Logger.LogInformation("Starting example");
-
-                if (string.IsNullOrWhiteSpace(product))
-                {
-                    product = ProductFromEnvironment();
-                }
 
                 licenseKey = CheckLicenseKey(licenseKey, Logger);
                 dataFile = CheckDataFile(dataFile, Logger);
@@ -309,29 +312,40 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                         // By default this is 30 mins.
                         .SetUpdatePollingInterval(1);
 
+                    if (string.IsNullOrWhiteSpace(dataUpdateUrl) == false)
+                    {
+                        // Download from this address in place of the
+                        // Distributor's. The URL formatter still adds the
+                        // license key, the type and any product named.
+                        builder.SetDataUpdateUrl(dataUpdateUrl);
+                    }
+
                     if (string.IsNullOrWhiteSpace(product) == false)
                     {
-                        // Name the product to download. A license key can
-                        // hold more than one product, and the update on
-                        // start-up runs before a data file is loaded, so
-                        // the product cannot be taken from the file. The
-                        // complete update URL is set, so no URL formatter
-                        // is used.
-                        builder
-                            .SetDataUpdateUrl(DataUpdateUrl(licenseKey, product))
-                            .SetDataUpdateUrlFormatter(null);
+                        // Name the product to download. Without this, the
+                        // data update service asks for the product of the
+                        // data file, which it reads from the file's header.
+                        builder.SetDataUpdateUrlFormatter(
+                            new FiftyOneUrlFormatter(product));
                     }
+
+                    // Record the result of the update on start-up, which the
+                    // data update service reports on this thread while it
+                    // builds the pipeline. A check by the polling timer can
+                    // end at any time and must not be taken for it.
+                    CompletionListener.WatchStartup();
 
                     // Build the pipeline.
                     using (var pipeline = builder.Build())
                     {
                         // thread blocks till update checking is complete - or if there is an
                         // exception we don't get this far
+                        var startup = CompletionListener.StartupResult?.Status;
                         Logger.LogInformation("Update on start-up complete - status - " +
-                            CompletionListener.Result.Status);
+                            startup);
 
-                        if (CompletionListener.Result.Status == AutoUpdateStatus.AUTO_UPDATE_SUCCESS ||
-                            CompletionListener.Result.Status == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
+                        if (startup == AutoUpdateStatus.AUTO_UPDATE_SUCCESS ||
+                            startup == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
                         {
                             Logger.LogInformation("Modifying downloaded file to trigger reload ... " +
                                                   "please wait for that to complete");
@@ -366,7 +380,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                         {
                             Logger.LogError("Auto update was not successful, abandoning example");
                             throw new InvalidOperationException("Auto update failed: " +
-                                                                CompletionListener.Result.Status);
+                                                                startup);
                         }
 
                         Logger.LogInformation("Finished Example");
@@ -472,35 +486,6 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                 Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR);
         }
 
-        /// <summary>
-        /// The product to download from the environment, which is the
-        /// value of '_51DEGREES_DD_PRODUCT', or null when it is not set.
-        /// </summary>
-        public static string ProductFromEnvironment()
-        {
-            var product = ExampleUtils.FromEnvironment(
-                Constants.DATA_UPDATE_PRODUCT_ENV_VAR);
-            return string.IsNullOrWhiteSpace(product) ? null : product;
-        }
-
-        /// <summary>
-        /// The complete URL that downloads the Device Detection data file
-        /// of a product with a license key.
-        /// </summary>
-        /// <param name="licenseKey">
-        /// The license key to use.
-        /// </param>
-        /// <param name="product">
-        /// The name of the product, such as 'V4TAC'.
-        /// </param>
-        public static string DataUpdateUrl(string licenseKey, string product)
-        {
-            return "https://distributor.51degrees.com/api/v2/download" +
-                "?LicenseKeys=" + Uri.EscapeDataString(licenseKey) +
-                "&Download=True&Type=HashV41" +
-                "&Product=" + Uri.EscapeDataString(product);
-        }
-
         public static void Main(string[] args)
         {
             // Use the supplied path for the data file or find the lite file that is included
@@ -508,8 +493,10 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
             var dataFile = args.Length > 0 ? args[0] : null;
             var licenseKey = args.Length > 1 ? args[1] :
                 LicenseKeyFromEnvironment();
-            // The product to download, when the license key holds several.
+            // The product to download, in place of the data file's own.
             var product = args.Length > 2 ? args[2] : null;
+            // The address to download from, in place of the Distributor's.
+            var dataUpdateUrl = args.Length > 3 ? args[3] : null;
 
             if (string.IsNullOrWhiteSpace(licenseKey))
             {
@@ -518,7 +505,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                 ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
                 return;
             }
-            Initialize(dataFile, licenseKey, true, product);
+            Initialize(dataFile, licenseKey, true, product, dataUpdateUrl);
 
             ExampleUtils.WriteFindOutMore(Console.Out, ContentSlug);
         }
@@ -651,7 +638,7 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
 
         public static void Initialize(
             string dataFile, string licenseKey, bool interactive,
-            string product = null)
+            string product = null, string dataUpdateUrl = null)
         {
             // Initialize a service collection, which will be used to create the services
             // required by the Pipeline and manage their lifetimes.
@@ -687,7 +674,8 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
                 .BuildServiceProvider())
             {
                 var example = serviceProvider.GetRequiredService<Example>();
-                example.Run(dataFile, licenseKey, interactive, product);
+                example.Run(
+                    dataFile, licenseKey, interactive, product, dataUpdateUrl);
             }
         }
     }
