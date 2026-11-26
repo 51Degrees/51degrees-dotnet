@@ -119,7 +119,19 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Configurator
             /// service provider setup logic.
             /// </summary>
             /// <param name="options"></param>
-            public static void Run(string resourceKey, TextWriter output)
+            /// <param name="cloudRequestTimeoutSeconds">
+            /// The seconds a request to the cloud service may take, or null
+            /// for the default of 2 seconds. The tests give a longer one.
+            /// </param>
+            /// <param name="httpClient">
+            /// The client that sends requests to the cloud service, or null
+            /// for a new one.
+            /// </param>
+            public static void Run(
+                string resourceKey,
+                TextWriter output,
+                int? cloudRequestTimeoutSeconds = null,
+                HttpClient httpClient = null)
             {
                 // Initialize a service collection which will be used to create the services
                 // required by the Pipeline and manage their lifetimes.
@@ -129,14 +141,21 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Configurator
                     .AddLogging(l => l.AddConsole())
                     // Add an HttpClient instance. This is used for making requests to the
                     // cloud service.
-                    .AddSingleton<HttpClient>()
+                    .AddSingleton(httpClient ?? new HttpClient())
                     .AddTransient<DeviceDetectionPipelineBuilder>()
                     // Add a factory to create the singleton IPipeline instance
                     .AddSingleton((x) =>
-                        x.GetRequiredService<DeviceDetectionPipelineBuilder>()
+                    {
+                        var builder = x.GetRequiredService<DeviceDetectionPipelineBuilder>()
                             .UseCloud(resourceKey)
-                            .SetCloudRequestOrigin("www.51degrees-example.com")
-                            .Build())
+                            .SetCloudRequestOrigin("www.51degrees-example.com");
+                        if (cloudRequestTimeoutSeconds.HasValue)
+                        {
+                            builder.SetCloudRequestTimeOutSeconds(
+                                cloudRequestTimeoutSeconds.Value);
+                        }
+                        return builder.Build();
+                    })
                     .AddTransient<Example>()
                     .BuildServiceProvider())
                 {

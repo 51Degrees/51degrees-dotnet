@@ -106,7 +106,8 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
         /// Runs the example for one case of
         /// <see cref="Parameters.VerifyCloudExample_DATA"/> and checks
         /// Accept-CH. A case whose key is not set is skipped, naming the
-        /// variable it needs.
+        /// variable it needs. Every case is skipped on a build entry that
+        /// leaves out the live cloud tests, licence key cases included.
         /// </summary>
         /// <param name="caseName">The name of the case.</param>
         /// <param name="requestedProperties">
@@ -125,6 +126,10 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud
             List<string> expectedAcceptCH,
             string exampleDirName)
         {
+            if (ExampleResourceKey.RunHere == false)
+            {
+                Assert.Inconclusive(ExampleResourceKey.NotRunHere);
+            }
             if (requestedProperties == null)
             {
                 var resourceKey = LiveCloudKey.Find();

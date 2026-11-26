@@ -154,7 +154,15 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
             /// service provider setup logic.
             /// </summary>
             /// <param name="options"></param>
-            public void Run(PipelineOptions options, TextWriter output)
+            /// <param name="output"></param>
+            /// <param name="httpClient">
+            /// The client that sends requests to the cloud service, or null
+            /// for a new one.
+            /// </param>
+            public void Run(
+                PipelineOptions options,
+                TextWriter output,
+                HttpClient httpClient = null)
             {
                 // Initialize a service collection which will be used to create the services
                 // required by the Pipeline and manage their lifetimes.
@@ -165,7 +173,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.TacLookup
                     .AddLogging(l => l.AddConsole())
                     // Add an HttpClient instance. This is used for making requests to the
                     // cloud service.
-                    .AddSingleton<HttpClient>()
+                    .AddSingleton(httpClient ?? new HttpClient())
                     // Add the builders that will be needed to create the engines specified in the 
                     // configuration file.
                     .AddSingleton<CloudRequestEngineBuilder>()

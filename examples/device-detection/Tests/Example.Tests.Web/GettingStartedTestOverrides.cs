@@ -195,10 +195,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         public static IEnumerable<object[]> TestProfileIds => 
             OverrideProfileIds.Select(i => new object[] { i });
 
-        [Theory]
+        [SkippableTheory]
         [MemberData(nameof(TestProfileIds))]
         public async Task VerifyExample_ProfileId_Override(int profileId)
         {
+            SkipIfNotRunHere();
+
             // Setup
             using (var http = Factory.CreateClient())
             using (var request = new HttpRequestMessage
@@ -256,6 +258,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         [MemberData(nameof(AllUrlsData))]
         public async Task VerifyExample_PropertyValue_Override(string url)
         {
+            SkipIfNotRunHere();
             Skip.IfNot(
                 SupportsPropertyOverrides, 
                 $"{nameof(SupportsPropertyOverrides)} indicates this engine does not support property overrides.");

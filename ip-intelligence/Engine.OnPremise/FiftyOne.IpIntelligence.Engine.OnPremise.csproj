@@ -193,12 +193,16 @@
     framework, to build it, and MSBuild runs a target once per instance, so
     CMake runs once rather than once per target framework at the same time
     in the same folder. FiftyOneNativeOnly keeps that instance apart from
-    the build that dispatches the target frameworks.
+    the build that dispatches the target frameworks. Platform is set to the
+    native platform, because one solution can build this project both as
+    x64 and as AnyCPU. Both want the same library in the same folder, and
+    with different Platform values they would be two instances running
+    CMake at the same time.
   -->
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <MSBuild Projects="$(MSBuildProjectFullPath)"
              Targets="FiftyOneBuildNative"
-             Properties="FiftyOneNativeOnly=true"
+             Properties="FiftyOneNativeOnly=true;Platform=$(FiftyOneNativeArch)"
              RemoveProperties="TargetFramework;RuntimeIdentifier" />
   </Target>
   <Target Name="FiftyOneBuildNative">
