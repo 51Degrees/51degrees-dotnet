@@ -9,6 +9,10 @@ param (
 $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
 
+# Every warning is an error in the builds 51Degrees runs. Each CI script
+# that builds sets this until the shared workflows set it in every job.
+$env:_51DEGREES_WARNINGS_AS_ERRORS = "true"
+
 . "$PSScriptRoot/packages.ps1"
 
 # Puts the packages about to be published where a restore finds them, and

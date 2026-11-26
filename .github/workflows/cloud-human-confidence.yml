@@ -34,6 +34,10 @@ on:
 permissions:
   contents: read
 
+# Every warning is an error in the builds 51Degrees runs.
+env:
+  _51DEGREES_WARNINGS_AS_ERRORS: "true"
+
 jobs:
   cloud-human-confidence:
     name: Cloud Human Confidence

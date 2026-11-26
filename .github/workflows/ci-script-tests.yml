@@ -5,13 +5,16 @@ name: CI script tests
 # release plan tests, which is where ci/packages.ps1 finds it.
 # native-warnings.Tests.ps1 reads the native engine build files and the cxx
 # sources they compile, so a change to those, or a move of the cxx
-# submodule, runs the tests too.
+# submodule, runs the tests too. warnings-as-errors.Tests.ps1 reads the
+# workflows and the root Directory.Build.targets, so a change to those runs
+# them as well.
 
 on:
   pull_request:
     paths:
       - 'ci/**'
-      - '.github/workflows/ci-script-tests.yml'
+      - '.github/workflows/**'
+      - 'Directory.Build.targets'
       - 'device-detection/Hash.Engine.OnPremise/**'
       - 'ip-intelligence/Engine.OnPremise/**'
       - 'cxx'
@@ -21,7 +24,8 @@ on:
       - rc
     paths:
       - 'ci/**'
-      - '.github/workflows/ci-script-tests.yml'
+      - '.github/workflows/**'
+      - 'Directory.Build.targets'
       - 'device-detection/Hash.Engine.OnPremise/**'
       - 'ip-intelligence/Engine.OnPremise/**'
       - 'cxx'

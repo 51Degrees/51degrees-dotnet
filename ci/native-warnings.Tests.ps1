@@ -1,8 +1,10 @@
 # Tests of the warnings the two on-premise engines' native libraries build
-# with, run with Pester 5 or later. Every C and C++ warning is an error on
-# every compiler, at the level the cxx submodule builds its own tests with,
-# linker and CMake warnings are errors too, and nothing in these files or in
-# the cxx code the engines' builds compile turns a warning off.
+# with, run with Pester 5 or later. Every target warns at the level the cxx
+# submodule builds its own tests with. When _51DEGREES_WARNINGS_AS_ERRORS is
+# "true", in any case, as CI sets it, every C and C++ warning is an error on
+# every compiler, and linker and CMake warnings are errors too. Nothing in
+# these files or in the cxx code the engines' builds compile turns a warning
+# off.
 
 BeforeDiscovery {
     $Engines = @(
@@ -70,6 +72,19 @@ BeforeAll {
         }
     }
 
+    # The top-level blocks of a CMake file that apply only when
+    # _51DEGREES_WARNINGS_AS_ERRORS is "true", and the rest of the file
+    # without them, each as one string.
+    $Gate = '(?ms)^if \(FIFTYONE_WARNINGS_AS_ERRORS STREQUAL "true"\)\s*$(?<body>.*?)^(else|endif)\(\)'
+    function Get-Gated([string]$Path) {
+        $code = (Get-Code $Path) -join "`n"
+        ([regex]::Matches($code, $Gate) | ForEach-Object { $_.Groups['body'].Value }) -join "`n"
+    }
+    function Get-Ungated([string]$Path) {
+        $code = (Get-Code $Path) -join "`n"
+        [regex]::Replace($code, $Gate, '')
+    }
+
     # Switches that hide warnings from MSVC, GCC or Clang, or that turn off
     # the CRT and C++ library deprecation warnings.
     $Hiding = @(
@@ -133,10 +148,20 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
 
     It 'warns at /W4 and -Wall -Wextra on every target' {
         $before = (Get-LinesBeforeCxx $CMake) -join "`n"
-        $before | Should -MatchExactly 'set\(_51DEGREES_WARNINGS\s+"\s*/W4"\)'
-        $before | Should -MatchExactly 'set\(_51DEGREES_WARNINGS\s+"\s*-Wall -Wextra"\)'
-        $before | Should -MatchExactly 'string\(APPEND\s+CMAKE_C_FLAGS\s+"\$\{_51DEGREES_WARNINGS\}"\)'
-        $before | Should -MatchExactly 'string\(APPEND\s+CMAKE_CXX_FLAGS\s+"\$\{_51DEGREES_WARNINGS\}"\)'
+        $before | Should -MatchExactly 'set\(FIFTYONE_WARNINGS\s+"\s*/W4"\)'
+        $before | Should -MatchExactly 'set\(FIFTYONE_WARNINGS\s+"\s*-Wall -Wextra"\)'
+        $before | Should -MatchExactly 'string\(APPEND\s+CMAKE_C_FLAGS\s+"\$\{FIFTYONE_WARNINGS\}"\)'
+        $before | Should -MatchExactly 'string\(APPEND\s+CMAKE_CXX_FLAGS\s+"\$\{FIFTYONE_WARNINGS\}"\)'
+    }
+
+    # environment-variables.md keeps the _51DEGREES_ prefix for the names
+    # of environment variables and build options.
+    It 'names its own variables without the _51DEGREES_ prefix' {
+        $code = (Get-Code $CMake) -join "`n"
+        $own = [regex]::Matches($code, '\bset\(\s*(?<name>_51DEGREES_\w+)') |
+            ForEach-Object { $_.Groups['name'].Value } |
+            Where-Object { $_ -notin '_51DEGREES_BUILD_DEVICE_DETECTION', '_51DEGREES_BUILD_IP_INTELLIGENCE' }
+        $own | Should -BeNullOrEmpty
     }
 
     # CMake 4.5 and later report each directory-wide directive as an author
@@ -153,30 +178,55 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
         $before | Should -Match 'set\(\s*CMAKE_POSITION_INDEPENDENT_CODE\s+ON\s*\)'
     }
 
-    It 'warns at -Wall -Wextra on the wrapper' {
-        $code = (Get-Code $CMake) -join "`n"
-        $code | Should -MatchExactly 'target_compile_options\([^)]*"-Wall"[^)]*"-Wextra"[^)]*"-Werror"'
+    It 'warns at /W4 and -Wall -Wextra on the wrapper' {
+        $code = Get-Ungated $CMake
+        $code | Should -MatchExactly 'target_compile_options\([^)]*"/W4"'
+        $code | Should -MatchExactly 'target_compile_options\([^)]*"-Wall"[^)]*"-Wextra"'
     }
 
-    It 'makes every warning an error' {
+    It 'reads _51DEGREES_WARNINGS_AS_ERRORS from the environment, in any case' {
         $before = (Get-LinesBeforeCxx $CMake) -join "`n"
-        $before | Should -Match 'set\(\s*CMAKE_COMPILE_WARNING_AS_ERROR\s+ON\s*\)'
-        $code = (Get-Code $CMake) -join "`n"
-        $code | Should -MatchExactly 'target_compile_options\([^)]*"/WX"'
-        $code | Should -MatchExactly 'target_compile_options\([^)]*"-Werror"'
-        $code | Should -MatchExactly 'target_link_options\([^)]*/WX'
+        $before | Should -MatchExactly (
+            'string\(TOLOWER\s+"\$ENV\{_51DEGREES_WARNINGS_AS_ERRORS\}"\s+FIFTYONE_WARNINGS_AS_ERRORS\)')
+        # Before cxx, and again for the wrapper.
+        [regex]::Matches((Get-Code $CMake) -join "`n", $Gate).Count | Should -Be 2
+        $before | Should -MatchExactly '(?m)^if \(FIFTYONE_WARNINGS_AS_ERRORS STREQUAL "true"\)'
     }
 
-    It 'makes every linker warning an error on every target' {
+    It 'makes every warning an error when the variable is "true"' {
+        $gated = Get-Gated $CMake
+        $gated | Should -Match 'set\(\s*CMAKE_COMPILE_WARNING_AS_ERROR\s+ON\s*\)'
+        $gated | Should -MatchExactly 'set_target_properties\([^)]*COMPILE_WARNING_AS_ERROR\s+ON'
+        $gated | Should -MatchExactly 'target_compile_options\([^)]*"\$\{FIFTYONE_WARNINGS_ERROR\}"'
+        $gated | Should -MatchExactly 'target_link_options\([^)]*"/WX"'
         $before = (Get-LinesBeforeCxx $CMake) -join "`n"
-        $before | Should -MatchExactly 'set\(_51DEGREES_LINK_WARNINGS\s+"\s*/WX"\)'
-        $before | Should -MatchExactly 'string\(APPEND\s+CMAKE_STATIC_LINKER_FLAGS\s+"[^"]*/WX'
-        $before | Should -MatchExactly 'set\(_51DEGREES_LINK_WARNINGS\s+"\s*-Wl,--fatal-warnings"\)'
-        $before | Should -MatchExactly 'set\(_51DEGREES_LINK_WARNINGS\s+"\s*-Wl,-fatal_warnings"\)'
+        $before | Should -MatchExactly 'set\(FIFTYONE_WARNINGS_ERROR\s+"/WX"\)'
+        $before | Should -MatchExactly 'set\(FIFTYONE_WARNINGS_ERROR\s+"-Werror"\)'
+    }
+
+    It 'makes every linker warning an error on every target when the variable is "true"' {
+        $before = (Get-LinesBeforeCxx $CMake) -join "`n"
+        $before | Should -MatchExactly 'set\(FIFTYONE_LINK_WARNINGS\s+"\s*/WX"\)'
+        $before | Should -MatchExactly 'set\(FIFTYONE_LINK_WARNINGS\s+"\s*-Wl,--fatal-warnings"\)'
+        $before | Should -MatchExactly 'set\(FIFTYONE_LINK_WARNINGS\s+"\s*-Wl,-fatal_warnings"\)'
+        $gated = Get-Gated $CMake
+        $gated | Should -MatchExactly 'string\(APPEND\s+CMAKE_STATIC_LINKER_FLAGS\s+"[^"]*/WX'
         foreach ($kind in 'EXE', 'SHARED', 'MODULE') {
-            $before | Should -MatchExactly (
-                "string\(APPEND\s+CMAKE_${kind}_LINKER_FLAGS\s+`"\`$\{_51DEGREES_LINK_WARNINGS\}`"\)")
+            $gated | Should -MatchExactly (
+                "string\(APPEND\s+CMAKE_${kind}_LINKER_FLAGS\s+`"\`$\{FIFTYONE_LINK_WARNINGS\}`"\)")
         }
+    }
+
+    # A build from source by anyone else, without the variable, shows the
+    # warnings and carries on.
+    It 'makes no warning an error when the variable is not "true"' {
+        $ungated = Get-Ungated $CMake
+        # The switches are only named, in set(), outside the gate.
+        $ungated = $ungated -replace 'set\(FIFTYONE_(WARNINGS_ERROR|LINK_WARNINGS)\s+"[^"]*"\)', ''
+        $ungated | Should -Not -Match 'WARNING_AS_ERROR\s+ON'
+        $ungated | Should -Not -Match '/WX|-Werror|fatal.warnings'
+        $ungated | Should -Not -Match 'FIFTYONE_(WARNINGS_ERROR|LINK_WARNINGS)'
+        $ungated | Should -Not -Match '_LINKER_FLAGS'
     }
 
     # CMake 4.4 and later ignore these variables and warn when they are set.
@@ -185,7 +235,7 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
         $code | Should -Not -MatchExactly 'CMAKE_(ERROR|WARN)_DEPRECATED'
     }
 
-    It 'configures with CMake warnings as errors in PreBuild.ps1' {
+    It 'configures with CMake warnings as errors in PreBuild.ps1 when the variable is "true"' {
         $code = Get-Code "$Folder/PreBuild.ps1"
         ($code -join "`n") | Should -MatchExactly (
             '\$CMakeWarnings\s*=\s*@\(&\s*"\$PSScriptRoot/\.\./\.\./ci/cmake-warning-args\.ps1"\)')
@@ -210,7 +260,7 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
 }
 
 Describe 'the package requirements build' {
-    It 'configures with CMake warnings as errors' {
+    It 'configures with CMake warnings as errors when the variable is "true"' {
         $code = (Get-Code 'ci/build-package-requirements.ps1') -join "`n"
         $code | Should -MatchExactly (
             '\$extra\s*=\s*@\(&\s*"\$PSScriptRoot/cmake-warning-args\.ps1"\)')
@@ -221,6 +271,24 @@ Describe 'the package requirements build' {
 Describe 'ci/cmake-warning-args.ps1' {
     BeforeAll {
         $Script = Join-Path $Root 'ci/cmake-warning-args.ps1'
+        $Saved = $env:_51DEGREES_WARNINGS_AS_ERRORS
+        $env:_51DEGREES_WARNINGS_AS_ERRORS = 'true'
+    }
+
+    AfterAll {
+        $env:_51DEGREES_WARNINGS_AS_ERRORS = $Saved
+    }
+
+    It 'writes the arguments when the variable is <_>' -ForEach @('true', 'TRUE', 'True') {
+        $env:_51DEGREES_WARNINGS_AS_ERRORS = $_
+        @(& $Script -Version '4.5.0') | Should -Be @('-Werror=author', '-Werror=deprecated')
+        $env:_51DEGREES_WARNINGS_AS_ERRORS = 'true'
+    }
+
+    It 'writes nothing when the variable is <_>' -ForEach @($null, '', 'false', 'yes', 'on', '1') {
+        $env:_51DEGREES_WARNINGS_AS_ERRORS = $_
+        @(& $Script -Version '4.5.0') | Should -BeNullOrEmpty
+        $env:_51DEGREES_WARNINGS_AS_ERRORS = 'true'
     }
 
     It 'names the developer warnings <Name> for CMake <Version>' -ForEach @(

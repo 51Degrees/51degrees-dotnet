@@ -194,8 +194,10 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   arm64. `FiftyOne.IpIntelligence.Engine.OnPremise` 4.5.154 has Windows x64,
   Linux x64 and macOS x64 and arm64 only. Neither has Windows on Arm. On a
   platform a package lacks, the example cannot load the engine.
-- **Warnings are errors.** The example projects set `TreatWarningsAsErrors`,
-  so an SDK newer than the one CI uses can stop the build on a new warning.
+- **Warnings are errors in CI only.** The example projects set
+  `TreatWarningsAsErrors`, which applies only when
+  `_51DEGREES_WARNINGS_AS_ERRORS` is `true`, as CI sets it. A build from a
+  clone shows the warnings and carries on.
 - **The .NET Framework examples.** The `Framework-Web` examples need `msbuild`
   on Windows, as [Frameworks](#frameworks) says, and `dotnet run` cannot run
   them.
@@ -249,16 +251,24 @@ committed SWIG wrappers include through `cxx/src/`, so the repository root is
 on the wrapper's include path. `RebuildSwig` is off in CI, so the committed
 wrappers are what ships.
 
-Every C and C++ warning is an error. The engine's `CMakeLists.txt` sets `/W4`
-(MSVC) or `-Wall -Wextra` (GCC, Clang) and `CMAKE_COMPILE_WARNING_AS_ERROR` before it
-includes cxx, so the cxx libraries build that way too. The wrapper adds `/WX`
-or `-Werror`, and the SWIG macros that keep the warnings its prelude would
-turn off. Linker warnings are errors too (`/WX`, `-Wl,--fatal-warnings` or
-`-Wl,-fatal_warnings`), and so are CMake's own developer and deprecation
-warnings, through the configure arguments `ci/cmake-warning-args.ps1` writes
-for the installed CMake. Fix a warning where it comes from, and a warning in
-`cxx/` in the cxx repository. Never turn one off. `ci/native-warnings.Tests.ps1`
-checks this.
+The engine's `CMakeLists.txt` sets `/W4` (MSVC) or `-Wall -Wextra` (GCC,
+Clang) before it includes cxx, so the cxx libraries build that way too, and
+the wrapper adds the SWIG macros that keep the warnings its prelude would turn
+off. When the `_51DEGREES_WARNINGS_AS_ERRORS` environment variable is `true`,
+in any case, every C and C++ warning is an error: the file sets
+`CMAKE_COMPILE_WARNING_AS_ERROR`, the wrapper adds `/WX` or `-Werror`, linker
+warnings are errors (`/WX`, `-Wl,--fatal-warnings` or `-Wl,-fatal_warnings`),
+and so are CMake's own developer and deprecation warnings, through the
+configure arguments `ci/cmake-warning-args.ps1` writes for the installed
+CMake. Each CI script that builds sets the variable, and every MSBuild
+project's `TreatWarningsAsErrors` depends on it too (the root
+`Directory.Build.targets`). Without it, as in a build from a clone, warnings
+in this repository's code are shown and do not stop the build. The cxx
+libraries still stop on a warning until `cxx/CMakeLists.txt` reads the same
+variable, as it sets `CMAKE_COMPILE_WARNING_AS_ERROR` itself. Fix a warning where it comes from, and a
+warning in `cxx/` in the cxx repository. Never turn one off.
+`ci/native-warnings.Tests.ps1` checks this, and fails when a CI script or
+workflow builds without the variable.
 
 ## Data files
 

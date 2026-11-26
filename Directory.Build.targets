@@ -25,4 +25,20 @@
     <PackageReference Include="@(FiftyOneReference)" />
   </ItemGroup>
 
+  <!--
+    A project's TreatWarningsAsErrors applies only when the
+    _51DEGREES_WARNINGS_AS_ERRORS environment variable or property is "true",
+    in any case, as CI sets it. Otherwise, as in a build from source by anyone
+    else, warnings are shown and do not stop the build. This file is read
+    after each project's own settings, so it decides for every project. The
+    value is compared as a string, because an MSBuild condition also takes
+    "yes" and "on" to be "true".
+  -->
+  <PropertyGroup>
+    <_FiftyOneWarningsAsErrors>$(_51DEGREES_WARNINGS_AS_ERRORS.ToLowerInvariant().Equals('true'))</_FiftyOneWarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(_FiftyOneWarningsAsErrors)' != 'True'">
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
 </Project>
