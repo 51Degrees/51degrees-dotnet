@@ -388,8 +388,11 @@ namespace FiftyOne.Did.Tests
                 var redeemed = await client.RedeemSealedResultAsync(Signed(), "sealed");
 
                 Assert.AreEqual(expected[i], redeemed.Outcome, Answers[i].Name);
+                // Nothing is read from a 503 body, so its word is not kept.
                 Assert.AreEqual(
-                    RedeemResult.ToStatusValue(expected[i]),
+                    Answers[i].Status == 503
+                        ? null
+                        : RedeemResult.ToStatusValue(expected[i]),
                     redeemed.StatusValue,
                     Answers[i].Name);
                 Assert.AreEqual(Answers[i].Status, redeemed.StatusCode, Answers[i].Name);
@@ -591,8 +594,44 @@ namespace FiftyOne.Did.Tests
             var redeemed = RedeemResult.FromResponse(503, body);
 
             Assert.AreEqual(RedemptionOutcome.Unconfirmed, redeemed.Outcome);
+#pragma warning disable CS0618
+            Assert.AreEqual(ContextOutcome.Unconfirmed, redeemed.Context);
+#pragma warning restore CS0618
             Assert.AreEqual(503, redeemed.StatusCode);
             Assert.AreEqual(body, redeemed.Raw);
+        }
+
+        /// <summary>
+        /// Nothing but the outcome is taken from a 503, so a body that
+        /// claims a success with a signature, factors, times and a Value
+        /// leaves every field empty.
+        /// </summary>
+        [TestMethod]
+        public void Redeem_503_CarriesNothingFromItsBody()
+        {
+            var body = "{\"status\":\"success\",\"context\":\"verified\","
+                + "\"signature\":\"verified\","
+                + "\"factors\":{\"transport\":\"verified\",\"device\":\"verified\"},"
+                + "\"humanConfidence\":\"High\","
+                + "\"humanConfidenceNullReason\":\"" + NullReason + "\","
+                + Times + "}";
+
+            var redeemed = RedeemResult.FromResponse(503, body);
+
+            Assert.AreEqual(RedemptionOutcome.Unconfirmed, redeemed.Outcome);
+#pragma warning disable CS0618
+            Assert.AreEqual(ContextOutcome.Unconfirmed, redeemed.Context);
+#pragma warning restore CS0618
+            Assert.IsNull(redeemed.ContextValue);
+            Assert.IsNull(redeemed.StatusValue);
+            Assert.AreEqual(SignatureOutcome.Unknown, redeemed.Signature);
+            Assert.IsNull(redeemed.Factors);
+            Assert.IsNull(redeemed.VerifiedAt);
+            Assert.IsNull(redeemed.SecondsSinceVerified);
+            Assert.IsNull(redeemed.HumanConfidence);
+            Assert.IsNull(redeemed.HumanConfidenceNullReason);
+            Assert.AreEqual(503, redeemed.StatusCode);
+            Assert.AreEqual(body, redeemed.Raw, "The body is kept as received.");
         }
 
         [TestMethod]
@@ -604,6 +643,11 @@ namespace FiftyOne.Did.Tests
             var redeemed = await client.RedeemSealedResultAsync(Signed(), "sealed");
 
             Assert.AreEqual(RedemptionOutcome.Unconfirmed, redeemed.Outcome);
+#pragma warning disable CS0618
+            Assert.AreEqual(ContextOutcome.Unconfirmed, redeemed.Context);
+#pragma warning restore CS0618
+            Assert.AreEqual(SignatureOutcome.Unknown, redeemed.Signature);
+            Assert.IsNull(redeemed.HumanConfidence);
             Assert.AreEqual(503, redeemed.StatusCode);
         }
 
@@ -725,6 +769,30 @@ namespace FiftyOne.Did.Tests
             Assert.IsNull(verification.HumanConfidenceNullReason);
             Assert.AreEqual(400, verification.StatusCode);
             Assert.AreEqual("{\"valid\":false}", verification.Raw);
+        }
+
+        /// <summary>
+        /// Only a 200 can verify. A 400 is invalid whatever its body says,
+        /// and carries no Human Confidence fields.
+        /// </summary>
+        [TestMethod]
+        public async Task Verify_400WithValidTrue_IsInvalid()
+        {
+            var body = "{\"valid\":true,\"humanConfidence\":\"High\","
+                + "\"humanConfidenceNullReason\":\"" + NullReason + "\"}";
+            _handler.Enqueue(HttpStatusCode.BadRequest, body);
+            _handler.Enqueue(HttpStatusCode.BadRequest, body);
+            using var client = NewClient();
+            var fodId = Signed();
+
+            var verification = await client.VerifyDetailedAsync(fodId);
+
+            Assert.IsFalse(verification.Valid);
+            Assert.IsNull(verification.HumanConfidence);
+            Assert.IsNull(verification.HumanConfidenceNullReason);
+            Assert.AreEqual(400, verification.StatusCode);
+            Assert.AreEqual(body, verification.Raw, "The body is kept as received.");
+            Assert.IsFalse(await client.VerifyAsync(fodId));
         }
 
         [TestMethod]

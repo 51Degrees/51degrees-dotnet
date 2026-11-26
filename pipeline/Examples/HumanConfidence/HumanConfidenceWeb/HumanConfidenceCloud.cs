@@ -188,6 +188,14 @@ public sealed class HumanConfidenceCloud
         }
     }
 
+    /// <summary>
+    /// The sealed result a page sent, as sealedResult or, from an older
+    /// cached page, as value. An empty field counts as not sent, and
+    /// sealedResult wins when the page sent both.
+    /// </summary>
+    public static string SealedResultFrom(string? sealedResult, string? value) =>
+        string.IsNullOrEmpty(sealedResult) ? value ?? "" : sealedResult;
+
     private static string? Read(JsonElement parent, string name) =>
         parent.ValueKind == JsonValueKind.Object
             && parent.TryGetProperty(name, out var value)

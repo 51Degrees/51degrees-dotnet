@@ -235,10 +235,14 @@ namespace FiftyOne.Did.Client
         /// JSON object, or carries no <c>context</c>, gives
         /// <see cref="ContextOutcome.Unreadable"/> with the body kept in
         /// <see cref="Raw"/>. Fields this client does not read, such as
-        /// <c>obsolete</c>, are ignored and kept in <see cref="Raw"/>. A 503
-        /// gives <see cref="RedemptionOutcome.Unconfirmed"/> whatever the
-        /// body says, because the status is the service's own statement
-        /// that it could not confirm first use.
+        /// <c>obsolete</c>, are ignored and kept in <see cref="Raw"/>.
+        /// <para>
+        /// A 503 gives Unconfirmed in both <see cref="Outcome"/> and
+        /// <see cref="Context"/> whatever the body says, because the status is the service's own statement that it
+        /// could not confirm first use. Nothing else is read from a 503
+        /// body, so it carries no signature, factors, times or Human
+        /// Confidence fields, and the body is kept in <see cref="Raw"/>.
+        /// </para>
         /// </summary>
         /// <param name="statusCode">The HTTP status.</param>
         /// <param name="body">The response body.</param>
@@ -246,6 +250,10 @@ namespace FiftyOne.Did.Client
         public static RedeemResult FromResponse(int statusCode, string body)
         {
             body ??= string.Empty;
+            if (statusCode == UnconfirmedStatusCode)
+            {
+                return Unconfirmed(body);
+            }
             JsonDocument document;
             try
             {
@@ -281,11 +289,9 @@ namespace FiftyOne.Did.Client
                     seconds,
                     statusCode,
                     body,
-                    statusCode == UnconfirmedStatusCode
-                        ? RedemptionOutcome.Unconfirmed
-                        : statusValue is null
-                            ? OutcomeFromContext(context)
-                            : ParseStatus(statusValue),
+                    statusValue is null
+                        ? OutcomeFromContext(context)
+                        : ParseStatus(statusValue),
                     statusValue,
                     HumanConfidenceFields.ReadValue(root),
                     HumanConfidenceFields.ReadNullReason(root));
@@ -415,13 +421,22 @@ namespace FiftyOne.Did.Client
         }
 
         private static RedeemResult Unreadable(int statusCode, string body)
+            => WithoutFields(ContextOutcome.Unreadable, statusCode, body);
+
+        private static RedeemResult Unconfirmed(string body)
+            => WithoutFields(
+                ContextOutcome.Unconfirmed, UnconfirmedStatusCode, body);
+
+        /// <summary>
+        /// A result that reads nothing from the body but keeps it, for a 503
+        /// or a body that is not a JSON object.
+        /// </summary>
+        private static RedeemResult WithoutFields(
+            ContextOutcome context, int statusCode, string body)
             => new RedeemResult(
-                ContextOutcome.Unreadable, null, SignatureOutcome.Unknown,
+                context, null, SignatureOutcome.Unknown,
                 null, null, null, statusCode, body,
-                statusCode == UnconfirmedStatusCode
-                    ? RedemptionOutcome.Unconfirmed
-                    : RedemptionOutcome.Unreadable,
-                null, null, null);
+                OutcomeFromContext(context), null, null, null);
 
 #pragma warning restore CS0618
 

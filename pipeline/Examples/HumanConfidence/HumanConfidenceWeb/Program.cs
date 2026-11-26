@@ -171,10 +171,13 @@ app.MapGet("/passive", async (HttpContext context) =>
 
 // Redeem: the page sends the sealed result, and this server redeems it with
 // the License Key. The answer goes back to the page as the cloud gave it.
+// An older cached page sends it as value, which is read when sealedResult
+// is empty or missing.
 app.MapPost("/redeem", async (HttpRequest request) =>
 {
     var form = await request.ReadFormAsync();
-    var answer = await cloud.RedeemAsync(form["sealedResult"].ToString());
+    var answer = await cloud.RedeemAsync(HumanConfidenceCloud.SealedResultFrom(
+        form["sealedResult"].ToString(), form["value"].ToString()));
     if (answer.Error != null)
     {
         return Results.Json(new { error = answer.Error }, statusCode: answer.StatusCode);

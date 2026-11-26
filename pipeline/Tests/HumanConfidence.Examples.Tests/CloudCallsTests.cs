@@ -239,6 +239,19 @@ public class CloudCallsTests
     }
 
     [TestMethod]
+    public void SealedResultFrom_ReadsValueFromAnOlderPage_AndAnEmptyFieldCountsAsNotSent()
+    {
+        Assert.AreEqual("new", HumanConfidenceCloud.SealedResultFrom("new", "old"),
+            "sealedResult wins when the page sent both.");
+        Assert.AreEqual("old", HumanConfidenceCloud.SealedResultFrom(null, "old"),
+            "An older cached page sends only value.");
+        Assert.AreEqual("old", HumanConfidenceCloud.SealedResultFrom("", "old"),
+            "An empty sealedResult counts as not sent.");
+        Assert.AreEqual("new", HumanConfidenceCloud.SealedResultFrom("new", ""));
+        Assert.AreEqual("", HumanConfidenceCloud.SealedResultFrom(null, null));
+    }
+
+    [TestMethod]
     public async Task Redeem_WhereTheServiceHasNoRedeem_SaysSo()
     {
         _handler.Enqueue(HttpStatusCode.NotFound, "");

@@ -1213,7 +1213,10 @@ namespace FiftyOne.Did.Client
         /// <summary>
         /// Reads a verify answer, which carries <c>valid</c> and, from a
         /// cloud release that returns it, the Human Confidence fields.
-        /// Other fields are ignored and kept in the raw body.
+        /// Other fields are ignored and kept in the raw body. Only a 200 can
+        /// be valid. A 400 is invalid whatever <c>valid</c> says and carries
+        /// no Human Confidence fields, because the cloud answers a 51Did
+        /// that does not verify with 400 and <c>valid</c> false.
         /// </summary>
         private static bool TryReadVerification(
             HttpStatusCode status,
@@ -1231,10 +1234,11 @@ namespace FiftyOne.Did.Client
                         && (element.ValueKind == JsonValueKind.True
                             || element.ValueKind == JsonValueKind.False))
                     {
+                        var ok = status == HttpStatusCode.OK;
                         verification = new DidVerification(
-                            element.GetBoolean(),
-                            HumanConfidenceFields.ReadValue(root),
-                            HumanConfidenceFields.ReadNullReason(root),
+                            ok && element.GetBoolean(),
+                            ok ? HumanConfidenceFields.ReadValue(root) : null,
+                            ok ? HumanConfidenceFields.ReadNullReason(root) : null,
                             (int)status,
                             body ?? string.Empty);
                         return true;
