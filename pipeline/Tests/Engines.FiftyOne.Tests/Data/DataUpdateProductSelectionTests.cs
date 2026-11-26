@@ -1970,5 +1970,139 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
                 Assert.AreEqual(1, _requests.Count);
             }
         }
+
+        /// <summary>
+        /// A data file for an update on start-up with no product named,
+        /// whose engine has loaded nothing. The file at the configured
+        /// location has the product name given in its header, which the
+        /// reader returns for that path only, as the native engines'
+        /// getProductFromFile does.
+        /// </summary>
+        private static FiftyOneDataFile StartupFile(
+            string type, string path, string product)
+        {
+            return new FiftyOneDataFile(typeof(IFiftyOneAspectEngine))
+            {
+                Identifier = Identifier,
+                DataDownloadType = type,
+                ProductFromFile = p => p == path ? product : null,
+                Configuration = new DataFileConfiguration()
+                {
+                    Identifier = Identifier,
+                    DataFilePath = path,
+                    DataUpdateUrl = Download,
+                    DataUpdateLicenseKeys = new[] { Key },
+                    UrlFormatter = new FiftyOneUrlFormatter(),
+                    MemoryOnly = true,
+                    DecompressContent = false,
+                    VerifyMd5 = false,
+                    VerifyModifiedSince = false,
+                    FileSystemWatcherEnabled = false,
+                    AutomaticUpdatesEnabled = false,
+                    UpdateOnStartup = true,
+                },
+            };
+        }
+
+        /// <summary>
+        /// An update on start-up with a key that holds several products and
+        /// no product named, before any engine has loaded the data file. The
+        /// product is read from the header of the file at the configured
+        /// location, so the second request asks for it and the update
+        /// succeeds. The native engines give the name with its prefix,
+        /// 'V4TAC' or 'IPIV4Enterprise', and a tier alone, as an older
+        /// reader might give, is given the prefix.
+        /// </summary>
+        [TestMethod]
+        [DataRow("HashV41", "V4TAC", "V4TAC")]
+        [DataRow("HashV41", "TAC", "V4TAC")]
+        [DataRow("IPIV41", "IPIV4Enterprise", "IPIV4Enterprise")]
+        public void UpdateOnStartup_SeveralProducts_FileNotLoaded_AsksForProductOfFile(
+            string type, string value, string product)
+        {
+            DistributorWith(type, "IPIV4Enterprise", "V4TAC");
+            var path = Path.GetTempFileName();
+            try
+            {
+                using (var file = StartupFile(type, path, value))
+                {
+                    Assert.AreEqual(product, file.DataUpdateProduct);
+
+                    _dataUpdate.RegisterDataFile(file);
+
+                    Assert.AreEqual(2, _requests.Count);
+                    Assert.IsNull(ProductOf(_requests[0]));
+                    Assert.AreEqual(product, ProductOf(_requests[1]));
+                    Assert.IsNotNull(file.Configuration.DataStream,
+                        "The update did not complete with the data served.");
+                }
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        /// <summary>
+        /// Before an engine has loaded a data file, no product is known when
+        /// the configured location holds no file, when the header cannot be
+        /// read, or when there is no reader, so an update on start-up names
+        /// none.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateProduct_FileNotLoaded_NoProductWithoutAReadableFile()
+        {
+            var missing = Path.Combine(
+                Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".hash");
+            using (var file = StartupFile("HashV41", missing, "V4TAC"))
+            {
+                Assert.IsNull(file.DataUpdateProduct,
+                    "A product was named for a file that is not there.");
+            }
+
+            var path = Path.GetTempFileName();
+            try
+            {
+                using (var file = StartupFile("HashV41", path, "V4TAC"))
+                {
+                    file.ProductFromFile = p =>
+                        throw new InvalidDataException("unreadable header");
+                    Assert.IsNull(file.DataUpdateProduct,
+                        "A product was named for a header that cannot be read.");
+
+                    file.ProductFromFile = null;
+                    Assert.IsNull(file.DataUpdateProduct,
+                        "A product was named with no way to read one.");
+                }
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        /// <summary>
+        /// Once an engine has loaded a data file, the product comes from the
+        /// engine, not from the file at the configured location.
+        /// </summary>
+        [TestMethod]
+        public void DataUpdateProduct_FileLoaded_ProductOfEngine()
+        {
+            var path = Path.GetTempFileName();
+            try
+            {
+                var engine = new Mock<IFiftyOneAspectEngine>();
+                engine.Setup(e => e.DataSourceTier).Returns("TAC");
+                using (var file = StartupFile("HashV41", path, "V4Lite"))
+                {
+                    file.Engine = engine.Object;
+                    Assert.AreEqual("V4TAC", file.DataUpdateProduct);
+                }
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
     }
 }

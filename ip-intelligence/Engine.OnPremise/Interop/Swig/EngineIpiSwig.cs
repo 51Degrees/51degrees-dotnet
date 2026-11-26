@@ -67,6 +67,18 @@ internal class EngineIpiSwig : EngineBaseSwig {
     return ret;
   }
 
+  public static Date getPublishedTimeFromFile(string fileName) {
+    Date ret = new Date(IpIntelligenceEngineModulePINVOKE.EngineIpiSwig_getPublishedTimeFromFile(fileName), true);
+    if (IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Pending) throw IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
+  public static string getProductFromFile(string fileName) {
+    string ret = IpIntelligenceEngineModulePINVOKE.EngineIpiSwig_getProductFromFile(fileName);
+    if (IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Pending) throw IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Retrieve();
+    return ret;
+  }
+
   public override string getDataFilePath() {
     string ret = IpIntelligenceEngineModulePINVOKE.EngineIpiSwig_getDataFilePath(swigCPtr);
     if (IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Pending) throw IpIntelligenceEngineModulePINVOKE.SWIGPendingException.Retrieve();

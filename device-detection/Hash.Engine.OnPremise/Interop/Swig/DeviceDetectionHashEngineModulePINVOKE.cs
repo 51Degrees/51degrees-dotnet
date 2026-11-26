@@ -1144,6 +1144,12 @@ class DeviceDetectionHashEngineModulePINVOKE {
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_EngineHashSwig_getUpdateAvailableTime___")]
   public static extern global::System.IntPtr EngineHashSwig_getUpdateAvailableTime(global::System.Runtime.InteropServices.HandleRef jarg1);
 
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_EngineHashSwig_getPublishedTimeFromFile___")]
+  public static extern global::System.IntPtr EngineHashSwig_getPublishedTimeFromFile(string jarg1);
+
+  [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_EngineHashSwig_getProductFromFile___")]
+  public static extern string EngineHashSwig_getProductFromFile(string jarg1);
+
   [global::System.Runtime.InteropServices.DllImport("FiftyOne.DeviceDetection.Hash.Engine.OnPremise.Native.dll", EntryPoint="CSharp_FiftyOnefDeviceDetectionfHashfEnginefOnPremisefInterop_EngineHashSwig_getDataFilePath___")]
   public static extern string EngineHashSwig_getDataFilePath(global::System.Runtime.InteropServices.HandleRef jarg1);
 
