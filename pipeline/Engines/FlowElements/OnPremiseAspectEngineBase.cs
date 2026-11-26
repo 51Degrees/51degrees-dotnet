@@ -181,6 +181,40 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
             {
                 _dataFiles.Add(dataFile);
             }
+            var updated = dataFile as AspectEngineDataFile;
+            var kept = updated?.DataKept ?? 0;
+            LoadDataFile(dataFile);
+            // The data file names this engine only once the engine has loaded
+            // its data, so a check for an update that runs while the data is
+            // loading finds no engine rather than one with no data. It is
+            // named after every load, so adding the file again after a load
+            // failed names it too.
+            if (updated == null)
+            {
+                dataFile.Engine = this;
+                return;
+            }
+            // The data update service keeps new data it finds while the file
+            // names no engine, and counts it, under the same lock. So new
+            // data kept during the load above is loaded here, and new data
+            // found after this is applied to this engine by the service.
+            lock (updated.UpdateSyncLock)
+            {
+                dataFile.Engine = this;
+                if (updated.DataKept != kept &&
+                    updated.TimerClosed == false)
+                {
+                    LoadDataFile(dataFile);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Loads the data file's data stream if it has one, and the file at
+        /// its path if not.
+        /// </summary>
+        private void LoadDataFile(IAspectEngineDataFile dataFile)
+        {
             if (dataFile.Configuration.DataStream != null)
             {
                 // The DataStream has been set so call the relevant overload
@@ -190,13 +224,6 @@ namespace FiftyOne.Pipeline.Engines.FlowElements
             else
             {
                 RefreshData(dataFile.Identifier);
-            }
-            // The data file names this engine only once the engine has loaded
-            // its data, so a check for an update that runs while the data is
-            // loading finds no engine rather than one with no data.
-            if (added)
-            {
-                dataFile.Engine = this;
             }
         }
     }

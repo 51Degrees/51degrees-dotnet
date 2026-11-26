@@ -1112,7 +1112,9 @@ namespace FiftyOne.Pipeline.Engines.Services
                         LogDebugMessage(() => $"{nameof(CheckForUpdateFromUrl)} resulted in {result}", dataFile);
 						if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS)
 						{
-							if (dataFile.Engine != null)
+							if (KeepIfNoEngine(dataFile, () =>
+								dataFile.Configuration.DataStream =
+									uncompressedStream) == false)
 							{
 								try
 								{
@@ -1137,9 +1139,9 @@ namespace FiftyOne.Pipeline.Engines.Services
 							}
 							else
 							{
-								// No associated engine at the moment so just
-								// set the value of the data stream.
-								dataFile.Configuration.DataStream = uncompressedStream;
+								// No associated engine at the moment, so the
+								// data stream was kept for the engine to
+								// load.
 								result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
 								// Make sure the stream will not be disposed 
 								// before the engine is created with it.
@@ -1359,7 +1361,7 @@ namespace FiftyOne.Pipeline.Engines.Services
 			Exception exception = null;
 			int tries = 0;
 
-            if (dataFile.Engine != null)
+            if (KeepIfNoEngine(dataFile, null) == false)
             {
                 LogInfoMessage(Messages.MessageAutoUpdateRefreshEngine, dataFile);
 
@@ -1409,12 +1411,48 @@ namespace FiftyOne.Pipeline.Engines.Services
 			}
 			else
 			{
-				// Engine not yet set so no need to refresh it.
-				// We can consider the update a success.
+				// Engine not yet set, so the new file was kept for the
+				// engine to load. We can consider the update a success.
 				result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
 			}
 
 			return result;
+		}
+
+		/// <summary>
+		/// When the data file names no engine, runs keep, which keeps the
+		/// new data where an engine loads it from, and counts the data as
+		/// kept, under the file's update lock. An engine names itself on the
+		/// file under the same lock once it has loaded its data, and loads
+		/// again if data was kept during its load. So new data is either
+		/// loaded by the engine that is loading, or applied by the caller
+		/// to the engine the file names.
+		/// </summary>
+		/// <param name="dataFile">
+		/// The data file the new data is for.
+		/// </param>
+		/// <param name="keep">
+		/// Keeps the new data, or null when it is already where the engine
+		/// loads it from.
+		/// </param>
+		/// <returns>
+		/// True if the data was kept, false if the file names an engine,
+		/// which the caller refreshes.
+		/// </returns>
+		private static bool KeepIfNoEngine(
+			AspectEngineDataFile dataFile,
+			Action keep)
+		{
+			lock (dataFile.UpdateSyncLock)
+			{
+				if (dataFile.Engine != null)
+				{
+					return false;
+				}
+				keep?.Invoke();
+				dataFile.CountDataKept();
+				return true;
+			}
 		}
 
 		/// <summary>

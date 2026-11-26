@@ -186,6 +186,14 @@ namespace FiftyOne.Pipeline.Engines.Data
         // the file, so the engine is not freed while it refreshes and is
         // not refreshed after.
         internal object UpdateSyncLock { get; } = new object();
+        private int _dataKept;
+        // The number of times the service kept new data for an engine to
+        // load because the file named no engine. Counted under
+        // UpdateSyncLock, under which an engine names itself on the file
+        // once it has loaded its data, so an engine whose load ran while
+        // new data was kept loads again.
+        internal int DataKept => Volatile.Read(ref _dataKept);
+        internal void CountDataKept() => Interlocked.Increment(ref _dataKept);
         internal DateTime LastUpdateFileModifiedTime { get; set; }
 
         /// <summary>
