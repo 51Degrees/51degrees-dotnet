@@ -26,6 +26,7 @@ using FiftyOne.Pipeline.Core.FailHandling.Recovery;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Core.Services;
+using FiftyOne.Pipeline.Engines.Caching;
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FlowElements;
 using Microsoft.Extensions.Logging;
@@ -55,7 +56,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         "addressed in a future version.")]
     public class CloudRequestEngine :
         AspectEngineBase<CloudRequestData, IAspectPropertyMetaData>,
-        ICloudRequestEngine
+        ICloudRequestEngine,
+        ICacheKeyFilterProvider
     {
         /// <summary>
         /// The prefixes after query, header and cookie, highest
@@ -585,7 +587,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     "endpoints, so the engine cannot use them.");
             }
             IEvidenceKeyFilter filter =
-                new EvidenceKeyFilterWhitelist(results.EvidenceKeys);
+                new CloudEvidenceKeyFilter(results.EvidenceKeys);
             IReadOnlyDictionary<string, ProductMetaData> properties =
                 results.AccessibleProperties;
             _lazyEvidenceKeyFilter = new Lazy<IEvidenceKeyFilter>(
@@ -987,6 +989,37 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
+        /// Sets the results cache, which never serves or stores the answer
+        /// to a page iteration or to a request carrying a JA4 or HTTP/2
+        /// value a server supplied, because the cache key can't tell those
+        /// apart. See <see cref="PageIterationAwareCache"/>.
+        /// </summary>
+        /// <param name="cache">The cache.</param>
+        public override void SetCache(IFlowCache cache)
+        {
+            base.SetCache(new PageIterationAwareCache(
+                cache ?? throw new ArgumentNullException(nameof(cache))));
+        }
+
+        /// <summary>
+        /// The results cache is keyed on the evidence keys the cloud service
+        /// listed, as it always has been, and not on the page script's other
+        /// stored values that <see cref="EvidenceKeyFilter"/> also accepts.
+        /// A request carrying the browser test answers is a page iteration,
+        /// which the cache leaves alone.
+        /// </summary>
+        public IEvidenceKeyFilter CacheKeyFilter
+        {
+            get
+            {
+                var filter = EvidenceKeyFilter;
+                return filter is CloudEvidenceKeyFilter cloud
+                    ? cloud.Listed
+                    : filter;
+            }
+        }
+
+        /// <summary>
         /// A response with a top-level fodid member, in any letter case,
         /// holds a 51Did that the cloud service created for the one request,
         /// so it is never stored in the results cache or served from it.
@@ -1354,7 +1387,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             {
                 var evidenceKeys = JsonConvert
                     .DeserializeObject<List<string>>(jsonResult);
-                return new EvidenceKeyFilterWhitelist(evidenceKeys);
+                return new CloudEvidenceKeyFilter(evidenceKeys);
             }
             else
             {

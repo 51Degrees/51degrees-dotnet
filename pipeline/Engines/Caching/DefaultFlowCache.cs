@@ -67,14 +67,19 @@ namespace FiftyOne.Pipeline.Engines.Caching
 
         /// <summary>
         /// The evidence key filter that is used to create
-        /// a <see cref="DataKey"/> from an <see cref="IFlowData"/> instance.
+        /// a <see cref="DataKey"/> from an <see cref="IFlowData"/> instance,
+        /// being the flow element's
+        /// <see cref="ICacheKeyFilterProvider.CacheKeyFilter"/> where it has
+        /// one, and its evidence key filter otherwise.
         /// </summary>
         /// <returns>
         /// The <see cref="IEvidenceKeyFilter"/> to use.
         /// </returns>
         protected override IEvidenceKeyFilter GetFilter()
         {
-            return _flowElement.EvidenceKeyFilter;
+            return _flowElement is ICacheKeyFilterProvider provider
+                ? provider.CacheKeyFilter
+                : _flowElement.EvidenceKeyFilter;
         }
     }
 }
