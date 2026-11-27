@@ -263,10 +263,11 @@ configure arguments `ci/cmake-warning-args.ps1` writes for the installed
 CMake. Each CI script that builds sets the variable, and every MSBuild
 project's `TreatWarningsAsErrors` depends on it too (the root
 `Directory.Build.targets`). Without it, as in a build from a clone, warnings
-in this repository's code are shown and do not stop the build. The cxx
-libraries still stop on a warning until `cxx/CMakeLists.txt` reads the same
-variable, as it sets `CMAKE_COMPILE_WARNING_AS_ERROR` itself. Fix a warning where it comes from, and a
-warning in `cxx/` in the cxx repository. Never turn one off.
+in this repository's code are shown and do not stop the build. The engine
+sets cxx's CMake option `_51DEGREES_WARNINGS_AS_ERRORS` to `ON` or `OFF` from
+the same test before it includes cxx, so the cxx libraries follow the variable
+too. Fix a warning where it comes from, and a warning in `cxx/` in the cxx
+repository. Never turn one off.
 `ci/native-warnings.Tests.ps1` checks this, and fails when a CI script or
 workflow builds without the variable.
 
