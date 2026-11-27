@@ -75,6 +75,13 @@ namespace FiftyOne.Pipeline.Engines.Services
         private static readonly DateTime MissingFileWriteTime =
             DateTime.FromFileTimeUtc(0);
 
+        /// <summary>
+        /// How long after the watcher's last event the write time is read
+        /// once more, for a write that raised no event of its own.
+        /// </summary>
+        private static readonly TimeSpan WatcherRecheckDelay =
+            TimeSpan.FromSeconds(1);
+
 		// All registered configurations
 		private List<AspectEngineDataFile> _configurations;
 
@@ -641,6 +648,9 @@ namespace FiftyOne.Pipeline.Engines.Services
 				{
 					DataFileUpdatedInternal(sender, e, dataFile);
 				}
+				// The same goes for a write that lands just after that
+				// read, so it is read once more a moment later.
+				RecheckLater(sender, e, dataFile);
             }
 #pragma warning disable CA1031 // Do not catch general exception types
 			catch (Exception ex)
@@ -791,6 +801,45 @@ namespace FiftyOne.Pipeline.Engines.Services
             var written = _fileSystem.File.GetLastWriteTimeUtc(path);
             return written > MissingFileWriteTime &&
                 written > dataFile.LastUpdateFileModifiedTime;
+        }
+
+        /// <summary>
+        /// Reads the file's write time again after
+        /// <see cref="WatcherRecheckDelay"/>, and handles a later write as
+        /// the watcher's event would. Handling it schedules the next read,
+        /// so this stops once no later write is found or the file closes.
+        /// </summary>
+        private void RecheckLater(
+            object sender,
+            FileSystemEventArgs e,
+            AspectEngineDataFile dataFile)
+        {
+            if (dataFile == null || dataFile.TimerClosed)
+            {
+                return;
+            }
+            Task.Delay(WatcherRecheckDelay).ContinueWith(
+                t =>
+                {
+#pragma warning disable CA1031 // Do not catch general exception types
+                    try
+                    {
+                        if (WrittenSinceLastUpdate(dataFile, e.FullPath))
+                        {
+                            DataFileUpdated(sender, e);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Nothing waits on this task, so an exception
+                        // that escaped would go unseen.
+                        LogUpdateException(ex, dataFile);
+                    }
+#pragma warning restore CA1031 // Do not catch general exception types
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.Default);
         }
 
 		private void DebugDescribeException(Exception x, bool deep = false)

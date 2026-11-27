@@ -292,6 +292,69 @@ public class DataUpdateServiceFailedRefreshTests
     }
 
     /// <summary>
+    /// A file written just after the service has handled the watcher's event
+    /// is applied, although the watcher raises no event for it. The service
+    /// has read the write time for the last time by then, so only a later
+    /// read finds it.
+    /// </summary>
+    /// <remarks>
+    /// The write time moves as the handler exits, after its last read, and
+    /// the event is raised once by hand.
+    /// </remarks>
+    [TestMethod]
+    public void Watcher_FileWrittenAfterEventHandled_IsAppliedWithoutItsOwnEvent()
+    {
+        var path = Path.Combine(_directory, "data.dat");
+        File.WriteAllText(path, GoodData);
+        var first = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+        var writeTicks = first.Ticks;
+        var fileWrapper = new Mock<IFileWrapper>();
+        fileWrapper.Setup(w => w.GetLastWriteTimeUtc(It.IsAny<string>()))
+            .Returns(() => new DateTime(
+                Interlocked.Read(ref writeTicks), DateTimeKind.Utc));
+        fileWrapper.Setup(w => w.OpenRead(It.IsAny<string>()))
+            .Returns(() => Stream.Null);
+        var fileSystem = new Mock<IFileSystem>();
+        fileSystem.Setup(f => f.File).Returns(fileWrapper.Object);
+        var service = new DataUpdateService(
+            new CapturingLogger(), new HttpClient(), fileSystem.Object, NoTimer);
+        var exits = 0;
+        service.OnDataFileUpdatedWillExit += () =>
+        {
+            if (Interlocked.Increment(ref exits) == 1)
+            {
+                Interlocked.Exchange(
+                    ref writeTicks, first.AddSeconds(2).Ticks);
+            }
+        };
+        var refreshes = 0;
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        engine.Setup(e => e.RefreshData(It.IsAny<string>()))
+            .Callback(() => Interlocked.Increment(ref refreshes));
+        var file = WatchedFile(engine, path);
+        var reports = Collect(service);
+
+        try
+        {
+            service.RegisterDataFile(file);
+
+            Interlocked.Exchange(ref writeTicks, first.AddSeconds(1).Ticks);
+            RaiseChanged(service, file, path);
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
+                "The file the watcher reported was not applied.");
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
+                "The file written after the event was handled was not applied.");
+            Assert.AreEqual(2, Volatile.Read(ref refreshes));
+        }
+        finally
+        {
+            file.Dispose();
+        }
+    }
+
+    /// <summary>
     /// The watcher reports a file that is no longer there, which .NET gives
     /// the write time 1 January 1601. A file that is not there is not newer
     /// than the current one, so the check is reported as not needed at once

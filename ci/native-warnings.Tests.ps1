@@ -160,8 +160,21 @@ Describe 'the <Engine> engine native build' -ForEach $Engines {
         $code = (Get-Code $CMake) -join "`n"
         $own = [regex]::Matches($code, '\bset\(\s*(?<name>_51DEGREES_\w+)') |
             ForEach-Object { $_.Groups['name'].Value } |
-            Where-Object { $_ -notin '_51DEGREES_BUILD_DEVICE_DETECTION', '_51DEGREES_BUILD_IP_INTELLIGENCE' }
+            Where-Object { $_ -notin '_51DEGREES_BUILD_DEVICE_DETECTION',
+                '_51DEGREES_BUILD_IP_INTELLIGENCE', '_51DEGREES_WARNINGS_AS_ERRORS' }
         $own | Should -BeNullOrEmpty
+    }
+
+    # cxx decides whether its own targets' warnings are errors from its
+    # option of the same name, which must agree with the variable.
+    It 'gives cxx the same answer for _51DEGREES_WARNINGS_AS_ERRORS' {
+        $before = (Get-LinesBeforeCxx $CMake) -join "`n"
+        $ungated = Get-Ungated $CMake
+        $gated = Get-Gated $CMake
+        $ungated | Should -MatchExactly 'set\(_51DEGREES_WARNINGS_AS_ERRORS\s+OFF\)'
+        $gated | Should -MatchExactly 'set\(_51DEGREES_WARNINGS_AS_ERRORS\s+ON\)'
+        ([regex]::Matches($before, 'set\(_51DEGREES_WARNINGS_AS_ERRORS\s')).Count |
+            Should -Be 2
     }
 
     # CMake 4.5 and later report each directory-wide directive as an author
@@ -321,5 +334,15 @@ Describe 'the cxx code the native engines build' {
     # preprocessor line in C and SWIG files.
     It 'turns no warning off in <_>' -ForEach $CxxFiles {
         Find-Hiding $_ | Should -BeNullOrEmpty
+    }
+
+    # CMake 4.5 and later report each directory-wide directive as an author
+    # warning, which the configure arguments make an error.
+    It 'uses no directory-wide directive in <_>' -ForEach @(
+        $CxxFiles | Where-Object { $_ -like '*CMakeLists.txt' }) {
+        $code = (Get-Code $_) -join "`n"
+        $code | Should -Not -Match ('(?m)^\s*(add_compile_options|add_link_options|' +
+            'add_definitions|add_compile_definitions|include_directories|' +
+            'link_directories|link_libraries)\s*\(')
     }
 }
