@@ -70,7 +70,7 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb.ClientOnly
             builder.WebHost.UseUrls(Constants.AllUrls);
 
             // Add services to the container.
-            builder.Services.AddRazorPages().AddRazorRuntimeCompilation();
+            builder.Services.AddRazorPages();
 
             var app = builder.Build();
 
