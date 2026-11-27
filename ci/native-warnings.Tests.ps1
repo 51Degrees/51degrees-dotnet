@@ -337,12 +337,66 @@ Describe 'the cxx code the native engines build' {
     }
 
     # CMake 4.5 and later report each directory-wide directive as an author
-    # warning, which the configure arguments make an error.
+    # warning, which the configure arguments make an error. The cxx the
+    # submodule pins has the ones listed below in cxx/CMakeLists.txt. The
+    # engine builds reach the two inside if (NOT MSVC) on Linux and macOS,
+    # and the coverage one in a GCC Debug build. The sanitizer ones need
+    # options the engines never set. The Linux image's CMake does not warn
+    # about any of them, so they are allowed only while the macOS entries
+    # install that older CMake, as ci/install-cmake.ps1 says. Any other
+    # directive fails.
     It 'uses no directory-wide directive in <_>' -ForEach @(
         $CxxFiles | Where-Object { $_ -like '*CMakeLists.txt' }) {
-        $code = (Get-Code $_) -join "`n"
-        $code | Should -Not -Match ('(?m)^\s*(add_compile_options|add_link_options|' +
+        $directive = '^\s*(add_compile_options|add_link_options|' +
             'add_definitions|add_compile_definitions|include_directories|' +
-            'link_directories|link_libraries)\s*\(')
+            'link_directories|link_libraries)\s*\('
+        $known = @(
+            'add_compile_options(-fsanitize=address)'
+            'add_link_options(-fsanitize=address)'
+            'add_compile_options(-fsanitize=thread -fprofile-update=atomic)'
+            'add_link_options(-fsanitize=thread)'
+            'add_compile_options(-fprofile-update=prefer-atomic)'
+            'include_directories(/usr/local/include)'
+            'link_directories(/usr/local/lib)'
+        )
+        $path = $_
+        $found = @(Get-Code $path | Where-Object { $_ -match $directive } |
+            ForEach-Object { $_.Trim() })
+        if ($path -eq 'cxx/CMakeLists.txt') {
+            $found = @($found | Where-Object { $_ -notin $known })
+        }
+        $found | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'the CMake the macOS entries install' {
+    BeforeAll {
+        $Options = Get-Content (Join-Path $Root 'ci/options.json') -Raw |
+            ConvertFrom-Json
+        $Install = Get-Content (Join-Path $Root 'ci/install-cmake.ps1') -Raw
+        $CxxCode = (Get-Code 'cxx/CMakeLists.txt') -join "`n"
+    }
+
+    It 'is set on every macOS entry and on no other' {
+        foreach ($entry in $Options) {
+            if ($entry.Image -like 'macos*') {
+                $entry.CMakeVersion | Should -Not -BeNullOrEmpty -Because $entry.Name
+            } else {
+                $entry.PSObject.Properties.Name | Should -Not -Contain 'CMakeVersion' -Because $entry.Name
+            }
+        }
+    }
+
+    It 'is older than 4.5 and has its SHA-256 recorded' {
+        foreach ($entry in @($Options | Where-Object CMakeVersion)) {
+            [version]$entry.CMakeVersion | Should -BeLessThan ([version]'4.5')
+            $Install | Should -Match ('"' + [regex]::Escape($entry.CMakeVersion) +
+                '"\s*=\s*"[0-9a-f]{64}"')
+        }
+    }
+
+    # When cxx no longer has the two directives, the pin and this test go.
+    It 'is still needed by the directives in cxx/CMakeLists.txt' {
+        $CxxCode | Should -Match '(?m)^\s*include_directories\(/usr/local/include\)'
     }
 }
