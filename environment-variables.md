@@ -102,6 +102,7 @@ These are read or set under the name the tool gives them.
 | `PATH` | The operating system |
 | `ProgramFiles` | Windows |
 | `PSModulePath` | PowerShell |
+| `RUNNER_TEMP` | GitHub Actions |
 | `SE_BROWSER_VERSION` | Selenium |
 | `SE_SKIP_DRIVER_IN_PATH` | Selenium |
 | `windir` | Windows |
