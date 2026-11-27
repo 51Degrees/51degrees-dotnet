@@ -198,7 +198,11 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
                 "Build log: Selenium tests, the cookies were deleted in " +
                 $"{deleting.ElapsedMilliseconds} ms.");
             var previous = Driver.CurrentWindowHandle;
+            var opening = Stopwatch.StartNew();
             Driver.SwitchTo().NewWindow(WindowType.Tab);
+            Console.WriteLine(
+                "Build log: Selenium tests, the new tab opened in " +
+                $"{opening.ElapsedMilliseconds} ms.");
             var fresh = Driver.CurrentWindowHandle;
             Driver.SwitchTo().Window(previous);
             Driver.Close();
@@ -499,7 +503,11 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
             {
                 var service = ChromeDriverService.CreateDefaultService();
                 LogDriver(service);
+                var starting = Stopwatch.StartNew();
                 Driver = new ChromeDriver(service, chromeOptions);
+                Console.WriteLine(
+                    "Build log: Selenium tests, the Chrome session started " +
+                    $"in {starting.ElapsedMilliseconds} ms.");
             }
             catch (WebDriverException exception)
             {

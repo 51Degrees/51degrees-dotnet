@@ -28,13 +28,20 @@ $ErrorActionPreference = "Stop"
 #              in profiles that hold it in memory, and could not allocate
 #              their collections on a 16 GB runner with other tests alongside.
 #
-# Then three lanes alongside each other:
+# Then two lanes alongside each other:
 #
-#   ports      the web example tests, which bind the fixed ports 5001, 5002
-#              and 5151, so only one of them can run at a time.
 #   memory     the IP Intelligence example tests, which also load the
 #              Enterprise file, one at a time.
 #   pool       everything else, one fewer at once than the runner has cores.
+#
+# And last, once both have finished:
+#
+#   ports      the web example tests, which bind the fixed ports 5001, 5002
+#              and 5151, so only one of them can run at a time. They drive
+#              real browsers, which on the 4 core macOS and Windows runners
+#              can take longer than the driver's 60 seconds to open a new tab
+#              while the other lanes load the runner, so they run with the
+#              runner to themselves.
 #
 # A test project's builds for each target framework share a file name, and in
 # a lane they run one after another rather than at the same time, because some
@@ -151,46 +158,52 @@ foreach ($assembly in $exclusive) {
     Write-Result $result "exclusive"
 }
 
-$jobs = @()
-foreach ($lane in $lanes.Keys) {
-    $items = $lanes[$lane]
-    if ($items.Count -eq 0) { continue }
-    $throttle = $lane -eq 'pool' ? $poolSize : 1
-    $groups = @($items | Group-Object { [IO.Path]::GetFileName($_) } |
-        ForEach-Object { , @($_.Group) })
-    $jobs += Start-ThreadJob -Name $lane -ThrottleLimit 3 -ScriptBlock {
-        param($Groups, $Throttle, $RunOne, $Configuration, $ResultPath, $LogPath, $BlameHangTimeout, $TestFilters)
-        $Groups | ForEach-Object -ThrottleLimit $Throttle -Parallel {
-            $run = [scriptblock]::Create($using:RunOne)
-            $filters = $using:TestFilters
-            foreach ($assembly in $_) {
-                & $run $assembly $using:Configuration $using:ResultPath $using:LogPath $using:BlameHangTimeout $filters[$assembly]
+# Starts the lanes named, each as a thread job, and prints each assembly's
+# output as it finishes, until every one of them has ended.
+function Invoke-Lanes([string[]]$Names) {
+    $jobs = @()
+    foreach ($lane in $Names) {
+        $items = $lanes[$lane]
+        if ($items.Count -eq 0) { continue }
+        $throttle = $lane -eq 'pool' ? $poolSize : 1
+        $groups = @($items | Group-Object { [IO.Path]::GetFileName($_) } |
+            ForEach-Object { , @($_.Group) })
+        $jobs += Start-ThreadJob -Name $lane -ThrottleLimit 3 -ScriptBlock {
+            param($Groups, $Throttle, $RunOne, $Configuration, $ResultPath, $LogPath, $BlameHangTimeout, $TestFilters)
+            $Groups | ForEach-Object -ThrottleLimit $Throttle -Parallel {
+                $run = [scriptblock]::Create($using:RunOne)
+                $filters = $using:TestFilters
+                foreach ($assembly in $_) {
+                    & $run $assembly $using:Configuration $using:ResultPath $using:LogPath $using:BlameHangTimeout $filters[$assembly]
+                }
             }
-        }
-    } -ArgumentList $groups, $throttle, $runOne.ToString(), $Configuration, $ResultPath, $LogPath, $BlameHangTimeout, $testFilters
-}
-
-# Print each assembly's output as it finishes.
-while ($jobs.Count -gt 0) {
-    foreach ($job in $jobs) {
-        foreach ($result in @(Receive-Job $job)) {
-            $results += $result
-            Write-Result $result "$($job.Name) lane"
-        }
+        } -ArgumentList $groups, $throttle, $runOne.ToString(), $Configuration, $ResultPath, $LogPath, $BlameHangTimeout, $testFilters
     }
-    if (@($jobs | Where-Object { $_.State -in 'NotStarted', 'Running' }).Count -eq 0) {
+    while ($jobs.Count -gt 0) {
         foreach ($job in $jobs) {
             foreach ($result in @(Receive-Job $job)) {
-                $results += $result
+                $script:results += $result
                 Write-Result $result "$($job.Name) lane"
             }
-            if ($job.State -eq 'Failed') { throw "The $($job.Name) lane failed: $($job.ChildJobs[0].JobStateInfo.Reason)" }
         }
-        break
+        if (@($jobs | Where-Object { $_.State -in 'NotStarted', 'Running' }).Count -eq 0) {
+            foreach ($job in $jobs) {
+                foreach ($result in @(Receive-Job $job)) {
+                    $script:results += $result
+                    Write-Result $result "$($job.Name) lane"
+                }
+                if ($job.State -eq 'Failed') { throw "The $($job.Name) lane failed: $($job.ChildJobs[0].JobStateInfo.Reason)" }
+            }
+            break
+        }
+        Start-Sleep -Seconds 2
     }
-    Start-Sleep -Seconds 2
+    $jobs | Remove-Job
 }
-$jobs | Remove-Job
+
+Invoke-Lanes 'memory', 'pool'
+Write-Host "Starting the ports lane at $([DateTime]::UtcNow.ToString('HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)) UTC, after the other lanes"
+Invoke-Lanes 'ports'
 
 Write-Host "Test assemblies, slowest first:"
 $results | Sort-Object Seconds -Descending | ForEach-Object {

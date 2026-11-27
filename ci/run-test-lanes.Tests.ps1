@@ -6,10 +6,10 @@
 # the script to naming every assembly it is about to run, and each exclusive
 # one again as it starts.
 #
-# The test makes a folder holding empty files named as two test assemblies,
-# one that runs on its own and one that runs in the pool, puts a stand-in for
-# dotnet first on the path that passes and writes nothing, and reads what the
-# script printed.
+# The test makes a folder holding empty files named as three test
+# assemblies, one that runs on its own, one that runs in the pool and one in
+# the ports lane, puts a stand-in for dotnet first on the path that passes and
+# writes nothing, and reads what the script printed.
 
 BeforeAll {
     $script:Script = Join-Path $PSScriptRoot 'run-test-lanes.ps1'
@@ -21,7 +21,8 @@ BeforeAll {
 
     $script:Exclusive = 'FiftyOne.Caching.Tests.dll'
     $script:Pooled = 'FiftyOne.Pipeline.Core.Tests.dll'
-    foreach ($name in $Exclusive, $Pooled) {
+    $script:Ported = 'FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.dll'
+    foreach ($name in $Exclusive, $Pooled, $Ported) {
         New-Item -ItemType File -Path (Join-Path $Bin $name) | Out-Null
     }
 
@@ -69,5 +70,14 @@ Describe 'run-test-lanes.ps1' {
 
     It 'names each exclusive assembly as it starts it, with the time' {
         $Output | Should -Match 'Starting FiftyOne\.Caching\.Tests net8\.0 at \d\d:\d\d:\d\d UTC'
+    }
+
+    It 'starts the ports lane only after the pool lane has finished' {
+        $pool = $Output.IndexOf('FiftyOne.Pipeline.Core.Tests.dll passed')
+        $start = $Output.IndexOf('Starting the ports lane at')
+        $ports = $Output.IndexOf('FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedAPI.Tests.dll passed')
+        $pool | Should -BeGreaterThan -1
+        $start | Should -BeGreaterThan $pool
+        $ports | Should -BeGreaterThan $start
     }
 }
