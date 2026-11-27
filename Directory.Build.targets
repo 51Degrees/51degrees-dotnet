@@ -1,7 +1,7 @@
 <Project>
 
   <!--
-    Turns each FiftyOneReference item into the reference the FiftyOneReferences
+    Turns each FiftyOneReference item into the reference the _51DEGREES_REFERENCES
     property asks for. Directory.Build.props explains the property and the item.
     The item's ProjectPath metadata is the path of the project, relative to the
     project that declares it, and its Version metadata is the published
@@ -14,15 +14,31 @@
     families only define Any CPU, and are asked for that by name, so an x86 or
     x64 solution does not ask them for a configuration they do not have.
   -->
-  <ItemGroup Condition="'$(FiftyOneReferences)' == 'Project'">
+  <ItemGroup Condition="'$(_51DEGREES_REFERENCES)' == 'Project'">
     <_FiftyOneAnyCpuReference Include="@(FiftyOneReference)" Exclude="FiftyOne.DeviceDetection*;FiftyOne.IpIntelligence*" />
     <_FiftyOnePlatformReference Include="@(FiftyOneReference)" Exclude="@(_FiftyOneAnyCpuReference)" />
     <ProjectReference Include="@(_FiftyOnePlatformReference->'%(ProjectPath)')" />
     <ProjectReference Include="@(_FiftyOneAnyCpuReference->'%(ProjectPath)')" SetPlatform="Platform=AnyCPU" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(FiftyOneReferences)' != 'Project'">
+  <ItemGroup Condition="'$(_51DEGREES_REFERENCES)' != 'Project'">
     <PackageReference Include="@(FiftyOneReference)" />
   </ItemGroup>
+
+  <!--
+    A project's TreatWarningsAsErrors applies only when the
+    _51DEGREES_WARNINGS_AS_ERRORS environment variable or property is "true",
+    in any case, as CI sets it. Otherwise, as in a build from source by anyone
+    else, warnings are shown and do not stop the build. This file is read
+    after each project's own settings, so it decides for every project. The
+    value is compared as a string, because an MSBuild condition also takes
+    "yes" and "on" to be "true".
+  -->
+  <PropertyGroup>
+    <_FiftyOneWarningsAsErrors>$(_51DEGREES_WARNINGS_AS_ERRORS.ToLowerInvariant().Equals('true'))</_FiftyOneWarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(_FiftyOneWarningsAsErrors)' != 'True'">
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
 
 </Project>

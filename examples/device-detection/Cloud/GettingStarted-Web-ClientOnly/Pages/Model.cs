@@ -21,6 +21,7 @@
  * ********************************************************************* */
 
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System;
 
 namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb.ClientOnly.Pages
 {
@@ -33,9 +34,10 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb.ClientOnly.P
         public string? ResourceKey { get; private set; }
 
         /// <summary>
-        /// Cloud end point provided by the environment variable with the key 
-        /// <see cref="ExampleUtils.CLOUD_ENDPOINT_ENV_VAR"/>. Will default
-        /// to 
+        /// The cloud's address without the API path or a trailing slash,
+        /// which the pages add /api/v4/ and the key to. It comes from the
+        /// environment variable <see cref="ExampleUtils.CLOUD_ENDPOINT_ENV_VAR"/>,
+        /// or is <see cref="DEFAULT_END_POINT"/> when that is not set.
         /// </summary>
         public string? CloudEndPoint { get; private set; }
 
@@ -45,15 +47,42 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb.ClientOnly.P
         /// </summary>
         private const string DEFAULT_END_POINT = "https://cloud.51degrees.com";
 
+        /// <summary>
+        /// The path the pages put between the cloud's address and the key.
+        /// </summary>
+        private const string API_PATH = "/api/v4";
+
         public Model()
         {
             ResourceKey = ExampleUtils.GetResourceKeyFromEnv();
-            var cloudEndPoint = ExampleUtils.FromEnvironment(
-                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
-                ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
-            CloudEndPoint = cloudEndPoint == null ?
-                DEFAULT_END_POINT :
-                cloudEndPoint;
+            CloudEndPoint = CloudBase(System.Environment.GetEnvironmentVariable(
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR));
+        }
+
+        /// <summary>
+        /// The cloud's address from the value of
+        /// <see cref="ExampleUtils.CLOUD_ENDPOINT_ENV_VAR"/>. The variable
+        /// names the address the cloud request engine calls, which ends
+        /// /api/v4/, so that part is taken off here. Left on, the pages
+        /// asked for /api/v4//api/v4/{key}.js, which the cloud answers with
+        /// a 404, and the page never got its results.
+        /// </summary>
+        /// <param name="value">The variable's value, or null.</param>
+        /// <returns>The address without the API path.</returns>
+        public static string CloudBase(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return DEFAULT_END_POINT;
+            }
+            var endPoint = value.Trim().TrimEnd('/');
+            if (endPoint.EndsWith(API_PATH, StringComparison.OrdinalIgnoreCase))
+            {
+                endPoint = endPoint
+                    .Substring(0, endPoint.Length - API_PATH.Length)
+                    .TrimEnd('/');
+            }
+            return endPoint;
         }
 
         public void OnGet()

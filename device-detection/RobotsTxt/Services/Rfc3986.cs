@@ -26,10 +26,69 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Services;
 
 /// <summary>
 /// Checks text against the URI grammar in RFC 3986 section 3 and
-/// Appendix A. Nothing is normalised or rewritten.
+/// Appendix A, and gives a URI's scheme and host in lower case, as that
+/// RFC asks of a program that writes a URI. Nothing else is rewritten.
 /// </summary>
 internal static class Rfc3986
 {
+    /// <summary>
+    /// The URI with its scheme and host in lower case, as RFC 3986
+    /// sections 3.1 and 3.2.2 ask of a program that writes a URI. A
+    /// percent-encoding in the host keeps upper case hex digits, as
+    /// section 3.2.2 also asks. The user information, port, path, query
+    /// and fragment are kept as given, and text that is not a URI is
+    /// returned unchanged.
+    /// </summary>
+    internal static string LowerCaseSchemeAndHost(string value)
+    {
+        if (!IsUri(value))
+        {
+            return value;
+        }
+        var chars = value.ToCharArray();
+        var colon = SchemeEnd(value);
+        for (var i = 0; i < colon; i++)
+        {
+            chars[i] = ToLower(chars[i]);
+        }
+
+        if (string.CompareOrdinal(value, colon + 1, "//", 0, 2) == 0)
+        {
+            var start = colon + 3;
+            var end = start;
+            while (end < value.Length && "/?#".IndexOf(value[end]) < 0)
+            {
+                end++;
+            }
+            var at = value.IndexOf('@', start, end - start);
+            var hostStart = at < 0 ? start : at + 1;
+            int hostEnd;
+            if (hostStart < end && value[hostStart] == '[')
+            {
+                hostEnd = value.IndexOf(']', hostStart) + 1;
+            }
+            else
+            {
+                var port = value.IndexOf(':', hostStart, end - hostStart);
+                hostEnd = port < 0 ? end : port;
+            }
+            for (var i = hostStart; i < hostEnd; i++)
+            {
+                if (chars[i] == '%')
+                {
+                    chars[i + 1] = ToUpper(chars[i + 1]);
+                    chars[i + 2] = ToUpper(chars[i + 2]);
+                    i += 2;
+                }
+                else
+                {
+                    chars[i] = ToLower(chars[i]);
+                }
+            }
+        }
+        return new string(chars);
+    }
+
     /// <summary>
     /// True if the text matches
     /// <c>scheme ":" hier-part [ "?" query ] [ "#" fragment ]</c>.
@@ -291,6 +350,12 @@ internal static class Rfc3986
 
     private static bool IsAlpha(char c) =>
         (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+
+    private static char ToLower(char c) =>
+        c >= 'A' && c <= 'Z' ? (char)(c + ('a' - 'A')) : c;
+
+    private static char ToUpper(char c) =>
+        c >= 'a' && c <= 'z' ? (char)(c - ('a' - 'A')) : c;
 
     private static bool IsDigit(char c) => c >= '0' && c <= '9';
 

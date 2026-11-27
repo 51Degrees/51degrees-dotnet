@@ -18,9 +18,9 @@ the concepts and design of this API.
 Visual Studio 2019 or later is recommended. Although Visual Studio Code can be used for working with most of the projects.
 
 The core IP intelligence projects are written in C and C++.
-The Pipeline engines are written in C# and target .NET Standard 2.0. Example and test
-projects mostly target .NET 8.0 though in some cases, projects are available
-targeting other frameworks.
+The Pipeline engines are written in C# and target .NET Standard 2.0 and .NET 10.
+The examples target .NET 10, apart from the two `Framework-Web` examples, which
+target .NET Framework 4.6.2. The tests run under .NET 8 and .NET 10.
 
 For the .NET versions we test against, see the
 [tested versions](https://51degrees.com/documentation/_product_summaries__tested_versions.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=dependencies)
@@ -52,7 +52,7 @@ Tests that need a data file locate it in the following order:
 
 You will require [resource keys](https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon)
 to use the Cloud API, as described on our website. Get resource keys from
-our [configurator](https://configure.51degrees.com/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon), see our [documentation](https://51degrees.com/documentation/_services__configurator.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon) on
+our [configuration page](https://51degrees.com/configure/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon), see our [documentation](https://51degrees.com/documentation/_services__configurator.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon) on
 how to use this.
 
 The cloud property tiers changed in May 2026. Of the IP intelligence
@@ -60,13 +60,14 @@ properties the examples display, the free tier includes only Country,
 LocationConfidence, Ip and IpV6, with a paid subscription needed for the
 rest, such as CountryCode, Region, Town, RegisteredName, Latitude and
 Longitude. A resource key selecting only the free tier properties can be
-[created here](https://configure.51degrees.com/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon), whilst
-[this configuration](https://configure.51degrees.com/hYzn3TV3?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon) also includes the paid properties
+[created here](https://51degrees.com/configure/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon), whilst
+[this configuration](https://51degrees.com/configure/hYzn3TV3?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon) also includes the paid properties
 used by the examples. See our [pricing page](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.ipintelligence&utm_term=cloud-coming-soon) to get a paid
 subscription with more properties.
 
-Examples and tests read the resource key from an environment variable called
-"_51DEGREES_RESOURCE_KEY".
+Examples read the resource key from an environment variable called
+"_51DEGREES_RESOURCE_KEY". The tests that call the live cloud read a key that
+carries every property from "_51DEGREES_RESOURCE_KEY_BESPOKE".
 
 ## Solutions and projects
 
@@ -138,15 +139,15 @@ dotnet pack [Project] -o "[PackagesFolder]" /p:PackageVersion=0.0.0 -c [Configur
 and add to the packaging command:
 
 ```text
-/p:BuiltOnCI=true
+/p:_51DEGREES_BUILT_ON_CI=true
 ```
 
 related CI scripts:
 
-- `BuiltOnCI` var:
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-core.ps1]
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-package-nuget.ps1]
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-framework.ps1]
+- `_51DEGREES_BUILT_ON_CI`, which these scripts set:
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-project.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/install-package.ps1]
   - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/run-performance-tests.ps1]
 - Copying native binaries:
   - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]

@@ -85,7 +85,13 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
             public void Run(string deviceDataFile, string ipDataFile, ILoggerFactory loggerFactory, TextWriter output)
             {
                 _needsEnterprise = false;
-                using (var httpClient = new HttpClient())
+                // The client does not follow redirects. The data update
+                // service reads the answer that lists the products the
+                // license key holds, which has a Location header.
+                using (var httpClient = new HttpClient(new HttpClientHandler()
+                {
+                    AllowAutoRedirect = false,
+                }))
                 {
                     var dataUpdateService = new DataUpdateService(loggerFactory.CreateLogger<DataUpdateService>(), httpClient);
                     
@@ -107,14 +113,15 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
                         .Build(ipDataFile, false);
                     _ipEngine = ipEngine;
 
-                    // Create ShareUsage element for telemetry and usage analytics
-                    var shareUsageElement = new ShareUsageBuilder(loggerFactory, httpClient).Build();
-
                     // Create a raw pipeline and add all elements to it
                     // The pipeline runs the elements one after the other, in the
-                    // order they are added
+                    // order they are added.
+                    // Usage sharing is left out of this example, because the
+                    // evidence it processes is made up for the example. In
+                    // normal operation usage sharing should be enabled by
+                    // adding a Usage Sharing Element to the Pipeline, as it
+                    // helps 51Degrees keep the data accurate.
                     using (var pipeline = new PipelineBuilder(loggerFactory)
-                        .AddFlowElement(shareUsageElement)  // Add first for early processing
                         .AddFlowElement(deviceEngine)
                         .AddFlowElement(ipEngine)
                         .Build())
@@ -458,6 +465,16 @@ namespace FiftyOne.IpIntelligence.Examples.Mixed.OnPremise.GettingStartedConsole
 
             // Dispose the logger to ensure any messages get flushed
             loggerFactory.Dispose();
+
+            IpIntelligence.Examples.ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, deviceDetection: true);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-ip-intelligence-onpremise-mixed-gettingstarted-console-program.cs";
     }
 }

@@ -4,8 +4,11 @@ param (
     [string]$Arch = "x64",
     [string]$Configuration = "Release",
     [string]$BuildMethod = "dotnet",
-    [string]$StrongNameKeyBase64,
-    [hashtable]$Keys
+    # False on the Intel macOS entry, as live cloud tests run once per
+    # operating system and the arm64 entry runs them for macOS.
+    [bool]$LiveCloudTests = $true,
+    # Set on the macOS entries only. ci/install-cmake.ps1 says why.
+    [string]$CMakeVersion = ""
 )
 $ErrorActionPreference = "Stop"
 
@@ -17,6 +20,9 @@ if ($BuildMethod -ne "dotnet") {
 }
 if ($IsLinux) {
     ./environments/setup-multilib.ps1
+}
+if ($CMakeVersion) {
+    & "$PSScriptRoot/install-cmake.ps1" -Version $CMakeVersion
 }
 if ($IsWindows) {
     # The example test output paths are long.
@@ -30,30 +36,24 @@ dotnet dev-certs https
 $env:_51DEGREES_DD_PATH = "$RepoPath/cxx/data/device-detection/TAC-HashV41.hash"
 $env:_51DEGREES_IPI_PATH = "$RepoPath/cxx/data/ip-intelligence/51Degrees-EnterpriseIpiV41.ipi"
 
-# The resource keys the cloud tests and examples read. The names that start
-# with _51DEGREES_RESOURCE_KEY are the convention, and the shared
-# set-resource-keys step exports every organisation secret of that shape.
-# The bespoke and Accept-CH test keys keep their own names.
-$env:_51DEGREES_RESOURCE_KEY = $Keys.TestResourceKey
-$env:RESOURCE_KEY_CLOUD_V5_BESPOKE = $Keys.TestResourceKey
-$env:ACCEPTCH_BROWSER_KEY = $Keys.AcceptCHBrowserKey
-$env:ACCEPTCH_HARDWARE_KEY = $Keys.AcceptCHHardwareKey
-$env:ACCEPTCH_PLATFORM_KEY = $Keys.AcceptCHPlatformKey
-$env:ACCEPTCH_NONE_KEY = $Keys.AcceptCHNoneKey
+# The later steps run in this process, so what is set here holds for the whole
+# job. The tests that would fail without a key skip on LIVE_CLOUD_TESTS, and
+# every other live cloud test skips once its key is removed.
+if (-not $LiveCloudTests) {
+    $env:LIVE_CLOUD_TESTS = "false"
+    Write-Host "Live cloud tests are not run here, so LIVE_CLOUD_TESTS is false"
+    foreach ($key in @(Get-ChildItem Env:_51DEGREES_RESOURCE_KEY*)) {
+        Remove-Item "Env:$($key.Name)"
+        Write-Host "Live cloud tests are not run here, so $($key.Name) is removed"
+    }
+}
 
-# The license key the device detection data update example and test use.
-# No IP Intelligence key is set. The device detection key was set here once,
-# and the IP Intelligence update service refuses it, so the update test
-# copied the 6 GB data file and then reported inconclusive on every job.
-$env:DEVICEDETECTIONLICENSEKEY_DOTNET = $Keys.DeviceDetection
+# The keys are not set here. The shared workflow exports each secret under
+# its own _51DEGREES_ name before this script runs, and each test reads the
+# key it needs by that name.
 
 # A chromedriver on PATH is used even when it no longer matches the installed
 # Chrome, and the images ship ones that lag behind. Skipping PATH makes
 # Selenium Manager fetch a matching driver for the browser tests.
 $env:SE_SKIP_DRIVER_IN_PATH = "true"
 $env:SE_BROWSER_VERSION = "stable"
-
-# The strong name key, which the assemblies are signed with on CI.
-if ($StrongNameKeyBase64) {
-    [IO.File]::WriteAllBytes("$RepoPath/51Degrees.snk", [Convert]::FromBase64String($StrongNameKeyBase64))
-}

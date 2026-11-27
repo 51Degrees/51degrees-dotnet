@@ -50,6 +50,7 @@
     {
         "Image": "macos-latest",
         "Name": "Mac_arm64_Release",
+        "CMakeVersion": "3.31.6",
         "Configuration": "Release",
         "Arch": "arm64",
         "BuildMethod": "dotnet",
@@ -58,6 +59,8 @@
     {
         "Image": "macos-15-intel",
         "Name": "Mac_x64_Release",
+        "CMakeVersion": "3.31.6",
+        "LiveCloudTests": false,
         "Configuration": "Release",
         "Arch": "x64",
         "BuildMethod": "dotnet",

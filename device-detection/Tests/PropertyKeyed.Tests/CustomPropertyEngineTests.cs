@@ -71,8 +71,6 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
         [TestMethod]
         [DataRow("IsMobile", "True")]
         [DataRow("IsMobile", "False")]
-        [DataRow("IsMobile", "true")]
-        [DataRow("IsMobile", "false")]
         public void GoodEvidence_ReturnsProfiles(
             string property, string value)
         {
@@ -90,11 +88,14 @@ namespace FiftyOne.DeviceDetection.PropertyKeyed.Tests
 
         /// <summary>
         /// A property value not found in the index should produce no error
-        /// and an empty profile list.
+        /// and an empty profile list. A value in another case than the data
+        /// file holds is not found, because the value is matched exactly.
         /// </summary>
         [TestMethod]
         [DataRow("IsMobile", "Missing")]
         [DataRow("IsMobile", "")]
+        [DataRow("IsMobile", "true")]
+        [DataRow("IsMobile", "false")]
         public void MissingValue_NoError_EmptyProfiles(string property, string value)
         {
             _data.AddEvidence("query." + property, value);

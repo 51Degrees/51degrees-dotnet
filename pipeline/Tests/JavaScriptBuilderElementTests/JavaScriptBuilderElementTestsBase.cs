@@ -67,6 +67,11 @@ namespace FiftyOne.Pipeline.JavaScript.Tests
             chromeOptions.AddArgument("--no-sandbox");
             chromeOptions.AddArgument("--disable-dev-shm-usage");
             chromeOptions.AddArgument("--disable-gpu");
+            // Talk to Chrome over a pipe, not a debugging port. On the port
+            // ChromeDriver connects to Chrome once, and when that connect
+            // fails it gives up with "unable to connect to renderer". The
+            // pipe exists before Chrome starts, so there is no connect.
+            chromeOptions.AddArgument("--remote-debugging-pipe");
 
             var driver = new ChromeDriver(chromeOptions);
             // Bound a stuck navigation so GoToUrl throws quickly instead of

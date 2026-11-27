@@ -25,7 +25,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.FileProviders;
 using FiftyOne.Pipeline.Web.Services;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Core.Configuration;
@@ -80,27 +79,11 @@ namespace FiftyOne.Pipeline.Web
             services.AddOptions<PipelineWebIntegrationOptions>()
                 .Configure(o => BindWebIntegrationOptions(configuration, o));
 
-#if NETCOREAPP2_0 || NETCOREAPP2_1 || NETCOREAPP2_2
-            // Set up a file provider that will allow the client web 
-            // application to find the 51D views embedded in our assembly
-            // when it needs them
-            services.Configure<RazorViewEngineOptions>(o =>
-            {
-                o.FileProviders.Add(new EmbeddedFileProvider(
-                    typeof(FiftyOneJSViewComponent).GetTypeInfo().Assembly,
-                    "FiftyOne.Pipeline.Web"));
-            });
-#else
-            // Set up a file provider that will allow the client web 
-            // application to find the 51D views embedded in our assembly
-            // when it needs them
-            services.AddMvc().AddRazorRuntimeCompilation(o =>
-            {
-                o.FileProviders.Add(new EmbeddedFileProvider(
-                    typeof(FiftyOneJSViewComponent).Assembly, 
-                    "FiftyOne.Pipeline.Web"));
-            });
-#endif
+            // The FiftyOneJS view is compiled into this assembly, so MVC
+            // finds it with the view component and nothing is compiled when
+            // the app runs. MVC is still added here, as apps that use the
+            // package have relied on it to add MVC for them.
+            services.AddMvc();
 
             // Set up our DI mappings
             services.AddSingleton<HttpClient>();
@@ -295,7 +278,9 @@ namespace FiftyOne.Pipeline.Web
                 }
                 else
                 {
-                    options.Elements.Add(newElementOptions);
+                    options.Elements.Insert(
+                        UsageSharingPlace.Before(options.Elements),
+                        newElementOptions);
                 }
             }
 
@@ -313,7 +298,9 @@ namespace FiftyOne.Pipeline.Web
                     javaScriptOptions.BuildParameters["Endpoint"] =
                         options.JsonPath;
                 }
-                options.Elements.Add(javaScriptOptions);
+                options.Elements.Insert(
+                    UsageSharingPlace.Before(options.Elements),
+                    javaScriptOptions);
             }
         }
 
@@ -348,12 +335,14 @@ namespace FiftyOne.Pipeline.Web
                     StringComparison.OrdinalIgnoreCase));
             if (setHeadersConfig.Any() == false)
             {
-                // The set headers element is not included, so add it.
-                // Make sure it's added as the last element.
-                options.Elements.Add(new ElementOptions()
-                {
-                    BuilderName = nameof(SetHeadersElement)
-                });
+                // The set headers element is not included, so add it after
+                // every other element but usage sharing, which is last.
+                options.Elements.Insert(
+                    UsageSharingPlace.Before(options.Elements),
+                    new ElementOptions()
+                    {
+                        BuilderName = nameof(SetHeadersElement)
+                    });
             }
         }
     }

@@ -51,9 +51,15 @@ namespace FiftyOne.DeviceDetection
         /// The factory to use for creating loggers within the pipeline.
         /// </param>
         public DeviceDetectionPipelineBuilder(
-            ILoggerFactory loggerFactory) :
-            this(loggerFactory, new HttpClient())
-        { }
+            ILoggerFactory loggerFactory)
+        {
+            _loggerFactory = loggerFactory;
+            _httpClient = new HttpClient();
+            // The data update service makes its own HTTP client, which
+            // does not follow redirects.
+            _dataUpdateService = new DataUpdateService(
+                _loggerFactory.CreateLogger<DataUpdateService>());
+        }
 
         /// <summary>
         /// Constructor
@@ -102,7 +108,7 @@ namespace FiftyOne.DeviceDetection
         /// </summary>
         /// <param name="resourceKey">
         /// The resource key to use when querying the cloud service. 
-        /// Obtain one from https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection-devicedetectionpipelinebuilder.cs&amp;utm_term=usecloud
+        /// Obtain one from https://51degrees.com/configure?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection-devicedetectionpipelinebuilder.cs&amp;utm_term=usecloud
         /// </param>
         /// <returns>
         /// A builder that can be used to configure and build a pipeline
@@ -120,7 +126,7 @@ namespace FiftyOne.DeviceDetection
         /// </summary>
         /// <param name="resourceKey">
         /// The resource key to use when querying the cloud service. 
-        /// Obtain one from https://configure.51degrees.com?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection-devicedetectionpipelinebuilder.cs&amp;utm_term=usecloud-2
+        /// Obtain one from https://51degrees.com/configure?utm_source=code&amp;utm_medium=comment&amp;utm_campaign=51degrees-dotnet&amp;utm_content=fiftyone.devicedetection-devicedetectionpipelinebuilder.cs&amp;utm_term=usecloud-2
         /// </param>
         /// <param name="endpoint">
         /// The 51Degrees Cloud URL.

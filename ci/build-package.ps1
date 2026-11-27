@@ -1,12 +1,27 @@
 param (
     [Parameter(Mandatory)][string]$RepoName,
     [Parameter(Mandatory)][string]$Version,
-    [Parameter(Mandatory)][hashtable]$Keys,
     [string]$Name = "Release_x64",
     [string]$Configuration = "Release"
 )
 $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
+
+# Every warning is an error in the builds 51Degrees runs. Each CI script
+# that builds sets this until the shared workflows set it in every job.
+$env:_51DEGREES_WARNINGS_AS_ERRORS = "true"
+
+# The job that signs the packages has the signing secrets under these names,
+# and nothing is packed unless every one is set.
+foreach ($name in 'STRONG_NAME_KEY_BASE64',
+    'CODE_SIGNING_KEY_VAULT_URL', 'CODE_SIGNING_KEY_VAULT_CLIENT_ID',
+    'CODE_SIGNING_KEY_VAULT_TENANT_ID',
+    'CODE_SIGNING_KEY_VAULT_CLIENT_SECRET',
+    'CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME') {
+    if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+        throw "$name is not set, so the packages cannot be signed."
+    }
+}
 
 . "$PSScriptRoot/packages.ps1"
 
@@ -14,7 +29,7 @@ $RepoPath = [IO.Path]::Combine($pwd, $RepoName)
 $PackagesFolder = New-Item -ItemType Directory -Force "$pwd/package"
 
 # The strong name key, so the assemblies are fully signed.
-[IO.File]::WriteAllBytes("$RepoPath/51Degrees.snk", [Convert]::FromBase64String($Keys.StrongNameKeyBase64))
+[IO.File]::WriteAllBytes("$RepoPath/51Degrees.snk", [Convert]::FromBase64String($env:STRONG_NAME_KEY_BASE64))
 
 # The native libraries every platform built, which the engine projects pack
 # from <product>/<os>/<arch>/ as runtimes.
@@ -25,55 +40,62 @@ foreach ($built in Get-ChildItem -Path "$pwd/package-files/*" -Recurse -Director
     }
 }
 
-# Only the families the release plan names are packed, each at its next
-# version, which is every family that changed since its last tag and every
-# family depending on one of them. Every family's version is passed so a
-# package depends on the other families at the versions being published, or
-# at the last ones published.
-$versions = Get-FamilyVersions -RepoName $RepoName
+# Only the packages the release plan names are packed, each at its next
+# version, which is every package that changed since its last tag and every
+# package depending on one of them. Every package's version is passed so a
+# package depends on the others at the versions being published, or at the
+# last ones published.
+$versions = Get-PackageVersions -RepoName $RepoName
 $properties = Get-VersionProperties -Versions $versions
 $packArgs = @(
     "--output=$PackagesFolder"
     "--configuration=$Configuration"
-    "-p:FiftyOneReferences=Project"
-    "-p:BuiltOnCI=true"
+    "-p:_51DEGREES_REFERENCES=Project"
+    "-p:_51DEGREES_BUILT_ON_CI=true"
     "-p:ContinuousIntegrationBuild=true"
 ) + $properties
 
 Push-Location $RepoPath
 try {
-    foreach ($family in $Families) {
-        $v = $versions[$family.Name]
-        if (-not $v.Release) {
-            Write-Host "$($family.Name) stays at $($v.Last), so it is not packed"
+    # Each project is packed on its own, as the separate repositories did,
+    # so it builds as Any CPU. Packed through a solution, the engines take the
+    # platform the solution maps them to, which is x64, and an Arm64 or x86
+    # project cannot reference an x64 assembly. The native libraries are
+    # added per platform from package-files.
+    foreach ($name in $versions.Keys) {
+        $v = $versions[$name]
+        if ($v.Package.Nuspec) {
             continue
         }
-        Write-Host "::group::Packing $($family.Name) $($v.Next)"
-        # Each project is packed on its own, as the separate repositories did,
-        # so it builds as Any CPU. Packed through a solution, the engines take
-        # the platform the solution maps them to, which is x64, and an Arm64
-        # or x86 project cannot reference an x64 assembly. The native
-        # libraries are added per platform from package-files.
-        foreach ($project in Get-PackableProjects -Solutions $family.Solutions) {
-            dotnet pack $project @packArgs
+        if (-not $v.Release) {
+            Write-Host "$name stays at $($v.Last), so it is not packed"
+            continue
         }
+        Write-Host "::group::Packing $name $($v.Next)"
+        dotnet pack $v.Package.Project @packArgs
         Write-Host "::endgroup::"
     }
 
     # The nuspec packages. Only on Windows, where the .NET Framework half
-    # builds, with msbuild, which the shared step puts on the path.
-    if ($NuspecPackages) {
+    # builds, with msbuild, which the shared step puts on the path. The
+    # nuspec names each FiftyOne dependency's version by its property.
+    $nuspecs = @($versions.Values | Where-Object { $_.Package.Nuspec })
+    if (@($nuspecs | Where-Object Release).Count -gt 0) {
         Pop-Location
         try { ./environments/setup-msbuild.ps1 } finally { Push-Location $RepoPath }
     }
-    foreach ($package in $NuspecPackages) {
-        $v = $versions[$package.Family]
-        if (-not $v.Release) { continue }
+    $nuspecProperties = @("config=$Configuration") +
+        @($versions.Values | ForEach-Object { "$($_.Property)=$($_.Next)" })
+    foreach ($v in $nuspecs) {
+        $package = $v.Package
+        if (-not $v.Release) {
+            Write-Host "$($package.Name) stays at $($v.Last), so it is not packed"
+            continue
+        }
         Write-Host "::group::Packing $($package.Nuspec) $($v.Next)"
-        dotnet build $package.Core -c $Configuration -p:FiftyOneReferences=Project -p:BuiltOnCI=true @properties
-        msbuild $package.Framework -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=Any CPU" "-p:FiftyOneReferences=Project" "-p:BuiltOnCI=true" @properties
-        $env:Version = $v.Next
-        nuget pack $package.Nuspec -NonInteractive -OutputDirectory $PackagesFolder -Properties config=$Configuration -version $v.Next
+        dotnet build $package.Projects[0] -c $Configuration -p:_51DEGREES_REFERENCES=Project -p:_51DEGREES_BUILT_ON_CI=true @properties
+        msbuild $package.Solution -t:build -restore -verbosity:minimal "-p:Configuration=$Configuration" "-p:Platform=Any CPU" "-p:_51DEGREES_REFERENCES=Project" "-p:_51DEGREES_BUILT_ON_CI=true" @properties
+        nuget pack $package.Nuspec -NonInteractive -OutputDirectory $PackagesFolder -Properties ($nuspecProperties -join ';') -version $v.Next
         Write-Host "::endgroup::"
     }
 } finally {
@@ -83,7 +105,7 @@ try {
 $packages = @(Get-ChildItem "$PackagesFolder/*.nupkg")
 if (-not $packages) {
     # The workflow uploads the folder as an artifact, which must not be empty.
-    Write-Host "No family is released, so there is nothing to publish."
+    Write-Host "No package is released, so there is nothing to publish."
     Set-Content "$PackagesFolder/dummy.txt" "No packages to publish"
     return
 }
@@ -101,11 +123,11 @@ foreach ($package in $packages) {
         --file-digest sha256 `
         --timestamp-digest sha256 `
         --timestamp-rfc3161 http://rfc3161timestamp.globalsign.com/advanced `
-        --azure-key-vault-url $Keys.CodeSigningKeyVaultUrl `
-        --azure-key-vault-client-id $Keys.CodeSigningKeyVaultClientId `
-        --azure-key-vault-tenant-id $Keys.CodeSigningKeyVaultTenantId `
-        --azure-key-vault-client-secret $Keys.CodeSigningKeyVaultClientSecret `
-        --azure-key-vault-certificate $Keys.CodeSigningKeyVaultCertificateName
+        --azure-key-vault-url $env:CODE_SIGNING_KEY_VAULT_URL `
+        --azure-key-vault-client-id $env:CODE_SIGNING_KEY_VAULT_CLIENT_ID `
+        --azure-key-vault-tenant-id $env:CODE_SIGNING_KEY_VAULT_TENANT_ID `
+        --azure-key-vault-client-secret $env:CODE_SIGNING_KEY_VAULT_CLIENT_SECRET `
+        --azure-key-vault-certificate $env:CODE_SIGNING_KEY_VAULT_CERTIFICATE_NAME
 }
 foreach ($package in $packages) {
     dotnet nuget verify $package.FullName

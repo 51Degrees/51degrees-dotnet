@@ -30,7 +30,7 @@ using System.Net.Http;
 using System.Text;
 
 /// <summary>
-/// This example is displayed at the end of the [Configurator](https://configure.51degrees.com/?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-configurator-console-program.cs&amp;utm_term=header)
+/// This example is displayed at the end of the [configuration page](https://51degrees.com/configure/?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-cloud-configurator-console-program.cs&amp;utm_term=header)
 /// process, which is used to create resource keys for use with the 51Degrees cloud service.
 /// 
 /// It shows how to call the cloud with the newly created key and how to access the values 
@@ -119,7 +119,19 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Configurator
             /// service provider setup logic.
             /// </summary>
             /// <param name="options"></param>
-            public static void Run(string resourceKey, TextWriter output)
+            /// <param name="cloudRequestTimeoutSeconds">
+            /// The seconds a request to the cloud service may take, or null
+            /// for the default of 2 seconds. The tests give a longer one.
+            /// </param>
+            /// <param name="httpClient">
+            /// The client that sends requests to the cloud service, or null
+            /// for a new one.
+            /// </param>
+            public static void Run(
+                string resourceKey,
+                TextWriter output,
+                int? cloudRequestTimeoutSeconds = null,
+                HttpClient httpClient = null)
             {
                 // Initialize a service collection which will be used to create the services
                 // required by the Pipeline and manage their lifetimes.
@@ -129,30 +141,37 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Configurator
                     .AddLogging(l => l.AddConsole())
                     // Add an HttpClient instance. This is used for making requests to the
                     // cloud service.
-                    .AddSingleton<HttpClient>()
+                    .AddSingleton(httpClient ?? new HttpClient())
                     .AddTransient<DeviceDetectionPipelineBuilder>()
                     // Add a factory to create the singleton IPipeline instance
                     .AddSingleton((x) =>
-                        x.GetRequiredService<DeviceDetectionPipelineBuilder>()
+                    {
+                        var builder = x.GetRequiredService<DeviceDetectionPipelineBuilder>()
                             .UseCloud(resourceKey)
-                            .SetCloudRequestOrigin("www.51degrees-example.com")
-                            .Build())
+                            .SetCloudRequestOrigin("www.51degrees-example.com");
+                        if (cloudRequestTimeoutSeconds.HasValue)
+                        {
+                            builder.SetCloudRequestTimeOutSeconds(
+                                cloudRequestTimeoutSeconds.Value);
+                        }
+                        return builder.Build();
+                    })
                     .AddTransient<Example>()
                     .BuildServiceProvider())
                 {
                     // If we don't have a resource key then log an error.
                     if (string.IsNullOrWhiteSpace(resourceKey))
                     {
-                        serviceProvider.GetRequiredService<ILogger<Program>>().LogError(
+                        serviceProvider.GetRequiredService<ILogger<Program>>().LogWarning(
                             $"No resource key specified on the command line or the environment " +
                             $"variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees " +
                             $"cloud service is accessed using a 'ResourceKey'. For more " +
                             $"information see " +
                             $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required. " +
                             $"A free resource key can be created at " +
-                            $"https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required and populates the free " +
+                            $"https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required and populates the free " +
                             $"properties. With a paid subscription, a key created at " +
-                            $"https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required includes all the " +
+                            $"https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-configurator-console-program.cs&utm_term=resource-key-required includes all the " +
                             $"properties used by this example. " +
                             $"Once complete, pass the key as a command line argument or " +
                             $"populate the environment variable mentioned at the start of this " +
@@ -175,6 +194,16 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Configurator
                 ExampleUtils.GetResourceKeyFromEnv();
 
             Example.Run(resourceKey, Console.Out);
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-configurator-console-program.cs";
     }
 }

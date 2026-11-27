@@ -4,6 +4,11 @@ Param (
 	[string]$Arch = 'x64'
 )
 
+# A failed cmake step stops the build, so a compiler warning, which is an
+# error, fails it.
+$ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $true
+
 # Work out the OS folder
 if ($IsWindows) {
 	$OS = "windows"
@@ -29,6 +34,9 @@ if ($(Test-Path -Path $BuildPath) -eq $False) {
 
 }
 
+# CMake's own developer and deprecation warnings are errors too.
+$CMakeWarnings = @(& "$PSScriptRoot/../../ci/cmake-warning-args.ps1")
+
 # Change the current directory to the build path
 Push-Location $BuildPath
 
@@ -46,7 +54,7 @@ try {
 		# the fiftyone-ipi-dotnet.vxproj file to ensure it includes /O2 and
 		# other optimisations in Release configuration.
 
-		cmake ../../.. -A $Arch -DRebuildSwig=Off -DBUILD_TESTING=Off -DLargeDataFileSupport:BOOL=ON
+		cmake ../../.. @CMakeWarnings -A $Arch -DRebuildSwig=Off -DBUILD_TESTING=Off
 		cmake --build . -t fiftyone-ipi-dotnet --config $BuildType $Jargs
 		
 	}
@@ -60,7 +68,7 @@ try {
 		if ($Arch -eq "x86") {
 			$Is32 = "on"
 		}
-		cmake ../../.. "-D32bit=$Is32" "-DCMAKE_BUILD_TYPE=$BuildType" -DRebuildSwig=Off -DBUILD_TESTING=Off -DLargeDataFileSupport:BOOL=ON
+		cmake ../../.. @CMakeWarnings "-D_51DEGREES_32BIT=$Is32" "-DCMAKE_BUILD_TYPE=$BuildType" -DRebuildSwig=Off -DBUILD_TESTING=Off
 		cmake --build . -t fiftyone-ipi-dotnet $Jargs
 
 	}

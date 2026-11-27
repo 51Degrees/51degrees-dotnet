@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <Platforms>x64;ARM64</Platforms>
     <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
-    <DocumentationFile>FiftyOne.IpIntelligence.Engine.OnPremise.xml</DocumentationFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     
@@ -26,7 +26,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- GitHub CI -->
-    <BuiltOnCI>false</BuiltOnCI>
+    <_51DEGREES_BUILT_ON_CI>false</_51DEGREES_BUILT_ON_CI>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -144,44 +144,44 @@
 
     <!-- GitHub CI -->
     <!-- Copy the Windows x64 native DLL -->
-    <_PackageFiles Include="..\windows\x64\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)">
+    <_PackageFiles Include="..\windows\x64\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\win-x64\native</PackagePath>
     </_PackageFiles>
     <!-- Copy the Linux x64 native DLL -->
-    <_PackageFiles Include="..\linux\x64\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)">
+    <_PackageFiles Include="..\linux\x64\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\linux-x64\native</PackagePath>
     </_PackageFiles>
     <!-- Copy the Linux arm64 native DLL -->
-    <_PackageFiles Include="..\linux\arm64\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)">
+    <_PackageFiles Include="..\linux\arm64\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\linux-arm64\native</PackagePath>
     </_PackageFiles>
     <!-- Copy the Mac x64 native DLL -->
-    <_PackageFiles Include="..\macos\x64\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)">
+    <_PackageFiles Include="..\macos\x64\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\osx-x64\native</PackagePath>
     </_PackageFiles>
     <!-- Copy the Mac arm64 native DLL -->
-    <_PackageFiles Include="..\macos\arm64\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$(BuiltOnCI)">
+    <_PackageFiles Include="..\macos\arm64\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\osx-arm64\native</PackagePath>
     </_PackageFiles>
 
     <!-- Direct pack, the native DLL built for FiftyOneNativeArch -->
     <!-- Copy the Windows native DLL -->
-    <_PackageFiles Include="$(OutputPath)\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('Windows')) AND !$(BuiltOnCI)">
+    <_PackageFiles Include="$(OutputPath)\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('Windows')) AND !$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\win-$(FiftyOneNativeRidArch)\native</PackagePath>
     </_PackageFiles>
     <!-- Copy the Linux native DLL -->
-    <_PackageFiles Include="$(OutputPath)\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('Linux')) AND !$(BuiltOnCI)">
+    <_PackageFiles Include="$(OutputPath)\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('Linux')) AND !$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\linux-$(FiftyOneNativeRidArch)\native</PackagePath>
     </_PackageFiles>
     <!-- Copy the Mac native DLL -->
-    <_PackageFiles Include="$(OutputPath)\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('OSX')) AND !$(BuiltOnCI)">
+    <_PackageFiles Include="$(OutputPath)\FiftyOne.IpIntelligence.Engine.OnPremise.Native.dll" Condition="$([MSBuild]::IsOsPlatform('OSX')) AND !$(_51DEGREES_BUILT_ON_CI)">
       <BuildAction>None</BuildAction>
       <PackagePath>runtimes\osx-$(FiftyOneNativeRidArch)\native</PackagePath>
     </_PackageFiles>
@@ -193,12 +193,16 @@
     framework, to build it, and MSBuild runs a target once per instance, so
     CMake runs once rather than once per target framework at the same time
     in the same folder. FiftyOneNativeOnly keeps that instance apart from
-    the build that dispatches the target frameworks.
+    the build that dispatches the target frameworks. Platform is set to the
+    native platform, because one solution can build this project both as
+    x64 and as AnyCPU. Both want the same library in the same folder, and
+    with different Platform values they would be two instances running
+    CMake at the same time.
   -->
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <MSBuild Projects="$(MSBuildProjectFullPath)"
              Targets="FiftyOneBuildNative"
-             Properties="FiftyOneNativeOnly=true"
+             Properties="FiftyOneNativeOnly=true;Platform=$(FiftyOneNativeArch)"
              RemoveProperties="TargetFramework;RuntimeIdentifier" />
   </Target>
   <Target Name="FiftyOneBuildNative">

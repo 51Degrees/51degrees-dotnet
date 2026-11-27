@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.IpIntelligence" ProjectPath="..\..\..\ip-intelligence\IpIntelligence\FiftyOne.IpIntelligence.csproj" Version="$(FiftyOneIpIntelligenceVersion)" />
+    <FiftyOneReference Include="FiftyOne.IpIntelligence" ProjectPath="..\..\..\ip-intelligence\IpIntelligence\FiftyOne.IpIntelligence.csproj" Version="$(_51DEGREES_IP_INTELLIGENCE_VERSION)" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 

@@ -94,8 +94,10 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb
         {
             var overrides = new Dictionary<string, string>();
 
-            // Load the configuration file
+            // Load the configuration file from the current directory, which is
+            // where the web host reads it from.
             var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json")
                 .Build();
             // Bind the configuration to a pipeline options instance
@@ -118,9 +120,8 @@ namespace FiftyOne.IpIntelligence.Examples.OnPremise.GettingStartedWeb
             var dataFile = dataFileOverride;
             if (string.IsNullOrWhiteSpace(dataFile))
             {
-                dataFile = Examples.ExampleUtils.FromEnvironment(
-                    Constants.IPI_PATH_ENV_VAR,
-                    Constants.OLD_IP_INTELLIGENCE_DATA_FILE_ENV_VARS);
+                dataFile = Environment.GetEnvironmentVariable(
+                    Constants.IPI_PATH_ENV_VAR);
             }
             if (string.IsNullOrWhiteSpace(dataFile))
             {

@@ -22,6 +22,7 @@
 
 using FiftyOne.Pipeline.Engines.Data;
 using System;
+using System.Collections.Generic;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
 {
@@ -31,6 +32,39 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
     /// </summary>
     public class FiftyOneUrlFormatter : IDataUpdateUrlFormatter
     {
+        /// <summary>
+        /// Constructor for a formatter that names no product. When the
+        /// license keys hold several products, the data update service
+        /// asks for the product of the data file the engine has loaded.
+        /// </summary>
+        public FiftyOneUrlFormatter()
+        {
+        }
+
+        /// <summary>
+        /// Constructor for a formatter that names the product to request.
+        /// Every request then asks for that product, and the product of the
+        /// loaded data file is not used. Use it when the license keys hold
+        /// several products, for an update on start-up, which runs before
+        /// a data file is loaded, or to ask for a product other than the
+        /// one of the loaded data file.
+        /// </summary>
+        /// <param name="product">
+        /// The name the distributor gives the product, which is sent as it
+        /// is given. For example, 'V4TAC' or 'IPIV4Enterprise'. Null or
+        /// empty names no product.
+        /// </param>
+        public FiftyOneUrlFormatter(string product)
+        {
+            Product = string.IsNullOrEmpty(product) ? null : product;
+        }
+
+        /// <summary>
+        /// The name of the product that every request asks for, or null if
+        /// none was given.
+        /// </summary>
+        public string Product { get; }
+
         /// <summary>
         /// Get the URL to call to request an updated version of the 
         /// supplied data file.
@@ -76,12 +110,16 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
             var fiftyOneDataFile = dataFile as IFiftyOneDataFile;
             if (fiftyOneDataFile != null)
             {
-                string[] parameters = new string[]
+                var parameters = new List<string>()
                 {
                 "LicenseKeys=" + String.Join("|", dataFile.Configuration.DataUpdateLicenseKeys),
                 "Download=True",
                 "Type=" + fiftyOneDataFile.DataDownloadType,
                 };
+                if (Product != null)
+                {
+                    parameters.Add("Product=" + Uri.EscapeDataString(Product));
+                }
                 return new Uri($"{dataFile.Configuration.DataUpdateUrl}?{string.Join("&", parameters)}");
             }
             else

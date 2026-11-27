@@ -11,8 +11,7 @@
 
   <ItemGroup>
 	<ProjectReference Include="..\..\ExampleBase\FiftyOne.DeviceDetection.Examples.csproj" />
-	<FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\Web\FiftyOne.Pipeline.Web.csproj" Version="$(FiftyOnePipelineVersion)" />
-	<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.14" />
+	<FiftyOneReference Include="FiftyOne.Pipeline.Web" ProjectPath="..\..\..\..\pipeline\Web\FiftyOne.Pipeline.Web.csproj" Version="$(_51DEGREES_PIPELINE_WEB_VERSION)" />
   </ItemGroup>
   
 </Project>

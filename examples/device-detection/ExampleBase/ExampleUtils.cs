@@ -22,6 +22,8 @@
 
 using FiftyOne.Common;
 using FiftyOne.DeviceDetection.Hash.Engine.OnPremise.FlowElements;
+using FiftyOne.Pipeline.CloudRequestEngine;
+using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
 using Microsoft.Extensions.Logging;
 using System;
@@ -44,30 +46,6 @@ public static class ExampleUtils
     public const string CLOUD_RESOURCE_KEY_ENV_VAR = "_51DEGREES_RESOURCE_KEY";
 
     /// <summary>
-    /// The naming convention for resource key environment variables. The
-    /// organisation's CI exports every secret whose name begins with this
-    /// prefix, so one machine can carry several keys at once, one per
-    /// subscription tier, for example '_51DEGREES_RESOURCE_KEY_FREE' and
-    /// '_51DEGREES_RESOURCE_KEY_PAID'. Any variable matching the prefix
-    /// is accepted when the exact
-    /// <see cref="CLOUD_RESOURCE_KEY_ENV_VAR"/> name is not set.
-    /// </summary>
-    public const string CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX =
-        "_51DEGREES_RESOURCE_KEY";
-
-    /// <summary>
-    /// Names the environment variables a resource key is read from, for
-    /// use in a message telling somebody why an example or a test could
-    /// not run. Naming the variable is the point of such a message,
-    /// because "no resource key" on its own does not say what to set.
-    /// </summary>
-    public static string CLOUD_RESOURCE_KEY_ENV_VAR_DESCRIPTION =>
-        $"'{CLOUD_RESOURCE_KEY_ENV_VAR}', or any variable named " +
-        $"'{CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX}_<tier>' such as " +
-        $"'{CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX}_FREE' or " +
-        $"'{CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX}_PAID'";
-
-    /// <summary>
     /// The default environment variable key used to get the end point URL
     /// to use when running cloud examples. Can be used to override the
     /// appsettings.json configuration for testing custom end points.
@@ -75,101 +53,12 @@ public static class ExampleUtils
     public const string CLOUD_ENDPOINT_ENV_VAR = "_51DEGREES_CLOUD_ENDPOINT";
 
     /// <summary>
-    /// An old environment variable for the end point URL, read only when
-    /// <see cref="CLOUD_ENDPOINT_ENV_VAR"/> is not set.
-    /// </summary>
-    [System.Obsolete("Use CLOUD_ENDPOINT_ENV_VAR, which names the environment " +
-        "variable that replaces this one.")]
-    public const string CLOUD_END_POINT_ENV_VAR = "51D_CLOUD_ENDPOINT";
-
-    /// <summary>
-    /// An old environment variable for the resource key, read only when
-    /// <see cref="CLOUD_RESOURCE_KEY_ENV_VAR"/> is not set.
-    /// </summary>
-    [System.Obsolete("Use CLOUD_RESOURCE_KEY_ENV_VAR, which names the environment " +
-        "variable that replaces this one.")]
-    public const string LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR = "SUPER_RESOURCE_KEY";
-
-#pragma warning disable CS0618 // The old names are listed to be read.
-    /// <summary>
-    /// The old names of
-    /// <see cref="CLOUD_ENDPOINT_ENV_VAR"/>,
-    /// read in this order only when that variable is not set.
-    /// </summary>
-    public static readonly string[] OLD_CLOUD_END_POINT_ENV_VARS = new string[]
-    {
-        CLOUD_END_POINT_ENV_VAR,
-        "FIFTYONE_CLOUD_ENDPOINT",
-    };
-
-    /// <summary>
-    /// The old names of
-    /// <see cref="CLOUD_RESOURCE_KEY_ENV_VAR"/>,
-    /// read in this order only when that variable is not set.
-    /// </summary>
-    public static readonly string[] OLD_CLOUD_RESOURCE_KEY_ENV_VARS = new string[]
-    {
-        LEGACY_CLOUD_RESOURCE_KEY_ENV_VAR,
-    };
-#pragma warning restore CS0618
-
-    private static readonly HashSet<string> _oldNamesReported =
-        new HashSet<string>();
-
-    /// <summary>
-    /// The value of an environment variable. When it is not set, the value
-    /// of the first of its old names that is set, with each old name
-    /// reported once on the error stream as deprecated.
+    /// The value of an environment variable.
     /// </summary>
     /// <param name="name">The variable's name.</param>
-    /// <param name="oldNames">
-    /// The names the variable had before, in the order they are tried.
-    /// </param>
-    /// <returns>
-    /// The value, or what <paramref name="name"/> holds when no old name
-    /// is set either.
-    /// </returns>
-    public static string FromEnvironment(
-        string name,
-        params string[] oldNames)
-    {
-        var value = Environment.GetEnvironmentVariable(name);
-        if (string.IsNullOrWhiteSpace(value) == false)
-        {
-            return value;
-        }
-        foreach (var oldName in oldNames)
-        {
-            var oldValue = Environment.GetEnvironmentVariable(oldName);
-            if (string.IsNullOrWhiteSpace(oldValue) == false)
-            {
-                ReportOldName(oldName, name);
-                return oldValue;
-            }
-        }
-        return value;
-    }
-
-    /// <summary>
-    /// Say once on the error stream that an old environment variable name
-    /// supplied a value, and which name replaces it.
-    /// </summary>
-    /// <param name="oldName">The old name that was read.</param>
-    /// <param name="newName">The name that replaces it.</param>
-    public static void ReportOldName(string oldName, string newName)
-    {
-        lock (_oldNamesReported)
-        {
-            if (_oldNamesReported.Add(oldName) == false)
-            {
-                return;
-            }
-        }
-        Console.Error.WriteLine(
-            $"The environment variable {oldName} is deprecated and " +
-            $"{newName} replaces it. Set {newName} to the same value " +
-            "instead.");
-    }
+    /// <returns>The value, or null when the variable is not set.</returns>
+    public static string FromEnvironment(string name) =>
+        Environment.GetEnvironmentVariable(name);
 
     /// <summary>
     /// Message displayed when a resource key leaves some of the
@@ -177,23 +66,105 @@ public static class ExampleUtils
     /// </summary>
     public const string PRICING_MESSAGE =
         "Some properties used by this example are not available " +
-        "with a free resource key. See https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=pricing_message " +
+        "with a free resource key. See https://51degrees.com/pricing?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-examplebase-exampleutils.cs&utm_term=pricing-message " +
         "to get a paid subscription with more properties.";
+
+    /// <summary>
+    /// True when the exception, or one it wraps, comes from a request to
+    /// the cloud service that failed, including a failure to read which
+    /// properties the resource key includes.
+    /// </summary>
+    public static bool IsCloudFailure(Exception exception)
+    {
+        return Causes(exception).Any(e =>
+            e is CloudRequestException ||
+            e is PropertiesNotYetLoadedException);
+    }
+
+    /// <summary>
+    /// True when the exception is the one
+    /// FiftyOne.Pipeline.CloudRequestEngine 4.5.130 and earlier throw while
+    /// building the pipeline for a resource key that includes none of an
+    /// engine's properties. Later versions give the engine no properties
+    /// instead.
+    /// </summary>
+    /// <param name="exception">The exception the pipeline threw.</param>
+    /// <param name="elementDataKey">The engine's key, as "hardware".</param>
+    public static bool IsProductMissing(
+        Exception exception,
+        string elementDataKey)
+    {
+        return exception.GetType() == typeof(PipelineException) &&
+            exception.Message.StartsWith(
+                $"Failed to load properties for '{elementDataKey}'",
+                StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Reports in one line that a request to the cloud service failed,
+    /// with the service's message and status code and the underlying cause,
+    /// rather than as an unhandled exception and a stack trace. A failure
+    /// to read which properties the resource key includes is a fault in
+    /// the request, not a key without a property, so it is reported as
+    /// one. The caller ends with a non-zero exit code.
+    /// </summary>
+    /// <param name="exception">
+    /// The exception the pipeline threw.
+    /// </param>
+    /// <param name="output">
+    /// Where to write the line.
+    /// </param>
+    public static void ReportCloudFailure(
+        Exception exception,
+        TextWriter output)
+    {
+        var cloud = Causes(exception).OfType<CloudRequestException>()
+            .FirstOrDefault();
+        var failure = (Exception)cloud ?? exception;
+        var status = cloud != null && cloud.HttpStatusCode > 0 ?
+            $" (status code {cloud.HttpStatusCode})" :
+            string.Empty;
+        var root = failure.GetBaseException();
+        var cause = root != failure && root.Message != failure.Message ?
+            $" {root.Message}" :
+            string.Empty;
+        output.WriteLine(
+            "The example stopped because the request to the cloud " +
+            $"service failed. {failure.Message}{status}{cause}");
+    }
+
+    /// <summary>
+    /// The exception and every exception it wraps, including each one an
+    /// <see cref="AggregateException"/> holds.
+    /// </summary>
+    private static IEnumerable<Exception> Causes(Exception exception)
+    {
+        if (exception == null)
+        {
+            yield break;
+        }
+        yield return exception;
+        var inner = exception is AggregateException aggregate ?
+            aggregate.InnerExceptions :
+            (IEnumerable<Exception>)new[] { exception.InnerException };
+        foreach (var cause in inner.SelectMany(Causes))
+        {
+            yield return cause;
+        }
+    }
 
     /// <summary>
     /// Reports that the resource key in use does not carry the
     /// properties an example needs, in plain words rather than as an
     /// unhandled exception and a stack trace.
     /// <para>
-    /// The cloud service refuses at start-up when a key carries none of
-    /// the properties an engine needs, and refuses per property when a
-    /// key carries some but not all of them. Neither is a fault in the
-    /// example, it is a subscription that does not cover what the
-    /// example asks for, so the person running it needs to be told
-    /// which properties are missing and that a paid subscription
-    /// supplies them. The caller decides the exit code, and it must not
-    /// be zero, because an example that could not do its work has not
-    /// succeeded.
+    /// The cloud service refuses per property when a key carries some but
+    /// not all of the properties an example displays. That is not a fault
+    /// in the example but a subscription that does not cover what the
+    /// example asks for, so the person running it needs to be told which
+    /// properties are missing and that a paid subscription supplies them.
+    /// The caller decides the exit code, and it must not be zero, because
+    /// an example that could not do its work has not succeeded.
     /// </para>
     /// </summary>
     /// <param name="exception">
@@ -227,9 +198,8 @@ public static class ExampleUtils
         output.WriteLine(
             "Once subscribed, create a resource key including the " +
             $"properties this example needs at {configureUrl}, then " +
-            "supply it as the first command line argument or in one " +
-            $"of these environment variables: " +
-            $"{CLOUD_RESOURCE_KEY_ENV_VAR_DESCRIPTION}.");
+            "supply it as the first command line argument or in the " +
+            $"environment variable '{CLOUD_RESOURCE_KEY_ENV_VAR}'.");
     }
 
 
@@ -525,30 +495,17 @@ public static class ExampleUtils
 
     /// <summary>
     /// Get an explicit device detection data file path from the
-    /// environment. The variables named in
-    /// <see cref="Constants.DATA_FILE_ENV_VARS"/> are checked in order and
-    /// the first one with a value wins.
+    /// environment, from
+    /// <see cref="Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR"/>.
     /// </summary>
     /// <returns>
-    /// The path from the environment, or null if none of the variables
-    /// is set.
+    /// The path from the environment, or null if the variable is not set.
     /// </returns>
     public static string GetDataFilePathFromEnv()
     {
-        foreach (var name in Constants.DATA_FILE_ENV_VARS)
-        {
-            var path = Environment.GetEnvironmentVariable(name);
-            if (string.IsNullOrWhiteSpace(path) == false)
-            {
-                if (name != Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR)
-                {
-                    ReportOldName(
-                        name, Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR);
-                }
-                return path;
-            }
-        }
-        return null;
+        var path = Environment.GetEnvironmentVariable(
+            Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR);
+        return string.IsNullOrWhiteSpace(path) ? null : path;
     }
 
     /// <summary>
@@ -888,99 +845,22 @@ public static class ExampleUtils
     }
 
     /// <summary>
-    /// Get the resource key from the environment, following the
-    /// organisation's naming convention. The exact
-    /// '_51DEGREES_RESOURCE_KEY' variable is checked first, then any
-    /// variable
-    /// whose name begins with '_51DEGREES_RESOURCE_KEY', which is how
-    /// per tier keys such as '_51DEGREES_RESOURCE_KEY_FREE' and
-    /// '_51DEGREES_RESOURCE_KEY_PAID' reach a build. Tier variables are
-    /// taken in name order so the same machine always picks the same
-    /// one, and <see cref="GetResourceKeyFromEnv(out string)"/> reports
-    /// which variable was used.
+    /// Get the resource key from the '_51DEGREES_RESOURCE_KEY' environment
+    /// variable.
     /// </summary>
     /// <returns>
-    /// The resource key, or null if no matching environment variable is
-    /// set.
+    /// The resource key, or null if the variable is not set.
     /// </returns>
     public static string GetResourceKeyFromEnv()
     {
-        return GetResourceKeyFromEnv(out _);
-    }
-
-    /// <summary>
-    /// Get the resource key from the environment, reporting the name of
-    /// the variable it came from. See
-    /// <see cref="GetResourceKeyFromEnv()"/> for the order the
-    /// variables are tried in.
-    /// </summary>
-    /// <param name="envVarName">
-    /// Set to the name of the environment variable the key was read
-    /// from, or null when no key was found. Callers use the name to
-    /// tell somebody which variable supplied the key, which matters
-    /// when a machine carries more than one tier.
-    /// </param>
-    /// <returns>
-    /// The resource key, or null if no matching environment variable is
-    /// set.
-    /// </returns>
-    public static string GetResourceKeyFromEnv(out string envVarName)
-    {
-        foreach (var name in new string[]
-        {
-            CLOUD_RESOURCE_KEY_ENV_VAR
-        })
-        {
-            var value = Environment.GetEnvironmentVariable(name);
-            if (string.IsNullOrWhiteSpace(value) == false)
-            {
-                envVarName = name;
-                return value;
-            }
-        }
-
-        foreach (var oldName in OLD_CLOUD_RESOURCE_KEY_ENV_VARS)
-        {
-            var value = Environment.GetEnvironmentVariable(oldName);
-            if (string.IsNullOrWhiteSpace(value) == false)
-            {
-                ReportOldName(oldName, CLOUD_RESOURCE_KEY_ENV_VAR);
-                envVarName = oldName;
-                return value;
-            }
-        }
-
-        // Fall back to the tier named variables, for example
-        // _51DEGREES_RESOURCE_KEY_FREE, which common-ci exports from
-        // every organisation secret following the convention. Ordered
-        // by name so the choice is repeatable rather than depending on
-        // the order the process happened to receive its environment.
-        foreach (System.Collections.DictionaryEntry entry in
-            Environment.GetEnvironmentVariables()
-                .Cast<System.Collections.DictionaryEntry>()
-                .OrderBy(e => (string)e.Key, StringComparer.Ordinal))
-        {
-            var name = (string)entry.Key;
-            var value = entry.Value as string;
-            if (name.StartsWith(
-                    CLOUD_RESOURCE_KEY_ENV_VAR_PREFIX,
-                    StringComparison.OrdinalIgnoreCase) &&
-                string.IsNullOrWhiteSpace(value) == false)
-            {
-                envVarName = name;
-                return value;
-            }
-        }
-
-        envVarName = null;
-        return null;
+        var value = Environment.GetEnvironmentVariable(
+            CLOUD_RESOURCE_KEY_ENV_VAR);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     /// <summary>
     /// Get the resource key from the environment and run the action with
-    /// the value, or an empty string if no resource key is set. See
-    /// <see cref="GetResourceKeyFromEnv()"/> for the order the
-    /// variables are tried in.
+    /// the value, or an empty string if no resource key is set.
     /// </summary>
     /// <param name="setValue"></param>
     public static void GetResourceKeyFromEnv(Action<string> setValue)
@@ -1025,5 +905,73 @@ public static class ExampleUtils
             }
         }
         return readable;
+    }
+
+    /// <summary>
+    /// The line that separates the closing section from an example's own
+    /// output.
+    /// </summary>
+    private const string FindOutMoreRule =
+        "==========================================";
+
+    /// <summary>
+    /// A link to a 51degrees.com page, tagged with the example's file so
+    /// that a visit can be traced to the example.
+    /// </summary>
+    /// <param name="page">
+    /// The page's path, without a leading slash.
+    /// </param>
+    /// <param name="content">
+    /// The example's file as a lower case slug.
+    /// </param>
+    public static string FindOutMoreLink(string page, string content)
+    {
+        return "https://51degrees.com/" +
+            page + "?utm_source=code&utm_medium=example" +
+            "&utm_campaign=51degrees-dotnet" +
+            "&utm_content=" + content + "&utm_term=find-out-more";
+    }
+
+    /// <summary>
+    /// Writes the section every example ends with, which says where to
+    /// find out more about what the example showed.
+    /// </summary>
+    /// <param name="output">
+    /// Where to write the section.
+    /// </param>
+    /// <param name="content">
+    /// The example's file as a lower case slug, which tags each link.
+    /// </param>
+    /// <param name="onPremise">
+    /// True for an example that reads a data file, which uses the native
+    /// engine as well.
+    /// </param>
+    public static void WriteFindOutMore(
+        TextWriter output,
+        string content,
+        bool onPremise = true)
+    {
+        const string repository =
+            "    https://github.com/51Degrees/51degrees-dotnet/tree/main/";
+        output.WriteLine();
+        output.WriteLine(FindOutMoreRule);
+        output.WriteLine("Find out more");
+        output.WriteLine("  Device detection:");
+        output.WriteLine("    " + FindOutMoreLink("device-detection", content));
+        output.WriteLine(onPremise ?
+            "  Data files and prices:" :
+            "  Plans and prices:");
+        output.WriteLine("    " + FindOutMoreLink("pricing", content));
+        output.WriteLine("  Talk to 51Degrees about using it:");
+        output.WriteLine("    " + FindOutMoreLink("contact-us", content));
+        output.WriteLine(
+            "  The source code for this example and what it uses:");
+        output.WriteLine(repository + "examples/device-detection");
+        output.WriteLine(repository + "device-detection");
+        if (onPremise)
+        {
+            output.WriteLine("    https://github.com/51Degrees/51degrees-cxx");
+        }
+        output.WriteLine(repository + "pipeline");
     }
 }

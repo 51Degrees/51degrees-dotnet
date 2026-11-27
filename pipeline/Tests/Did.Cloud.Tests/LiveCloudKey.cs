@@ -22,105 +22,50 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace FiftyOne.Did.Cloud.Tests;
 
 /// <summary>
-/// The resource key for the test that calls the live cloud service, and
-/// the message it fails with when there is none. There is no skip,
-/// because a cloud test that passes without calling the cloud has proved
-/// nothing.
+/// The resource key for a test that calls the live cloud service, read from
+/// the one environment variable the test names, and the message it skips
+/// with when that variable is not set. A skipped test names the variable,
+/// and never passes, because a cloud test that passes without calling the
+/// cloud has proved nothing.
 /// </summary>
 internal static class LiveCloudKey
 {
     /// <summary>
-    /// The environment variables the key is read from, in the order tried.
-    /// The 51Did workflow sets the first to each key in turn, so it has to
-    /// come first for every pass to use its own key.
+    /// The key from the variable, or null when it is not set.
     /// </summary>
-    internal static readonly string[] Names =
+    private static string? FromEnvironment(string name)
     {
-        "_51DEGREES_RESOURCE_KEY",
-        "_51DEGREES_RESOURCE_KEY_BESPOKE",
-        "_51DEGREES_RESOURCE_KEY_51DID",
-    };
-
-    /// <summary>
-    /// The old names of the key's variable, read in this order only when
-    /// none of <see cref="Names"/> is set.
-    /// </summary>
-    internal static readonly string[] OldNames =
-    {
-        "51DEGREES_RESOURCE_KEY",
-    };
-
-    private static readonly HashSet<string> _oldNamesReported =
-        new HashSet<string>();
-
-    /// <summary>
-    /// The key from the first of <see cref="Names"/> that is set. When
-    /// none is, the key from the first of <see cref="OldNames"/> that is
-    /// set, with each old name reported once on the error stream as
-    /// deprecated.
-    /// </summary>
-    private static string? FromEnvironment()
-    {
-        var key = Names
-            .Select(n => Environment.GetEnvironmentVariable(n))
-            .FirstOrDefault(v => string.IsNullOrWhiteSpace(v) == false);
-        if (key != null)
-        {
-            return key;
-        }
-        foreach (var oldName in OldNames)
-        {
-            var value = Environment.GetEnvironmentVariable(oldName);
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                continue;
-            }
-            bool first;
-            lock (_oldNamesReported)
-            {
-                first = _oldNamesReported.Add(oldName);
-            }
-            if (first)
-            {
-                Console.Error.WriteLine(
-                    $"The environment variable {oldName} is deprecated " +
-                    $"and {Names[0]} replaces it. Set {Names[0]} to the " +
-                    "same value instead.");
-            }
-            return value;
-        }
-        return null;
+        var value = Environment.GetEnvironmentVariable(name);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     private const string AccessiblePropertiesUrl =
         "https://cloud.51degrees.com/api/v4/accessibleproperties?resource=<key>";
 
     private const string ConfigureUrl =
-        "https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=pipeline-tests-did.cloud.tests-livecloudkey.cs&utm_term=resource-key";
+        "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=pipeline-tests-did.cloud.tests-livecloudkey.cs&utm_term=resource-key";
 
     /// <summary>
-    /// The key, failing the test when none of <see cref="Names"/> is set.
-    /// The test checks the pipeline against whatever the key carries, so
-    /// the message asks for no particular product.
+    /// The key, skipping the test when the variable is not set. The test
+    /// checks the pipeline against whatever the key carries, so the message
+    /// asks for no particular product.
     /// </summary>
+    /// <param name="name">The variable the key is read from.</param>
     /// <param name="asksFor">What the test asks the service for.</param>
-    internal static string Require(string asksFor)
+    internal static string Require(string name, string asksFor)
     {
-        var key = FromEnvironment();
+        var key = FromEnvironment(name);
         if (key == null)
         {
-            Assert.Fail(
+            Assert.Inconclusive(
                 "This test calls the live 51Degrees cloud service, so it " +
                 "needs a resource key and there is nothing to fall back " +
-                $"on. None of {string.Join(", ", Names)} is set, tried in " +
-                "that order. Any key will do, because the test asks the " +
-                $"service for {asksFor}. To see the products a key " +
+                $"on. {name} is not set. Any key will do, because the " +
+                $"test asks the service for {asksFor}. To see the products a key " +
                 $"carries, open {AccessiblePropertiesUrl}. Create a key at " +
                 $"{ConfigureUrl}.");
         }

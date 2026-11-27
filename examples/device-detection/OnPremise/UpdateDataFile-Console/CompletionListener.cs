@@ -34,13 +34,38 @@ namespace FiftyOne.DeviceDetection.Examples.OnPremise.UpdateDataFile
         public DataUpdateCompleteArgs Result { get; private set; }
         public bool Complete { get; private set; }
 
+        /// <summary>
+        /// The result of the update on start-up, or null until it is
+        /// reported. The data update service reports it on the thread that
+        /// builds the pipeline, so a check by the polling timer or the file
+        /// watcher, which runs on another thread, does not replace it.
+        /// </summary>
+        public DataUpdateCompleteArgs StartupResult { get; private set; }
+
+        private int _buildingThread = -1;
+
         public CompletionListener(IDataUpdateService dataUpdateService)
         {
             dataUpdateService.CheckForUpdateComplete += DataUpdateService_CheckForUpdateComplete;
         }
 
+        /// <summary>
+        /// Records the result of the update on start-up. Call it on the
+        /// thread that builds the pipeline, before the pipeline is built.
+        /// </summary>
+        public void WatchStartup()
+        {
+            StartupResult = null;
+            _buildingThread = Environment.CurrentManagedThreadId;
+        }
+
         private void DataUpdateService_CheckForUpdateComplete(object sender, DataUpdateCompleteArgs e)
         {
+            if (StartupResult == null &&
+                Environment.CurrentManagedThreadId == _buildingThread)
+            {
+                StartupResult = e;
+            }
             Result = e;
             Complete = true;
         }

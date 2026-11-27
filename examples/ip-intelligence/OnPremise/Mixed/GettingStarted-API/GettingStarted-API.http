@@ -1,4 +1,4 @@
-@GettingStarted_API_HostAddress = http://localhost:5225
+@GettingStarted_API_HostAddress = http://localhost:5151
 
 ###
 GET {{GettingStarted_API_HostAddress}}/download-ipi-gz

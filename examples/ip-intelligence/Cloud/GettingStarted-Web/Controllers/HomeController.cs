@@ -71,6 +71,9 @@ namespace FiftyOne.IpIntelligence.Examples.Cloud.GettingStartedWeb.Controllers
             if (!string.IsNullOrWhiteSpace(targetIp))
             {
                 // Create new flow data with specified IP address (custom or visitor's)
+                // A Flow Data cannot be used by two threads at once. Work handed to
+                // another thread or task gets the values it needs, read here on the
+                // request's thread, not the Flow Data.
                 using (flowData = _pipeline.CreateFlowData())
                 {
                     flowData.AddEvidence("server.client-ip", targetIp);

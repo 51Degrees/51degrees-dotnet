@@ -57,7 +57,7 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         /// tests to reach the network.
         /// </summary>
         public const string NetworkTestsVariable =
-            "FIFTYONE_AGENT_SIGNATURE_NETWORK_TESTS";
+            "_51DEGREES_RUN_NETWORK_TESTS";
 
         /// <summary>
         /// The origin of the research service that Cloudflare runs, which

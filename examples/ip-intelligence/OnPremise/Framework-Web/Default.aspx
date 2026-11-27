@@ -54,6 +54,9 @@
                 <%
                     // Put the flow data and device data instances into local variables so we don't
                     // have to keep grabbing them.
+                    // A Flow Data cannot be used by two threads at once. Work handed to
+                    // another thread or task gets the values it needs, read here on the
+                    // request's thread, not the Flow Data.
                     var flowData = ((PipelineCapabilities)Request.Browser).FlowData;
                     var deviceData = flowData.Get<IIpIntelligenceData>();
                     // Get the engine that is used to perform IP intelligence.
@@ -66,6 +69,11 @@
                     // differently. Feel free to copy these helpers if they are useful though.
                 %>
                 <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Registered Name:</td><td class="c-eg-table__cell"> <%= deviceData.TryGetValue(d => d.RegisteredName.GetHumanReadable()) %></td></tr>
+                <%-- Only the Enterprise data file has the range and location properties, and
+                    reading a property the data file lacks throws. So each is read only when
+                    the data file has it, and is otherwise shown as needing that file. --%>
+                <tr class="c-eg-table__row"><td class="c-eg-table__cell c-eg-table__cell--key">IP Range Start:</td><td class="c-eg-table__cell"> <%= FiftyOne.IpIntelligence.Examples.OnPremise.ExampleUtils.HasProperty(engine, "IpRangeStart") ? deviceData.TryGetValue(d => d.IpRangeStart.GetHumanReadable()) : FiftyOne.IpIntelligence.Examples.OnPremise.ExampleUtils.NEEDS_ENTERPRISE %></td></tr>
+                <tr class="c-eg-table__row c-eg-table__row--alt"><td class="c-eg-table__cell c-eg-table__cell--key">Country:</td><td class="c-eg-table__cell"> <%= FiftyOne.IpIntelligence.Examples.OnPremise.ExampleUtils.HasProperty(engine, "Country") ? deviceData.TryGetValue(d => d.Country.GetHumanReadable()) : FiftyOne.IpIntelligence.Examples.OnPremise.ExampleUtils.NEEDS_ENTERPRISE %></td></tr>
                 </tbody>
             </table>
 
@@ -117,12 +125,31 @@
             </div>
         </div>
 
-        <% if (engine.DataSourceTier == "Lite") { %>
+        <%-- Every IP Intelligence data file reports the same tier, so a free file is
+            known by the properties it lacks. --%>
+        <% if (FiftyOne.IpIntelligence.Examples.OnPremise.ExampleUtils.IsFreeDataFile(engine)) { %>
             <div class="c-eg-message">
               <p class="c-eg-message__text">Need more on-premise properties and features? <a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx&amp;utm_term=on-premise-properties">Contact us</a> to explore the options.</p>
               <a class="b-btn c-eg-message__cta" href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx&amp;utm_term=on-premise-properties">Contact us</a>
             </div>
         <% } %>
+
+        <div class="c-eg-section" id="find-out-more">
+            <hr />
+            <h3 class="c-eg-page__heading">Find out more</h3>
+            <ul>
+                <li><a href="https://51degrees.com/ip-intelligence?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx&amp;utm_term=find-out-more">IP intelligence</a></li>
+                <li><a href="https://51degrees.com/pricing?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx&amp;utm_term=find-out-more">Data files and prices</a></li>
+                <li><a href="https://51degrees.com/contact-us?utm_source=code&amp;utm_medium=example&amp;utm_campaign=51degrees-dotnet&amp;utm_content=examples-onpremise-framework-web-default.aspx&amp;utm_term=find-out-more">Talk to 51Degrees about using it</a></li>
+            </ul>
+            <p class="c-eg-page__lead">The source code for this demo and what it uses.</p>
+            <ul>
+                <li><a href="https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/ip-intelligence">https://github.com/51Degrees/51degrees-dotnet/tree/main/examples/ip-intelligence</a></li>
+                <li><a href="https://github.com/51Degrees/51degrees-dotnet/tree/main/ip-intelligence">https://github.com/51Degrees/51degrees-dotnet/tree/main/ip-intelligence</a></li>
+                <li><a href="https://github.com/51Degrees/51degrees-cxx">https://github.com/51Degrees/51degrees-cxx</a></li>
+                <li><a href="https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline">https://github.com/51Degrees/51degrees-dotnet/tree/main/pipeline</a></li>
+            </ul>
+        </div>
     </div>
 
 </body>

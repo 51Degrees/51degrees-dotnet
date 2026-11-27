@@ -41,14 +41,14 @@ namespace FiftyOne.Did.Tests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The resource key is found by <see cref="LiveCloudKey"/>, which fails
-    /// the tests when none is set, and has to carry the FODid product.
-    /// <c>_51DEGREES_LICENSE_KEY_51DID</c>, then
-    /// <c>_51DEGREES_LICENSE_KEY</c> (or <c>LICENSE_KEY</c>), is read for
-    /// the license key and is optional. When one is set it must belong to
+    /// The resource key is read from <c>_51DEGREES_RESOURCE_KEY_51DID</c>
+    /// by <see cref="LiveCloudKey"/>, which skips the tests when it is not
+    /// set, and has to carry the FODid product.
+    /// <c>_51DEGREES_LICENSE_KEY_51DID</c> alone is read for the license
+    /// key and is optional. When one is set it must belong to
     /// the resource key's account and carry the 51Did product, because a
     /// sealed result must then read back as a verdict.
-    /// <c>FOD_CLOUD_API_URL</c> points every call at another host.
+    /// <c>_51DEGREES_CLOUD_ENDPOINT</c> points every call at another host.
     /// </para>
     /// <para>
     /// These are integration tests that use the live cloud service, so
@@ -74,30 +74,12 @@ namespace FiftyOne.Did.Tests
             Timeout = TimeSpan.FromSeconds(30),
         };
 
+        /// <summary>
+        /// The 51Did licence. The data licence, _51DEGREES_LICENSE_KEY, is
+        /// not read, because it is for data file downloads.
+        /// </summary>
         private static string? LicenceKey() =>
-            FirstSet(
-                "_51DEGREES_LICENSE_KEY_51DID",
-                "_51DEGREES_LICENSE_KEY")
-            ?? OldLicenceKey();
-
-        // True once the old licence key name has been reported.
-        private static bool _oldNameReported;
-
-        // The licence key from its old name, read only when no new name
-        // is set, and reported once on the error stream as deprecated.
-        private static string? OldLicenceKey()
-        {
-            var key = FirstSet("LICENSE_KEY");
-            if (key != null && _oldNameReported == false)
-            {
-                _oldNameReported = true;
-                Console.Error.WriteLine(
-                    "The environment variable LICENSE_KEY is deprecated " +
-                    "and _51DEGREES_LICENSE_KEY replaces it. Set " +
-                    "_51DEGREES_LICENSE_KEY to the same value instead.");
-            }
-            return key;
-        }
+            FirstSet("_51DEGREES_LICENSE_KEY_51DID");
 
         private static string? FirstSet(params string[] names)
         {
@@ -113,12 +95,13 @@ namespace FiftyOne.Did.Tests
         }
 
         /// <summary>
-        /// A client for the key in the environment, failing the test when
+        /// A client for the key in the environment, skipping the test when
         /// there is none.
         /// </summary>
         private static DidClient Client() =>
             new DidClient(
                 LiveCloudKey.Require(
+                    LiveCloudKey.DidName,
                     "FODid",
                     "a non-marketing 51Did, which they verify and redeem"),
                 LicenceKey());

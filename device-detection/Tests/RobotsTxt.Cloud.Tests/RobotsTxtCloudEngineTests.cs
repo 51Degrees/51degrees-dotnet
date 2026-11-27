@@ -47,7 +47,6 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Cloud.Tests
     public class RobotsTxtCloudEngineTests
     {
         private ILoggerFactory _lf;
-        private const string _resource_key_env_variable = "_51DEGREES_RESOURCE_KEY";
 
         [TestInitialize]
         public void Init()
@@ -93,6 +92,23 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Cloud.Tests
                     """)
                 });
 
+            // Mock the evidence keys endpoint, which the Pipeline asks
+            // for when it is built.
+            handlerMock
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(req =>
+                        req.RequestUri.ToString().Contains("evidencekeys")),
+                    ItExpr.IsAny<CancellationToken>()
+                )
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent(
+                        "[\"query.robotstxt.analytics\"]")
+                });
+
             // Mock the data endpoint
             handlerMock
                 .Protected()
@@ -100,7 +116,9 @@ namespace FiftyOne.DeviceDetection.RobotsTxt.Cloud.Tests
                     "SendAsync",
                     ItExpr.Is<HttpRequestMessage>(
                         i => !i.RequestUri.ToString()
-                            .Contains("accessibleproperties")),
+                            .Contains("accessibleproperties") &&
+                            !i.RequestUri.ToString()
+                            .Contains("evidencekeys")),
                     ItExpr.IsAny<CancellationToken>()
                 )
                 .ReturnsAsync(new HttpResponseMessage

@@ -44,14 +44,29 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Web
         public static IEnumerable<object[]> AllUrlsData => Parameters.AllUrlsData;
 
         /// <summary>
+        /// Skips the test when its factory says it does not run here, as a
+        /// cloud example's factory does on a build entry that leaves out the
+        /// live cloud tests.
+        /// </summary>
+        protected void SkipIfNotRunHere()
+        {
+            if (Factory is CloudExampleFactory<T> cloud)
+            {
+                Skip.If(cloud.NotRunHere != null, cloud.NotRunHere);
+            }
+        }
+
+        /// <summary>
         /// Test that the running server is able to run and returns code 200 
         /// upon http(s) request.
         /// </summary>
         /// <returns></returns>
-        [Theory]
+        [SkippableTheory]
         [MemberData(nameof(AllUrlsData))]
         public async Task VerifyExample_Returns_Status_Code_200(string url)
         {
+            SkipIfNotRunHere();
+
             // Setup
             using (var http = Factory.CreateClient())
             using (var request = new HttpRequestMessage

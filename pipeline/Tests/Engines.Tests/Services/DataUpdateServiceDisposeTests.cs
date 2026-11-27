@@ -1,0 +1,622 @@
+/* *********************************************************************
+ * This Original Work is copyright of 51 Degrees Mobile Experts Limited.
+ * Copyright 2026 51 Degrees Mobile Experts Limited, Davidson House,
+ * Forbury Square, Reading, Berkshire, United Kingdom RG1 3EU.
+ *
+ * This Original Work is licensed under the European Union Public Licence
+ * (EUPL) v.1.2 and is subject to its terms as set out below.
+ *
+ * If a copy of the EUPL was not distributed with this file, You can obtain
+ * one at https://opensource.org/licenses/EUPL-1.2.
+ *
+ * The 'Compatible Licences' set out in the Appendix to the EUPL (as may be
+ * amended by the European Commission) shall be deemed incompatible for
+ * the purposes of the Work and the provisions of the compatibility
+ * clause in Article 5 of the EUPL shall not apply.
+ *
+ * If using the Work as, or as part of, a network application, by
+ * including the attribution notice(s) required under Article 5 of the EUPL
+ * in the end user terms of the application under an appropriate heading,
+ * such notice(s) shall fulfill the requirements of that article.
+ * ********************************************************************* */
+
+using FiftyOne.Common.Wrappers.IO;
+using FiftyOne.Pipeline.Engines.Configuration;
+using FiftyOne.Pipeline.Engines.Data;
+using FiftyOne.Pipeline.Engines.Exceptions;
+using FiftyOne.Pipeline.Engines.FlowElements;
+using FiftyOne.Pipeline.Engines.Services;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
+using System;
+using System.Collections.Concurrent;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace FiftyOne.Pipeline.Engines.Tests.Services;
+
+/// <summary>
+/// A data file disposed while the file system watcher is applying a change
+/// to it. An engine frees its native data once its data files are
+/// disposed, so the service must not refresh the engine after that, and
+/// dispose must wait for a refresh in progress.
+/// </summary>
+/// <remarks>
+/// On macOS every file system watcher in a process raises its events from
+/// one thread, which these tests hold for a time, so they do not run
+/// alongside other tests.
+/// </remarks>
+[TestClass]
+[DoNotParallelize]
+public class DataUpdateServiceDisposeTests
+{
+    // Every content has the same length, so it can be written in place.
+    private const string OldData = "data 0";
+    private const string NewData = "data 1";
+
+    private const int WaitMilliseconds = 30000;
+
+    // How long dispose is given to return while a refresh is held, which
+    // it must not do.
+    private const int EarlyReturnMilliseconds = 1000;
+
+    // Longer than the steps file write times move in.
+    private const int WriteTimeStepMilliseconds = 50;
+
+    private string _directory;
+    private string _path;
+    private DataUpdateService _service;
+    private Mock<IOnPremiseAspectEngine> _engine;
+    private AspectEngineDataFile _file;
+    private int _refreshes;
+    private int _entered;
+    private int _exited;
+    private ConcurrentQueue<DataUpdateCompleteArgs> _reports;
+    private CountingHandler _http;
+    private ErrorRecordingLogger _logger;
+
+    [TestInitialize]
+    public void Init()
+    {
+        _directory = Directory.CreateDirectory(Path.Combine(
+            Path.GetTempPath(),
+            Path.GetRandomFileName())).FullName;
+        _path = Path.Combine(_directory, "data.dat");
+        File.WriteAllText(_path, OldData);
+        _http = new CountingHandler();
+        _logger = new ErrorRecordingLogger();
+        _service = new DataUpdateService(
+            _logger,
+            new HttpClient(_http),
+            new RealFileSystem(),
+            (callback, state, dueTime) => null);
+        _service.OnDataFileUpdatedEntered += () =>
+            Interlocked.Increment(ref _entered);
+        _service.OnDataFileUpdatedWillExit += () =>
+            Interlocked.Increment(ref _exited);
+        _reports = new ConcurrentQueue<DataUpdateCompleteArgs>();
+        _service.CheckForUpdateComplete += (sender, e) =>
+            _reports.Enqueue(e);
+        _engine = new Mock<IOnPremiseAspectEngine>();
+        _file = new AspectEngineDataFile()
+        {
+            Engine = _engine.Object,
+            Configuration = new DataFileConfiguration()
+            {
+                FileSystemWatcherEnabled = true,
+                DataFilePath = _path,
+                DataUpdateUrl = "https://update.invalid/data",
+            },
+            TempDataDirPath = _directory,
+        };
+        _engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>()))
+            .Returns(_file);
+    }
+
+    [TestCleanup]
+    public void Cleanup()
+    {
+        _file.Dispose();
+        try
+        {
+            Directory.Delete(_directory, true);
+        }
+        catch (IOException)
+        {
+            // A watcher thread can still hold a file for a moment.
+        }
+    }
+
+    /// <summary>
+    /// The file is disposed after the watcher has seen the change and
+    /// before the refresh. The engine is not refreshed.
+    /// </summary>
+    [TestMethod]
+    public void Watcher_DisposedBeforeRefresh_DoesNotRefresh()
+    {
+        CountRefreshes(() => { });
+        var started = new ManualResetEventSlim();
+        var disposed = new ManualResetEventSlim();
+        // The watcher's thread waits here until the file is disposed.
+        _service.CheckForUpdateStarted += (sender, e) =>
+        {
+            started.Set();
+            disposed.Wait(WaitMilliseconds);
+        };
+        _service.RegisterDataFile(_file);
+
+        Replace(_path, NewData);
+        Assert.IsTrue(
+            started.Wait(WaitMilliseconds),
+            "The watcher did not see the change.");
+        _file.Dispose();
+        disposed.Set();
+
+        AssertNotRefreshed();
+    }
+
+    /// <summary>
+    /// The file is disposed while the engine refreshes. Dispose returns
+    /// only once the refresh has ended.
+    /// </summary>
+    [TestMethod]
+    public void Watcher_DisposedDuringRefresh_WaitsForRefresh()
+    {
+        var refreshing = new ManualResetEventSlim();
+        var release = new ManualResetEventSlim();
+        var ended = new ManualResetEventSlim();
+        CountRefreshes(() =>
+        {
+            refreshing.Set();
+            release.Wait(WaitMilliseconds);
+            ended.Set();
+        });
+        _service.RegisterDataFile(_file);
+
+        Replace(_path, NewData);
+        Assert.IsTrue(
+            refreshing.Wait(WaitMilliseconds),
+            "The watcher did not start a refresh.");
+        var dispose = Task.Run(() => _file.Dispose());
+        var returnedEarly = dispose.Wait(EarlyReturnMilliseconds);
+        release.Set();
+
+        Assert.IsFalse(
+            returnedEarly,
+            "Dispose returned while the engine was refreshing.");
+        Assert.IsTrue(
+            dispose.Wait(WaitMilliseconds),
+            "Dispose did not return once the refresh ended.");
+        Assert.IsTrue(ended.IsSet);
+        Assert.AreEqual(1, _refreshes);
+    }
+
+    /// <summary>
+    /// The file is disposed while the watcher waits for the changed file
+    /// to be free to read. Dispose stops that wait rather than being held
+    /// by it, and the engine is not refreshed.
+    /// </summary>
+    [TestMethod]
+    public void Watcher_DisposedWhileFileHeld_StopsWaitingAndDoesNotRefresh()
+    {
+        CountRefreshes(() => { });
+        var started = new ManualResetEventSlim();
+        var first = 0;
+        FileStream hold = null;
+        // The first event opens the file so that no one else can, before
+        // the service tries to. Any other event waits until it has.
+        _service.CheckForUpdateStarted += (sender, e) =>
+        {
+            if (Interlocked.Exchange(ref first, 1) == 0)
+            {
+                hold = OpenAlone(_path);
+                started.Set();
+            }
+            started.Wait(WaitMilliseconds);
+        };
+        _service.RegisterDataFile(_file);
+
+        try
+        {
+            Replace(_path, NewData);
+            Assert.IsTrue(
+                started.Wait(WaitMilliseconds),
+                "The watcher did not see the change.");
+            Assert.IsNotNull(hold, "The changed file could not be held.");
+            Assert.IsTrue(
+                Task.Run(() => _file.Dispose()).Wait(WaitMilliseconds),
+                "Dispose waited for a file that cannot be read.");
+        }
+        finally
+        {
+            hold?.Dispose();
+        }
+
+        AssertNotRefreshed();
+    }
+
+    /// <summary>
+    /// The engine's refresh fails while the file is disposed. Dispose waits
+    /// for the refresh, and the failure is reported rather than lost when
+    /// the next try finds the file closed.
+    /// </summary>
+    [TestMethod]
+    public void Watcher_RefreshFailsDuringDispose_ReportsTheFailure()
+    {
+        var refreshing = new ManualResetEventSlim();
+        var failure = new InvalidOperationException("The refresh failed.");
+        CountRefreshes(() =>
+        {
+            refreshing.Set();
+            // Fails once dispose has closed the file.
+            SpinWait.SpinUntil(() => _file.TimerClosed, WaitMilliseconds);
+            throw failure;
+        });
+        _service.RegisterDataFile(_file);
+
+        Replace(_path, NewData);
+        Assert.IsTrue(
+            refreshing.Wait(WaitMilliseconds),
+            "The watcher did not start a refresh.");
+        Assert.IsTrue(
+            Task.Run(() => _file.Dispose()).Wait(WaitMilliseconds),
+            "Dispose did not return once the refresh ended.");
+        WaitForWatcher();
+
+        var reports = ReportsForFile();
+        CollectionAssert.Contains(
+            reports,
+            AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED,
+            "Reported " + string.Join(", ", reports) + ".");
+        Assert.IsTrue(
+            _logger.Errors.Any(e =>
+                ReferenceEquals(e?.InnerException, failure)),
+            "The failure was not logged with its cause.");
+        Assert.AreEqual(1, _refreshes);
+    }
+
+    /// <summary>
+    /// The file is disposed during a try at refreshing the engine that then
+    /// fails, so the next try finds the file closed. A programmatic check
+    /// throws the failure and reports it.
+    /// </summary>
+    [TestMethod]
+    public void CheckForUpdate_DisposedDuringFailedTry_ThrowsTheFailure()
+    {
+        var failure = new InvalidOperationException("The refresh failed.");
+        CountRefreshes(() =>
+        {
+            _file.Dispose();
+            throw failure;
+        });
+        var configuration = (DataFileConfiguration)_file.Configuration;
+        configuration.VerifyMd5 = false;
+        configuration.DecompressContent = false;
+        _http.Respond = () => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(Encoding.ASCII.GetBytes(NewData)),
+        };
+
+        var thrown = Assert.ThrowsExactly<DataUpdateException>(() =>
+            _service.CheckForUpdate(_engine.Object));
+
+        Assert.AreEqual(
+            AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED,
+            thrown.Status);
+        Assert.AreSame(failure, thrown.InnerException);
+        CollectionAssert.Contains(
+            ReportsForFile(),
+            AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED);
+        Assert.AreEqual(1, _refreshes);
+    }
+
+    /// <summary>
+    /// An update from memory for a disposed file fails, and neither writes
+    /// the data file nor refreshes the engine.
+    /// </summary>
+    [TestMethod]
+    public void UpdateFromMemory_Disposed_ThrowsAndChangesNothing()
+    {
+        CountRefreshes(() => { });
+        _file.Dispose();
+        using var data = new MemoryStream();
+        data.Write(Encoding.ASCII.GetBytes(NewData));
+
+        Assert.ThrowsExactly<ObjectDisposedException>(() =>
+            _service.UpdateFromMemory(_file, data));
+        Assert.AreEqual(OldData, File.ReadAllText(_path));
+        _engine.Verify(
+            e => e.RefreshData(It.IsAny<string>(), It.IsAny<Stream>()),
+            Times.Never());
+    }
+
+    /// <summary>
+    /// A check for an update to a disposed file reports not needed without
+    /// asking the update URL for a new file.
+    /// </summary>
+    [TestMethod]
+    public void CheckForUpdate_Disposed_DoesNotDownload()
+    {
+        CountRefreshes(() => { });
+        _file.Dispose();
+
+        var status = _service.CheckForUpdate(_engine.Object);
+
+        Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, status);
+        Assert.AreEqual(0, _http.Requests);
+        Assert.AreEqual(0, _refreshes);
+    }
+
+    /// <summary>
+    /// The file is disposed while a check downloads a new data file. The
+    /// download is not copied over the data file, the disposed watcher is
+    /// left alone, and the check reports not needed.
+    /// </summary>
+    [TestMethod]
+    public void CheckForUpdate_DisposedDuringDownload_DoesNotApplyIt()
+    {
+        CountRefreshes(() => { });
+        var configuration = (DataFileConfiguration)_file.Configuration;
+        configuration.UpdateOnStartup = false;
+        configuration.VerifyMd5 = false;
+        configuration.DecompressContent = false;
+        _service.RegisterDataFile(_file);
+        _http.Respond = () =>
+        {
+            _file.Dispose();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(
+                    Encoding.ASCII.GetBytes(NewData)),
+            };
+        };
+
+        var status = _service.CheckForUpdate(_engine.Object);
+
+        Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, status);
+        Assert.AreEqual(1, _http.Requests);
+        Assert.AreEqual(OldData, File.ReadAllText(_path));
+        Assert.AreEqual(0, _refreshes);
+    }
+
+    /// <summary>
+    /// The file is disposed while a check copies a downloaded data file over
+    /// it. The copy still writes the data file, the disposed watcher is not
+    /// enabled again, the engine is not refreshed, and the check reports not
+    /// needed.
+    /// </summary>
+    [TestMethod]
+    public void CheckForUpdate_DisposedDuringCopy_LeavesWatcherAlone()
+    {
+        CountRefreshes(() => { });
+        var configuration = (DataFileConfiguration)_file.Configuration;
+        configuration.UpdateOnStartup = false;
+        configuration.VerifyMd5 = false;
+        configuration.DecompressContent = false;
+        var service = new DataUpdateService(
+            NullLogger<DataUpdateService>.Instance,
+            new HttpClient(_http),
+            new CopyHookFileSystem(() => _file.Dispose()),
+            (callback, state, dueTime) => null);
+        service.RegisterDataFile(_file);
+        _http.Respond = () => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(Encoding.ASCII.GetBytes(NewData)),
+        };
+
+        var status = service.CheckForUpdate(_engine.Object);
+
+        Assert.AreEqual(AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED, status);
+        Assert.AreEqual(1, _http.Requests);
+        // The dispose came during the copy, which still wrote the file.
+        Assert.AreEqual(NewData, File.ReadAllText(_path));
+        Assert.AreEqual(0, _refreshes);
+    }
+
+    private void CountRefreshes(Action refresh)
+    {
+        _engine.Setup(e => e.RefreshData(It.IsAny<string>()))
+            .Callback(() =>
+            {
+                Interlocked.Increment(ref _refreshes);
+                refresh();
+            });
+    }
+
+    // Waits for every watcher event that started to end, then checks none
+    // refreshed the engine. An event raised once the file is unregistered
+    // belongs to no data file and reports in progress, so only the reports
+    // for this file are checked.
+    private void AssertNotRefreshed()
+    {
+        WaitForWatcher();
+        Assert.AreEqual(
+            0,
+            _refreshes,
+            "The engine was refreshed after its data file was disposed.");
+        var reports = ReportsForFile();
+        Assert.IsTrue(reports.Length > 0, "Nothing was reported.");
+        Assert.IsTrue(
+            reports.All(r => r == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED),
+            "Reported " + string.Join(", ", reports) + ".");
+    }
+
+    // Waits for every watcher event that started to end.
+    private void WaitForWatcher()
+    {
+        Assert.IsTrue(
+            SpinWait.SpinUntil(
+                () => Volatile.Read(ref _exited) ==
+                    Volatile.Read(ref _entered),
+                WaitMilliseconds),
+            "The watcher did not finish with the change.");
+    }
+
+    private AutoUpdateStatus[] ReportsForFile() => _reports
+        .Where(r => ReferenceEquals(r.DataFile, _file))
+        .Select(r => r.Status)
+        .ToArray();
+
+    // Opens the file so that it cannot be opened again until it is closed,
+    // trying again while the write that changed it still has it open.
+    private static FileStream OpenAlone(string path)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(WaitMilliseconds);
+        while (true)
+        {
+            try
+            {
+                return new FileStream(
+                    path, FileMode.Open, FileAccess.Read, FileShare.None);
+            }
+            catch (IOException) when (DateTime.UtcNow < deadline)
+            {
+                Thread.Sleep(10);
+            }
+        }
+    }
+
+    // Writes over the data file in place with one write. The service only
+    // refreshes for a later write time, so the write waits until the clock
+    // is clear of the last one.
+    private static void Replace(string path, string content)
+    {
+        var bytes = Encoding.ASCII.GetBytes(content);
+        var last = File.GetLastWriteTimeUtc(path);
+        while ((DateTime.UtcNow - last).TotalMilliseconds <
+            WriteTimeStepMilliseconds)
+        {
+            Thread.Sleep(10);
+        }
+        using (var stream = new FileStream(
+            path, FileMode.Open, FileAccess.Write, FileShare.ReadWrite))
+        {
+            stream.Write(bytes, 0, bytes.Length);
+        }
+    }
+
+    // The real file system, apart from running an action before each copy.
+    private sealed class CopyHookFileSystem : IFileSystem
+    {
+        private readonly RealFileSystem _real = new RealFileSystem();
+
+        public CopyHookFileSystem(Action beforeCopy)
+        {
+            File = new CopyHookFileWrapper(beforeCopy);
+        }
+
+        public IFileWrapper File { get; }
+
+        public IDirectoryWrapper Directory => _real.Directory;
+
+        public IFileInfoWrapper GetFileInfo(FileInfo file) =>
+            _real.GetFileInfo(file);
+
+        public IFileInfoWrapper GetFileInfo(string fileName) =>
+            _real.GetFileInfo(fileName);
+
+        public IDirectoryInfoWrapper GetDirInfo(DirectoryInfo dir) =>
+            _real.GetDirInfo(dir);
+
+        public IDirectoryInfoWrapper GetDirInfo(string dirName) =>
+            _real.GetDirInfo(dirName);
+    }
+
+    private sealed class CopyHookFileWrapper : IFileWrapper
+    {
+        private readonly FileWrapper _real = new FileWrapper();
+        private readonly Action _beforeCopy;
+
+        public CopyHookFileWrapper(Action beforeCopy)
+        {
+            _beforeCopy = beforeCopy;
+        }
+
+        public void Copy(
+            string sourceFileName,
+            string destFileName,
+            bool overwrite = false)
+        {
+            _beforeCopy();
+            _real.Copy(sourceFileName, destFileName, overwrite);
+        }
+
+        public bool Exists(string path) => _real.Exists(path);
+        public string ReadAllText(string path) => _real.ReadAllText(path);
+        public void WriteAllBytes(string path, byte[] bytes) =>
+            _real.WriteAllBytes(path, bytes);
+        public void WriteAllText(string path, string contents) =>
+            _real.WriteAllText(path, contents);
+        public FileStream Create(string path) => _real.Create(path);
+        public StreamWriter CreateText(string path) => _real.CreateText(path);
+        public void Delete(string path) => _real.Delete(path);
+        public DateTime GetCreationTimeUtc(string path) =>
+            _real.GetCreationTimeUtc(path);
+        public DateTime GetLastAccessTimeUtc(string path) =>
+            _real.GetLastAccessTimeUtc(path);
+        public DateTime GetLastWriteTimeUtc(string path) =>
+            _real.GetLastWriteTimeUtc(path);
+        public void SetCreationTimeUtc(string path, DateTime creationTimeUtc) =>
+            _real.SetCreationTimeUtc(path, creationTimeUtc);
+        public void SetLastAccessTimeUtc(
+            string path, DateTime lastAccessTimeUtc) =>
+            _real.SetLastAccessTimeUtc(path, lastAccessTimeUtc);
+        public void SetLastWriteTimeUtc(
+            string path, DateTime lastWriteTimeUtc) =>
+            _real.SetLastWriteTimeUtc(path, lastWriteTimeUtc);
+        public Stream OpenRead(string path) => _real.OpenRead(path);
+    }
+
+    // Records the exception of each error logged, from any thread.
+    private sealed class ErrorRecordingLogger : ILogger<DataUpdateService>
+    {
+        private readonly ConcurrentQueue<Exception> _errors =
+            new ConcurrentQueue<Exception>();
+
+        public Exception[] Errors => _errors.ToArray();
+
+        public IDisposable BeginScope<TState>(TState state) => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception exception,
+            Func<TState, Exception, string> formatter)
+        {
+            if (logLevel == LogLevel.Error)
+            {
+                _errors.Enqueue(exception);
+            }
+        }
+    }
+
+    // Counts the requests the service sends, and answers each with not
+    // modified unless told otherwise.
+    private sealed class CountingHandler : HttpMessageHandler
+    {
+        private int _requests;
+
+        public int Requests => Volatile.Read(ref _requests);
+
+        public Func<HttpResponseMessage> Respond { get; set; } = () =>
+            new HttpResponseMessage(HttpStatusCode.NotModified);
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _requests);
+            return Task.FromResult(Respond());
+        }
+    }
+}

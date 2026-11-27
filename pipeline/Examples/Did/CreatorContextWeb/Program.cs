@@ -22,7 +22,7 @@
 
 // 51Did creator context demo server. ASP.NET Core minimal API using the
 // FiftyOne.Did package's DidClient for the server side. Run:
-//   dotnet run    then open http://localhost:5100/
+//   dotnet run    then open http://localhost:5151/
 //
 // Every 51Did the cloud issues carries a creator context, which binds the
 // identifier to the browser and connection it was created on. This demo
@@ -71,7 +71,9 @@
 //                            defaults to https://cloud.51degrees.com/api/v4/
 //                            and is the same variable the cloud request
 //                            engine and DidClient honour
-//   PORT                     the port to listen on, defaults to 5100
+//   _51DEGREES_EXAMPLE_HTTP_PORTS
+//                            the ports to listen on, comma separated,
+//                            defaults to 5151
 //
 // See ../README.md for the flow and the copy-and-paste proof.
 using System.Security.Cryptography;
@@ -79,18 +81,27 @@ using Examples.Did.CreatorContextWeb;
 using FiftyOne.Did.Client;
 using Microsoft.AspNetCore.Mvc;
 
-var resource = EnvironmentSetting.Read(
-    "_51DEGREES_RESOURCE_KEY", "RESOURCE_KEY");
+var resource = Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
 if (string.IsNullOrEmpty(resource))
 {
-    Console.Error.WriteLine(
-        "Set _51DEGREES_RESOURCE_KEY to the "
-        + "resource key of the page.");
-    return 1;
+    // A fresh clone has no key, so this says where to create one and
+    // ends without a server.
+    Console.WriteLine(
+        "Set _51DEGREES_RESOURCE_KEY to the resource key of the page. "
+        + "A resource key can be created at "
+        + "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-did-creatorcontextweb-program.cs&utm_term=resource-key-required");
+    return 0;
 }
-var licence = EnvironmentSetting.Read(
-    "_51DEGREES_LICENSE_KEY", "LICENSE_KEY");
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5100";
+var licence = Environment.GetEnvironmentVariable("_51DEGREES_LICENSE_KEY");
+// The ports to listen on, read as the other 51Degrees web examples read
+// them.
+var portsSetting = Environment.GetEnvironmentVariable("_51DEGREES_EXAMPLE_HTTP_PORTS");
+var ports = string.IsNullOrWhiteSpace(portsSetting)
+    ? new[] { 5151 }
+    : portsSetting.Split(',')
+        .Select(p => int.Parse(
+            p.Trim(), System.Globalization.CultureInfo.InvariantCulture))
+        .ToArray();
 if (string.IsNullOrEmpty(licence))
 {
     // Only an account that holds licence keys needs one to redeem,
@@ -131,7 +142,7 @@ byte[] ReadCss() => File.ReadAllBytes(
 var builder = WebApplication.CreateBuilder(args);
 // The wildcard binding lets a second device open the copied link, which
 // is the demonstration that matters.
-builder.WebHost.UseUrls($"http://*:{port}");
+builder.WebHost.UseUrls(ports.Select(p => $"http://*:{p}").ToArray());
 var app = builder.Build();
 
 app.MapGet("/", () =>
@@ -160,6 +171,6 @@ app.MapGet("/redeem", async (
         answer.Body, answer.ContentType, statusCode: answer.StatusCode);
 });
 
-Console.WriteLine($"51Did demo on http://localhost:{port}/");
+Console.WriteLine($"51Did demo on http://localhost:{ports[0]}/");
 app.Run();
 return 0;

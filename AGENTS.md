@@ -15,7 +15,7 @@ to show, because its data file is about 35 MB. IP Intelligence's on-premise
 about 460 MB, so run it second.
 
 The examples build against the published NuGet packages unless
-`FiftyOneReferences` is set to `Project` (see
+`_51DEGREES_REFERENCES` is set to `Project` (see
 [References between the folders](#references-between-the-folders)). Those
 packages carry the native engines, so running an example needs no C or C++
 compiler and no CMake.
@@ -92,25 +92,20 @@ system.
 dotnet run --project examples/device-detection/OnPremise/GettingStarted-Console
 ```
 
-The IP Intelligence example looks for the paid Enterprise file,
-`51Degrees-EnterpriseIpiV41.ipi`, so it never downloads the Lite file. Download
-the Lite file first, as "Data files" says, then give its path in the
-`_51DEGREES_IPI_PATH` environment variable. On Linux and macOS run these.
+The IP Intelligence example looks for `51Degrees-LiteV41.ipi` in `cxx/data`
+the same way (`FindFile` in
+`examples/ip-intelligence/Examples/ExampleUtils.cs`), and runs the download
+script for it when the file is not there. Run it from the repository root, on
+any system.
 
 ```
-export _51DEGREES_IPI_PATH="$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
 dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
 ```
 
-In PowerShell, on any system, run these.
-
-```
-$env:_51DEGREES_IPI_PATH = "$PWD/cxx/data/ip-intelligence/51Degrees-LiteV41.ipi"
-dotnet run --project examples/ip-intelligence/OnPremise/GettingStarted-Console
-```
-
-`_51DEGREES_DD_PATH` does the same for Device Detection, and a path given as
-the first argument after `--` takes the place of either variable.
+To use another data file, give its path in the `_51DEGREES_IPI_PATH`
+environment variable for IP Intelligence or `_51DEGREES_DD_PATH` for Device
+Detection. A path given as the first argument after `--` takes the place of
+either variable.
 
 ### Correct output
 
@@ -139,16 +134,17 @@ is more than 30 days old. Both are expected. The exit code is 0.
 The IP Intelligence example looks up five IPv4 addresses. For each it prints
 `Input values:` with `query.client-ip`, then `Results:` with a line for each
 property, starting with `RegisteredName`, `RegisteredOwner` and
-`RegisteredCountry`. It reads properties such as `Country` without checking
-that the data file has them, and the
+`RegisteredCountry`. The
 [data repository README](https://github.com/51Degrees/data#ip-intelligence)
-says the Lite file has only RegisteredCountry, RegisteredName and
-RegisteredOwner. Reading a property the data file does not have throws
-`PropertyMissingException` (`GetAs` in `pipeline/Engines/Data/AspectDataBase.cs`),
-which is why `LocationAnalysis-Console` catches it. So with the Lite file the
-example can stop with that exception at the first property the file lacks.
-That is a limit of the Lite file, not a fault in your setup. CI runs this
-example only with the Enterprise file.
+says the Lite file has only those three. The example checks that the data
+file has a property before it reads one, because reading a property the data
+file does not have throws `PropertyMissingException` (`GetAs` in
+`pipeline/Engines/Data/AspectDataBase.cs`). So with the Lite file every other
+property, such as `IpRangeStart` and `Country`, reads
+`needs the Enterprise data file`, and the example then says that some of the
+properties need the Enterprise data file and gives a link to ask for a copy.
+That is a limit of the Lite file, not a fault in your setup. The exit code is
+0.
 
 The paid data files have many more properties, as the
 [pricing page](https://51degrees.com/pricing?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=correct-output)
@@ -159,9 +155,9 @@ describes.
 The cloud examples need a resource key, which a person creates in the
 configurator, so ask for one if none is set. A free key for the Device
 Detection examples can be made
-[here](https://configure.51degrees.com/Wkqxf3Bs?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=cloud-examples),
+[here](https://51degrees.com/configure/Wkqxf3Bs?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=cloud-examples),
 and one for the IP Intelligence examples
-[here](https://configure.51degrees.com/1QWJwHxl?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=cloud-examples).
+[here](https://51degrees.com/configure/1QWJwHxl?utm_source=github&utm_medium=docs&utm_campaign=51degrees-dotnet&utm_content=agents.md&utm_term=cloud-examples).
 
 The Device Detection cloud example takes the key as its first argument or from
 `_51DEGREES_RESOURCE_KEY`, unless the `ResourceKey` in its `appsettings.json`
@@ -181,18 +177,14 @@ a paid subscription. The IP Intelligence cloud example reads its key from
 ### Pitfalls
 
 - **A data file that is not there.** `cxx/data` holds a `.link` for each file
-  rather than the file. The Device Detection example runs the download script
-  for a missing file, so it needs the network and the tools under
-  "Prerequisites". The IP Intelligence example does not, so download its file
-  first. Check the file sizes as above.
+  rather than the file. Each example runs the download script for a missing
+  file, so it needs the network and the tools under "Prerequisites". Check the
+  file sizes as above.
 - **Missing submodules.** The Device Detection example then logs `Failed to
   find a device detection data file` and asks for
   `git submodule update --init --recursive`, which fetches them. A zip
   download of the repository has no submodules, so clone with Git.
-- **The IP Intelligence example without `_51DEGREES_IPI_PATH`.** It searches for
-  the Enterprise file name, gives up after 10 seconds and logs `Failed to find
-  a IP Intelligence data file`, even when the Lite file is in place.
-- **Project references.** `-p:FiftyOneReferences=Project`, which CI uses,
+- **Project references.** `-p:_51DEGREES_REFERENCES=Project`, which CI uses,
   builds the native engines from `cxx`. That needs CMake 3.24 or later, a
   C++17 compiler, PowerShell 7 and a platform such as `-p:Platform=x64`, as
   the README says. It is not needed to run the examples.
@@ -202,32 +194,46 @@ a paid subscription. The IP Intelligence cloud example reads its key from
   arm64. `FiftyOne.IpIntelligence.Engine.OnPremise` 4.5.154 has Windows x64,
   Linux x64 and macOS x64 and arm64 only. Neither has Windows on Arm. On a
   platform a package lacks, the example cannot load the engine.
-- **Warnings are errors.** The example projects set `TreatWarningsAsErrors`,
-  so an SDK newer than the one CI uses can stop the build on a new warning.
+- **Warnings are errors in CI only.** The example projects set
+  `TreatWarningsAsErrors`, which applies only when
+  `_51DEGREES_WARNINGS_AS_ERRORS` is `true`, as CI sets it. A build from a
+  clone shows the warnings and carries on.
 - **The .NET Framework examples.** The `Framework-Web` examples need `msbuild`
   on Windows, as [Frameworks](#frameworks) says, and `dotnet run` cannot run
   them.
 - **What CI does not test.** CI builds and tests the examples with project
   references (`ci/build-project.ps1`), and against the packages only when it
-  publishes (`ci/README.md`). It runs the example tests with the paid data
-  files that `ci/fetch-assets.ps1` fetches, never the Lite IP Intelligence
-  file. The Device Detection example tests send the output to
-  `TextWriter.Null`, and the IP Intelligence one checks only a few words of
-  it.
+  publishes (`ci/README.md`). It runs most of the example tests with the paid
+  data files that `ci/fetch-assets.ps1` fetches. Of those, the Device
+  Detection ones send the output to `TextWriter.Null`, apart from the cloud
+  TAC and native model lookups, which check that each lookup lists a device.
+  The IP Intelligence ones check only a few words of it. The
+  `TestExamplesWithoutSettings` classes run the console examples with no
+  settings on the free files and check what each prints, so an example that
+  is not in one of them is not tested as a fresh clone runs it.
 
+## Environment variable names
+
+[`environment-variables.md`](environment-variables.md) lists every
+environment variable name that the packages, tests, examples and CI scripts
+read, with what each holds. Use those names. A name 51Degrees defines starts
+with `_51DEGREES_` and holds one thing, and no name is filled from another. A
+change that needs a new name adds it to the list in the same piece of work,
+because [`common/Test/EnvironmentVariableNamesTests.cs`](common/Test/EnvironmentVariableNamesTests.cs)
+fails on a name the list does not have.
 ## References between the folders
 
 A project that uses a package built in another folder declares a
 `FiftyOneReference` item, not a `PackageReference` or a `ProjectReference`.
 The root `Directory.Build.targets` turns it into one or the other from the
-`FiftyOneReferences` property, which defaults to `Package`. CI builds and
+`_51DEGREES_REFERENCES` property, which defaults to `Package`. CI builds and
 tests with `Project`, so a change that crosses folders is tested together.
 When a package's dependency changes, change the item, and when a version
-changes, change the `FiftyOne*Version` property in the root
-`Directory.Build.props`. A package that starts to reference a family it did
-not reference before also needs that family in its own family's `DependsOn` in
-`ci/packages.json`, or a release of the family it references leaves it at the
-old requirement. The metadata that holds the path is `ProjectPath`, because
+changes, change the package's `_51DEGREES_*_VERSION` property in the root
+`Directory.Build.props`. A package that starts to reference another package
+also needs it in its own `DependsOn` in `ci/packages.json`, or a release of the
+package it references leaves it at the old requirement.
+`ci/packages.Tests.ps1` checks both. The metadata that holds the path is `ProjectPath`, because
 `Project` is the name MSBuild gives a `ProjectReference` GUID.
 
 Each folder that came from a separate repository keeps its own
@@ -244,6 +250,30 @@ which the two products need built differently. The interface files and the
 committed SWIG wrappers include through `cxx/src/`, so the repository root is
 on the wrapper's include path. `RebuildSwig` is off in CI, so the committed
 wrappers are what ships.
+
+The engine's `CMakeLists.txt` sets `/W4` (MSVC) or `-Wall -Wextra` (GCC,
+Clang) before it includes cxx, so the cxx libraries build that way too, and
+the wrapper adds the SWIG macros that keep the warnings its prelude would turn
+off. When the `_51DEGREES_WARNINGS_AS_ERRORS` environment variable is `true`,
+in any case, every C and C++ warning is an error: the file sets
+`CMAKE_COMPILE_WARNING_AS_ERROR`, the wrapper adds `/WX` or `-Werror`, linker
+warnings are errors (`/WX`, `-Wl,--fatal-warnings` or `-Wl,-fatal_warnings`),
+and so are CMake's own developer and deprecation warnings, through the
+configure arguments `ci/cmake-warning-args.ps1` writes for the installed
+CMake. Each CI script that builds sets the variable, and every MSBuild
+project's `TreatWarningsAsErrors` depends on it too (the root
+`Directory.Build.targets`). Without it, as in a build from a clone, warnings
+in this repository's code are shown and do not stop the build. The cxx the
+submodule pins sets `CMAKE_COMPILE_WARNING_AS_ERROR` itself, whatever the
+variable says, so each engine turns the wrapper's `COMPILE_WARNING_AS_ERROR`
+off again when the variable is not `true`, and the cxx libraries still stop on
+a warning. The engine also sets cxx's CMake option
+`_51DEGREES_WARNINGS_AS_ERRORS` to `ON` or `OFF` from the same test before it
+includes cxx, which a cxx that reads the option follows and the pinned cxx
+ignores. Fix a warning where it comes from, and a warning in `cxx/` in the
+cxx repository. Never turn one off.
+`ci/native-warnings.Tests.ps1` checks this, and fails when a CI script or
+workflow builds without the variable.
 
 ## Data files
 
@@ -279,23 +309,27 @@ Every package targets `net10.0` as well as the targets it had before, such as
 `netstandard2.0` or `net8.0`, so an application on .NET 10 gets a .NET 10
 build of each package. The library test projects target `net8.0` and
 `net10.0`, apart from `AgentSignatureStandardTests`, which tests the
-`netstandard2.0` build of the agent signature element on `net8.0`. Running
-every test therefore needs the .NET 8 runtime as well as the .NET 10 SDK.
-`pipeline` and `device-detection` keep a `global.json` that asks for the .NET
-10 SDK. `dotnet` run from the repository root uses the newest SDK installed,
-which builds every folder. The .NET Framework projects, which are
-the `Web.Framework` integration and the `Framework-Web` examples, are old-style
-projects that need `msbuild` on Windows.
+`netstandard2.0` build of the agent signature element on `net8.0`, and on
+Windows on .NET Framework 4.6.2 as well. Running every test therefore needs
+the .NET 8 runtime as well as the .NET 10 SDK.
+No `global.json` pins the SDK, so `dotnet` uses the newest SDK installed, and
+CI builds with whatever SDK the runner has. The .NET Framework projects, which
+are the `Web.Framework` integration and the `Framework-Web` examples, are
+old-style projects that need `msbuild` on Windows.
 
 ## Versions
 
-Each package family continues the version stream its separate repository had
-and is tagged `<family>/<version>`. A publish releases a family when a file
-under its folders changed since its last tag, and with it every family that
-depends on it, so that their packages require the new version. Only the
-patch number moves. `ci/packages.json` lists the families, their folders and
-the families each depends on, and `ci/README.md` says how the publish uses
-them.
+Each NuGet package has its own version, continues from the version it last
+published and is tagged `<package>/<version>`, for example
+`FiftyOne.Pipeline.Core/4.5.131`. A publish releases a package when a file
+under its folders changed since its last tag, and with it every package that
+depends on it, so that it requires the new version. Only the patch number
+moves. `ci/packages.json` lists the packages, their folders, the packages each
+depends on and the property in the root `Directory.Build.props` holding each
+one's version, which its project and every `FiftyOneReference` to it read.
+`ci/README.md` says how the publish uses them. A new package needs an entry
+there with a `FirstVersion`, its own property, and a line in the root
+`Directory.Build.props` that sets its project's `Version` from it.
 
 ## Pull requests
 
@@ -307,3 +341,11 @@ Keep a pull request a draft until it has been reviewed, because the nightly
 merges any pull request into `rc` that is not a draft and has no review
 requested. The "Only rc into main" check fails a pull request into `main` from
 any other branch.
+
+## Tests that fail on timing
+
+A test that fails on a time limit, a performance threshold or a timeout is
+fixed, not run again until it passes. Either the limit is set to fit the
+slowest runner the test runs on, with each runner's measurement behind it, or
+the reason it takes too long is found and fixed. A failure that comes and goes
+costs everyone who meets it the time to look into it.

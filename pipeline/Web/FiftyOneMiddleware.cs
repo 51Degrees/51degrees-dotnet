@@ -35,6 +35,12 @@ namespace FiftyOne.Pipeline.Web
     /// the Pipeline which has been constructed, and intercepts requests for
     /// the 51Degrees JavaScript.
     /// </summary>
+    /// <remarks>
+    /// A Flow Data cannot be used by two threads at once. Application code
+    /// reads the values it needs from the Flow Data on the request's thread,
+    /// and hands those values, not the Flow Data, to any other thread or task.
+    /// The Flow Data is disposed of when the request ends.
+    /// </remarks>
     public class FiftyOneMiddleware
     {
         /// <summary>
@@ -115,9 +121,33 @@ namespace FiftyOne.Pipeline.Web
         /// </returns>
         public async Task Invoke(HttpContext context)
         {
-            // Populate the request properties and store against the 
-            // HttpContext.
-            PipelineResultService.Process(context);
+            if (context == null) { throw new System.ArgumentNullException(nameof(context)); }
+
+            // A request for the JavaScript or JSON whose If-None-Match
+            // matches the ETag of the evidence it supplies is answered
+            // without processing it (RFC 9110 sections 13.1.2 and 13.2.1).
+            // That needs the built-in services, so with a replacement for
+            // either every request is processed first.
+            if (PipelineResultService is Services.PipelineResultService results &&
+                JsService is Services.FiftyOneJSService js &&
+                js.IsClientsideRequest(context))
+            {
+                var flowData = results.AddEvidence(context);
+                if (flowData != null)
+                {
+                    if (js.ServeNotModified(context, flowData))
+                    {
+                        return;
+                    }
+                    Services.PipelineResultService.ProcessFlowData(flowData);
+                }
+            }
+            else
+            {
+                // Populate the request properties and store against the
+                // HttpContext.
+                PipelineResultService.Process(context);
+            }
             // Set HTTP headers in the response based on the results
             // from the engines in the pipeline.
             HeaderService.SetHeaders(context);

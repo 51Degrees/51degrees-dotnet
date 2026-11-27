@@ -22,6 +22,7 @@
 
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Web.Services;
+using FiftyOne.Pipeline.Web.Shared.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;
@@ -32,6 +33,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace FiftyOne.Pipeline.Web.Tests
 {
@@ -665,6 +668,220 @@ namespace FiftyOne.Pipeline.Web.Tests
         public void WebRequestEvidenceService_NullParamValue()
         {
             CheckNullValue("query");
+        }
+
+        /// <summary>
+        /// A session that holds values in memory.
+        /// </summary>
+        private class MemorySession : ISession
+        {
+            private readonly Dictionary<string, byte[]> _values =
+                new Dictionary<string, byte[]>();
+
+            public bool IsAvailable => true;
+
+            public string Id => "session-id";
+
+            public IEnumerable<string> Keys => _values.Keys;
+
+            public void Clear() => _values.Clear();
+
+            public Task CommitAsync(CancellationToken cancellationToken = default) =>
+                Task.CompletedTask;
+
+            public Task LoadAsync(CancellationToken cancellationToken = default) =>
+                Task.CompletedTask;
+
+            public void Remove(string key) => _values.Remove(key);
+
+            public void Set(string key, byte[] value) => _values[key] = value;
+
+            public bool TryGetValue(string key, out byte[] value) =>
+                _values.TryGetValue(key, out value);
+        }
+
+        /// <summary>
+        /// Each session value is added under the session prefix, and the
+        /// session itself under session.session, as the web integration
+        /// section of the specification names them.
+        /// </summary>
+        [TestMethod]
+        public void WebRequestEvidenceService_Session()
+        {
+            var sessionValueKey = Core.Constants.EVIDENCE_SESSION_PREFIX +
+                Core.Constants.EVIDENCE_SEPERATOR + "colour";
+            _flowData.SetupGet(f => f.EvidenceKeyFilter)
+                .Returns(new EvidenceKeyFilterWhitelist(new List<string>() {
+                    sessionValueKey,
+                    Core.Constants.EVIDENCE_SESSION_KEY }));
+            var session = new MemorySession();
+            session.SetString("colour", "blue");
+            SetSession(session);
+
+            _service.AddEvidenceFromRequest(_flowData.Object, _request.Object);
+
+            _flowData.Verify(f => f.AddEvidence(sessionValueKey, "blue"),
+                Times.Once);
+            _flowData.Verify(f => f.AddEvidence(
+                Core.Constants.EVIDENCE_SESSION_KEY,
+                It.Is<object>(o => o is IAspSession)),
+                Times.Once);
+        }
+
+        /// <summary>
+        /// With no session, nothing is added under the session prefix,
+        /// neither the session itself nor any value.
+        /// </summary>
+        [TestMethod]
+        public void WebRequestEvidenceService_NoSession()
+        {
+            _flowData.SetupGet(f => f.EvidenceKeyFilter)
+                .Returns(new EvidenceKeyFilterWhitelist(new List<string>() {
+                    Core.Constants.EVIDENCE_SESSION_KEY }));
+            SetNoSession();
+
+            _service.AddEvidenceFromRequest(_flowData.Object, _request.Object);
+
+            _flowData.Verify(f => f.AddEvidence(
+                It.Is<string>(k => k.StartsWith(
+                    Core.Constants.EVIDENCE_SESSION_PREFIX +
+                        Core.Constants.EVIDENCE_SEPERATOR,
+                    System.StringComparison.OrdinalIgnoreCase)),
+                It.IsAny<object>()),
+                Times.Never);
+        }
+
+        /// <summary>
+        /// The session feature that session middleware adds to a request.
+        /// </summary>
+        private sealed class SessionFeature : ISessionFeature
+        {
+            public ISession Session { get; set; }
+        }
+
+        /// <summary>
+        /// Give the request a session, as session middleware does, through
+        /// both the session feature and HttpContext.Session.
+        /// </summary>
+        private void SetSession(ISession session)
+        {
+            var features = new FeatureCollection();
+            features.Set<ISessionFeature>(new SessionFeature
+            {
+                Session = session
+            });
+            _request.SetupGet(r => r.HttpContext.Features).Returns(features);
+            _request.SetupGet(r => r.HttpContext.Session).Returns(session);
+        }
+
+        /// <summary>
+        /// Leave the request without a session, as a request that session
+        /// middleware has not handled is. HttpContext.Session then throws,
+        /// as it does in ASP.NET Core.
+        /// </summary>
+        private void SetNoSession()
+        {
+            _request.SetupGet(r => r.HttpContext.Features)
+                .Returns(new FeatureCollection());
+            _request.SetupGet(r => r.HttpContext.Session)
+                .Throws(new System.InvalidOperationException(
+                    "Session has not been configured for this application " +
+                    "or request."));
+        }
+
+        /// <summary>
+        /// Whether a request has a session is decided for each request, so
+        /// a first request without one does not stop the session values of
+        /// a later request from being added, as happens where session
+        /// middleware runs for some paths only.
+        /// </summary>
+        [TestMethod]
+        public void WebRequestEvidenceService_SessionDecidedForEachRequest()
+        {
+            var sessionValueKey = Core.Constants.EVIDENCE_SESSION_PREFIX +
+                Core.Constants.EVIDENCE_SEPERATOR + "colour";
+            _flowData.SetupGet(f => f.EvidenceKeyFilter)
+                .Returns(new EvidenceKeyFilterWhitelist(new List<string>() {
+                    sessionValueKey }));
+            SetNoSession();
+            _service.AddEvidenceFromRequest(_flowData.Object, _request.Object);
+
+            var session = new MemorySession();
+            session.SetString("colour", "blue");
+            SetSession(session);
+            _service.AddEvidenceFromRequest(_flowData.Object, _request.Object);
+
+            _flowData.Verify(f => f.AddEvidence(sessionValueKey, "blue"),
+                Times.Once);
+        }
+
+        /// <summary>
+        /// The protocol comes from the request when it is secure, then
+        /// from X-Origin-Proto, then from X-Forwarded-Proto, and is http
+        /// otherwise. Each header holds a different value, so the value
+        /// added shows which one was read.
+        /// </summary>
+        [DataTestMethod]
+        [DataRow(true, "origin-value", "forwarded-value", "https")]
+        [DataRow(false, "origin-value", "forwarded-value", "origin-value")]
+        [DataRow(false, null, "forwarded-value", "forwarded-value")]
+        [DataRow(false, null, null, "http")]
+        public void WebRequestEvidenceService_ProtocolSource(
+            bool isHttps,
+            string originProto,
+            string forwardedProto,
+            string expected)
+        {
+            SetRequiredKey(Core.Constants.EVIDENCE_PROTOCOL);
+            var headers = new HeaderDictionary();
+            if (originProto != null)
+            {
+                headers["X-Origin-Proto"] = originProto;
+            }
+            if (forwardedProto != null)
+            {
+                headers["X-Forwarded-Proto"] = forwardedProto;
+            }
+            _request.SetupGet(r => r.Headers).Returns(headers);
+            _request.SetupGet(r => r.IsHttps).Returns(isHttps);
+
+            _service.AddEvidenceFromRequest(_flowData.Object, _request.Object);
+
+            _flowData.Verify(f => f.AddEvidence(
+                Core.Constants.EVIDENCE_PROTOCOL, expected),
+                Times.Once);
+        }
+
+        /// <summary>
+        /// Where no element asks for the protocol, it is not added.
+        /// </summary>
+        [TestMethod]
+        public void WebRequestEvidenceService_ProtocolNotRequired()
+        {
+            SetRequiredKey(NOT_REQUIRED_KEY);
+
+            _service.AddEvidenceFromRequest(_flowData.Object, _request.Object);
+
+            _flowData.Verify(f => f.AddEvidence(
+                Core.Constants.EVIDENCE_PROTOCOL, It.IsAny<object>()),
+                Times.Never);
+        }
+
+        /// <summary>
+        /// A content type can carry parameters after a semicolon, such as
+        /// the boundary of a multipart form or the character set of a URL
+        /// encoded one, and its type and subtype can be in any case. The
+        /// form is read for each.
+        /// </summary>
+        [DataTestMethod]
+        [DataRow("multipart/form-data; boundary=----boundary")]
+        [DataRow("application/x-www-form-urlencoded; charset=UTF-8")]
+        [DataRow("Application/X-WWW-Form-Urlencoded")]
+        public void WebRequestEvidenceService_AddFormParam_TypeWithParameters(
+            string contentType)
+        {
+            _request.SetupGet(r => r.ContentType).Returns(contentType);
+            CheckRequired("query", FORM_KEY, FORM_VALUE);
         }
     }
 }

@@ -326,6 +326,21 @@ namespace FiftyOne.IpIntelligence.Engine.OnPremise.FlowElements
         /// data files.
         /// </summary>
         protected override string DefaultDataDownloadType => "IPIV41";
+
+        /// <summary>
+        /// Reads the product name from the header of an IP Intelligence
+        /// data file without loading it.
+        /// </summary>
+        /// <param name="fileName">
+        /// The path of the data file.
+        /// </param>
+        /// <returns>
+        /// The product name, 'IPIV4' and the tier, such as 'IPIV4Enterprise'.
+        /// </returns>
+        protected override string GetProductFromFile(string fileName)
+        {
+            return EngineIpiSwig.getProductFromFile(fileName);
+        }
         #endregion
 
         #region Abstract Methods

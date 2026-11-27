@@ -22,6 +22,7 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Diagnostics;
 
 namespace FiftyOne.GeoLocation.Example.Tests
 {
@@ -36,42 +37,38 @@ namespace FiftyOne.GeoLocation.Example.Tests
     [TestClass]
     public class TestAllExamples
     {
+        /// <summary>
+        /// The environment variable the tests read their resource key from,
+        /// which holds the key that carries every property. Each example is
+        /// given the key as the argument its Run method takes.
+        /// </summary>
+        private const string KeyVariable = "_51DEGREES_RESOURCE_KEY_BESPOKE";
+
         private string ResourceKey;
 
-        // True once the old resource key name has been reported.
-        private static bool _oldNameReported;
+        /// <summary>
+        /// The seconds the tests let a request to the cloud service take.
+        /// The examples keep the default of 2 seconds, which the live
+        /// service sometimes takes longer than, so the tests allow more and
+        /// fail only a service that does not answer. The build log has the
+        /// time each run took.
+        /// </summary>
+        private const int CloudRequestTimeoutSeconds = 30;
 
         /// <summary>
-        /// Init method - specify Resource Key to run examples here or 
-        /// set a Resource Key in an environment variable called 'ResourceKey'.
+        /// Reads the resource key from <see cref="KeyVariable"/>, skipping
+        /// the test when it is not set.
         /// </summary>
         [TestInitialize]
         public void Init()
         {
-            var resourceKey = Environment.GetEnvironmentVariable("_51DEGREES_RESOURCE_KEY");
-            if (string.IsNullOrWhiteSpace(resourceKey))
+            ResourceKey = Environment.GetEnvironmentVariable(KeyVariable);
+            if (string.IsNullOrWhiteSpace(ResourceKey))
             {
-                // The old name, read only when the new one is not set.
-                resourceKey = Environment.GetEnvironmentVariable("SUPER_RESOURCE_KEY");
-                if (string.IsNullOrWhiteSpace(resourceKey) == false &&
-                    _oldNameReported == false)
-                {
-                    _oldNameReported = true;
-                    Console.Error.WriteLine(
-                        "The environment variable SUPER_RESOURCE_KEY is " +
-                        "deprecated and _51DEGREES_RESOURCE_KEY replaces " +
-                        "it. Set _51DEGREES_RESOURCE_KEY to the same " +
-                        "value instead.");
-                }
-            }
-            ResourceKey = string.IsNullOrWhiteSpace(resourceKey) == false ? 
-                resourceKey : "!!YOUR_RESOURCE_KEY!!";
-
-            if (string.IsNullOrWhiteSpace(ResourceKey) == true ||
-                ResourceKey.StartsWith("!!") == true)
-            {
-                Assert.Fail("ResourceKey must be specified in the Init method" +
-                    " or as an Environment variable");
+                Assert.Inconclusive(
+                    "These tests call the live 51Degrees cloud service, so " +
+                    $"they need a resource key, and {KeyVariable} is not " +
+                    "set.");
             }
         }
 
@@ -82,7 +79,13 @@ namespace FiftyOne.GeoLocation.Example.Tests
         public void GettingStarted()
         {
             var example = new GettingStarted.Program.Example();
-            example.Run(ResourceKey);
+            var run = Stopwatch.StartNew();
+            example.Run(
+                ResourceKey,
+                cloudRequestTimeoutSeconds: CloudRequestTimeoutSeconds);
+            Console.WriteLine(
+                "Build log: GeoLocation GettingStarted example ran in " +
+                $"{run.ElapsedMilliseconds} ms.");
         }
 
         /// <summary>
@@ -92,7 +95,13 @@ namespace FiftyOne.GeoLocation.Example.Tests
         public void CombiningServices()
         {
             var example = new CombiningServices.Program.Example();
-            example.Run(ResourceKey);
+            var run = Stopwatch.StartNew();
+            example.Run(
+                ResourceKey,
+                cloudRequestTimeoutSeconds: CloudRequestTimeoutSeconds);
+            Console.WriteLine(
+                "Build log: GeoLocation CombiningServices example ran in " +
+                $"{run.ElapsedMilliseconds} ms.");
         }
     }
 }

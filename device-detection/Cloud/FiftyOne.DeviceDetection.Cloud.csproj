@@ -5,7 +5,7 @@
     <Platforms>AnyCPU;x64;x86;ARM64</Platforms>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <DocumentationFile>FiftyOne.DeviceDetection.Cloud.xml</DocumentationFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
     
@@ -26,7 +26,7 @@
     <Configurations>Debug;Release</Configurations>
 
     <!-- GitHub CI -->
-    <BuiltOnCI>false</BuiltOnCI>
+    <_51DEGREES_BUILT_ON_CI>false</_51DEGREES_BUILT_ON_CI>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
@@ -66,7 +66,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(FiftyOnePipelineVersion)" />
+    <FiftyOneReference Include="FiftyOne.Pipeline.CloudRequestEngine" ProjectPath="..\..\pipeline\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" Version="$(_51DEGREES_PIPELINE_CLOUD_REQUEST_ENGINE_VERSION)" />
     <PackageReference Include="System.Text.Json" Version="8.0.6" />
   </ItemGroup>
 

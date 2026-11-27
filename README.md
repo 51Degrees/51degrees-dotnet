@@ -19,7 +19,7 @@ dotnet add package FiftyOne.IpIntelligence
 
 The product guides below list the other packages. To build from source, see [Getting the code](#getting-the-code).
 
-Try the [User-Agent tester](https://51degrees.com/developers/user-agent-tester?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install) and [IP tester](https://51degrees.com/developers/ip-tester?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install). For cloud use, [create a Resource Key](https://configure.51degrees.com/?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install).
+Try the [User-Agent tester](https://51degrees.com/developers/user-agent-tester?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install) and [IP tester](https://51degrees.com/developers/ip-tester?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install). For cloud use, [create a Resource Key](https://51degrees.com/configure/?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=readme.md&utm_term=install).
 
 Created from `pipeline-dotnet`, `device-detection-dotnet`, `ip-intelligence-dotnet`, `location-dotnet`, `common-dotnet`, `caching-dotnet`, `device-detection-dotnet-examples`, and `ip-intelligence-dotnet-examples`, this repository continues their work.
 
@@ -111,7 +111,7 @@ A project here that uses a package built in another folder of this repository,
 for example Device Detection using `FiftyOne.Pipeline.Engines`, declares that
 once as a `FiftyOneReference` item, and a property chooses what it becomes:
 
-| `FiftyOneReferences` | The reference | When |
+| `_51DEGREES_REFERENCES` | The reference | When |
 | --- | --- | --- |
 | `Package` | A `PackageReference` to the published package, at the version in `Directory.Build.props` | The default, so a checkout builds the way a consumer's project does, and the examples show how the packages are used |
 | `Project` | A `ProjectReference` to the project next to it | A change that crosses packages, which is how CI builds and tests the repository |
@@ -119,7 +119,7 @@ once as a `FiftyOneReference` item, and a property chooses what it becomes:
 Choose project references with any of these, the first that is set wins:
 
 ```
-dotnet build FiftyOne.slnx -p:FiftyOneReferences=Project
+dotnet build FiftyOne.slnx -p:_51DEGREES_REFERENCES=Project
 ```
 
 a `Directory.Build.local.props` file next to this README, which is not
@@ -128,12 +128,12 @@ committed:
 ```xml
 <Project>
   <PropertyGroup>
-    <FiftyOneReferences>Project</FiftyOneReferences>
+    <_51DEGREES_REFERENCES>Project</_51DEGREES_REFERENCES>
   </PropertyGroup>
 </Project>
 ```
 
-or the `FiftyOneReferences` environment variable. `Directory.Build.props` and
+or the `_51DEGREES_REFERENCES` environment variable. `Directory.Build.props` and
 `Directory.Build.targets` at the root hold the rule.
 
 ## Tests
@@ -149,9 +149,15 @@ dotnet test device-detection/FiftyOne.DeviceDetection.Core.slnf -p:Platform=x64
 The on-premise tests find the free data files in `cxx` by searching upward
 from the test assembly. Point them at other files, such as the Enterprise
 files, with `_51DEGREES_DD_PATH` and `_51DEGREES_IPI_PATH`. The tests that use
-the cloud read a Resource Key from `_51DEGREES_RESOURCE_KEY`, and the 51Did
-tests a License Key from `_51DEGREES_LICENSE_KEY`. See each folder's README
+the cloud read a Resource Key that carries every property from
+`_51DEGREES_RESOURCE_KEY_BESPOKE`, and the live 51Did tests read
+`_51DEGREES_RESOURCE_KEY_51DID` and `_51DEGREES_LICENSE_KEY_51DID`. The Human
+Confidence tests that need the staging cloud read `CLOUD_STAGING_ENDPOINT` and
+`RESOURCE_KEY_BESPOKE_STAGING`, which only CI holds. See each folder's README
 for the keys and data files its tests use.
+
+Every environment variable name that the packages, tests, examples and CI
+scripts read is in [environment-variables.md](environment-variables.md).
 
 ## Regenerating the SWIG wrappers
 

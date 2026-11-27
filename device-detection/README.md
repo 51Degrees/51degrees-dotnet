@@ -22,9 +22,11 @@ Visual Studio 2022 or later is recommended. Although Visual Studio Code can be
 used for working with most of the projects.
 
 The core device detection projects are written in C and C++. The Pipeline
-engines are written in C\# and target .NET Standard 2.0.3. Example and test
-projects mostly target .NET 6.0 though in some cases, projects are available
-targeting other frameworks.
+engines are written in C\# and target .NET Standard 2.0 and .NET 10.
+`FiftyOne.DeviceDetection.PropertyKeyed` targets .NET Standard 2.1, .NET 8 and
+.NET 10, and the two robots.txt packages target .NET 8 and .NET 10. The examples
+target .NET 10, apart from the two `Framework-Web` examples, which target .NET
+Framework 4.6.2. The tests run under .NET 8 and .NET 10.
 
 For the .NET versions we test against, see the
 [tested versions](https://51degrees.com/documentation/_product_summaries__tested_versions.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=dependencies)
@@ -42,15 +44,15 @@ The API can either use our cloud service to get its data or it can use a local
 You will require a [resource
 key](https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud) to use the
 Cloud API. You can create resource keys using our
-[configurator](https://configure.51degrees.com/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud), see our
+[configuration page](https://51degrees.com/configure/?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud), see our
 [documentation](https://51degrees.com/documentation/_services__configurator.html?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=cloud)
 on how to use this.
 
 The cloud property tiers changed in May 2026, so the examples and
 documentation now reflect what is free and what needs a paid subscription. A
-free resource key created [here](https://configure.51degrees.com/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) selects
+free resource key created [here](https://51degrees.com/configure/Wkqxf3Bs?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) selects
 the free tier properties, whilst a key created
-[here](https://configure.51degrees.com/hYzn3TV3?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) also includes the paid properties
+[here](https://51degrees.com/configure/hYzn3TV3?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) also includes the paid properties
 used by the examples. See [pricing](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=51degrees-device-detection-engines) to get a paid
 subscription with more properties.
 
@@ -166,15 +168,15 @@ dotnet pack [Project] -o "[PackagesFolder]" /p:PackageVersion=0.0.0 -c [Configur
 and add to the packaging command:
 
 ```text
-/p:BuiltOnCI=true
+/p:_51DEGREES_BUILT_ON_CI=true
 ```
 
 related CI scripts:
 
-- `BuiltOnCI` var:
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-core.ps1]
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-package-nuget.ps1]
-  - [https://github.com/51Degrees/common-ci/blob/main/dotnet/build-project-framework.ps1]
+- `_51DEGREES_BUILT_ON_CI`, which these scripts set:
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-project.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]
+  - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/install-package.ps1]
   - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/run-performance-tests.ps1]
 - Copying native binaries:
   - [https://github.com/51Degrees/51degrees-dotnet/blob/main/ci/build-package.ps1]
@@ -219,7 +221,7 @@ an 'inconclusive' result if these resources are not provided.
         the expected file name.
 -   Tests using the cloud service require resource keys with specific properties
     to be provided using environment variables:
-    -   The `_51DEGREES_RESOURCE_KEY` environment variable should be populated
+    -   The `_51DEGREES_RESOURCE_KEY_BESPOKE` environment variable should be populated
         with a key that includes all properties. A
         [license](https://51degrees.com/pricing?utm_source=nuget&utm_medium=package&utm_campaign=51degrees-dotnet&utm_content=fiftyone.devicedetection&utm_term=tests-2) is required in order to access
         some properties.

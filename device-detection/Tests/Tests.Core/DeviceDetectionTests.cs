@@ -40,7 +40,7 @@ namespace FiftyOne.DeviceDetection.Tests.Core
     public class DeviceDetectionTests
     {
         private static UserAgentGenerator USER_AGENTS = new UserAgentGenerator(
-            TestHelpers.Utils.GetFilePath(Constants.UA_FILE_NAME));
+            TestHelpers.Utils.GetFilePath(Constants.EVIDENCE_FILE_NAME));
 
         private static readonly List<Dictionary<string, string>> UachTestValues = new List<Dictionary<string, string>>()
         {

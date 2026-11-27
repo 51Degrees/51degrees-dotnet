@@ -165,11 +165,35 @@ namespace FiftyOne.Pipeline.Engines.Data
         internal Timer Timer { get; set; }
         // Held for every read and write of Timer, so a check cannot read
         // the timer before registration has stored it. Nothing run while it
-        // is held takes the service's other locks or UpdateSyncLock, which
-        // the file watcher holds for the whole engine refresh.
+        // is held takes the service's list of data files lock or
+        // UpdateSyncLock, which every engine refresh the service makes holds
+        // throughout. Of the service's own locks, only the random number
+        // lock, under which nothing else is taken, is taken under it. Dispose
+        // closes the file under it before it disposes the watcher, which
+        // creating the watcher and enabling it again after a download both
+        // rely on.
         internal object TimerLock { get; } = new object();
+        private bool _timerClosed;
+        // True once the file is disposed, after which no timer may be
+        // stored. Read and written under TimerLock.
+        internal bool TimerClosed
+        {
+            get { lock (TimerLock) { return _timerClosed; } }
+        }
         internal FileSystemWatcher FileWatcher { get; set; }
+        // Held for every refresh of the engine the service makes, which
+        // checks TimerClosed under it first. Dispose takes it after closing
+        // the file, so the engine is not freed while it refreshes and is
+        // not refreshed after.
         internal object UpdateSyncLock { get; } = new object();
+        private int _dataKept;
+        // The number of times the service kept new data for an engine to
+        // load because the file named no engine. Counted under
+        // UpdateSyncLock, under which an engine names itself on the file
+        // once it has loaded its data, so an engine whose load ran while
+        // new data was kept loads again.
+        internal int DataKept => Volatile.Read(ref _dataKept);
+        internal void CountDataKept() => Interlocked.Increment(ref _dataKept);
         internal DateTime LastUpdateFileModifiedTime { get; set; }
 
         /// <summary>
@@ -204,7 +228,16 @@ namespace FiftyOne.Pipeline.Engines.Data
         }
 
         /// <summary>
-        /// Returns true if this file has been registered with the 
+        /// The name the data update service gives the product of the data
+        /// this file holds, or null if it is not known. The data update
+        /// service asks for this product when the license keys hold
+        /// several products and the request named none.
+        /// By default, no product name is known.
+        /// </summary>
+        public virtual string DataUpdateProduct => null;
+
+        /// <summary>
+        /// Returns true if this file has been registered with the
         /// data update service. False if not.
         /// </summary>
         public bool IsRegistered
@@ -254,22 +287,31 @@ namespace FiftyOne.Pipeline.Engines.Data
             {
                 if (disposing)
                 {
-                    if (_dataUpdateService != null)
-                    {
-                        _dataUpdateService.UnRegisterDataFile(this);
-                        _dataUpdateService = null;
-                    }
-                    if (FileWatcher != null)
-                    {
-                        FileWatcher.Dispose();
-                    }
+                    // Close the timer first, so that a check running now
+                    // cannot register the file again and create one.
                     lock (TimerLock)
                     {
+                        _timerClosed = true;
                         if (Timer != null)
                         {
                             Timer.Dispose();
                             Timer = null;
                         }
+                    }
+                    if (_dataUpdateService != null)
+                    {
+                        _dataUpdateService.UnRegisterDataFile(this);
+                        _dataUpdateService = null;
+                    }
+                    // Wait for a refresh that started before the file was
+                    // closed, which can take as long as loading the whole
+                    // data file. The engine frees its native data after this.
+                    lock (UpdateSyncLock)
+                    {
+                    }
+                    if (FileWatcher != null)
+                    {
+                        FileWatcher.Dispose();
                     }
                 }
 

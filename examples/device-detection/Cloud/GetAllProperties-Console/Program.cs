@@ -25,6 +25,8 @@ using FiftyOne.Pipeline.Engines.Data;
 using System;
 using System.Collections;
 using System.Linq;
+using System.Net.Http;
+using Microsoft.Extensions.Logging;
 /// <summary>
 /// @example Cloud/GetAllProperties-Console/Program.cs
 /// 
@@ -43,9 +45,25 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GetAllProperties
                 "AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/10.1 " +
                 "Chrome/71.0.3578.99 Mobile Safari/537.36";
 
-            public void Run(string resourceKey, string cloudEndPoint = "")
+            /// <summary>
+            /// Runs the example.
+            /// </summary>
+            /// <param name="cloudRequestTimeoutSeconds">
+            /// The seconds a request to the cloud service may take, or null
+            /// for the default of 2 seconds. The tests give a longer one.
+            /// </param>
+            /// <param name="httpClient">
+            /// The client that sends requests to the cloud service, or null
+            /// for a new one.
+            /// </param>
+            public void Run(
+                string resourceKey,
+                string cloudEndPoint = "",
+                int? cloudRequestTimeoutSeconds = null,
+                HttpClient httpClient = null)
             {
-                var builder = new DeviceDetectionPipelineBuilder()
+                var builder = new DeviceDetectionPipelineBuilder(
+                    new LoggerFactory(), httpClient ?? new HttpClient())
                     // Tell it that we want to use cloud and pass our resource key.
                     .UseCloud(resourceKey);
 
@@ -54,6 +72,11 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GetAllProperties
                 if (string.IsNullOrWhiteSpace(cloudEndPoint) == false) 
                 {
                     builder.SetEndPoint(cloudEndPoint);
+                }
+                if (cloudRequestTimeoutSeconds.HasValue)
+                {
+                    builder.SetCloudRequestTimeOutSeconds(
+                        cloudRequestTimeoutSeconds.Value);
                 }
 
                 // Create the pipeline
@@ -152,28 +175,25 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GetAllProperties
         static void Main(string[] args)
         {
             // Use the command line args to get the resource key if present.
-            // Otherwise, get it from the environment, following the same
-            // convention as the other cloud examples so that a key set once
-            // works for all of them.
-            string resourceKeySource = null;
+            // Otherwise, get it from the environment variable the other
+            // cloud examples read, so that a key set once works for all of
+            // them.
             string resourceKey = args.Length > 0 ? args[0] :
-                ExampleUtils.GetResourceKeyFromEnv(out resourceKeySource);
+                ExampleUtils.GetResourceKeyFromEnv();
 
             if (string.IsNullOrWhiteSpace(resourceKey))
             {
                 Console.WriteLine(
                     "No resource key was supplied. Pass one as the first " +
-                    "command line argument, or set one of these " +
-                    "environment variables: " +
-                    ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR_DESCRIPTION +
-                    ".");
+                    "command line argument, or set the environment " +
+                    $"variable '{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'.");
                 Console.WriteLine(
                     "The 51Degrees cloud service is accessed with a " +
                     "resource key. A free key can be created at " +
-                    "https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-getallproperties-console-program.cs&utm_term=resource-key-required " +
+                    "https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-getallproperties-console-program.cs&utm_term=resource-key-required " +
                     "and gives the free properties. With a paid " +
                     "subscription, a key created at " +
-                    "https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-getallproperties-console-program.cs&utm_term=resource-key-required " +
+                    "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-getallproperties-console-program.cs&utm_term=resource-key-required " +
                     "includes every property this example displays. Make " +
                     "sure the key includes all the properties you want to " +
                     "see.");
@@ -184,14 +204,28 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GetAllProperties
                 {
                     Console.WriteLine(
                         $"Using the resource key from " +
-                        $"'{resourceKeySource}'.");
+                        $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'.");
                 }
                 new Example().Run(resourceKey);
             }
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
 #if (DEBUG)
-            Console.WriteLine("Done. Press any key to exit.");
-            Console.ReadKey();
+            // Console.ReadKey throws when the input is redirected.
+            if (Console.IsInputRedirected == false)
+            {
+                Console.WriteLine("Done. Press any key to exit.");
+                Console.ReadKey();
+            }
 #endif
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-getallproperties-console-program.cs";
     }
 }

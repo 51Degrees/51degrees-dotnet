@@ -43,12 +43,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
         /// The environment variables that name a data file, an evidence file
         /// or a licence key, none of which a fresh clone has.
         /// </summary>
-        private static readonly string[] Settings =
-            Constants.DATA_FILE_ENV_VARS.Concat(new[]
-            {
-                Constants.EVIDENCE_FILE_ENV_VAR,
-                Constants.LICENSE_KEY_ENV_VAR
-            }).ToArray();
+        private static readonly string[] Settings = new[]
+        {
+            Constants.DEVICE_DETECTION_DATA_FILE_ENV_VAR,
+            Constants.EVIDENCE_FILE_ENV_VAR,
+            Constants.DATA_UPDATE_LICENSE_KEY_ENV_VAR
+        };
 
         /// <summary>
         /// The start of the link each example gives to ask for a copy of the
@@ -59,8 +59,16 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
         public TestContext TestContext { get; set; }
 
         /// <summary>
+        /// The heading of the section every example ends with.
+        /// </summary>
+        private const string FindOutMore = "Find out more";
+
+        /// <summary>
         /// Runs the example's Main with no arguments and the settings removed,
-        /// and returns what it wrote to the console.
+        /// checks that it ends by saying where to find out more, and returns
+        /// what it wrote to the console before that section. The section has
+        /// a link to the contact page of its own, so the tests look for the
+        /// example's link in what came before it.
         /// </summary>
         private string RunWithoutSettings(Action<string[]> main)
         {
@@ -87,7 +95,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
                 }
                 TestContext.WriteLine(output.ToString());
             }
-            return output.ToString();
+            var written = output.ToString();
+            var section = written.LastIndexOf(
+                FindOutMore, StringComparison.Ordinal);
+            Assert.IsTrue(section >= 0,
+                "The example should end by saying where to find out more.");
+            return written.Substring(0, section);
         }
 
         [TestMethod]
@@ -113,6 +126,59 @@ namespace FiftyOne.DeviceDetection.Example.Tests.OnPremise
             StringAssert.Contains(output,
                 "Updating the data file downloads the Enterprise data file",
                 "The example should say what an update needs.");
+            StringAssert.Contains(output,
+                "'_51DEGREES_LICENSE_KEY'",
+                "The example should name the variable that holds the key.");
+            StringAssert.Contains(output, ContactUs,
+                "The example should link to the contact page.");
+        }
+
+        /// <summary>
+        /// With no licence key the example still shows a programmatic
+        /// update, which refreshes the engine from a new file put where the
+        /// engine reads its data, as the required examples ask.
+        /// </summary>
+        [TestMethod]
+        public void UpdateDataFile_WithoutSettings_UpdatesProgrammatically()
+        {
+            var output = RunWithoutSettings(
+                Examples.OnPremise.UpdateDataFile.Program.Main);
+            StringAssert.Contains(output, "CheckForUpdate",
+                "The example should show a programmatic update.");
+            StringAssert.Contains(output, "AUTO_UPDATE_SUCCESS",
+                "The programmatic update should refresh the engine from " +
+                "the new file.");
+        }
+
+        [TestMethod]
+        public void Performance_WithoutSettings()
+        {
+            var output = RunWithoutSettings(
+                Examples.OnPremise.Performance.Program.Main);
+            StringAssert.Contains(output, "This example used the free Lite data file",
+                "The example should say what the Enterprise data file adds.");
+            StringAssert.Contains(output, ContactUs,
+                "The example should link to the contact page.");
+        }
+
+        [TestMethod]
+        public void PerformanceMultiProperty_WithoutSettings()
+        {
+            var output = RunWithoutSettings(
+                Examples.OnPremise.PerformanceMultiProperty.Program.Main);
+            StringAssert.Contains(output, "This example used the free Lite data file",
+                "The example should say what the Enterprise data file adds.");
+            StringAssert.Contains(output, ContactUs,
+                "The example should link to the contact page.");
+        }
+
+        [TestMethod]
+        public void PerformanceSweep_WithoutSettings()
+        {
+            var output = RunWithoutSettings(
+                Examples.OnPremise.PerformanceSweep.Program.Main);
+            StringAssert.Contains(output, "This example used the free Lite data file",
+                "The example should say what the Enterprise data file adds.");
             StringAssert.Contains(output, ContactUs,
                 "The example should link to the contact page.");
         }

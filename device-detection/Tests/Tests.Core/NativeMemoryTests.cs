@@ -59,7 +59,7 @@ public class NativeMemoryTests
     private const int UserAgentCount = 100;
 
     private static readonly string[] UserAgents = new UserAgentGenerator(
-            TestHelpers.Utils.GetFilePath(Constants.UA_FILE_NAME))
+            TestHelpers.Utils.GetFilePath(Constants.EVIDENCE_FILE_NAME))
         .GetRandomUserAgents(UserAgentCount)
         .ToArray();
 
@@ -99,6 +99,14 @@ public class NativeMemoryTests
                 GC.EndNoGCRegion();
             }
         }
+
+        // Written whether the test passes or fails. CI prints the lines
+        // that start "Build log: " from the test results, so each job's
+        // log holds what its runner kept.
+        Console.WriteLine(
+            "Build log: Device Detection NativeMemory_FreedByDispose kept " +
+            $"{after - before} MB of the {loaded - before} MB the " +
+            "pipeline used.");
 
         Assert.IsLessThan(MemoryMarginMegabytes, after - before,
             $"Disposing kept {after - before} MB of the {loaded - before} " +

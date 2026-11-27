@@ -56,6 +56,7 @@ public class DataUpdateServiceFailedRefreshTests
     // Every content has the same length, so it can be written in place.
     private const string GoodData = "good data 0";
     private const string BrokenData = "broken data";
+    private const string NewData = "new data 01";
 
     private const int WaitMilliseconds = 30000;
 
@@ -135,6 +136,43 @@ public class DataUpdateServiceFailedRefreshTests
     }
 
     /// <summary>
+    /// The watcher runs on its own setting. With automatic updates off and
+    /// no licence key, a new file put in place is still applied.
+    /// </summary>
+    [TestMethod]
+    public void Watcher_AutomaticUpdatesOffAndNoLicenseKey_AppliesNewFile()
+    {
+        var path = Path.Combine(_directory, "data.dat");
+        File.WriteAllText(path, GoodData);
+        var service = new DataUpdateService(
+            new CapturingLogger(), new HttpClient(), new RealFileSystem(), NoTimer);
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        var file = WatchedFile(engine, path);
+        file.Configuration.AutomaticUpdatesEnabled = false;
+        var reports = Collect(service);
+
+        try
+        {
+            Assert.AreEqual(
+                0,
+                file.Configuration.DataUpdateLicenseKeys.Count,
+                "The file should have no licence key.");
+            service.RegisterDataFile(file);
+
+            Replace(path, NewData);
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
+                "The new file was not applied.");
+            engine.Verify(
+                e => e.RefreshData(It.IsAny<string>()), Times.AtLeastOnce());
+        }
+        finally
+        {
+            file.Dispose();
+        }
+    }
+
+    /// <summary>
     /// The watcher reports a file that cannot be opened yet. The engine is
     /// only refreshed once it can be.
     /// </summary>
@@ -185,6 +223,216 @@ public class DataUpdateServiceFailedRefreshTests
             Assert.IsFalse(
                 refreshedBeforeOpen,
                 "The engine was refreshed before the file could be opened.");
+        }
+        finally
+        {
+            file.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// A file written while the service handles the watcher's event for an
+    /// earlier one is applied, although the watcher raises no event for it.
+    /// On macOS the watcher merges changes to one file that it has not yet
+    /// delivered, so a write that lands as an event is being handled can
+    /// raise nothing of its own.
+    /// </summary>
+    /// <remarks>
+    /// The write times come from a stand-in and the event is raised once by
+    /// hand, so the later write is seen only through its write time.
+    /// </remarks>
+    [TestMethod]
+    public void Watcher_FileWrittenDuringRefresh_IsAppliedWithoutItsOwnEvent()
+    {
+        var path = Path.Combine(_directory, "data.dat");
+        File.WriteAllText(path, GoodData);
+        var first = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+        var writeTicks = first.Ticks;
+        var fileWrapper = new Mock<IFileWrapper>();
+        fileWrapper.Setup(w => w.GetLastWriteTimeUtc(It.IsAny<string>()))
+            .Returns(() => new DateTime(
+                Interlocked.Read(ref writeTicks), DateTimeKind.Utc));
+        fileWrapper.Setup(w => w.OpenRead(It.IsAny<string>()))
+            .Returns(() => Stream.Null);
+        var fileSystem = new Mock<IFileSystem>();
+        fileSystem.Setup(f => f.File).Returns(fileWrapper.Object);
+        var service = new DataUpdateService(
+            new CapturingLogger(), new HttpClient(), fileSystem.Object, NoTimer);
+        var refreshes = 0;
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        engine.Setup(e => e.RefreshData(It.IsAny<string>())).Callback(() =>
+        {
+            if (Interlocked.Increment(ref refreshes) == 1)
+            {
+                Interlocked.Exchange(
+                    ref writeTicks, first.AddSeconds(2).Ticks);
+            }
+        });
+        var file = WatchedFile(engine, path);
+        var reports = Collect(service);
+
+        try
+        {
+            service.RegisterDataFile(file);
+
+            Interlocked.Exchange(ref writeTicks, first.AddSeconds(1).Ticks);
+            RaiseChanged(service, file, path);
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
+                "The file the watcher reported was not applied.");
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
+                "The file written during the refresh was not applied.");
+            Assert.AreEqual(2, Volatile.Read(ref refreshes));
+        }
+        finally
+        {
+            file.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// A file written just after the service has handled the watcher's event
+    /// is applied, although the watcher raises no event for it. The service
+    /// has read the write time for the last time by then, so only a later
+    /// read finds it.
+    /// </summary>
+    /// <remarks>
+    /// The write time moves as the handler exits, after its last read, and
+    /// the event is raised once by hand.
+    /// </remarks>
+    [TestMethod]
+    public void Watcher_FileWrittenAfterEventHandled_IsAppliedWithoutItsOwnEvent()
+    {
+        var path = Path.Combine(_directory, "data.dat");
+        File.WriteAllText(path, GoodData);
+        var first = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+        var writeTicks = first.Ticks;
+        var fileWrapper = new Mock<IFileWrapper>();
+        fileWrapper.Setup(w => w.GetLastWriteTimeUtc(It.IsAny<string>()))
+            .Returns(() => new DateTime(
+                Interlocked.Read(ref writeTicks), DateTimeKind.Utc));
+        fileWrapper.Setup(w => w.OpenRead(It.IsAny<string>()))
+            .Returns(() => Stream.Null);
+        var fileSystem = new Mock<IFileSystem>();
+        fileSystem.Setup(f => f.File).Returns(fileWrapper.Object);
+        var service = new DataUpdateService(
+            new CapturingLogger(), new HttpClient(), fileSystem.Object, NoTimer);
+        var exits = 0;
+        service.OnDataFileUpdatedWillExit += () =>
+        {
+            if (Interlocked.Increment(ref exits) == 1)
+            {
+                Interlocked.Exchange(
+                    ref writeTicks, first.AddSeconds(2).Ticks);
+            }
+        };
+        var refreshes = 0;
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        engine.Setup(e => e.RefreshData(It.IsAny<string>()))
+            .Callback(() => Interlocked.Increment(ref refreshes));
+        var file = WatchedFile(engine, path);
+        var reports = Collect(service);
+
+        try
+        {
+            service.RegisterDataFile(file);
+
+            Interlocked.Exchange(ref writeTicks, first.AddSeconds(1).Ticks);
+            RaiseChanged(service, file, path);
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
+                "The file the watcher reported was not applied.");
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_SUCCESS),
+                "The file written after the event was handled was not applied.");
+            Assert.AreEqual(2, Volatile.Read(ref refreshes));
+        }
+        finally
+        {
+            file.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The watcher reports a file that is no longer there, which .NET gives
+    /// the write time 1 January 1601. A file that is not there is not newer
+    /// than the current one, so the check is reported as not needed at once
+    /// and the engine is not refreshed, rather than waiting to open it.
+    /// </summary>
+    [TestMethod]
+    public void Watcher_FileNotThere_ReportsNotNeededAtOnce()
+    {
+        var path = Path.Combine(_directory, "data.dat");
+        File.WriteAllText(path, GoodData);
+        var fileWrapper = new Mock<IFileWrapper>();
+        fileWrapper.Setup(w => w.GetLastWriteTimeUtc(It.IsAny<string>()))
+            .Returns(DateTime.FromFileTimeUtc(0));
+        fileWrapper.Setup(w => w.OpenRead(It.IsAny<string>()))
+            .Throws(new FileNotFoundException("Not there.", path));
+        var fileSystem = new Mock<IFileSystem>();
+        fileSystem.Setup(f => f.File).Returns(fileWrapper.Object);
+        var service = new DataUpdateService(
+            new CapturingLogger(), new HttpClient(), fileSystem.Object, NoTimer);
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        var file = WatchedFile(engine, path);
+        var reports = Collect(service);
+
+        try
+        {
+            service.RegisterDataFile(file);
+
+            Replace(path, NewData);
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED),
+                "A file that is not there was not reported as not needed.");
+            engine.Verify(
+                e => e.RefreshData(It.IsAny<string>()), Times.Never());
+        }
+        finally
+        {
+            file.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The watcher reports a newer file that is gone by the time the service
+    /// opens it, with the file or its folder gone. There is nothing to
+    /// apply, so the check is reported as not needed at once and the engine
+    /// is not refreshed, where a file that is there but cannot be opened yet
+    /// is waited for.
+    /// </summary>
+    [TestMethod]
+    [DataRow(typeof(FileNotFoundException))]
+    [DataRow(typeof(DirectoryNotFoundException))]
+    public void Watcher_FileGoneBeforeItOpens_ReportsNotNeededAtOnce(
+        Type gone)
+    {
+        var path = Path.Combine(_directory, "data.dat");
+        File.WriteAllText(path, GoodData);
+        var fileWrapper = new Mock<IFileWrapper>();
+        fileWrapper.Setup(w => w.GetLastWriteTimeUtc(It.IsAny<string>()))
+            .Returns((string p) => File.GetLastWriteTimeUtc(p));
+        fileWrapper.Setup(w => w.OpenRead(It.IsAny<string>()))
+            .Throws((Exception)Activator.CreateInstance(gone, "Gone."));
+        var fileSystem = new Mock<IFileSystem>();
+        fileSystem.Setup(f => f.File).Returns(fileWrapper.Object);
+        var service = new DataUpdateService(
+            new CapturingLogger(), new HttpClient(), fileSystem.Object, NoTimer);
+        var engine = new Mock<IOnPremiseAspectEngine>();
+        var file = WatchedFile(engine, path);
+        var reports = Collect(service);
+
+        try
+        {
+            service.RegisterDataFile(file);
+
+            Replace(path, NewData);
+            Assert.IsTrue(
+                WaitFor(reports, AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED),
+                "A file gone before it opened was not reported as not needed.");
+            engine.Verify(
+                e => e.RefreshData(It.IsAny<string>()), Times.Never());
         }
         finally
         {
@@ -409,6 +657,29 @@ public class DataUpdateServiceFailedRefreshTests
         };
         engine.Setup(e => e.GetDataFileMetaData(It.IsAny<string>())).Returns(file);
         return file;
+    }
+
+    // Raises the watcher's Changed event for the file once, as the watcher
+    // would, on a thread of its own.
+    private static void RaiseChanged(
+        DataUpdateService service,
+        AspectEngineDataFile file,
+        string path)
+    {
+        var handler = typeof(DataUpdateService).GetMethod(
+            "DataFileUpdated",
+            System.Reflection.BindingFlags.Instance |
+            System.Reflection.BindingFlags.NonPublic);
+        Assert.IsNotNull(handler, "The watcher's handler was not found.");
+        Assert.IsNotNull(file.FileWatcher, "The file has no watcher.");
+        var e = new FileSystemEventArgs(
+            WatcherChangeTypes.Changed,
+            Path.GetDirectoryName(path),
+            Path.GetFileName(path));
+        new Thread(() => handler.Invoke(service, new object[] { file.FileWatcher, e }))
+        {
+            IsBackground = true
+        }.Start();
     }
 
     private static BlockingCollection<AutoUpdateStatus> Collect(DataUpdateService service)

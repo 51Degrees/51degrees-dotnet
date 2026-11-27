@@ -58,6 +58,15 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
         private const string OriginCharlie = "https://charlie.example";
 
         /// <summary>
+        /// How long the blocked fetch test waits for a step that takes
+        /// milliseconds when the code is right. It only stops a hang from
+        /// holding up the run. A fetch started inside a lock shows instead
+        /// as the second request reading Unverified with the
+        /// DirectoryUnavailable reason, once the held fetch times out.
+        /// </summary>
+        private const int HangGuardSeconds = 10;
+
+        /// <summary>
         /// A request that has to wait for a fetch reports Timeout with the
         /// DirectoryPending reason, comes back inside the wait budget rather
         /// than waiting for the agent, and leaves the fetch running so that
@@ -141,6 +150,77 @@ namespace FiftyOne.Pipeline.AgentSignature.Tests
                         "running rather than abandoned, but it was asked " +
                         Text(handler.CallCount) + " times.");
                 }
+            }
+        }
+
+        /// <summary>
+        /// A fetch whose start blocks the thread that made it does not hold
+        /// up another request for the same agent, because the fetch is not
+        /// started inside a lock. The other request reads Timeout inside
+        /// its wait budget while the first fetch is still blocked.
+        /// </summary>
+        [TestMethod]
+        public void FetchBlockingItsCallerDoesNotHoldUpAnotherRequest()
+        {
+            Warmup();
+            using (var handler = new FakeHttpHandler())
+            {
+                handler.AddDirectory(
+                    Fixtures.SignatureAgentDirectoryUrl,
+                    RequestSigner.PublicPart(Fixtures.Ed25519Key()));
+                using (var harness = ElementHarness.Create(
+                    b => b.SetWaitBudget(TimeSpan.FromMilliseconds(200)),
+                    handler))
+                {
+                    var signed = RequestSigner.Sign(new SigningOptions());
+                    handler.HoldOnCallingThread(
+                        Fixtures.SignatureAgentDirectoryUrl);
+                    try
+                    {
+                        var first = Task.Run(
+                            () => harness.ProcessSigned(signed));
+                        WaitUntil(
+                            () => handler.CallCount == 1,
+                            "The first request did not start the fetch.");
+                        var secondTime = Stopwatch.StartNew();
+                        var second = Task.Run(
+                            () => harness.ProcessSigned(signed));
+
+                        Assert.IsTrue(
+                            second.Wait(TimeSpan.FromSeconds(HangGuardSeconds)),
+                            "A second request for the agent waited for " +
+                            "the first request's fetch, which was blocked " +
+                            "on the thread that started it, so the fetch " +
+                            "was started inside a lock.");
+                        secondTime.Stop();
+                        Console.WriteLine(
+                            "Build log: FetchBlockingItsCallerDoesNotHoldUp" +
+                            "AnotherRequest, the second request ended " +
+                            $"{secondTime.ElapsedMilliseconds} ms after it " +
+                            "started, with a wait budget of 200 ms.");
+                        Assert.AreEqual(
+                            Constants.STATUS_TIMEOUT,
+                            second.Result.AgentSignature.Value,
+                            Describe(second.Result));
+                    }
+                    finally
+                    {
+                        handler.Release();
+                    }
+                }
+            }
+        }
+
+        private static void WaitUntil(Func<bool> condition, string message)
+        {
+            var watch = Stopwatch.StartNew();
+            while (condition() == false)
+            {
+                if (watch.Elapsed > TimeSpan.FromSeconds(HangGuardSeconds))
+                {
+                    Assert.Fail(message);
+                }
+                Thread.Sleep(10);
             }
         }
 

@@ -1,13 +1,13 @@
 # Tests for ci/release-plan-filter.ps1, run with Pester 5 or later.
 #
 # Each test commits a change to a project file or nuspec in a throwaway git
-# repository tagged as a released family, and asks the filter which files
+# repository tagged as a released package, and asks the filter which files
 # count. The last tests run common-ci's release plan with the filter, when
-# COMMON_CI names a checkout of common-ci that has steps/release-plan.ps1.
+# a checkout of common-ci beside this repository has steps/release-plan.ps1.
 
 BeforeAll {
     $script:Filter = Join-Path $PSScriptRoot 'release-plan-filter.ps1'
-    $script:Family = [pscustomobject]@{ Name = 'pkg'; Path = 'pkg' }
+    $script:TestPackage = [pscustomobject]@{ Name = 'pkg'; Path = 'pkg' }
     $script:Tag = 'pkg/1.0.0'
 
     # The commits in the throwaway repositories carry their own identity.
@@ -93,7 +93,7 @@ BeforeAll {
     $script:Nuspec = $Nuspec -replace "`r`n", "`n"
 
     # A repository holding the project, the nuspec and a source file, tagged
-    # as the family's last release. The files have a byte order mark, as
+    # as the package's last release. The files have a byte order mark, as
     # the project files in this repository do.
     function New-Repo {
         $path = Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString())
@@ -122,7 +122,7 @@ BeforeAll {
     }
 
     function Invoke-Filter([string]$Repo, [string[]]$Files) {
-        return @(& $Filter -RepoPath $Repo -Package $Family -From $Tag `
+        return @(& $Filter -RepoPath $Repo -Package $TestPackage -From $Tag `
             -Files $Files 6>$null)
     }
 
@@ -283,13 +283,13 @@ Describe 'A nuspec' {
 Describe 'With common-ci''s release plan' {
     BeforeDiscovery {
         # Only a release plan that calls a filter script can test this one.
-        $step = $env:COMMON_CI ? (Join-Path $env:COMMON_CI 'steps' 'release-plan.ps1') : $null
+        $step = Join-Path $PSScriptRoot '..' '..' 'common-ci' 'steps' 'release-plan.ps1'
         $script:HasStep = $step -and (Test-Path $step) -and
             (Select-String -Path $step -Pattern 'release-plan-filter.ps1' -Quiet)
     }
 
     BeforeAll {
-        $step = $env:COMMON_CI ? (Join-Path $env:COMMON_CI 'steps' 'release-plan.ps1') : $null
+        $step = Join-Path $PSScriptRoot '..' '..' 'common-ci' 'steps' 'release-plan.ps1'
         if ($step -and (Test-Path $step)) {
             . $step
         }
@@ -312,7 +312,7 @@ Describe 'With common-ci''s release plan' {
         @(Get-ReleasePlan $Repo $Packages 6>$null) | Should -BeNullOrEmpty
     }
 
-    It 'releases the family for a change to its target frameworks' -Skip:(-not $HasStep) {
+    It 'releases the package for a change to its target frameworks' -Skip:(-not $HasStep) {
         Edit-File $Repo 'pkg/Pkg.csproj' '<TargetFramework>netstandard2.0</TargetFramework>' '<TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>'
         $plan = @(Get-ReleasePlan $Repo $Packages 6>$null)
         $plan.Name | Should -Be @('pkg')

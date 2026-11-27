@@ -24,6 +24,19 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb.ClientOnly
 {
     public class Program
     {
+        /// <summary>
+        /// What the example writes when no resource key is set.
+        /// </summary>
+        private const string MissingKeyMessage =
+            "No resource key was given in the environment variable " +
+            $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The page asks the " +
+            "51Degrees cloud service for its properties with that key. A " +
+            "free resource key can be created at " +
+            "https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-web-clientonly-program.cs&utm_term=resource-key-required. " +
+            "With a paid subscription, a key created at " +
+            "https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-gettingstarted-web-clientonly-program.cs&utm_term=resource-key-required " +
+            "includes every property the page shows.";
+
         public static void Main(string[] args)
         {
             // Start the server and then wait for the task to finish.
@@ -43,13 +56,21 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.GettingStartedWeb.ClientOnly
             string[] args,
             CancellationToken stopToken = default)
         {
+            if (string.IsNullOrWhiteSpace(ExampleUtils.GetResourceKeyFromEnv()))
+            {
+                // There is no resource key, so the message says where to
+                // create one and the example ends without a server.
+                Console.WriteLine(MissingKeyMessage);
+                return Task.CompletedTask;
+            }
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Setup urls for the web server.
             builder.WebHost.UseUrls(Constants.AllUrls);
 
             // Add services to the container.
-            builder.Services.AddRazorPages().AddRazorRuntimeCompilation();
+            builder.Services.AddRazorPages();
 
             var app = builder.Build();
 

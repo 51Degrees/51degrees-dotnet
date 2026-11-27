@@ -64,8 +64,23 @@ namespace FiftyOne.Pipeline.Engines.Services
         // System wrappers
         private IFileSystem _fileSystem;
 
-        // random number generator
-        private Random _rnd = new Random();
+        // Random number generator, which is not safe to use from several
+        // timer threads at once, so it is only used under its own lock.
+        private readonly Random _rnd = new Random();
+        private readonly object _rndLock = new object();
+
+        /// <summary>
+        /// The write time .NET gives a file that is not there.
+        /// </summary>
+        private static readonly DateTime MissingFileWriteTime =
+            DateTime.FromFileTimeUtc(0);
+
+        /// <summary>
+        /// How long after the watcher's last event the write time is read
+        /// once more, for a write that raised no event of its own.
+        /// </summary>
+        private static readonly TimeSpan WatcherRecheckDelay =
+            TimeSpan.FromSeconds(1);
 
 		// All registered configurations
 		private List<AspectEngineDataFile> _configurations;
@@ -84,6 +99,39 @@ namespace FiftyOne.Pipeline.Engines.Services
 		#endregion
 
 		/// <summary>
+		/// Constructor for a service that makes its own
+		/// <see cref="HttpClient"/>, which does not follow redirects.
+		/// </summary>
+		/// <param name="logger">
+		/// The logger to use
+		/// </param>
+		public DataUpdateService(
+			ILogger<DataUpdateService> logger) :
+			this(logger, CreateHttpClient(), null, null)
+		{ }
+
+		/// <summary>
+		/// Make the <see cref="HttpClient"/> the service uses when it is
+		/// given none. It does not follow redirects, so that the answer
+		/// which lists the products the license keys hold reaches the
+		/// service. That answer has a Location header, which a client
+		/// that follows redirects requests in place of the list.
+		/// </summary>
+		/// <returns>
+		/// A new <see cref="HttpClient"/>.
+		/// </returns>
+		internal static HttpClient CreateHttpClient()
+		{
+#pragma warning disable CA2000 // Dispose objects before losing scope
+			// The client owns its handler, and the caller owns the client.
+			return new HttpClient(new HttpClientHandler()
+			{
+				AllowAutoRedirect = false,
+			});
+#pragma warning restore CA2000 // Dispose objects before losing scope
+		}
+
+		/// <summary>
 		/// Constructor
 		/// </summary>
 		/// <param name="logger">
@@ -92,9 +140,14 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// <param name="httpClient">
 		/// The <see cref="HttpClient"/> to use when requesting an update
 		/// from a URL.
-		/// Note that only one HttpClient instance should be used throughout 
-		/// the application, as described in the documentation: 
+		/// Note that only one HttpClient instance should be used throughout
+		/// the application, as described in the documentation:
 		/// https://msdn.microsoft.com/library/system.net.http.httpclient(v=vs.110).aspx
+		/// The client must not follow redirects (its handler has
+		/// AllowAutoRedirect set to false) when the license keys hold
+		/// more than one product. Otherwise the client requests the
+		/// address in the Location header of the answer that lists the
+		/// products, and the service never sees the list.
 		/// </param>
 		public DataUpdateService(
 			ILogger<DataUpdateService> logger,
@@ -194,6 +247,20 @@ namespace FiftyOne.Pipeline.Engines.Services
 				throw new ArgumentNullException(nameof(dataFile));
 			}
 
+			// A disposed data file is not registered again, so a check that
+			// was running when the file was disposed does not bring it back.
+			// A file disposed while this runs is caught by the checks before
+			// the check on start-up and under its timer lock and the list's
+			// lock below, though a check on start-up that has already begun
+			// still runs.
+			if (dataFile.TimerClosed)
+			{
+				LogDebugMessage(
+					() => "dataFile is disposed so is not registered.",
+					dataFile);
+				return;
+			}
+
 			bool alreadyRegistered = dataFile.IsRegistered;
 			bool setTimer = true;
 			dataFile.SetDataUpdateService(this);
@@ -208,7 +275,8 @@ namespace FiftyOne.Pipeline.Engines.Services
 				// We also want to do this synchronously so that execution
 				// will block until the engine is ready.
 				if (dataFile.Configuration.UpdateOnStartup &&
-					alreadyRegistered == false)
+					alreadyRegistered == false &&
+					dataFile.TimerClosed == false)
                 {
                     LogInfoMessage(Messages.MessageAutoUpdateOnStartup, dataFile);
                     var result = CheckForUpdate(dataFile, true);
@@ -242,7 +310,9 @@ namespace FiftyOne.Pipeline.Engines.Services
 					{
 						lock (dataFile.TimerLock)
 						{
-							if (dataFile.Timer == null)
+							// The file can be disposed after the check above.
+							if (dataFile.Timer == null &&
+								dataFile.TimerClosed == false)
 							{
 								LogInfoMessage(
 									Messages.MessageAutoUpdateCreateTimer, dataFile);
@@ -267,35 +337,46 @@ namespace FiftyOne.Pipeline.Engines.Services
 						}
 					}
 
-					// If file system watcher is enabled then set it up.
-					// AutomaticUpdatesEnabled is the master switch for all
-					// automatic update activity, so the watcher is only created
-					// when auto updates are enabled - the same gate that is
-					// applied to the polling timer above.
-					if (dataFile.AutomaticUpdatesEnabled &&
-						dataFile.Configuration.FileSystemWatcherEnabled &&
+					// If file system watcher is enabled then set it up. The
+					// watcher runs on its own setting, whatever automatic
+					// updates are set to and with or without a licence key,
+					// because watching a file downloads nothing.
+					if (dataFile.Configuration.FileSystemWatcherEnabled &&
 						dataFile.FileWatcher == null &&
 						string.IsNullOrEmpty(dataFile.DataFilePath) == false)
                     {
-                        LogInfoMessage(Messages.MessageAutoUpdateCreateWatcher, dataFile);
+						// Under the timer lock, as Dispose marks the file closed
+						// under it before it disposes the watcher.
+						lock (dataFile.TimerLock)
+						{
+							if (dataFile.TimerClosed == false)
+							{
+								LogInfoMessage(Messages.MessageAutoUpdateCreateWatcher, dataFile);
 
-                        FileSystemWatcher watcher = new FileSystemWatcher(
-							Path.GetDirectoryName(dataFile.DataFilePath),
-							Path.GetFileName(dataFile.DataFilePath));
+								FileSystemWatcher watcher = new FileSystemWatcher(
+									Path.GetDirectoryName(dataFile.DataFilePath),
+									Path.GetFileName(dataFile.DataFilePath));
 
-						//on macos NotifyFilters.FileName filter and Created subscription are needed
-						//because it seems to recreate the file when copying over
-						watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName;
-						watcher.Changed += DataFileUpdated;
-						watcher.Created += DataFileUpdated;
-						watcher.EnableRaisingEvents = true;
-						dataFile.FileWatcher = watcher;
+								//on macos NotifyFilters.FileName filter and Created subscription are needed
+								//because it seems to recreate the file when copying over
+								watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName;
+								watcher.Changed += DataFileUpdated;
+								watcher.Created += DataFileUpdated;
+								watcher.EnableRaisingEvents = true;
+								dataFile.FileWatcher = watcher;
+							}
+						}
 					}
 
 					lock (_configurations)
 					{
-						// Add the configuration to the list of configurations.
-						if (_configurations.Contains(dataFile) == false)
+						// Add the configuration to the list of configurations,
+						// unless the file was disposed while it was registered.
+						// Dispose marks it closed before it takes this lock to
+						// remove it, so this check and that removal cannot both
+						// miss it.
+						if (_configurations.Contains(dataFile) == false &&
+							dataFile.TimerClosed == false)
 						{
 							_configurations.Add(dataFile);
 						}
@@ -320,6 +401,11 @@ namespace FiftyOne.Pipeline.Engines.Services
 					_configurations.Remove(config);
 				}
 			}
+			// Stop the timer so that the file is not checked again.
+			if (dataFile != null)
+			{
+				ClearTimer(dataFile);
+			}
 		}
 
         /// <summary>
@@ -333,14 +419,30 @@ namespace FiftyOne.Pipeline.Engines.Services
         /// If the engine has only one data file then this parameter is ignored.
         /// </param>
         /// <returns>
-        /// The result of the update check.
+        /// The result of the update check. For a data file whose engine has
+        /// been built, a dispose before any try at refreshing the engine
+        /// gives not needed, and the engine is left alone. Nothing is
+        /// downloaded if the file was disposed before the call. A download
+        /// under way when it was disposed is not copied over the data file,
+        /// though a dispose after the download has been checked lets the copy
+        /// write it. A dispose during a try waits for that try to end, and
+        /// the check gives success if it worked. If that try failed, or the
+        /// dispose came after a failed try, the tries end and the failure is
+        /// thrown as a refresh failure. A dispose after the engine is
+        /// refreshed leaves the success. Any failure before the refresh is
+        /// thrown whether or not the file was disposed.
         /// </returns>
         /// <exception cref="DataUpdateException">
         /// Thrown if some problem occurs during the update process.
         /// </exception>
 		/// <exception cref="ArgumentNullException">
 		/// Thrown if the parameter is null
-		/// </exception>        
+		/// </exception>
+		/// <remarks>
+		/// A refresh of the engine waits for one already in progress, which
+		/// includes the file watcher's wait for a changed data file to be
+		/// readable.
+		/// </remarks>
 		public AutoUpdateStatus CheckForUpdate(
 			IOnPremiseAspectEngine engine, 
 			string dataFileIdentifier = null)
@@ -372,12 +474,24 @@ namespace FiftyOne.Pipeline.Engines.Services
 		/// <param name="data">
 		/// The data to update with.
 		/// </param>
+		/// <returns>
+		/// Success. Any failure is thrown.
+		/// </returns>
 		/// <exception cref="DataUpdateException">
 		/// Thrown if some problem occurs during the update process.
 		/// </exception>
 		/// <exception cref="ArgumentNullException">
 		/// Thrown if arguments are null.
 		/// </exception>
+		/// <exception cref="ObjectDisposedException">
+		/// Thrown if the data file has been disposed. The engine is not
+		/// refreshed, and the data file is not written unless it was
+		/// disposed during this call.
+		/// </exception>
+		/// <remarks>
+		/// The refresh waits for one already in progress, which includes the
+		/// file watcher's wait for a changed data file to be readable.
+		/// </remarks>
 		public AutoUpdateStatus UpdateFromMemory(AspectEngineDataFile dataFile,
             MemoryStream data)
 		{
@@ -388,6 +502,10 @@ namespace FiftyOne.Pipeline.Engines.Services
 			if (data == null)
 			{
 				throw new ArgumentNullException(nameof(data));
+			}
+			if (dataFile.TimerClosed)
+			{
+				throw DataFileDisposed(dataFile);
 			}
 
 			AutoUpdateStatus result = AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS;
@@ -416,14 +534,21 @@ namespace FiftyOne.Pipeline.Engines.Services
                 try
                 {
                     // Refresh the engine using the new data.
-                    dataFile.Engine.RefreshData(dataFile.Identifier, data);
-                    result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+                    result = RefreshEngine(
+                        dataFile,
+                        () => dataFile.Engine.RefreshData(
+                            dataFile.Identifier, data));
                 }
                 catch (Exception ex)
                 {
                     result = AutoUpdateStatus.AUTO_UPDATE_REFRESH_FAILED;
                     throw new DataUpdateException($"An error occurred when applying a " +
                         $"data update to engine '{dataFile.Engine.GetType().Name}'.", ex, result);
+                }
+                // Disposed during this call, so the engine was left alone.
+                if (result != AutoUpdateStatus.AUTO_UPDATE_SUCCESS)
+                {
+                    throw DataFileDisposed(dataFile);
                 }
             }
             else
@@ -515,6 +640,17 @@ namespace FiftyOne.Pipeline.Engines.Services
 				}
 
 				DataFileUpdatedInternal(sender, e, dataFile);
+				// A write that lands while the event is handled can raise no
+				// event of its own, as the watcher on macOS merges changes to
+				// one file it has not yet delivered. So the write time is
+				// read again, and a later write is handled here.
+				while (WrittenSinceLastUpdate(dataFile, e.FullPath))
+				{
+					DataFileUpdatedInternal(sender, e, dataFile);
+				}
+				// The same goes for a write that lands just after that
+				// read, so it is read once more a moment later.
+				RecheckLater(sender, e, dataFile);
             }
 #pragma warning disable CA1031 // Do not catch general exception types
 			catch (Exception ex)
@@ -559,10 +695,16 @@ namespace FiftyOne.Pipeline.Engines.Services
 				{
 					// Get the last modified time of the new data file
 					DateTime dataTime = _fileSystem.File.GetLastWriteTimeUtc(e.FullPath);
+					// A file that is not there is not newer, so there is
+					// nothing to apply.
+					if (dataTime <= MissingFileWriteTime)
+					{
+						status = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+					}
 					// Use a lock with a double check on file time to make
 					// sure we only run the update once even if multiple
 					// events fire for a single file.
-					if (dataFile.LastUpdateFileModifiedTime < dataTime)
+					else if (dataFile.LastUpdateFileModifiedTime < dataTime)
 					{
 						lock (dataFile.UpdateSyncLock)
 						{
@@ -572,17 +714,31 @@ namespace FiftyOne.Pipeline.Engines.Services
 
 								// Make sure we can actually open the file for reading
 								// before notifying the engine, otherwise the copy
-								// may still be in progress.
+								// may still be in progress. Dispose waits for this
+								// lock, so stop waiting once the file is closed.
 								bool fileLockable = false;
+								bool fileGone = false;
 								DateTime timeout = DateTime.UtcNow.AddMinutes(10);
 
 								while (fileLockable == false &&
+									fileGone == false &&
+									dataFile.TimerClosed == false &&
 									timeout > DateTime.UtcNow)
 								{
 									try
 									{
 										using (_fileSystem.File.OpenRead(e.FullPath)) { }
 										fileLockable = true;
+									}
+									catch (FileNotFoundException)
+									{
+										// Gone since the event, so there is
+										// nothing to wait for.
+										fileGone = true;
+									}
+									catch (DirectoryNotFoundException)
+									{
+										fileGone = true;
 									}
 									catch (IOException)
 									{
@@ -591,7 +747,11 @@ namespace FiftyOne.Pipeline.Engines.Services
 									}
 								}
 
-								if (fileLockable)
+								if (fileGone || dataFile.TimerClosed)
+								{
+									status = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+								}
+								else if (fileLockable)
 								{
 									// Complete the update
 									status = UpdatedDataAvailable(dataFile);
@@ -625,6 +785,62 @@ namespace FiftyOne.Pipeline.Engines.Services
 				Status = status
 			});
 		}
+
+        /// <summary>
+        /// True when the file was written after the write time the last
+        /// update recorded, and the data file is still open.
+        /// </summary>
+        private bool WrittenSinceLastUpdate(
+            AspectEngineDataFile dataFile,
+            string path)
+        {
+            if (dataFile == null || dataFile.TimerClosed)
+            {
+                return false;
+            }
+            var written = _fileSystem.File.GetLastWriteTimeUtc(path);
+            return written > MissingFileWriteTime &&
+                written > dataFile.LastUpdateFileModifiedTime;
+        }
+
+        /// <summary>
+        /// Reads the file's write time again after
+        /// <see cref="WatcherRecheckDelay"/>, and handles a later write as
+        /// the watcher's event would. Handling it schedules the next read,
+        /// so this stops once no later write is found or the file closes.
+        /// </summary>
+        private void RecheckLater(
+            object sender,
+            FileSystemEventArgs e,
+            AspectEngineDataFile dataFile)
+        {
+            if (dataFile == null || dataFile.TimerClosed)
+            {
+                return;
+            }
+            Task.Delay(WatcherRecheckDelay).ContinueWith(
+                t =>
+                {
+#pragma warning disable CA1031 // Do not catch general exception types
+                    try
+                    {
+                        if (WrittenSinceLastUpdate(dataFile, e.FullPath))
+                        {
+                            DataFileUpdated(sender, e);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Nothing waits on this task, so an exception
+                        // that escaped would go unseen.
+                        LogUpdateException(ex, dataFile);
+                    }
+#pragma warning restore CA1031 // Do not catch general exception types
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.Default);
+        }
 
 		private void DebugDescribeException(Exception x, bool deep = false)
 		{
@@ -809,7 +1025,13 @@ namespace FiftyOne.Pipeline.Engines.Services
 
 			try
 			{
-				if (dataFile != null)
+				// A disposed file's engine is gone, so there is nothing to
+				// download or apply.
+				if (dataFile != null && dataFile.TimerClosed)
+				{
+					result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+				}
+				else if (dataFile != null)
 				{
 					LogInfoMessage(Messages.MessageAutoUpdateCheck, dataFile);
 
@@ -964,15 +1186,20 @@ namespace FiftyOne.Pipeline.Engines.Services
                         LogDebugMessage(() => $"{nameof(CheckForUpdateFromUrl)} resulted in {result}", dataFile);
 						if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS)
 						{
-							if (dataFile.Engine != null)
+							if (KeepIfNoEngine(dataFile, () =>
+								dataFile.Configuration.DataStream =
+									uncompressedStream) == false)
 							{
 								try
 								{
 									LogInfoMessage(Messages.MessageAutoUpdateRefreshEngine, dataFile);
 									// Tell the engine to refresh itself with
 									// the new data.
-									dataFile.Engine.RefreshData(dataFile.Identifier, uncompressedStream);
-									result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+									result = RefreshEngine(
+										dataFile,
+										() => dataFile.Engine.RefreshData(
+											dataFile.Identifier,
+											uncompressedStream));
 								}
 								catch (Exception ex)
 								{
@@ -986,9 +1213,9 @@ namespace FiftyOne.Pipeline.Engines.Services
 							}
 							else
 							{
-								// No associated engine at the moment so just
-								// set the value of the data stream.
-								dataFile.Configuration.DataStream = uncompressedStream;
+								// No associated engine at the moment, so the
+								// data stream was kept for the engine to
+								// load.
 								result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
 								// Make sure the stream will not be disposed 
 								// before the engine is created with it.
@@ -1038,6 +1265,17 @@ namespace FiftyOne.Pipeline.Engines.Services
                         LogDebugMessage(() => $"{nameof(CheckForUpdateFromUrl)} resulted in {result}", dataFile);
 					}
 
+					// Disposed during the download, so there is no engine to
+					// apply it to and the data file is left as it is. Dispose
+					// does not wait for the copy below, so a dispose after
+					// this check still lets the copy write the data file,
+					// and the refresh then leaves the engine alone.
+					if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS &&
+						dataFile.TimerClosed)
+					{
+						result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+					}
+
 					if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS)
 					{
 						// If this engine has a data file watcher then we need to
@@ -1073,13 +1311,27 @@ namespace FiftyOne.Pipeline.Engines.Services
 						}
 						finally
 						{
-							// Make sure to enable the file watcher again 
-							// if needed.
+							// Make sure to enable the file watcher again
+							// if needed. Dispose closes the file under the
+							// timer lock before it disposes the watcher, so
+							// while the file is still open here its watcher
+							// is not yet disposed.
 							if (dataFile != null &&
 								dataFile.FileWatcher != null)
 							{
-								dataFile.FileWatcher.EnableRaisingEvents = true;
-                                LogDebugMessage(() => $"Restored {nameof(dataFile.FileWatcher)} events", dataFile);
+								var restored = false;
+								lock (dataFile.TimerLock)
+								{
+									if (dataFile.TimerClosed == false)
+									{
+										dataFile.FileWatcher.EnableRaisingEvents = true;
+										restored = true;
+									}
+								}
+								if (restored)
+								{
+                                    LogDebugMessage(() => $"Restored {nameof(dataFile.FileWatcher)} events", dataFile);
+								}
 							}
 						}
 					}
@@ -1167,9 +1419,11 @@ namespace FiftyOne.Pipeline.Engines.Services
 		}
 
 		/// <summary>
-		/// Called when a data update is available and the file at 
+		/// Called when a data update is available and the file at
 		/// engine.DataFilePath contains this new data. Refreshes the engine,
-		/// trying up to 10 times, and leaves the update timer alone.
+		/// trying up to 10 times, and leaves the update timer alone. Gives
+		/// not needed, with no refresh, once the file is disposed, unless an
+		/// earlier try failed, whose failure is then thrown.
 		/// </summary>
 		/// <param name="dataFile"></param>
 		/// <returns></returns>
@@ -1181,7 +1435,7 @@ namespace FiftyOne.Pipeline.Engines.Services
 			Exception exception = null;
 			int tries = 0;
 
-            if (dataFile.Engine != null)
+            if (KeepIfNoEngine(dataFile, null) == false)
             {
                 LogInfoMessage(Messages.MessageAutoUpdateRefreshEngine, dataFile);
 
@@ -1191,8 +1445,21 @@ namespace FiftyOne.Pipeline.Engines.Services
 				{
 					try
 					{
-						dataFile.Engine.RefreshData(dataFile.Identifier);
-						result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+						var refreshed = RefreshEngine(
+							dataFile,
+							() => dataFile.Engine.RefreshData(
+								dataFile.Identifier));
+						if (refreshed == AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED)
+						{
+							// Disposed. A failure from an earlier try is
+							// still thrown below.
+							if (exception == null)
+							{
+								return refreshed;
+							}
+							break;
+						}
+						result = refreshed;
 					}
 #pragma warning disable CA1031 // Do not catch general exception types
 					// The code executed by the RefreshData method could
@@ -1218,13 +1485,81 @@ namespace FiftyOne.Pipeline.Engines.Services
 			}
 			else
 			{
-				// Engine not yet set so no need to refresh it.
-				// We can consider the update a success.
+				// Engine not yet set, so the new file was kept for the
+				// engine to load. We can consider the update a success.
 				result = AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
 			}
 
 			return result;
 		}
+
+		/// <summary>
+		/// When the data file names no engine, runs keep, which keeps the
+		/// new data where an engine loads it from, and counts the data as
+		/// kept, under the file's update lock. An engine names itself on the
+		/// file under the same lock once it has loaded its data, and loads
+		/// again if data was kept during its load. So new data is either
+		/// loaded by the engine that is loading, or applied by the caller
+		/// to the engine the file names.
+		/// </summary>
+		/// <param name="dataFile">
+		/// The data file the new data is for.
+		/// </param>
+		/// <param name="keep">
+		/// Keeps the new data, or null when it is already where the engine
+		/// loads it from.
+		/// </param>
+		/// <returns>
+		/// True if the data was kept, false if the file names an engine,
+		/// which the caller refreshes.
+		/// </returns>
+		private static bool KeepIfNoEngine(
+			AspectEngineDataFile dataFile,
+			Action keep)
+		{
+			lock (dataFile.UpdateSyncLock)
+			{
+				if (dataFile.Engine != null)
+				{
+					return false;
+				}
+				keep?.Invoke();
+				dataFile.CountDataKept();
+				return true;
+			}
+		}
+
+		/// <summary>
+		/// Refreshes the data file's engine under the file's update lock,
+		/// unless the file has been disposed. Dispose waits for that lock,
+		/// so the engine is never freed while it refreshes, and once freed
+		/// it is never refreshed.
+		/// </summary>
+		/// <returns>
+		/// Success, or not needed when the file has been disposed and the
+		/// engine was left alone.
+		/// </returns>
+		private static AutoUpdateStatus RefreshEngine(
+			AspectEngineDataFile dataFile,
+			Action refresh)
+		{
+			lock (dataFile.UpdateSyncLock)
+			{
+				if (dataFile.TimerClosed)
+				{
+					return AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+				}
+				refresh();
+				return AutoUpdateStatus.AUTO_UPDATE_SUCCESS;
+			}
+		}
+
+		private static ObjectDisposedException DataFileDisposed(
+			AspectEngineDataFile dataFile) =>
+			new ObjectDisposedException(
+				dataFile.GetType().Name,
+				$"The data file '{dataFile.Identifier}' has been disposed, " +
+				"so its engine cannot be updated.");
 
 		/// <summary>
 		/// Clear the timer ready for a new one to be created.
@@ -1269,10 +1604,419 @@ namespace FiftyOne.Pipeline.Engines.Services
 			Stream tempStream,
 			out string expectedMd5Hash)
 		{
+			return DownloadFile(
+				dataFile, tempStream, out expectedMd5Hash,
+				dataFile.FormattedUri, true, 0);
+		}
+
+		/// <summary>
+		/// The response status that lists the products the license keys
+		/// hold, when the request named none and they hold several.
+		/// </summary>
+		private const int MultipleChoices = 300;
+
+		/// <summary>
+		/// The most redirects that one check follows itself.
+		/// </summary>
+		private const int MaxRedirects = 20;
+
+		/// <summary>
+		/// The most bytes read of a response that lists products.
+		/// </summary>
+		private const int MaxProductListBytes = 65536;
+
+		/// <summary>
+		/// The name of the query parameter that names a product.
+		/// </summary>
+		private const string ProductParameter = "Product";
+
+		/// <summary>
+		/// Get the value of the Product parameter in the query of a URL.
+		/// The name of the parameter is matched ignoring case.
+		/// </summary>
+		/// <param name="url">
+		/// The URL to read.
+		/// </param>
+		/// <returns>
+		/// The product named, or null if the URL has no Product parameter
+		/// or its value is empty.
+		/// </returns>
+		private static string ProductOf(string url)
+		{
+			var query = url.IndexOf('?');
+			if (query < 0)
+			{
+				return null;
+			}
+			var end = url.IndexOf('#', query);
+			var parameters = end < 0 ?
+				url.Substring(query + 1) :
+				url.Substring(query + 1, end - query - 1);
+			foreach (var parameter in parameters.Split('&'))
+			{
+				if (parameter.StartsWith(
+					ProductParameter + "=",
+					StringComparison.OrdinalIgnoreCase))
+				{
+					var value = Uri.UnescapeDataString(
+						parameter.Substring(ProductParameter.Length + 1));
+					if (value.Length > 0)
+					{
+						return value;
+					}
+				}
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// Get a URL with the Product parameter added as the last parameter
+		/// of its query, percent-encoded. A Product parameter with an empty
+		/// value is taken out, so the URL names the product once. The rest
+		/// of the query is unchanged.
+		/// </summary>
+		/// <param name="url">
+		/// The URL to add to.
+		/// </param>
+		/// <param name="product">
+		/// The product to name.
+		/// </param>
+		/// <returns>
+		/// The URL that asks for the product.
+		/// </returns>
+		private static Uri WithProduct(Uri url, string product)
+		{
+			var text = url.GetLeftPart(UriPartial.Query);
+			var query = text.IndexOf('?');
+			var path = query < 0 ? text : text.Substring(0, query);
+			var parameters = query < 0 ?
+				new List<string>() :
+				text.Substring(query + 1).Split('&')
+					.Where(p => p.Length > 0 && string.Equals(
+						p, ProductParameter + "=",
+						StringComparison.OrdinalIgnoreCase) == false)
+					.ToList();
+			parameters.Add(
+				ProductParameter + "=" + Uri.EscapeDataString(product));
+			return new Uri(path + "?" + string.Join("&", parameters));
+		}
+
+		/// <summary>
+		/// Get the product names offered in a response that lists the URLs
+		/// available to the license keys.
+		/// </summary>
+		/// <param name="response">
+		/// The response to read.
+		/// </param>
+		/// <returns>
+		/// The value of the Product parameter of each URL listed that has
+		/// one, in the order of the response, or null if the response has
+		/// no such list.
+		/// </returns>
+		private static List<string> ReadProductsOffered(
+			HttpResponseMessage response)
+		{
+			var uris = new List<string>();
+			try
+			{
+				string body;
+				using (var stream = response.Content.ReadAsStreamAsync().Result)
+				using (var bytes = new MemoryStream())
+				{
+					var buffer = new byte[4096];
+					int read;
+					while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+					{
+						bytes.Write(buffer, 0, read);
+						if (bytes.Length > MaxProductListBytes)
+						{
+							return null;
+						}
+					}
+					body = Encoding.UTF8.GetString(bytes.ToArray());
+				}
+#if NET8_0_OR_GREATER
+				using (var document = System.Text.Json.JsonDocument.Parse(body))
+				{
+					if (document.RootElement.ValueKind !=
+							System.Text.Json.JsonValueKind.Object ||
+						document.RootElement.TryGetProperty(
+							"AvailableUris", out var list) == false ||
+						list.ValueKind != System.Text.Json.JsonValueKind.Array)
+					{
+						return null;
+					}
+					foreach (var item in list.EnumerateArray())
+					{
+						if (item.ValueKind == System.Text.Json.JsonValueKind.String)
+						{
+							uris.Add(item.GetString());
+						}
+					}
+				}
+#else
+				var list = Newtonsoft.Json.Linq.JObject.Parse(body)
+					["AvailableUris"] as Newtonsoft.Json.Linq.JArray;
+				if (list == null)
+				{
+					return null;
+				}
+				foreach (var item in list)
+				{
+					if (item.Type == Newtonsoft.Json.Linq.JTokenType.String)
+					{
+						uris.Add((string)item);
+					}
+				}
+#endif
+			}
+#pragma warning disable CA1031 // Do not catch general exception types
+			// A body that cannot be read as the list is not one.
+			catch (Exception)
+#pragma warning restore CA1031 // Do not catch general exception types
+			{
+				return null;
+			}
+
+			var products = new List<string>();
+			foreach (var uri in uris)
+			{
+				var product = ProductOf(uri);
+				if (product != null)
+				{
+					products.Add(product);
+				}
+			}
+			return products;
+		}
+
+		/// <summary>
+		/// Get the name the update service gives the product of the data
+		/// file the engine has loaded.
+		/// </summary>
+		/// <param name="dataFile">
+		/// The <see cref="AspectEngineDataFile"/> to use.
+		/// </param>
+		/// <returns>
+		/// The product name, or null if it is not known.
+		/// </returns>
+		private static string ProductNeeded(AspectEngineDataFile dataFile)
+		{
+			try
+			{
+				var product = dataFile.DataUpdateProduct;
+				return string.IsNullOrEmpty(product) ? null : product;
+			}
+#pragma warning disable CA1031 // Do not catch general exception types
+			// The engine can be any implementation. A product that cannot
+			// be read is a product that is not known.
+			catch (Exception)
+#pragma warning restore CA1031 // Do not catch general exception types
+			{
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// The error for a product that the update service does not offer.
+		/// </summary>
+		private static DataUpdateException ProductNotOffered(
+			AspectEngineDataFile dataFile,
+			string needed,
+			string shownUrl,
+			IEnumerable<string> offered)
+		{
+			return new DataUpdateException(
+				$"Product '{needed}' is not offered by data update " +
+				$"service at '{shownUrl}' for engine " +
+				$"'{dataFile.EngineType?.Name}'. Products offered: " +
+				$"'{string.Join(",", offered)}'",
+				AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR);
+		}
+
+		/// <summary>
+		/// Get the URL to request next when the response to a request is
+		/// not the one to act on. That is the case when the license keys
+		/// hold several products and the request named none, and when the
+		/// response is a redirect that the HTTP client did not follow.
+		/// </summary>
+		/// <param name="dataFile">
+		/// The <see cref="AspectEngineDataFile"/> to use.
+		/// </param>
+		/// <param name="response">
+		/// The response to the request.
+		/// </param>
+		/// <param name="url">
+		/// The URL requested.
+		/// </param>
+		/// <param name="answered">
+		/// The URL the response came from, which differs from the URL
+		/// requested when the HTTP client followed a redirect.
+		/// </param>
+		/// <param name="shownUrl">
+		/// The URL requested, as it is shown in messages.
+		/// </param>
+		/// <param name="chooseProduct">
+		/// True if a product may be chosen for this request.
+		/// </param>
+		/// <param name="redirects">
+		/// The number of redirects this check has followed itself.
+		/// </param>
+		/// <param name="chooseProductNext">
+		/// Set to true if a product may be chosen for the next request.
+		/// </param>
+		/// <returns>
+		/// The URL to request next, or null to act on this response.
+		/// </returns>
+		/// <exception cref="DataUpdateException">
+		/// Thrown if the product of the data file is not offered.
+		/// </exception>
+		private Uri GetNextUrl(
+			AspectEngineDataFile dataFile,
+			HttpResponseMessage response,
+			Uri url,
+			Uri answered,
+			string shownUrl,
+			bool chooseProduct,
+			int redirects,
+			out bool chooseProductNext)
+		{
+			chooseProductNext = false;
+			var status = (int)response.StatusCode;
+
+			// A product named in the URL requested is the one asked for,
+			// so no other is chosen.
+			if (chooseProduct && ProductOf(url.AbsoluteUri) == null)
+			{
+				// An HTTP client that follows redirects has followed the
+				// Location header of the answer that lists the products,
+				// which names the first of them. The answer in hand comes
+				// from that address and not from the update URL, so it is
+				// not used, whatever its status and whichever product the
+				// address names.
+				var followed = answered != null && answered != url ?
+					ProductOf(answered.AbsoluteUri) : null;
+				if (followed != null)
+				{
+					var needed = ProductNeeded(dataFile);
+					if (needed == null)
+					{
+						throw ProductNotOffered(
+							dataFile, string.Empty, shownUrl,
+							new[] { followed });
+					}
+					LogProductRequested(dataFile, needed, shownUrl);
+					return WithProduct(url, needed);
+				}
+
+				if (status == MultipleChoices)
+				{
+					var offered = ReadProductsOffered(response);
+					if (offered != null && offered.Count > 0)
+					{
+						// The HTTP client can have followed a redirect to
+						// the address that answered 300. The request for
+						// the product goes to that address, and the
+						// messages name it.
+						var from = answered ?? url;
+						var shownFrom = from == url ? shownUrl :
+							LicenseKeyMask.MaskUri(
+								from,
+								dataFile.Configuration.DataUpdateLicenseKeys);
+						var needed = ProductNeeded(dataFile);
+						var chosen = needed == null ? null :
+							offered.FirstOrDefault(p => string.Equals(
+								p, needed, StringComparison.OrdinalIgnoreCase));
+						if (chosen == null)
+						{
+							throw ProductNotOffered(
+								dataFile, needed ?? string.Empty, shownFrom,
+								offered);
+						}
+						LogProductRequested(dataFile, chosen, shownFrom);
+						return WithProduct(from, chosen);
+					}
+				}
+			}
+
+			// A redirect that the HTTP client did not follow is followed
+			// here, so a client set not to follow redirects still reaches
+			// an update URL that has moved. A redirect from https to http
+			// is not followed.
+			if ((status == 301 || status == 302 || status == 303 ||
+					status == 307 || status == 308) &&
+				response.Headers.Location != null &&
+				redirects < MaxRedirects)
+			{
+				var from = answered ?? url;
+				var to = response.Headers.Location.IsAbsoluteUri ?
+					response.Headers.Location :
+					new Uri(from, response.Headers.Location);
+				if (from.Scheme == Uri.UriSchemeHttps &&
+					to.Scheme == Uri.UriSchemeHttp)
+				{
+					return null;
+				}
+				chooseProductNext = chooseProduct;
+				return to;
+			}
+
+			return null;
+		}
+
+		/// <summary>
+		/// Log that the request is repeated for a product.
+		/// </summary>
+		private void LogProductRequested(
+			AspectEngineDataFile dataFile, string product, string shownUrl)
+		{
+			_logger.LogInformation(
+				$"Requesting product '{product}' from '{shownUrl}' for " +
+				$"Engine '{dataFile.EngineType?.Name}'");
+		}
+
+		/// <summary>
+		/// Get the most recent data file available from the URL given.
+		/// </summary>
+		/// <param name="dataFile">
+		/// The <see cref="AspectEngineDataFile"/> to use.
+		/// </param>
+		/// <param name="tempStream">
+		/// The stream to write the data to.
+		/// </param>
+		/// <param name="expectedMd5Hash">
+		/// Used to output the md5 hash for the file from the
+		/// 'Content-MD5' header.
+		/// </param>
+		/// <param name="url">
+		/// The URL to request.
+		/// </param>
+		/// <param name="chooseProduct">
+		/// True if the request may be repeated for the product of the
+		/// loaded data file. False for a request that is such a repeat.
+		/// </param>
+		/// <param name="redirects">
+		/// The number of redirects this check has followed itself.
+		/// </param>
+		/// <returns>
+		/// An <see cref="AutoUpdateStatus"/> value indicating the result
+		/// </returns>
+		private AutoUpdateStatus DownloadFile(
+			AspectEngineDataFile dataFile,
+			Stream tempStream,
+			out string expectedMd5Hash,
+			Uri url,
+			bool chooseProduct,
+			int redirects)
+		{
 			AutoUpdateStatus result = AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS;
 			expectedMd5Hash = null;
-			
-			Uri url = dataFile.FormattedUri;
+			// Set when another URL is to be requested in place of acting
+			// on the response to this one.
+			Uri nextUrl = null;
+			bool chooseProductNext = false;
+			int redirectsNext = redirects;
+
 			// The URL carries the license keys, which must not appear in full
 			// in a log entry or an error message.
 			var licenseKeys = dataFile.Configuration.DataUpdateLicenseKeys;
@@ -1305,8 +2049,14 @@ namespace FiftyOne.Pipeline.Engines.Services
 				HttpResponseMessage response = null;
 				try
 				{
-					// Send the message
-					response = _httpClient.SendAsync(message).Result;
+					// Send the message. Only the headers are read before the
+					// call returns, so the body is copied to the temporary file
+					// as it arrives and the client's buffer limit does not
+					// apply to it. The client's timeout covers the headers here,
+					// and each read of the body below.
+					response = _httpClient.SendAsync(
+						message,
+						HttpCompletionOption.ResponseHeadersRead).Result;
 				}
 				catch (Exception ex)
 				{
@@ -1316,83 +2066,186 @@ namespace FiftyOne.Pipeline.Engines.Services
 						LicenseKeyMask.MaskException(ex, licenseKeys), result);
 				}
 
-				if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS)
+				// The response holds its connection until it is disposed.
+				using (response)
 				{
-					if (response == null)
+					if (result == AutoUpdateStatus.AUTO_UPDATE_IN_PROGRESS)
 					{
-						result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
-						throw new DataUpdateException($"No response from data update service at " +
-							$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
-					}
-					else
-					{
-						if (response.IsSuccessStatusCode)
+						if (response == null)
 						{
-							_logger.LogInformation(
-								$"Downloaded new data from '{shownUrl}' for engine " +
-								$"'{dataFile.EngineType?.Name}'");
-
-							// If the response is successful then save the content to a 
-							// temporary file
-							LogDebugMessage(() => $"Will call {nameof(response.Content.ReadAsStreamAsync)}", dataFile);
-							using (var dataStream = response.Content.ReadAsStreamAsync().Result)
-                            {
-                                LogDebugMessage(() => $"Will copy {nameof(dataStream)} into {nameof(tempStream)}", dataFile);
-                                dataStream.CopyTo(tempStream);
-                                LogDebugMessage(() => $"Did copy {nameof(dataStream)} into {nameof(tempStream)}", dataFile);
-                            }
-                            LogDebugMessage(() => $"Will test for {nameof(dataFile.Configuration.VerifyMd5)}", dataFile);
-                            if (dataFile.Configuration.VerifyMd5)
-                            {
-                                LogDebugMessage(() => $"Did test for {nameof(dataFile.Configuration.VerifyMd5)}", dataFile);
-                                IEnumerable<string> values;
-								if (response.Content.Headers.TryGetValues("Content-MD5", out values))
-								{
-									expectedMd5Hash = values.SingleOrDefault();
-									var lastHash = expectedMd5Hash;
-                                    LogDebugMessage(() => $"{nameof(expectedMd5Hash)} = {lastHash}", dataFile);
-                                }
-								else
-								{
-									_logger.LogWarning(
-										$"No MD5 hash included in data update response for " +
-										$"'{shownUrl}'. Unable to verify data integrity");
-								}
-							}
+							result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
+							throw new DataUpdateException($"No response from data update service at " +
+								$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
 						}
 						else
 						{
-							switch (response.StatusCode)
+							if ((nextUrl = GetNextUrl(
+								dataFile,
+								response,
+								url,
+								response.RequestMessage?.RequestUri ??
+									message.RequestUri,
+								shownUrl,
+								chooseProduct,
+								redirects,
+								out chooseProductNext)) != null)
 							{
-								// Note: needed because TooManyRequests is not available 
-								// in some versions of the HttpStatusCode enum.
-								case ((HttpStatusCode)429):
-									result = AutoUpdateStatus.
-										AUTO_UPDATE_ERR_429_TOO_MANY_ATTEMPTS;
-									throw new DataUpdateException($"Too many requests to " +
-										$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
-								case HttpStatusCode.NotModified:
-									result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
-									_logger.LogInformation($"No data newer than " +
-										$"{publishDate} found at '{shownUrl}' for engine " +
-										$"'{dataFile.EngineType?.Name}'"); ;
-									break;
-								case HttpStatusCode.Forbidden:
-									result = AutoUpdateStatus.AUTO_UPDATE_ERR_403_FORBIDDEN;
-									throw new DataUpdateException($"Access denied to data update service at " +
-										$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
-								default:
-									result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
-									throw new DataUpdateException($"HTTP status code '{response.StatusCode}' " +
-										$"from data update service at " +
-										$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
+								// The next URL is requested below, once this
+								// response has been disposed of.
+								if (chooseProductNext == chooseProduct)
+								{
+									redirectsNext = redirects + 1;
+								}
+							}
+							else if (response.IsSuccessStatusCode)
+							{
+								// If the response is successful then save the content to a 
+								// temporary file
+								LogDebugMessage(() => $"Will call {nameof(response.Content.ReadAsStreamAsync)}", dataFile);
+								using (var dataStream = ReadDownload(
+									() => response.Content.ReadAsStreamAsync().Result,
+									dataFile, shownUrl, licenseKeys))
+	                            {
+	                                LogDebugMessage(() => $"Will copy {nameof(dataStream)} into {nameof(tempStream)}", dataFile);
+	                                var buffer = new byte[DownloadBufferBytes];
+	                                int read;
+	                                while ((read = ReadDownload(
+	                                    () => ReadDownloadBlock(dataStream, buffer),
+	                                    dataFile, shownUrl, licenseKeys)) > 0)
+	                                {
+	                                    tempStream.Write(buffer, 0, read);
+	                                }
+	                                LogDebugMessage(() => $"Did copy {nameof(dataStream)} into {nameof(tempStream)}", dataFile);
+	                            }
+								_logger.LogInformation(
+									$"Downloaded new data from '{shownUrl}' for engine " +
+									$"'{dataFile.EngineType?.Name}'");
+	                            LogDebugMessage(() => $"Will test for {nameof(dataFile.Configuration.VerifyMd5)}", dataFile);
+	                            if (dataFile.Configuration.VerifyMd5)
+	                            {
+	                                LogDebugMessage(() => $"Did test for {nameof(dataFile.Configuration.VerifyMd5)}", dataFile);
+	                                IEnumerable<string> values;
+									if (response.Content.Headers.TryGetValues("Content-MD5", out values))
+									{
+										expectedMd5Hash = values.SingleOrDefault();
+										var lastHash = expectedMd5Hash;
+	                                    LogDebugMessage(() => $"{nameof(expectedMd5Hash)} = {lastHash}", dataFile);
+	                                }
+									else
+									{
+										_logger.LogWarning(
+											$"No MD5 hash included in data update response for " +
+											$"'{shownUrl}'. Unable to verify data integrity");
+									}
+								}
+							}
+							else
+							{
+								switch (response.StatusCode)
+								{
+									// Note: needed because TooManyRequests is not available 
+									// in some versions of the HttpStatusCode enum.
+									case ((HttpStatusCode)429):
+										result = AutoUpdateStatus.
+											AUTO_UPDATE_ERR_429_TOO_MANY_ATTEMPTS;
+										throw new DataUpdateException($"Too many requests to " +
+											$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
+									case HttpStatusCode.NotModified:
+										result = AutoUpdateStatus.AUTO_UPDATE_NOT_NEEDED;
+										_logger.LogInformation($"No data newer than " +
+											$"{publishDate} found at '{shownUrl}' for engine " +
+											$"'{dataFile.EngineType?.Name}'"); ;
+										break;
+									case HttpStatusCode.Forbidden:
+										result = AutoUpdateStatus.AUTO_UPDATE_ERR_403_FORBIDDEN;
+										throw new DataUpdateException($"Access denied to data update service at " +
+											$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'", result);
+									default:
+										result = AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR;
+										// The error names the address that
+										// answered, which differs from the URL
+										// requested when the HTTP client
+										// followed a redirect.
+										var answeredBy =
+											response.RequestMessage?.RequestUri;
+										var shownAnswer =
+											answeredBy == null || answeredBy == url ?
+											shownUrl :
+											LicenseKeyMask.MaskUri(
+												answeredBy, licenseKeys);
+										throw new DataUpdateException($"HTTP status code '{response.StatusCode}' " +
+											$"from data update service at " +
+											$"'{shownAnswer}' for engine '{dataFile.EngineType?.Name}'", result);
+								}
 							}
 						}
 					}
 				}
 			}
 
+			if (nextUrl != null)
+			{
+				result = DownloadFile(
+					dataFile, tempStream, out expectedMd5Hash,
+					nextUrl, chooseProductNext, redirectsNext);
+			}
+
 			return result;
+		}
+
+		/// <summary>
+		/// The size in bytes of each read of a data file download.
+		/// </summary>
+		private const int DownloadBufferBytes = 81920;
+
+		/// <summary>
+		/// Reads the next block of a data file download. The read ends with
+		/// a <see cref="TimeoutException"/> when no bytes arrive within the
+		/// client's timeout, so a server that stops sending cannot hold the
+		/// check for ever.
+		/// </summary>
+		private int ReadDownloadBlock(Stream stream, byte[] buffer)
+		{
+			var timeout = _httpClient.Timeout;
+			using (var cancel = new CancellationTokenSource())
+			{
+				var read = stream.ReadAsync(
+					buffer, 0, buffer.Length, cancel.Token);
+				if (Task.WaitAny(new Task[] { read }, timeout) == -1)
+				{
+					cancel.Cancel();
+					throw new TimeoutException(
+						$"No data arrived within the client's timeout of {timeout}.");
+				}
+				return read.GetAwaiter().GetResult();
+			}
+		}
+
+		/// <summary>
+		/// Runs one read of a data file download. A read that fails, such as
+		/// one of a body that ends early, is reported as the failure to
+		/// access the data update service, with the cause attached, as the
+		/// Errors section of the data updates specification gives it. Only
+		/// reads go through here, so a failure to write the temporary file
+		/// is not reported as one of the service's.
+		/// </summary>
+		private static T ReadDownload<T>(
+			Func<T> read,
+			AspectEngineDataFile dataFile,
+			string shownUrl,
+			IEnumerable<string> licenseKeys)
+		{
+			try
+			{
+				return read();
+			}
+			catch (Exception ex)
+			{
+				throw new DataUpdateException($"Error accessing data update service at " +
+					$"'{shownUrl}' for engine '{dataFile.EngineType?.Name}'",
+					LicenseKeyMask.MaskException(ex, licenseKeys),
+					AutoUpdateStatus.AUTO_UPDATE_HTTPS_ERR);
+			}
 		}
 
 		/// <summary>
@@ -1558,8 +2411,12 @@ namespace FiftyOne.Pipeline.Engines.Services
 			int seconds = 0;
 			if (config.MaxRandomisationSeconds > 0)
 			{
-				seconds = (int)(_rnd.NextDouble() *
-					config.MaxRandomisationSeconds);
+				double fraction;
+				lock (_rndLock)
+				{
+					fraction = _rnd.NextDouble();
+				}
+				seconds = (int)(fraction * config.MaxRandomisationSeconds);
 			}
 			return interval.Add(TimeSpan.FromSeconds(seconds));
 		}

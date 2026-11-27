@@ -5,7 +5,7 @@
     <Platforms>AnyCPU</Platforms>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <DocumentationFile>FiftyOne.Pipeline.Engines.xml</DocumentationFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
 
@@ -38,8 +38,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\caching\Caching\FiftyOne.Caching.csproj" Version="$(FiftyOneCachingVersion)" />
-    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\common\Common\FiftyOne.Common.csproj" Version="$(FiftyOneCommonVersion)" />
+    <FiftyOneReference Include="FiftyOne.Caching" ProjectPath="..\..\caching\Caching\FiftyOne.Caching.csproj" Version="$(_51DEGREES_CACHING_VERSION)" />
+    <FiftyOneReference Include="FiftyOne.Common" ProjectPath="..\..\common\Common\FiftyOne.Common.csproj" Version="$(_51DEGREES_COMMON_VERSION)" />
   </ItemGroup>
 
   <!-- JsonLoader uses System.Text.Json on net8.0 and net10.0 but Newtonsoft.Json

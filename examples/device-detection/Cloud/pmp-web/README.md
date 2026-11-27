@@ -21,23 +21,21 @@ way.
 The demo reads two environment variables, which are the names every
 language's copy of it reads.
 
-| Variable | What it holds | Also read when it is not set |
-| --- | --- | --- |
-| `_51DEGREES_RESOURCE_KEY` | A resource key that includes the 51Did properties. Required. | `_51DEGREES_RESOURCE_KEY_51DID` |
-| `_51DEGREES_CLOUD_ENDPOINT` | The cloud the pages load from and the pipeline asks, given with or without the `/api/v4/` path, for example `https://cloud.51degrees.com/api/v4/`. The default is `https://cloud.51degrees.com`. | nothing |
+| Variable | What it holds |
+| --- | --- |
+| `_51DEGREES_RESOURCE_KEY` | A resource key that includes the 51Did properties. Required. |
+| `_51DEGREES_CLOUD_ENDPOINT` | The cloud the pages load from and the pipeline asks, given with or without the `/api/v4/` path, for example `https://cloud.51degrees.com/api/v4/`. The default is `https://cloud.51degrees.com`. |
 
-The first column holds the names a developer sets. The resource key's second
-name is the one continuous integration sets, and it ends with the product the
-demo needs, being the 51Did. No licence key is read, because the resource key
-has to carry the 51Did product itself.
+Each value is read under that one name. No licence key is read, because the
+resource key has to carry the 51Did product itself.
 
 The address the demo listens on comes from `ASPNETCORE_URLS`, which is how
 any ASP.NET Core application is started. Without it the demo listens on
 `http://localhost:5000`.
 
 A resource key can be created at
-https://configure.51degrees.com/YldpCKbW?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-readme.md&utm_term=running-it,
-which opens the Configurator with a list of properties already chosen.
+https://51degrees.com/configure/YldpCKbW?utm_source=github&utm_medium=readme&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-pmp-web-readme.md&utm_term=running-it,
+which opens the configuration page with a list of properties already chosen.
 The key has to carry the 51Did properties, which is what makes the cloud
 include the part of the client script that asks the visitor how their data
 may be used, and the pages and the browser tests read `fodid.idprobglobal`
@@ -163,11 +161,6 @@ demo escapes the key for a path where it builds each address, in
 | `{{PMP_SCRIPT_URL}}` | the address of the PMP, being the cloud's address, then `/api/v4/pmp/`, then the resource key escaped for a path, then `.js`, under both `/cloud/` and `/pipeline/` | `https://cloud.51degrees.com/api/v4/pmp/<your resource key>.js` |
 | `{{CLIENT_SCRIPT_URL}}` | the address of the client script, which under `/cloud/` is the cloud's address, then `/api/v4/`, then the resource key escaped for a path, then `.js`, and under `/pipeline/` is `/51Degrees.core.js` | `https://cloud.51degrees.com/api/v4/<your resource key>.js` |
 
-`{{RESOURCE_KEY}}` and `{{CLOUD_ENDPOINT}}` are still filled, holding the
-key and the cloud's address on their own, because the set of names is
-shared with the other languages' copies of this demo. No template here uses
-them, and dropping them is a change to make in all the copies at once.
-
 The client script's object name is not a placeholder. The only page that
 names an object, `/cloud/named-object`, names `fiftyOneData`, which the
 tests look for, and every other page uses the default `fod`, so the names
@@ -176,7 +169,7 @@ are written into the templates and a filler has nothing to supply.
 A copy in another language follows these rules, which are all that
 `Program.cs`, `Settings.cs` and `Pages.cs` do here.
 
-1. Read the two environment variables above, with the same fallback, take
+1. Read the two environment variables above, each under its one name, take
    `/api/v4` and any trailing slash off the endpoint, and build the two
    addresses in the placeholder table from it, escaping the resource key
    for a URL path segment in each.

@@ -94,7 +94,7 @@ other.
 | `_51DEGREES_RESOURCE_KEY` | The resource key, public by nature. Required. |
 | `_51DEGREES_LICENSE_KEY` | A licence key of the same account. Server side only. Optional, because only an account that holds licence keys needs one to redeem, and an account holding none redeems without it. |
 | `_51DEGREES_CLOUD_ENDPOINT` | Optional. The API base including the `/api/v4/` segment, defaulting to `https://cloud.51degrees.com/api/v4/`. This is the same variable the cloud request engine honours, so a developer who has set it once points every 51Degrees example at the same place. A host other than `cloud.51degrees.com` would be used to (a) use an on premise web server, or (b) use a privately hosted version of the 51Degrees cloud for performance reasons. This is the private hosting option of the cloud service. Both run the same service, so the demo works unchanged against either. |
-| `PORT` | The port to listen on, defaults to `5100`. |
+| `_51DEGREES_EXAMPLE_HTTP_PORTS` | The ports to listen on, comma separated, defaults to `5151`. |
 
 ## How to run
 
@@ -104,7 +104,7 @@ From `CreatorContextWeb`:
 dotnet run
 ```
 
-then open `http://localhost:5100/`. To demonstrate across two devices,
+then open `http://localhost:5151/`. To demonstrate across two devices,
 serve on an address both can reach and open the copied link on the
 second device.
 

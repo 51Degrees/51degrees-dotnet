@@ -69,6 +69,9 @@ namespace Examples.ClientSideEvidence.MVC
         {
             // Use 51Degrees. This sets up the pipeline and everything needed
             // in accordance with the configuration.
+            // A Flow Data cannot be used by two threads at once. Work handed
+            // to another thread or task gets the values it needs, read on the
+            // request's thread, not the Flow Data.
             app.UseFiftyOne();
             if (env.IsDevelopment())
             {

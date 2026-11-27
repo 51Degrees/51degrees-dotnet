@@ -21,7 +21,4 @@ jobs:
       data-product: EnterpriseV4
       data-filename: 51Degrees-EnterpriseV4.ipi.gz
       dryrun: ${{ inputs.dryrun || false }}
-    secrets:
-      token: ${{ secrets.ACCESS_TOKEN }}
-      data-key: ${{ secrets.DEVICE_DETECTION_KEY }}
-      data-url: ${{ secrets.DEVICE_DETECTION_URL }}
+    secrets: inherit

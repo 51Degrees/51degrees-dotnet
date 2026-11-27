@@ -20,6 +20,7 @@
  * such notice(s) shall fulfill the requirements of that article.
  * ********************************************************************* */
 
+using FiftyOne.Did.Client;
 using FiftyOne.Did.Model;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Owid.Client;
@@ -38,16 +39,11 @@ namespace FiftyOne.Did.Tests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The test uses a single resource key from the environment, found by
-    /// <see cref="LiveCloudKey"/>, which fails the test when none is set.
-    /// The key has to carry the CloudV5FODiD product, because both tests
-    /// need a marketing 51Did.
-    /// </para>
-    /// <para>
-    /// To exercise more than one key, the CI workflow runs this test once for
-    /// each <c>_51DEGREES_RESOURCE_KEY*</c> secret that carries the marketing
-    /// usages, setting <c>_51DEGREES_RESOURCE_KEY</c>, the first name
-    /// <see cref="LiveCloudKey"/> reads, to each in turn.
+    /// Each test runs once for <c>_51DEGREES_RESOURCE_KEY_51DID</c> and once
+    /// for <c>_51DEGREES_RESOURCE_KEY_BESPOKE</c>, each read under its own
+    /// name by <see cref="LiveCloudKey"/>, which skips the row when its
+    /// variable is not set. Each key has to carry the CloudV5FODiD product,
+    /// because both tests need a marketing 51Did.
     /// </para>
     /// <para>
     /// For each key the test checks the cloud <c>id.usage</c> levels.
@@ -78,10 +74,18 @@ namespace FiftyOne.Did.Tests
             "a 51Did for each usage, stated or read from a consent string";
 
         /// <summary>
-        /// The 51Degrees cloud V4 JSON endpoint.
+        /// The cloud's JSON endpoint, under the API base that
+        /// <c>_51DEGREES_CLOUD_ENDPOINT</c> names, or the default cloud when
+        /// it is not set, as <see cref="DidClient"/> reads it.
         /// </summary>
-        private const string CloudJsonUrl =
-            "https://cloud.51degrees.com/api/v4/json";
+        private static string CloudJsonUrl()
+        {
+            var endpoint = Environment.GetEnvironmentVariable(
+                DidClient.CloudEndpointEnvironmentVariable);
+            return (string.IsNullOrWhiteSpace(endpoint)
+                ? DidClient.DefaultEndpoint : endpoint.Trim())
+                .TrimEnd('/') + "/json";
+        }
 
         /// <summary>
         /// A representative mobile User-Agent. The cloud needs Device
@@ -164,10 +168,15 @@ namespace FiftyOne.Did.Tests
             Timeout = TimeSpan.FromSeconds(30),
         };
 
+        /// <param name="keyName">The variable the row's key is read from.</param>
         [TestMethod]
-        public async Task ResourceKeyReturns51DidForSupportedUsages()
+        [DataRow(LiveCloudKey.DidName)]
+        [DataRow(LiveCloudKey.BespokeName)]
+        public async Task ResourceKeyReturns51DidForSupportedUsages(
+            string keyName)
         {
-            var resourceKey = LiveCloudKey.Require(MarketingProduct, AsksFor);
+            var resourceKey = LiveCloudKey.Require(
+                keyName, MarketingProduct, AsksFor);
 
             // Counts the identifiers whose terms were actually read
             // and matched. A key carrying no marketing usage skips
@@ -286,10 +295,15 @@ namespace FiftyOne.Did.Tests
         /// answer, and this proves the two ends agree about which bit it is
         /// and which way round it reads.
         /// </remarks>
+        /// <param name="keyName">The variable the row's key is read from.</param>
         [TestMethod]
-        public async Task ConsentStringSetsTheUsageIsIndirectBit()
+        [DataRow(LiveCloudKey.DidName)]
+        [DataRow(LiveCloudKey.BespokeName)]
+        public async Task ConsentStringSetsTheUsageIsIndirectBit(
+            string keyName)
         {
-            var resourceKey = LiveCloudKey.Require(MarketingProduct, AsksFor);
+            var resourceKey = LiveCloudKey.Require(
+                keyName, MarketingProduct, AsksFor);
 
             var proven = 0;
 
@@ -379,7 +393,7 @@ namespace FiftyOne.Did.Tests
             string resourceKey, string queryFragment, string label)
         {
             var url =
-                $"{CloudJsonUrl}?resource={Uri.EscapeDataString(resourceKey)}" +
+                $"{CloudJsonUrl()}?resource={Uri.EscapeDataString(resourceKey)}" +
                 $"&user-agent={Uri.EscapeDataString(UserAgent)}" +
                 $"&client-ip={Uri.EscapeDataString(ClientIp)}" +
                 $"&{queryFragment}";

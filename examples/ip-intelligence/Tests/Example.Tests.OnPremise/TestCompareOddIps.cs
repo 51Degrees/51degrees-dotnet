@@ -40,6 +40,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.OnPremise;
 /// be parsed, so anything that parses must not stop a consumer.
 /// </summary>
 [TestClass]
+[TestCategory(TestCategories.Integration)]
 public class TestCompareOddIps
 {
     private static string _dataFile;

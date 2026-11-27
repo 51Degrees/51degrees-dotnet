@@ -6,6 +6,10 @@ param (
 $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
 
+# Every warning is an error in the builds 51Degrees runs. Each CI script
+# that builds sets this until the shared workflows set it in every job.
+$env:_51DEGREES_WARNINGS_AS_ERRORS = "true"
+
 . "$PSScriptRoot/packages.ps1"
 
 # Builds the native library of each on-premise engine for this platform and
@@ -17,7 +21,11 @@ $RepoPath = [IO.Path]::Combine($pwd, $RepoName)
 
 foreach ($engine in $NativeEngines) {
     Write-Host "::group::Building $($engine.Library) for $os $Arch"
-    $extra = ($Arch -eq "x86") ? @("-D32bit=on") : @()
+    # CMake's own developer and deprecation warnings are errors too.
+    $extra = @(& "$PSScriptRoot/cmake-warning-args.ps1")
+    if ($Arch -eq "x86") {
+        $extra += "-D_51DEGREES_32BIT=on"
+    }
     ./cxx/build-project.ps1 -RepoName $RepoName -ProjectDir $engine.Project -Configuration "Release" -Arch $Arch -ExtraArgs $extra
     $library = Get-ChildItem -Recurse -File -Path "$RepoPath/$($engine.Project)/build" -Filter $engine.Library | Select-Object -First 1
     if (-not $library) {

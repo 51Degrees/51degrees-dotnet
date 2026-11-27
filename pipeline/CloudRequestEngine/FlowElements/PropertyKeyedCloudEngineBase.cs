@@ -99,8 +99,15 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         {
             // Extract data from json to the aspectData instance.
             var dictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
+            // A response with no section for this engine leaves its data
+            // without values.
+            if (dictionary.TryGetValue(ElementDataKey, out var section) == false ||
+                section == null)
+            {
+                return;
+            }
             // Access the data relating to this engine.
-            var propertyKeyed = dictionary[ElementDataKey] as JObject;
+            var propertyKeyed = section as JObject;
             // Access the 'Profiles' property
             foreach(var entry in propertyKeyed["profiles"])
             {
@@ -112,9 +119,12 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                         Converters = JSON_CONVERTERS,
                     });
                 var device = CreateProfileData();
-                // Get the meta-data for properties on device instances.
-                var propertyMetaData = Properties
-                    .Single(p => p.Name == "Profiles").ItemProperties;
+                // Get the meta-data for properties on device instances,
+                // which is empty while the property list cannot be read.
+                var propertyMetaData = PropertiesForResponse
+                    .SingleOrDefault(p => p.Name == "Profiles")?
+                    .ItemProperties ??
+                    Array.Empty<IElementPropertyMetaData>();
 
                 var deviceData = CreateAPVDictionary(
                     propertyValues, 

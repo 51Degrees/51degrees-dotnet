@@ -24,6 +24,7 @@ using FiftyOne.DeviceDetection.Cloud.FlowElements;
 using FiftyOne.Pipeline.CloudRequestEngine.FlowElements;
 using FiftyOne.Pipeline.Core.Data;
 using Microsoft.Extensions.Logging;
+using System.Net.Http;
 using System;
 using System.IO;
 
@@ -60,11 +61,33 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Metadata
     {
         public class Example : ExampleBase
         {
-            public void Run(string resourceKey, ILoggerFactory loggerFactory, TextWriter output)
+            /// <summary>
+            /// Runs the example.
+            /// </summary>
+            /// <param name="cloudRequestTimeoutSeconds">
+            /// The seconds a request to the cloud service may take, or null
+            /// for the default of 2 seconds. The tests give a longer one.
+            /// </param>
+            /// <param name="httpClient">
+            /// The client that sends requests to the cloud service, or null
+            /// for a new one.
+            /// </param>
+            public void Run(
+                string resourceKey,
+                ILoggerFactory loggerFactory,
+                TextWriter output,
+                int? cloudRequestTimeoutSeconds = null,
+                HttpClient httpClient = null)
             {
-                using (var pipeline = new DeviceDetectionPipelineBuilder(loggerFactory)
-                    .UseCloud(resourceKey)
-                    .Build())
+                var builder = new DeviceDetectionPipelineBuilder(
+                    loggerFactory, httpClient ?? new HttpClient())
+                    .UseCloud(resourceKey);
+                if (cloudRequestTimeoutSeconds.HasValue)
+                {
+                    builder.SetCloudRequestTimeOutSeconds(
+                        cloudRequestTimeoutSeconds.Value);
+                }
+                using (var pipeline = builder.Build())
                 {
                     OutputProperties(pipeline.GetElement<DeviceDetectionCloudEngine>(), output);
                     // We use the CloudRequestEngine to get evidence key details, rather than the
@@ -139,15 +162,15 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Metadata
 
             if (string.IsNullOrEmpty(resourceKey))
             {
-                logger.LogError($"No resource key specified in the configuration file " +
-                    $"'appsettings.json' or the environment variable " +
+                logger.LogWarning($"No resource key specified on the command line or in " +
+                    $"the environment variable " +
                     $"'{ExampleUtils.CLOUD_RESOURCE_KEY_ENV_VAR}'. The 51Degrees cloud service is " +
                     $"accessed using a 'ResourceKey'. For more information see " +
                     $"https://51degrees.com/documentation/_services__cloud__resource_keys.html?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required. " +
                     $"A free resource key can be created at " +
-                    $"https://configure.51degrees.com/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required and populates the free " +
+                    $"https://51degrees.com/configure/Wkqxf3Bs?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required and populates the free " +
                     $"properties. With a paid subscription, a key created at " +
-                    $"https://configure.51degrees.com/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required includes all the " +
+                    $"https://51degrees.com/configure/hYzn3TV3?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-cloud-metadata-console-program.cs&utm_term=resource-key-required includes all the " +
                     $"properties used by this example. " +
                     $"Once complete, supply the resource key as a command line argument or via " +
                     $"the environment variable mentioned at the start of this message.");
@@ -159,6 +182,16 @@ namespace FiftyOne.DeviceDetection.Examples.Cloud.Metadata
 
             // Dispose the logger to ensure any messages get flushed
             loggerFactory.Dispose();
+
+            ExampleUtils.WriteFindOutMore(
+                Console.Out, ContentSlug, onPremise: false);
         }
+
+        /// <summary>
+        /// This file as a lower case slug, which tags the links in the
+        /// closing section.
+        /// </summary>
+        private const string ContentSlug =
+            "examples-cloud-metadata-console-program.cs";
     }
 }

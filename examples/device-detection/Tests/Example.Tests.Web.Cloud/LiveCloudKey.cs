@@ -21,100 +21,53 @@
  * ********************************************************************* */
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace FiftyOne.DeviceDetection.Example.Tests.Web.Cloud;
 
 /// <summary>
 /// The resource key for the tests that run the cloud web examples against
-/// the live cloud service, and the message they fail with when there is
-/// none. There is no skip, because a cloud test that passes without
-/// calling the cloud has proved nothing.
+/// the live cloud service, and the message they skip with when there is
+/// none. A skipped test names the variable, and never passes, because a
+/// cloud test that passes without calling the cloud has proved nothing.
+/// The tests give the key to an example the way the example takes one.
 /// </summary>
 internal static class LiveCloudKey
 {
     /// <summary>
-    /// The environment variables the key is read from, in the order tried.
+    /// The environment variable the key is read from, which holds the key
+    /// that carries every property.
     /// </summary>
-    internal static readonly string[] Names =
-    {
-        "_51DEGREES_RESOURCE_KEY",
-        "_51DEGREES_RESOURCE_KEY_BESPOKE",
-        "RESOURCE_KEY_CLOUD_V5_BESPOKE",
-    };
+    internal const string Name = "_51DEGREES_RESOURCE_KEY_BESPOKE";
 
     /// <summary>
-    /// The old names of the key's variable, read in this order only when
-    /// none of <see cref="Names"/> is set.
-    /// </summary>
-    internal static readonly string[] OldNames =
-    {
-        "SUPER_RESOURCE_KEY",
-    };
-
-    private static readonly HashSet<string> _oldNamesReported =
-        new HashSet<string>();
-
-    /// <summary>
-    /// The key from the first of <see cref="Names"/> that is set. When
-    /// none is, the key from the first of <see cref="OldNames"/> that is
-    /// set, with each old name reported once on the error stream as
-    /// deprecated.
+    /// The key from <see cref="Name"/>, or null when it is not set.
     /// </summary>
     private static string FromEnvironment()
     {
-        var key = Names
-            .Select(n => Environment.GetEnvironmentVariable(n))
-            .FirstOrDefault(v => string.IsNullOrWhiteSpace(v) == false);
-        if (key != null)
-        {
-            return key;
-        }
-        foreach (var oldName in OldNames)
-        {
-            var value = Environment.GetEnvironmentVariable(oldName);
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                continue;
-            }
-            bool first;
-            lock (_oldNamesReported)
-            {
-                first = _oldNamesReported.Add(oldName);
-            }
-            if (first)
-            {
-                Console.Error.WriteLine(
-                    $"The environment variable {oldName} is deprecated " +
-                    $"and {Names[0]} replaces it. Set {Names[0]} to the " +
-                    "same value instead.");
-            }
-            return value;
-        }
-        return null;
+        var value = Environment.GetEnvironmentVariable(Name);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     private const string AccessiblePropertiesUrl =
         "https://cloud.51degrees.com/api/v4/accessibleproperties?resource=<key>";
 
     private const string ConfigureUrl =
-        "https://configure.51degrees.com?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-tests-example.tests.web.cloud-livecloudkey.cs&utm_term=resource-key";
+        "https://51degrees.com/configure?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-device-detection-tests-example.tests.web.cloud-livecloudkey.cs&utm_term=resource-key";
 
     /// <summary>
-    /// The first key set, or null when none of <see cref="Names"/> is.
+    /// The key, or null when <see cref="Name"/> is not set.
     /// </summary>
     internal static string Find() => FromEnvironment();
 
     /// <summary>
-    /// What the tests fail with when <see cref="Find"/> finds no key.
+    /// What the tests skip with when <see cref="Find"/> finds no key.
     /// </summary>
     /// <param name="product">The product the key has to carry.</param>
     /// <param name="asksFor">What the tests ask the service for.</param>
     internal static string NoKey(string product, string asksFor) =>
         "These tests call the live 51Degrees cloud service, so they need a " +
-        "resource key and there is nothing to fall back on. None of " +
-        $"{string.Join(", ", Names)} is set, tried in that order. The key " +
+        "resource key and there is nothing to fall back on. " +
+        $"{Name} is not set. The key " +
         $"has to carry the {product} product, because these tests ask the " +
         $"service for {asksFor}. To see the products a key carries, open " +
         $"{AccessiblePropertiesUrl}. Create a key at {ConfigureUrl}.";

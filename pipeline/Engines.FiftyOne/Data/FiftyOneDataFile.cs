@@ -23,6 +23,7 @@
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using System;
+using System.IO;
 
 namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
 {
@@ -68,6 +69,121 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
             set
             {
                 _dataDownloadType = value;
+            }
+        }
+
+        /// <summary>
+        /// The start of the 'Type' of a Device Detection data file.
+        /// </summary>
+        private const string DeviceDetectionType = "Hash";
+
+        /// <summary>
+        /// The start of the product name of a Device Detection data file.
+        /// </summary>
+        private const string DeviceDetectionPrefix = "V4";
+
+        /// <summary>
+        /// The start of the 'Type' of an IP Intelligence data file.
+        /// </summary>
+        private const string IpIntelligenceType = "IPI";
+
+        /// <summary>
+        /// The start of the product name of an IP Intelligence data file.
+        /// </summary>
+        private const string IpIntelligencePrefix = "IPIV4";
+
+        /// <summary>
+        /// Reads the product name, such as 'V4TAC', from the header of the
+        /// data file at the path given, without loading the file. The engine
+        /// builder sets it, so that the product is known before the engine
+        /// has loaded a data file, as for an update on start-up. Null when
+        /// the engine has no way to read it.
+        /// </summary>
+        public Func<string, string> ProductFromFile { get; set; }
+
+        /// <summary>
+        /// The name the distributor gives the product of the data file. The
+        /// name is a prefix for the kind of data file, 'V4' for Device
+        /// Detection and 'IPIV4' for IP Intelligence, followed by the
+        /// product value held in the data file. A value that already starts
+        /// with the prefix is the product name as it is. For example,
+        /// 'V4TAC' or 'IPIV4Enterprise'.
+        /// </summary>
+        /// <remarks>
+        /// The product value comes from the engine once it has loaded the
+        /// data file. Before that, the product name comes from the header of
+        /// the file at <see cref="AspectEngineDataFile.DataFilePath"/>,
+        /// through <see cref="ProductFromFile"/>, and already starts with the
+        /// prefix. No product name is known, and the value is null, when
+        /// neither gives a value, when the kind of data file has no prefix,
+        /// or when the value is the prefix alone.
+        /// </remarks>
+        public override string DataUpdateProduct
+        {
+            get
+            {
+                // An engine that gives the product value of its data file
+                // apart from its tier is asked for that value.
+                var value = Engine == null ?
+                    ReadProductFromFile() :
+                    (Engine as IDataFileProductEngine)
+                        ?.GetDataFileProduct(Identifier) ??
+                    Engine.DataSourceTier;
+                if (string.IsNullOrEmpty(value))
+                {
+                    return null;
+                }
+
+                var type = DataDownloadType;
+                string prefix = null;
+                if (type != null && type.StartsWith(
+                    IpIntelligenceType, StringComparison.OrdinalIgnoreCase))
+                {
+                    prefix = IpIntelligencePrefix;
+                }
+                else if (type != null && type.StartsWith(
+                    DeviceDetectionType, StringComparison.OrdinalIgnoreCase))
+                {
+                    prefix = DeviceDetectionPrefix;
+                }
+                if (prefix == null ||
+                    string.Equals(
+                        value, prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
+
+                return value.StartsWith(
+                    prefix, StringComparison.OrdinalIgnoreCase) ?
+                    value : prefix + value;
+            }
+        }
+
+        /// <summary>
+        /// The product value in the header of the data file at
+        /// <see cref="AspectEngineDataFile.DataFilePath"/>, or null when
+        /// there is no file there, no way to read it, or its header cannot
+        /// be read.
+        /// </summary>
+        private string ReadProductFromFile()
+        {
+            if (ProductFromFile == null ||
+                string.IsNullOrEmpty(DataFilePath) ||
+                File.Exists(DataFilePath) == false)
+            {
+                return null;
+            }
+            try
+            {
+                return ProductFromFile(DataFilePath);
+            }
+#pragma warning disable CA1031 // Do not catch general exception types
+            // The native code reports a header it cannot read with an
+            // exception, and a product that cannot be read is not known.
+            catch (Exception)
+#pragma warning restore CA1031 // Do not catch general exception types
+            {
+                return null;
             }
         }
     }

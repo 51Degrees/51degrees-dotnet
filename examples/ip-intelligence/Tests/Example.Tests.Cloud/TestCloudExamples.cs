@@ -38,8 +38,9 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
 {
     /// <summary>
     /// Runs the Cloud examples against the real 51Degrees Cloud service
-    /// (cloud.51degrees.com by default). Requires the _51DEGREES_RESOURCE_KEY
-    /// environment variable to be set.
+    /// (cloud.51degrees.com by default). Requires the
+    /// _51DEGREES_RESOURCE_KEY_BESPOKE environment variable to be set, and
+    /// gives each example that key in _51DEGREES_RESOURCE_KEY.
     /// </summary>
     /// <remarks>
     /// Note that these tests do not generally ensure the correctness
@@ -54,13 +55,7 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
         [TestInitialize]
         public void Init()
         {
-            _resourceKey = ExampleUtils.GetResourceKeyFromEnv();
-
-            Assert.IsFalse(
-                string.IsNullOrWhiteSpace(_resourceKey),
-                $"Environment variable '{ExampleUtils.RESOURCE_KEY_ENV_VAR}' " +
-                $"is not set. Obtain a resource key at " +
-                $"https://configure.51degrees.com and export it to run this test.");
+            _resourceKey = ExampleResourceKey.Require();
         }
 
         private static readonly string RepoRootPath =
@@ -233,9 +228,8 @@ namespace FiftyOne.IpIntelligence.Example.Tests.Cloud
                 CreateNoWindow = true,
             };
             startInfo.Environment[ExampleUtils.RESOURCE_KEY_ENV_VAR] = _resourceKey;
-            var endPoint = ExampleUtils.FromEnvironment(
-                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
-                ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
+            var endPoint = Environment.GetEnvironmentVariable(
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR);
             if (string.IsNullOrWhiteSpace(endPoint) == false)
             {
                 startInfo.Environment[ExampleUtils.CLOUD_ENDPOINT_ENV_VAR] = endPoint;

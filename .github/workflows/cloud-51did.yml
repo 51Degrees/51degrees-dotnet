@@ -1,51 +1,40 @@
 name: Cloud 51Did Tests
 
-# Runs the live cloud 51Did tests once for every _51DEGREES_RESOURCE_KEY*
-# key passed in below. Each run sets _51DEGREES_RESOURCE_KEY, the first name
-# every one of the tests reads, to that key. A run with no key fails, because
-# a cloud test that passes without calling the cloud has proved nothing.
-#
-# The Basic tier key gets a 51Did for the non-marketing usage only, so it runs
-# only DidCloudEngineLiveEntitlementTests, which checks what each tier is
-# entitled to. CloudFodIdTests insist on a marketing 51Did, which needs the
-# CloudV5FODiD product.
-#
-# A license key only reads a sealed creator context result made with a
-# resource key of its own account, so each _51DEGREES_LICENSE_KEY<suffix> is
-# set only on the pass for _51DEGREES_RESOURCE_KEY<suffix>. With it,
-# CloudDidClientTests must read the result back as a verdict, and without it
-# must see the refusal a caller with no license key gets.
-#
-# The secrets are named one by one rather than passed as toJSON(secrets).
-# GitHub marks a workflow that hands every secret to a step as possibly
-# malicious and holds each run for manual approval, so the nightly never ran.
-# A new resource key therefore needs a line here as well as the organisation
-# secret.
+# Runs the live cloud 51Did tests with every key under its own name. Each
+# test reads the key it needs by that name and skips, naming it, when the
+# key is empty. The step fails when no resource key reached it at
+# all, because a cloud test that passes without calling the cloud has proved
+# nothing.
 #
 # Two projects run. Tests/FiftyOne.Did.Tests, CloudFodIdTests, obtains a real
-# 51Did and parses it, and CloudDidClientTests verifies it and redeems a sealed
-# result with the license key. Tests/FiftyOne.Did.Cloud.Tests,
-# DidCloudEngineLiveEntitlementTests, builds a customer style pipeline against
-# the live cloud and checks that the outcome matches what the key is actually
-# entitled to, which is a build that reports what the cloud lists for an
-# entitled key and a build that fails naming the element for one that carries
-# no 51Did product.
+# 51Did and parses it, once with _51DEGREES_RESOURCE_KEY_51DID and once with
+# _51DEGREES_RESOURCE_KEY_BESPOKE, and CloudDidClientTests verifies it and
+# redeems a sealed result with _51DEGREES_LICENSE_KEY_51DID, which reads only
+# a result sealed with _51DEGREES_RESOURCE_KEY_51DID.
+# Tests/FiftyOne.Did.Cloud.Tests, DidCloudEngineLiveEntitlementTests, builds a
+# customer style pipeline against the live cloud with each of
+# _51DEGREES_RESOURCE_KEY_BASIC, _51DEGREES_RESOURCE_KEY_BESPOKE and
+# _51DEGREES_RESOURCE_KEY_51DID, and checks that the outcome matches what the
+# key is entitled to.
+#
+# The keys are named one by one rather than passed as toJSON(secrets),
+# because GitHub holds a run that hands every secret to a step for manual
+# approval. The resource keys and the license key are organization secrets,
+# and _51DEGREES_CLOUD_ENDPOINT is an organization variable. The tests use the
+# public cloud when _51DEGREES_CLOUD_ENDPOINT is empty.
 
 on:
   workflow_dispatch:
   # Nightly as well, because a pull_request run only ever checks the package
   # against the cloud as it stood that day. A released package is not checked
   # again, so a field the cloud starts writing, stops writing or changes goes
-  # unnoticed until a customer finds it. That is what happened when the cloud service began
-  # writing the Terms byte. The six 51Did packages are
-  # staggered ten minutes apart so they do not all ask production at once.
-  # Off until this repository takes over from the separate repositories it
-  # replaces. Their schedules are turned off then, so the same jobs never run
-  # in both.
-  # schedule:
-  #   - cron: '0 5 * * *'
+  # unnoticed until a customer finds it. The six 51Did packages are staggered
+  # ten minutes apart so they do not all ask the cloud at once, and this one
+  # runs at 05:00 UTC.
+  schedule:
+    - cron: '0 5 * * *'
   pull_request:
-    branches: [main]
+    branches: [main, rc]
     paths:
       - 'pipeline/Did/**'
       - 'pipeline/Did.Cloud/**'
@@ -54,6 +43,10 @@ on:
       - 'pipeline/Tests/Did.Cloud.Tests/**'
       - 'pipeline/owid-dotnet/**'
       - '.github/workflows/cloud-51did.yml'
+
+# Every warning is an error in the builds 51Degrees runs.
+env:
+  _51DEGREES_WARNINGS_AS_ERRORS: "true"
 
 jobs:
   cloud-51did:
@@ -71,65 +64,44 @@ jobs:
           dotnet-version: |
             8.0.x
             10.0.x
-      - name: Cloud 51Did test for each resource key secret
+      - name: Cloud 51Did tests
         shell: pwsh
         env:
-          _51DEGREES_RESOURCE_KEY_BASIC: ${{ vars._51DEGREES_RESOURCE_KEY_BASIC }}
+          _51DEGREES_RESOURCE_KEY_BASIC: ${{ secrets._51DEGREES_RESOURCE_KEY_BASIC }}
           _51DEGREES_RESOURCE_KEY_BESPOKE: ${{ secrets._51DEGREES_RESOURCE_KEY_BESPOKE }}
-          _51DEGREES_RESOURCE_KEY_51DID: ${{ vars._51DEGREES_RESOURCE_KEY_51DID }}
+          _51DEGREES_RESOURCE_KEY_51DID: ${{ secrets._51DEGREES_RESOURCE_KEY_51DID }}
           _51DEGREES_LICENSE_KEY_51DID: ${{ secrets._51DEGREES_LICENSE_KEY_51DID }}
+          _51DEGREES_CLOUD_ENDPOINT: ${{ vars._51DEGREES_CLOUD_ENDPOINT }}
         run: |
-          $runs = @(
-            @{ Project  = 'pipeline/Tests/Did.Tests/FiftyOne.Did.Tests.csproj'
-               Filter   = 'FullyQualifiedName~CloudFodIdTests|FullyQualifiedName~CloudDidClientTests'
-               AllTiers = $false },
-            @{ Project  = 'pipeline/Tests/Did.Cloud.Tests/FiftyOne.Did.Cloud.Tests.csproj'
-               Filter   = 'FullyQualifiedName~DidCloudEngineLiveEntitlementTests'
-               AllTiers = $true }
-          )
-          $keys = Get-ChildItem env: |
-            Where-Object { $_.Name -like '_51DEGREES_RESOURCE_KEY*' -and $_.Value }
-          if (-not $keys) {
-            Write-Host '::error::No _51DEGREES_RESOURCE_KEY* secret reached this job. The tests need a key that carries the FODid product, and the CloudV5FODiD product for the marketing usages.'
+          $resourceKeys = '_51DEGREES_RESOURCE_KEY_BASIC',
+            '_51DEGREES_RESOURCE_KEY_BESPOKE', '_51DEGREES_RESOURCE_KEY_51DID'
+          if (-not ($resourceKeys | Where-Object {
+              [Environment]::GetEnvironmentVariable($_) })) {
+            Write-Host "::error::None of $($resourceKeys -join ', ') reached this job, so no test would call the cloud."
             exit 1
           }
+          # The redeem test reads only a result sealed with the 51Did resource
+          # key, so without that key the license key would go untested.
+          if ($env:_51DEGREES_LICENSE_KEY_51DID -and
+              -not $env:_51DEGREES_RESOURCE_KEY_51DID) {
+            Write-Host '::error::_51DEGREES_LICENSE_KEY_51DID has a value but _51DEGREES_RESOURCE_KEY_51DID is empty, so the redeem test would not run. Add the organization secret _51DEGREES_RESOURCE_KEY_51DID.'
+            exit 1
+          }
+          $runs = @(
+            @{ Project = 'pipeline/Tests/Did.Tests/FiftyOne.Did.Tests.csproj'
+               Filter  = 'FullyQualifiedName~CloudFodIdTests|FullyQualifiedName~CloudDidClientTests' },
+            @{ Project = 'pipeline/Tests/Did.Cloud.Tests/FiftyOne.Did.Cloud.Tests.csproj'
+               Filter  = 'FullyQualifiedName~DidCloudEngineLiveEntitlementTests' }
+          )
+          $failed = $false
           foreach ($run in $runs) {
             dotnet build $run.Project -c Release --nologo
             if ($LASTEXITCODE -ne 0) { exit 1 }
-          }
-          $licenses = @{}
-          Get-ChildItem env: |
-            Where-Object { $_.Name -like '_51DEGREES_LICENSE_KEY*' } |
-            ForEach-Object {
-              if ($_.Value) { $licenses[$_.Name] = $_.Value }
-              Remove-Item "env:$($_.Name)"
-            }
-          $failed = $false
-          foreach ($k in $keys) {
-            $env:_51DEGREES_RESOURCE_KEY = $k.Value
-            $licenseName = $k.Name -replace '^_51DEGREES_RESOURCE_KEY', '_51DEGREES_LICENSE_KEY'
-            if ($licenses.ContainsKey($licenseName)) {
-              Set-Item "env:$licenseName" $licenses[$licenseName]
-              Write-Host "License key for $($k.Name): $licenseName"
-            } else {
-              Write-Host "License key for $($k.Name): none"
-            }
-            foreach ($run in $runs) {
-              $name = Split-Path $run.Project -Leaf
-              $basic = $k.Name -eq '_51DEGREES_RESOURCE_KEY_BASIC'
-              if ($basic -and -not $run.AllTiers) {
-                Write-Host "$name is not run with $($k.Name)"
-                continue
-              }
-              Write-Host "::group::$name with $($k.Name)"
-              dotnet test $run.Project -c Release --no-build --nologo `
-                --filter $run.Filter `
-                --logger 'console;verbosity=normal'
-              if ($LASTEXITCODE -ne 0) { $failed = $true }
-              Write-Host '::endgroup::'
-            }
-            if ($licenses.ContainsKey($licenseName)) {
-              Remove-Item "env:$licenseName"
-            }
+            Write-Host "::group::$(Split-Path $run.Project -Leaf)"
+            dotnet test $run.Project -c Release --no-build --nologo `
+              --filter $run.Filter `
+              --logger 'console;verbosity=normal'
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+            Write-Host '::endgroup::'
           }
           if ($failed) { exit 1 }

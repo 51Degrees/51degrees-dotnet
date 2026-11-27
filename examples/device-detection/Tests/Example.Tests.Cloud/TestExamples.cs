@@ -35,42 +35,53 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
     /// This test class ensures that the cloud examples execute successfully.
     /// </summary>
     /// <remarks>
-    /// Note that these test do not generally ensure the correctness 
-    /// of the example, only that the example will run without 
-    /// crashing or throwing any unhandled exceptions.
+    /// Most of these tests check only that the example runs without
+    /// throwing. The TAC and native model lookup tests also check that
+    /// each lookup lists a device with a vendor and a model.
     /// </remarks>
     [TestClass]
     public class TestExamples
     {
+        /// <summary>
+        /// The environment variable the tests read their resource key from,
+        /// which holds the key that carries every property. Each example is
+        /// given the key the way it takes one, as an argument or in its
+        /// options.
+        /// </summary>
+        private const string KeyVariable = "_51DEGREES_RESOURCE_KEY_BESPOKE";
+
         private string ResourceKey;
-        
+
         private string CloudEndPoint;
 
         /// <summary>
-        /// Init method. Specify Resource Key to run examples here or 
-        /// set a Resource Key in an environment variable called 'ResourceKey'.
-        /// Get cloud endpoint url from environment variables or use default.
+        /// The seconds the tests let a request to the cloud service take.
+        /// The examples keep the default of 2 seconds, which the live
+        /// service sometimes takes longer than on CI's slower runners, so
+        /// the tests allow more and fail only a service that does not
+        /// answer. The build log has the time of each request.
+        /// </summary>
+        private const int CloudRequestTimeoutSeconds = 15;
+
+        /// <summary>
+        /// Reads the resource key from <see cref="KeyVariable"/>, skipping
+        /// the test when it is not set, and the cloud endpoint from its
+        /// environment variable, or the default when that is not set.
         /// </summary>
         [TestInitialize]
         public void Init()
         {
-            var resourceKey = ExampleUtils.GetResourceKeyFromEnv();
-            ResourceKey = string.IsNullOrWhiteSpace(resourceKey) == false ?
-                resourceKey : "!!YOUR_RESOURCE_KEY!!";
-
-            if (string.IsNullOrWhiteSpace(ResourceKey) == true ||
-                ResourceKey.StartsWith("!!") == true)
+            ResourceKey = Environment.GetEnvironmentVariable(KeyVariable);
+            if (string.IsNullOrWhiteSpace(ResourceKey))
             {
-                Assert.Fail(
-                    "A resource key is needed to run this test. Set one " +
-                    "of these environment variables: " +
-                    ExampleUtils
-                        .CLOUD_RESOURCE_KEY_ENV_VAR_DESCRIPTION + ".");
+                Assert.Inconclusive(
+                    "These tests call the live 51Degrees cloud service, so " +
+                    $"they need a resource key, and {KeyVariable} is not " +
+                    "set.");
             }
 
-            var cloudEndPoint = ExampleUtils.FromEnvironment(
-                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR,
-                ExampleUtils.OLD_CLOUD_END_POINT_ENV_VARS);
+            var cloudEndPoint = Environment.GetEnvironmentVariable(
+                ExampleUtils.CLOUD_ENDPOINT_ENV_VAR);
             if(string.IsNullOrWhiteSpace(cloudEndPoint) == false)
             {
                 CloudEndPoint = cloudEndPoint;
@@ -88,7 +99,11 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         public void Example_Cloud_GetAllProperties()
         {
             var example = new Examples.Cloud.GetAllProperties.Program.Example();
-            example.Run(ResourceKey, CloudEndPoint);
+            example.Run(
+                ResourceKey,
+                CloudEndPoint,
+                CloudRequestTimeoutSeconds,
+                TimedHttpHandler.CreateClient());
         }
 
         /// <summary>
@@ -99,28 +114,60 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         {
             var example = new Examples.Cloud.GettingStartedConsole.Program.Example();
             var options = CreateConfiguration(example.GetType(), ResourceKey);
-            example.Run(options, TextWriter.Null);
+            example.Run(
+                options, TextWriter.Null, TimedHttpHandler.CreateClient());
         }
 
         /// <summary>
-        /// Test the NativeModelLookup Example
+        /// Runs the NativeModelLookup example and checks it lists a device
+        /// with a vendor and a model for each native model name it looks
+        /// up. A key without the lookup fails the test by name.
         /// </summary>
         [TestMethod]
         public void Example_Cloud_NativeModelLookup()
         {
             var example = new Examples.Cloud.NativeModelLookup.Program.Example();
-            example.Run(ResourceKey, new LoggerFactory(), TextWriter.Null, CloudEndPoint);
+            var output = new StringWriter();
+            using (var loggerFactory = new LoggerFactory())
+            {
+                example.Run(
+                    ResourceKey,
+                    loggerFactory,
+                    output,
+                    CloudEndPoint,
+                    CloudRequestTimeoutSeconds,
+                    TimedHttpHandler.CreateClient());
+            }
+            Console.WriteLine(output);
+            HardwareLookupOutput.AssertListsDevices(
+                output.ToString(),
+                KeyVariable,
+                "native model lookup",
+                "native model name",
+                Examples.Cloud.NativeModelLookup.Program.Example.NativeModel1,
+                Examples.Cloud.NativeModelLookup.Program.Example.NativeModel2);
         }
 
         /// <summary>
-        /// Test the TacLookup Example
+        /// Runs the TacLookup example and checks it lists a device with a
+        /// vendor and a model for each TAC it looks up. A key without the
+        /// lookup fails the test by name.
         /// </summary>
         [TestMethod]
         public void Example_Cloud_TacLookup()
         {
             var example = new Examples.Cloud.TacLookup.Program.Example();
             var options = CreateConfiguration(example.GetType(), ResourceKey, CloudEndPoint);
-            example.Run(options, TextWriter.Null);
+            var output = new StringWriter();
+            example.Run(options, output, TimedHttpHandler.CreateClient());
+            Console.WriteLine(output);
+            HardwareLookupOutput.AssertListsDevices(
+                output.ToString(),
+                KeyVariable,
+                "TAC lookup",
+                "TAC",
+                Examples.Cloud.TacLookup.Program.Example.Tac1,
+                Examples.Cloud.TacLookup.Program.Example.Tac2);
         }
 
         /// <summary>
@@ -130,7 +177,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         public void Example_Cloud_Metadata()
         {
             var example = new Examples.Cloud.Metadata.Program.Example();
-            example.Run(ResourceKey, new LoggerFactory(), TextWriter.Null);
+            example.Run(
+                ResourceKey,
+                new LoggerFactory(),
+                TextWriter.Null,
+                CloudRequestTimeoutSeconds,
+                TimedHttpHandler.CreateClient());
         }
 
         /// <summary>
@@ -139,7 +191,11 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         [TestMethod]
         public void Example_Cloud_Configurator()
         {
-            Examples.Cloud.Configurator.Program.Example.Run(ResourceKey, TextWriter.Null);
+            Examples.Cloud.Configurator.Program.Example.Run(
+                ResourceKey,
+                TextWriter.Null,
+                CloudRequestTimeoutSeconds,
+                TimedHttpHandler.CreateClient());
         }
 
         /// <summary>
@@ -149,7 +205,7 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
         /// </summary>
         /// <param name="exampleType"></param>
         /// <returns></returns>
-        private static PipelineOptions CreateConfiguration(
+        internal static PipelineOptions CreateConfiguration(
             Type exampleType, string resourceKey, string cloudEndPoint = null)
         {
             // Write the contents of the configuration from the example to a temporary file.
@@ -171,6 +227,12 @@ namespace FiftyOne.DeviceDetection.Example.Tests.Cloud
 
             // Override the resource key in the config file with the one to use for testing.
             options.SetResourceKey(resourceKey);
+
+            // The cloud request engine gets the tests' timeout.
+            var cloudRequestEngine = options.Elements.Single(e =>
+                e.BuilderName == "CloudRequestEngine");
+            cloudRequestEngine.BuildParameters["TimeOutSeconds"] =
+                CloudRequestTimeoutSeconds;
 
             // Also override the cloud end point if one has been supplied.
             if(string.IsNullOrEmpty(cloudEndPoint) == false)

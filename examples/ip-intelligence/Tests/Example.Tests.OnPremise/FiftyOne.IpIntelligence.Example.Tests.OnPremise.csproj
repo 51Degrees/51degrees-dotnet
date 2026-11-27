@@ -43,4 +43,11 @@
     <ProjectReference Include="..\..\OnPremise\Mixed\GettingStarted-Console\GettingStarted-Console.csproj" />
   </ItemGroup>
 
+  <!-- The stand-in for the Distributor that the update example tests use,
+       shared with the Device Detection example tests. -->
+  <ItemGroup>
+    <Compile Include="..\..\..\device-detection\Tests\Shared\DataUpdateStandIn.cs"
+             Link="DataUpdateStandIn.cs" />
+  </ItemGroup>
+
 </Project>
