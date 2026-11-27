@@ -44,6 +44,10 @@ on:
       - 'pipeline/owid-dotnet/**'
       - '.github/workflows/cloud-51did.yml'
 
+# Every warning is an error in the builds 51Degrees runs.
+env:
+  _51DEGREES_WARNINGS_AS_ERRORS: "true"
+
 jobs:
   cloud-51did:
     name: Cloud 51Did

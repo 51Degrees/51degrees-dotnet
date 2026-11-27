@@ -52,6 +52,7 @@ in `ci/packages.json`.
 | --- | --- | --- |
 | `_51DEGREES_REFERENCES` | `Project` to build against the projects of the other folders, `Package` to build against the published packages | `Package` |
 | `_51DEGREES_BUILT_ON_CI` | `true` when CI builds, so that an on-premise engine package packs the native library of every platform | `false` |
+| `_51DEGREES_WARNINGS_AS_ERRORS` | `true`, in any case, to make warnings errors: each project's `TreatWarningsAsErrors`, every C and C++ compiler and linker warning of the on-premise engines, and CMake's own warnings. Each CI script that builds sets it. Set it as an environment variable, as the native build reads it from there. | Warnings are shown and do not stop the build |
 
 ## CMake options
 
@@ -101,6 +102,7 @@ These are read or set under the name the tool gives them.
 | `PATH` | The operating system |
 | `ProgramFiles` | Windows |
 | `PSModulePath` | PowerShell |
+| `RUNNER_TEMP` | GitHub Actions |
 | `SE_BROWSER_VERSION` | Selenium |
 | `SE_SKIP_DRIVER_IN_PATH` | Selenium |
 | `windir` | Windows |

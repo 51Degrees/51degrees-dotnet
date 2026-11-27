@@ -6,7 +6,9 @@ param (
     [string]$BuildMethod = "dotnet",
     # False on the Intel macOS entry, as live cloud tests run once per
     # operating system and the arm64 entry runs them for macOS.
-    [bool]$LiveCloudTests = $true
+    [bool]$LiveCloudTests = $true,
+    # Set on the macOS entries only. ci/install-cmake.ps1 says why.
+    [string]$CMakeVersion = ""
 )
 $ErrorActionPreference = "Stop"
 
@@ -18,6 +20,9 @@ if ($BuildMethod -ne "dotnet") {
 }
 if ($IsLinux) {
     ./environments/setup-multilib.ps1
+}
+if ($CMakeVersion) {
+    & "$PSScriptRoot/install-cmake.ps1" -Version $CMakeVersion
 }
 if ($IsWindows) {
     # The example test output paths are long.
