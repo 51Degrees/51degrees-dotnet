@@ -16,6 +16,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" />
     <ProjectReference Include="..\..\Engines.TestHelpers\FiftyOne.Pipeline.Engines.TestHelpers.csproj" />
+    <!-- The Sequence Element, which a web Pipeline holds. -->
+    <ProjectReference Include="..\..\Engines.FiftyOne\FiftyOne.Pipeline.Engines.FiftyOne.csproj" />
   </ItemGroup>
 
 </Project>

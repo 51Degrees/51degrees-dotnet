@@ -263,8 +263,9 @@ public class LiveCloudTests
 
     /// <summary>
     /// Posts the evidence a server passes on from a visitor's request to
-    /// the key's JSON path on the cloud given, as the example does, naming
-    /// the two properties, and returns the status and the body.
+    /// the key's JSON path on the cloud given, as a server's Pipeline
+    /// does, naming the two properties, and returns the status and the
+    /// body.
     /// </summary>
     private static async Task<(int Status, string Body)> PassiveAsync(
         string endpoint, string key)

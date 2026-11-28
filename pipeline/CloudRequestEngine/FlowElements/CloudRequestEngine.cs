@@ -21,11 +21,13 @@
  * ********************************************************************* */
 
 using FiftyOne.Pipeline.CloudRequestEngine.Data;
+using FiftyOne.Pipeline.CloudRequestEngine.Services;
 using FiftyOne.Pipeline.Core.FailHandling.Facade;
 using FiftyOne.Pipeline.Core.FailHandling.Recovery;
 using FiftyOne.Pipeline.Core.Data;
 using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Core.Services;
+using FiftyOne.Pipeline.Engines.Caching;
 using FiftyOne.Pipeline.Engines.Data;
 using FiftyOne.Pipeline.Engines.FlowElements;
 using Microsoft.Extensions.Logging;
@@ -74,7 +76,46 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         private static readonly char[] EVIDENCE_SEPARATOR_CHAR_ARRAY = 
             Core.Constants.EVIDENCE_SEPERATOR.ToCharArray();
 
+        /// <summary>
+        /// The fully qualified name of HumanConfidence, as Requested
+        /// Properties name it.
+        /// </summary>
+        private const string HUMAN_CONFIDENCE_PROPERTY =
+            Constants.DERIVED_ELEMENT_DATA_KEY + "." +
+            Constants.HUMAN_CONFIDENCE;
+
         private HttpClient _httpClient;
+
+        /// <summary>
+        /// The Human Confidence transactions given to pages, which only
+        /// this engine reads.
+        /// </summary>
+        private HumanConfidenceTransactions _transactions =
+            new HumanConfidenceTransactions();
+
+        /// <summary>
+        /// The number of Human Confidence transactions kept for pages.
+        /// </summary>
+        internal int KeptTransactions => _transactions.Count;
+
+        /// <summary>
+        /// The most pages a Human Confidence transaction is kept for.
+        /// </summary>
+        internal int HumanConfidencePageCapacity => _transactions.Capacity;
+
+        /// <summary>
+        /// Sets how many pages a Human Confidence transaction is kept for
+        /// at once, and for how long. Called by the builder before the
+        /// engine is used.
+        /// </summary>
+        /// <param name="capacity">The most pages kept at once.</param>
+        /// <param name="lifetime">How long a page is kept.</param>
+        internal void SetHumanConfidencePages(int capacity, TimeSpan lifetime)
+        {
+            var old = _transactions;
+            _transactions = new HumanConfidenceTransactions(capacity, lifetime);
+            old.Dispose();
+        }
 
         /// <summary>
         /// Raw string properties that describe
@@ -692,7 +733,13 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             string jsonResult = string.Empty;
             ThrowIfStillRecovering();
 
-            using (var content = GetContent(data))
+            var call = HumanConfidenceCall.For(
+                data,
+                _endpointsAndKeys.LicenseKey,
+                _transactions);
+            aspectData.SealedResultSent = call.SealedResult != null;
+
+            using (var content = GetContent(data, call))
             using (var requestMessage =
                 new HttpRequestMessage(HttpMethod.Post, _endpointsAndKeys.DataEndpoint))
             {
@@ -705,7 +752,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 requestMessage.Content = content;
                 jsonResult = AmendSendAndProcess(
                     requestMessage,
-                    checkForErrorMessages: true);
+                    checkForErrorMessages: true,
+                    call);
             }
 
             if (HasRequestedProperties)
@@ -795,7 +843,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
         private string AmendSendAndProcess(
             HttpRequestMessage request,
-            bool checkForErrorMessages)
+            bool checkForErrorMessages,
+            HumanConfidenceCall call = null)
         {
             try
             {
@@ -806,7 +855,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                         return ProcessResponse(
                             AddCommonHeadersAndSend(
                                 request),
-                            checkForErrorMessages);
+                            checkForErrorMessages,
+                            call);
                     }
                     catch (Exception ex)
                     when (!(ex is CloudRequestEngineTemporarilyUnavailableException))
@@ -880,13 +930,17 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// Set to false if the response will never contain error message
         /// text.
         /// </param>
+        /// <param name="call">
+        /// What the request carried for Human Confidence, or null.
+        /// </param>
         /// <exception cref="CloudRequestException">
         /// Thrown if there is an error from the cloud service or
         /// there is no data in the response.
         /// </exception>
         private string ProcessResponse(
             HttpResponseMessage response, 
-            bool checkForErrorMessages = true)
+            bool checkForErrorMessages = true,
+            HumanConfidenceCall call = null)
         {
             var jsonResult = response.Content.ReadAsStringAsync().Result;
             var hasData = string.IsNullOrEmpty(jsonResult) == false;
@@ -922,7 +976,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 {
                     var errors = jObj.Value<JArray>("errors");
                     messages.AddRange(errors.Children<JValue>().Select(t =>
-                        MaskLicenseKey(t.Value.ToString())));
+                        Mask(t.Value.ToString(), call)));
                 }
 
                 // Log any warnings that were returned.
@@ -930,7 +984,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 {
                     var warnings = jObj.Value<JArray>("warnings");
                     foreach (var warning in warnings.Children<JValue>()
-                        .Select(t => MaskLicenseKey(t.Value.ToString())))
+                        .Select(t => Mask(t.Value.ToString(), call)))
                     {
                         Logger?.LogWarning(warning);
                     }
@@ -957,7 +1011,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     Messages.MessageErrorCodeReturned,
                     _endpointsAndKeys.DataEndpoint,
                     response.StatusCode,
-                    MaskLicenseKey(jsonResult));
+                    Mask(jsonResult, call));
                 messages.Add(msg);
             }
 
@@ -1018,14 +1072,93 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// The cloud service can repeat a license key in the text of an
-        /// answer. A license key must not appear in full in a log entry or
-        /// an error message, so this masks it in text from the answer.
-        /// The key is sent in the body of the request and not in a URL, so
-        /// the messages of the HTTP library hold no key.
+        /// 1 once the engine is known to be in a Pipeline that gives
+        /// HumanConfidence, 2 once it is known not to be, and 0 before.
         /// </summary>
-        private string MaskLicenseKey(string text) =>
-            LicenseKeyMask.MaskText(text, new[] { _endpointsAndKeys.LicenseKey });
+        private int _givesHumanConfidence;
+
+        /// <summary>
+        /// Issues a page id for a page the server is about to render, and
+        /// keeps a new transaction for it. The page loads its client script
+        /// with the page id as the query parameter humanconfidencepage, so
+        /// every call from the page carries the page's transaction to the
+        /// cloud service, and sends it back as humanconfidencepage beside
+        /// its sealed result. The transaction itself never leaves this
+        /// engine except in its calls to the cloud service.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/human-confidence.md#the-transaction">Specification</see>
+        /// </summary>
+        /// <returns>
+        /// The page id, or null where nothing could be redeemed for the
+        /// page: the engine has no License Key, or its Pipeline holds no
+        /// <see cref="DerivedCloudEngine"/>.
+        /// </returns>
+        public string IssueHumanConfidencePage()
+        {
+            if (string.IsNullOrWhiteSpace(_endpointsAndKeys.LicenseKey) ||
+                GivesHumanConfidence() == false)
+            {
+                return null;
+            }
+            return _transactions.Issue();
+        }
+
+        /// <summary>
+        /// True where a Pipeline the engine is in holds a
+        /// <see cref="DerivedCloudEngine"/>. Only then are pages given
+        /// transactions. That engine gives the two Properties, and its
+        /// Evidence filter is what lets a web integration take the page id
+        /// and the sealed result from a request, so in a Pipeline without
+        /// it a page id would never come back.
+        /// </summary>
+        private bool GivesHumanConfidence()
+        {
+            var known = Volatile.Read(ref _givesHumanConfidence);
+            if (known != 0)
+            {
+                return known == 1;
+            }
+            var pipelines = Pipelines;
+            var gives = pipelines.Any(
+                p => p.GetElement<DerivedCloudEngine>() != null);
+            // Remembered only once the engine is in a Pipeline, as the
+            // answer cannot change after that.
+            if (pipelines.Count > 0)
+            {
+                Volatile.Write(ref _givesHumanConfidence, gives ? 1 : 2);
+            }
+            return gives;
+        }
+
+        /// <summary>
+        /// Text from an answer, made safe for a log entry or an error
+        /// message. The cloud service can repeat what it was sent. The
+        /// configured License Key, and the values the call holds for Human
+        /// Confidence, are replaced whole, longest first, on every call.
+        /// Any other key in a license parameter is then masked as
+        /// <see cref="LicenseKeyMask"/> masks it. The key is sent in the
+        /// body of the request and not in a URL, so the messages of the
+        /// HTTP library hold no key.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/human-confidence.md#what-a-package-never-exposes">Specification</see>
+        /// </summary>
+        private string Mask(string text, HumanConfidenceCall call) =>
+            LicenseKeyMask.MaskText(HiddenText.Hide(
+                text,
+                (call?.Hidden ?? Array.Empty<string>()).Concat(
+                    new[] { _endpointsAndKeys.LicenseKey })));
+
+        /// <summary>
+        /// Results are cached through a cache that never stores or serves
+        /// the result of a request that carries a sealed Human Confidence
+        /// result, or that carries a page id.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/caching.md#values-created-for-one-request">Specification</see>
+        /// </summary>
+        /// <param name="cache">The cache to use.</param>
+        public override void SetCache(IFlowCache cache)
+        {
+            base.SetCache(new SealedResultFlowCache(
+                cache,
+                HumanConfidenceCall.IsForOneRequest));
+        }
 
         /// <summary>
         /// Generate the Content to send in the POST request. Each Evidence
@@ -1039,8 +1172,14 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// is logged as a warning.
         /// </summary>
         /// <param name="data"></param>
+        /// <param name="call">
+        /// What the request carries for Human Confidence, which is added
+        /// after the Evidence so that Evidence cannot replace it.
+        /// </param>
         /// <returns>Evidence in a FormUrlEncodedContent object</returns>
-        private FormUrlEncodedContent GetContent(IFlowData data)
+        private FormUrlEncodedContent GetContent(
+            IFlowData data,
+            HumanConfidenceCall call)
         {
             var queryData = new Dictionary<string, string>(
                 StringComparer.OrdinalIgnoreCase);
@@ -1057,8 +1196,19 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
             if (HasRequestedProperties)
             {
-                queryData.Add("values", string.Join(",",
-                    _endpointsAndKeys.RequestedProperties));
+                // A call that redeems names HumanConfidence even where the
+                // configured list does not, and only the configured list is
+                // compared with the answer.
+                var names = _endpointsAndKeys.RequestedProperties;
+                if (call.SealedResult != null &&
+                    names.Contains(
+                        HUMAN_CONFIDENCE_PROPERTY,
+                        StringComparer.OrdinalIgnoreCase) == false)
+                {
+                    names = names.Concat(new[] { HUMAN_CONFIDENCE_PROPERTY })
+                        .ToList();
+                }
+                queryData.Add("values", string.Join(",", names));
             }
 
             var evidence = data.GetEvidence().AsDictionary();
@@ -1091,6 +1241,21 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             AddQueryData(queryData, evidence, evidence
                 .Where(e => KeyHasPrefix(e, Core.Constants.EVIDENCE_QUERY_PREFIX)));
 
+            // The sealed result and the transaction come from the engine
+            // alone, after the Evidence, as the Human Confidence
+            // specification's section on redeeming through the JSON call
+            // sets out.
+            if (call.SealedResult != null)
+            {
+                queryData.Add(HumanConfidenceCall.SEALED_RESULT_FIELD,
+                    call.SealedResult);
+            }
+            if (call.Transaction != null)
+            {
+                queryData.Add(HumanConfidenceCall.TRANSACTION_FIELD,
+                    call.Transaction);
+            }
+
             var content = new FormUrlEncodedContent(queryData);
             return content;
         }
@@ -1106,6 +1271,20 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
             int separatorIndex = key.IndexOfAny(EVIDENCE_SEPARATOR_CHAR_ARRAY);
             return separatorIndex >= 0
                 ? key.Substring(0, separatorIndex)
+                : key;
+        }
+
+        /// <summary>
+        /// The name of an Evidence key after its prefix, being the part
+        /// after its first separator, or the whole key where it has none.
+        /// </summary>
+        /// <param name="key">The Evidence key.</param>
+        /// <returns>The name.</returns>
+        private static string NameOf(string key)
+        {
+            int separatorIndex = key.IndexOfAny(EVIDENCE_SEPARATOR_CHAR_ARRAY);
+            return separatorIndex >= 0
+                ? key.Substring(separatorIndex + 1)
                 : key;
         }
 
@@ -1154,8 +1333,11 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// <summary>
         /// Check whether a field name is one the engine sends from its own
         /// configuration, being the Resource Key and License Key, or one the
-        /// cloud also reads as a key or a property list. Letter case is
-        /// ignored.
+        /// cloud also reads as a key or a property list, or one of the Human
+        /// Confidence fields that only the engine sends, being the sealed
+        /// result, the transaction and the transaction's older name
+        /// challenge, or the page id, which stays on this server. Letter
+        /// case is ignored.
         /// </summary>
         /// <param name="name">The field name, without any prefix.</param>
         /// <returns>True if Evidence must not supply the field.</returns>
@@ -1168,6 +1350,14 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                 name.Equals("licence",
                     StringComparison.OrdinalIgnoreCase) ||
                 name.Equals("values",
+                    StringComparison.OrdinalIgnoreCase) ||
+                name.Equals(HumanConfidenceCall.SEALED_RESULT_FIELD,
+                    StringComparison.OrdinalIgnoreCase) ||
+                name.Equals(HumanConfidenceCall.TRANSACTION_FIELD,
+                    StringComparison.OrdinalIgnoreCase) ||
+                name.Equals(HumanConfidenceCall.CHALLENGE_FIELD,
+                    StringComparison.OrdinalIgnoreCase) ||
+                name.Equals(HumanConfidenceCall.PAGE_FIELD,
                     StringComparison.OrdinalIgnoreCase);
         }
 
@@ -1223,15 +1413,18 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     if (prefix.Equals(Core.Constants.EVIDENCE_QUERY_PREFIX, 
                         StringComparison.InvariantCultureIgnoreCase) == false)
                     {
-                        var oldValue = queryData[suffix];
+                        // A conflict is another key whose whole name after
+                        // its prefix is the same, and a value that must not
+                        // be logged is shown as not logged.
                         var conflicts = allEvidence
                             .Where(e => e.Key != item.Key)
-                            .Where(e => e.Key.EndsWith(suffix, 
-                                StringComparison.InvariantCultureIgnoreCase))
-                            .Select(e => $"{e.Key}={e.Value}");
+                            .Where(e => NameOf(e.Key).Equals(suffix,
+                                StringComparison.OrdinalIgnoreCase))
+                            .Select(e => $"{e.Key}={EvidenceLogValue.Of(e.Key, e.Value)}");
 
                         Logger?.LogWarning(
-                            $"'{item.Key}={item.Value}' evidence conflicts " +
+                            $"'{item.Key}={EvidenceLogValue.Of(item.Key, item.Value)}' " +
+                            "evidence conflicts " +
                             $"with '{string.Join("', '", conflicts)}'");
                     }
                     // Replace the existing field, name and value, so the
@@ -1247,6 +1440,15 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         /// </summary>
         protected override void UnmanagedResourcesCleanup()
         {
+        }
+
+        /// <summary>
+        /// Cleanup the managed resources, the transactions among them.
+        /// </summary>
+        protected override void ManagedResourcesCleanup()
+        {
+            _transactions.Dispose();
+            base.ManagedResourcesCleanup();
         }
 
         /// <summary>

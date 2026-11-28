@@ -179,5 +179,67 @@ namespace FiftyOne.Pipeline.CloudRequestEngine
         /// </summary>
         public const int CLOUD_REQUEST_FAILURES_WINDOW_SECONDS_DEFAULT = 10;
 
+        /// <summary>
+        /// The element data key of the derived properties, and the member
+        /// of the cloud service's response that holds them.
+        /// </summary>
+        public const string DERIVED_ELEMENT_DATA_KEY = "derived";
+
+        /// <summary>
+        /// The name of the HumanConfidence Property.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/human-confidence.md#what-a-consumer-reads">Specification</see>
+        /// </summary>
+        public const string HUMAN_CONFIDENCE = "HumanConfidence";
+
+        /// <summary>
+        /// The name of the HumanConfidenceSource Property.
+        /// </summary>
+        public const string HUMAN_CONFIDENCE_SOURCE = "HumanConfidenceSource";
+
+        /// <summary>
+        /// The Evidence key a page sends the page id
+        /// <see cref="FlowElements.CloudRequestEngine.IssueHumanConfidencePage"/>
+        /// gave it back under, on its client script's calls and beside its
+        /// sealed result. It is a handle only, never the transaction.
+        /// </summary>
+        public const string EVIDENCE_HUMAN_CONFIDENCE_PAGE =
+            Core.Constants.EVIDENCE_QUERY_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR +
+            "humanconfidencepage";
+
+        /// <summary>
+        /// The Evidence key that carries a sealed Human Confidence result
+        /// from the page.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/human-confidence.md#when-humanconfidence-arrives-sealed">Specification</see>
+        /// </summary>
+        public const string EVIDENCE_HUMAN_CONFIDENCE =
+            Core.Constants.EVIDENCE_QUERY_PREFIX +
+            Core.Constants.EVIDENCE_SEPERATOR +
+            "humanconfidence";
+
+        /// <summary>
+        /// HumanConfidenceSource where the browser ran the browser tests,
+        /// which is the source of every sealed result.
+        /// </summary>
+        public const string HUMAN_CONFIDENCE_SOURCE_ACTIVE = "Active";
+
+        /// <summary>
+        /// HumanConfidence whenever a sealed result was not redeemed.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/human-confidence.md#where-the-sealed-result-is-not-redeemed">Specification</see>
+        /// </summary>
+        public const string HUMAN_CONFIDENCE_NOT_REDEEMED = "Medium";
+
+        /// <summary>
+        /// The default number of pages the Cloud Request Engine keeps a
+        /// Human Confidence transaction for at once. When every place is
+        /// taken, the oldest page gives way.
+        /// </summary>
+        public const int HUMAN_CONFIDENCE_PAGE_CAPACITY_DEFAULT = 10000;
+
+        /// <summary>
+        /// The default number of seconds the Cloud Request Engine keeps a
+        /// page's Human Confidence transaction for.
+        /// </summary>
+        public const int HUMAN_CONFIDENCE_PAGE_LIFETIME_SECONDS_DEFAULT = 600;
     }
 }

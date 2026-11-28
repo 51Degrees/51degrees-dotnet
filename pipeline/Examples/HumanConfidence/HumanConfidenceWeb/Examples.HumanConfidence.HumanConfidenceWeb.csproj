@@ -16,4 +16,11 @@
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The web integration and the cloud engines that ask for Human
+         Confidence and redeem it. -->
+    <ProjectReference Include="..\..\..\Web\FiftyOne.Pipeline.Web.csproj" />
+    <ProjectReference Include="..\..\..\CloudRequestEngine\FiftyOne.Pipeline.CloudRequestEngine.csproj" />
+  </ItemGroup>
+
 </Project>

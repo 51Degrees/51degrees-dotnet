@@ -624,20 +624,21 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         }
 
         /// <summary>
-        /// A license key that the cloud service repeats in an error answer
-        /// never appears in full in the exception or the log entries.
-        /// See the <see href="https://github.com/51Degrees/specifications/blob/c9939a787cc71f711e3c82755308482fc1cf63ce/pipeline-specification/features/logging.md#license-keys">Specification</see>
+        /// A license key that the cloud service repeats in an answer never
+        /// appears, in whole or in part, in the exception or the log
+        /// entries. It is replaced whole.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/human-confidence.md#what-a-package-never-exposes">Specification</see>
         /// </summary>
         [TestMethod]
         [DataRow("{'errors':['The license key ABCDEFGH12345678 is not valid']}", HttpStatusCode.BadRequest)]
         [DataRow("{'detail':'License ABCDEFGH12345678 refused'}", HttpStatusCode.InternalServerError)]
         [DataRow("{'warnings':['Key ABCDEFGH12345678 expires soon'],'device':{'value':'1'}}", HttpStatusCode.OK)]
-        public void Process_LicenseKeyInErrorAnswer_OnlyMaskedFormAppears(
+        public void Process_LicenseKeyInAnswer_NoPartAppears(
             string answer,
             HttpStatusCode status)
         {
             const string licenseKey = "ABCDEFGH12345678";
-            const string masked = "************5678";
+            const string hidden = "(hidden)";
             _jsonResponse = answer;
             _jsonResponseStatus = status;
             ConfigureMockedClient(r => true);
@@ -678,8 +679,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
                 "The key appears in full in:" + Environment.NewLine + all);
             Assert.IsFalse(all.Contains("ABCDEFGH"),
                 "The start of the key appears in:" + Environment.NewLine + all);
-            Assert.IsTrue(all.Contains(masked),
-                "The masked key is missing from:" + Environment.NewLine + all);
+            Assert.DoesNotContain("5678", all,
+                "The end of the key appears in:" + Environment.NewLine + all);
+            Assert.Contains(hidden, all,
+                "The hidden key is missing from:" + Environment.NewLine + all);
         }
 
         /// <summary>

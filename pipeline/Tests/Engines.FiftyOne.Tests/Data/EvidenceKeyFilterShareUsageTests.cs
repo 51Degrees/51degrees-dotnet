@@ -47,6 +47,45 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Tests.Data
             Assert.IsTrue(filter.Include("header.user-agent"));
         }
 
+        /// <summary>
+        /// A sealed Human Confidence result and the page id it is sent back
+        /// with are never shared, whether all evidence is shared or the
+        /// query string parameters are filtered.
+        /// </summary>
+        [TestMethod]
+        public void HumanConfidenceKeys_AreNeverShared()
+        {
+            var all = new EvidenceKeyFilterShareUsage();
+            var filtered = new EvidenceKeyFilterShareUsage(
+                blockedHttpHeaders: new List<string>(),
+                includedQueryStringParams: null,
+                includeSession: false,
+                aspSessionCookieName: "asp.net_sessionid");
+
+            // A query parameter is shared where the Pipeline uses it, and a
+            // Pipeline that gives Human Confidence takes both keys.
+            var pipeline = new Moq.Mock<Core.FlowElements.IPipeline>();
+            pipeline.Setup(p => p.EvidenceKeyFilter).Returns(
+                new Core.Data.EvidenceKeyFilterWhitelist(
+                    new List<string>
+                    {
+                        "query.humanconfidence",
+                        "query.humanconfidencepage",
+                        "query.used",
+                    }));
+
+            foreach (var filter in new[] { all, filtered })
+            {
+                filter.UsePipeline(pipeline.Object);
+                Assert.IsTrue(filter.Include("query.used"),
+                    "A query parameter the Pipeline uses is shared.");
+                Assert.IsFalse(filter.Include("query.humanconfidence"));
+                Assert.IsFalse(filter.Include("query.HumanConfidencePage"));
+                Assert.IsFalse(filter.Include("cookie.humanconfidence"));
+                Assert.IsTrue(filter.Include("header.user-agent"));
+            }
+        }
+
         [TestMethod]
         public void ShareAll_NeverSharedKeys_AreCaseInsensitive()
         {

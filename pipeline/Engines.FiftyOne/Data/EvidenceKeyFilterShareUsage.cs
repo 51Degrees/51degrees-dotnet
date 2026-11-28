@@ -122,6 +122,11 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
         /// starting 51D_ are shared as their own 'cookie.' keys.
         /// </para>
         /// <para>
+        /// 'humanconfidence' is a sealed Human Confidence result and
+        /// 'humanconfidencepage' the page id it is sent back with, which
+        /// only the server that served the page may use.
+        /// </para>
+        /// <para>
         /// An element that needs either value still receives it in evidence,
         /// because this filter governs only what usage sharing sends, not
         /// what a pipeline collects.
@@ -134,6 +139,10 @@ namespace FiftyOne.Pipeline.Engines.FiftyOne.Data
             "request-query",
             "request-path",
             "header.cookie",
+            // A sealed Human Confidence result, and the page id it is sent
+            // back with, are for the server that served the page alone.
+            "humanconfidence",
+            "humanconfidencepage",
         };
 
         /// <summary>
