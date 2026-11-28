@@ -216,6 +216,64 @@ public class ExampleRulesTests
             "carries HumanConfidence, so the page can show the link.");
     }
 
+    /// <summary>
+    /// Text that would mean the example redeems a sealed value, or calls
+    /// the cloud, itself. The Pipeline does both.
+    /// </summary>
+    private static readonly string[] RedeemsItself =
+    {
+        "hc/redeem",
+        "id/redeem",
+        "sealedResult",
+        "HttpClient",
+        "PostAsync",
+        "GetStringAsync",
+        "JsonResponse",
+    };
+
+    [TestMethod]
+    public void TheExampleNeverRedeemsASealedValueItself()
+    {
+        var found = new List<string>();
+        foreach (var file in SourceFiles())
+        {
+            var text = Text(file);
+            foreach (var phrase in RedeemsItself)
+            {
+                if (text.Contains(phrase, StringComparison.OrdinalIgnoreCase))
+                {
+                    found.Add($"{file}: \"{phrase}\"");
+                }
+            }
+        }
+        Assert.AreEqual(0, found.Count,
+            "Redemption belongs to the Pipeline, and an example only reads " +
+            "HumanConfidence and HumanConfidenceSource, so these should " +
+            "go:\n" + string.Join("\n", found));
+        var code = string.Join("\n", SourceFiles()
+            .Where(f => f.EndsWith(".cs", StringComparison.Ordinal))
+            .Select(Text));
+        StringAssert.Contains(code, "IDerivedCloudData",
+            "The server reads the two Properties from the derived Element Data.");
+    }
+
+    /// <summary>
+    /// The server issues a page id for each page it serves, and the page
+    /// loads its client script with it, so the script's address, and the
+    /// calls it makes, are the page's own.
+    /// </summary>
+    [TestMethod]
+    public void EachPageLoadsItsClientScriptWithItsOwnPageId()
+    {
+        StringAssert.Contains(Text(Program), "IssueHumanConfidencePage()",
+            $"{Program} should issue a page id for each page it serves.");
+        StringAssert.Contains(Text(Page),
+            "51Degrees.core.js?humanconfidencepage=",
+            $"{Page} should load the client script with its page id.");
+        StringAssert.Contains(Text(Page), "body.set(\"humanconfidencepage\", PAGE)",
+            $"{Page} should send its page id back beside the sealed value.");
+    }
+
     [TestMethod]
     public void NothingSaysHowTheLevelIsWorkedOut()
     {

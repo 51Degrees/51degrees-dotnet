@@ -114,13 +114,24 @@ namespace FiftyOne.Pipeline.JavaScriptBuilder.FlowElement
         private bool _fetchPropertyAvailable = true;
 
         /// <summary>
-        /// These parameters are excluded from the parameters object used to 
-        /// configure the JavaScript as they are added explicitly.
+        /// The Evidence key of a sealed Human Confidence result, which the
+        /// script must never repeat.
+        /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/human-confidence.md#what-a-package-never-exposes">Specification</see>
         /// </summary>
-        protected HashSet<string> ExcludedParameters { get; private set; } = new HashSet<string>()
+        private const string EVIDENCE_HUMAN_CONFIDENCE = "query.humanconfidence";
+
+        /// <summary>
+        /// These parameters are excluded from the parameters object used to 
+        /// configure the JavaScript. The session id and the sequence are
+        /// added explicitly, and a sealed Human Confidence result is never
+        /// written into the script. Keys are compared ignoring letter case.
+        /// </summary>
+        protected HashSet<string> ExcludedParameters { get; private set; } = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase)
         {
             Engines.FiftyOne.Constants.EVIDENCE_SEQUENCE,
             Engines.FiftyOne.Constants.EVIDENCE_SESSIONID,
+            EVIDENCE_HUMAN_CONFIDENCE,
         };
 
         /// <summary>

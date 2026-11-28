@@ -8,42 +8,56 @@ browser.
 
 | Example | Description |
 | --- | --- |
-| `HumanConfidenceWeb` | A demo web server that serves `page.html`, asks the cloud for the passive level, and redeems the sealed active level server side. ASP.NET Core minimal API, with no 51Degrees package needed. |
+| `HumanConfidenceWeb` | A demo web server that serves `page.html` and runs the 51Degrees Pipeline, which asks the cloud and redeems the sealed active level. The server only reads the two Properties. ASP.NET Core minimal API, with the `FiftyOne.Pipeline.Web` and `FiftyOne.Pipeline.CloudRequestEngine` packages. |
 
 ## The flow
 
 The page shows three rows, one for each step. At every step the cloud
-gives the level and the demo reads it. The demo passes the evidence on as
-it is and never works a level out itself.
+gives the level, the server's 51Degrees Pipeline asks for it, and the
+server reads two Properties, `HumanConfidence` and
+`HumanConfidenceSource`. The server never redeems a sealed value itself,
+because the Pipeline does.
 
-1. **Passive.** The server asks the cloud itself, sending the visitor's
-   request headers and IP address. `HumanConfidenceSource` is `Passive` and
+1. **Passive.** The page asks the server, whose Pipeline asks the cloud
+   with the visitor's request. `HumanConfidenceSource` is `Passive` and
    `HumanConfidence` is a plain level, `High`, `Medium`, or `Low`, for the
-   request alone. On a first visit it's `Medium` at most, because nothing
-   has run in the browser yet. The server asks for it rather than reading
-   it from the page, because a level sent by a browser can be forged.
-2. **Active.** The page loads the 51Degrees client script. It runs the
-   browser tests, which take a few seconds, and sends the answers to the
-   cloud. When the script completes, `HumanConfidenceSource` is `Active` and
-   `HumanConfidence` holds a sealed value. The browser can't read it or
-   change it.
-3. **Redeem.** The page hands the sealed value to the server, which sends
-   it to the cloud's `hc/redeem` with the account's License Key and gets the
-   true level back. A sealed value redeems once, within ten seconds of the
-   tests. A later redeem answers `expired`. The page then offers to redeem
-   the same value again, which answers `replayed`.
+   request alone. The server asks for it rather than reading it from the
+   page, because a level sent by a browser can be forged.
+2. **Active.** As the server serves the page, it asks its Pipeline for a
+   page id, with `IssueHumanConfidencePage` on the Cloud Request Engine,
+   and the Pipeline keeps a new transaction for that page. The page loads
+   the 51Degrees client script from the server's Pipeline, at
+   `/51Degrees.core.js?humanconfidencepage=<page id>`, so the script's
+   address is the page's own and every call the script makes carries the
+   page id. The Pipeline adds the page's transaction to each of those
+   calls to the cloud. The script runs the browser tests, which take a
+   few seconds, and sends the answers back through the Pipeline to the
+   cloud. When the script completes, `HumanConfidenceSource` is `Active`
+   and `HumanConfidence` holds a sealed value. The browser can't read it
+   or change it.
+3. **Redeemed.** The page sends the sealed value back to the server as
+   `humanconfidence`, with its page id as `humanconfidencepage`. The
+   Pipeline redeems it with that page's transaction and the account's
+   License Key, through the same call to the cloud that asks for
+   everything else, and the server reads `HumanConfidence` as the level. A
+   sealed value redeems once, within ten seconds of the tests, and only
+   for the page it was made for. Whenever it isn't redeemed, as for a page
+   id the Pipeline doesn't know or one already used, `HumanConfidence` is
+   `Medium`. The page then offers to send the same value again, which
+   gives `Medium`.
 
 This is the same two-step pattern as the 51Did creator context check in
-`../Did`: the browser carries a result it can't read, and your server
-redeems it.
+`../Did`: the browser carries a result it can't read, and your server's
+Pipeline redeems it.
 
 ## What you need
 
 - **A Resource Key** for an account on the Pro or Bespoke plan (CloudV5Pro
   or CloudV5Bespoke), with the properties `HumanConfidence` and
   `HumanConfidenceSource`. The browser tests script comes with
-  `HumanConfidence` by itself, so you don't select it. The server checks
-  the key with the cloud's `accessibleproperties` when it starts. A key
+  `HumanConfidence` by itself, so you don't select it. The Pipeline reads
+  the key's properties from the cloud's `accessibleproperties` when it
+  starts, and the server checks that list. A key
   that doesn't carry `HumanConfidence` gets no level, so the page says so
   and links to [contact us](https://51degrees.com/contact-us?utm_source=code&utm_medium=example&utm_campaign=51degrees-dotnet&utm_content=examples-humanconfidence-readme.md&utm_term=human-confidence-not-in-key)
   rather than asking the cloud for what the key doesn't carry.
@@ -51,8 +65,9 @@ redeems it.
   and the server's own address. The server calls the cloud with the same
   key, and a call from a server has no `Origin` header, so a key limited to
   domains is refused.
-- **A License Key** of the same account. The server uses it to redeem. It
-  never goes in the page.
+- **A License Key** of the same account. The Pipeline uses it to redeem.
+  It never goes in the page. Without one nothing is redeemed, and the
+  third row shows `Medium`.
 
 ## Environment variables
 
@@ -91,8 +106,9 @@ In a current browser:
 
 1. The first row shows `Passive` and a level, `Medium` at most.
 2. After a few seconds, the second row shows `Active` and a sealed value.
-3. The third row shows the level the server redeemed.
-4. **Redeem the same value again** shows `replayed`.
+3. The third row shows `Active` and the level the Pipeline redeemed.
+4. **Send the same sealed value again** shows `Medium`, because a sealed
+   value redeems once.
 
 If the second row stays `Passive`, the browser tests didn't run. The cloud
 you're using may not have the tests yet, or the Resource Key may not
@@ -102,19 +118,59 @@ If the page says the Resource Key doesn't carry Human Confidence, the
 cloud lists no such property for the key. The page links to contact us,
 where 51Degrees can add it to the account.
 
+## Waiting for the browser tests
+
+Naming HumanConfidence holds back the client script's complete handlers,
+which this page uses, until the response to the request that carries the
+browser test answers. That's the time the tests take and one more
+request. A page can read the first response's Properties sooner through
+the client script's change handlers.
+
+## What a page's policy must allow
+
+The browser tests run in the visitor's browser. A page that sets a
+Content Security Policy has to allow these, or it runs no tests and stays
+`Passive`. The cloud's host is the one in `_51DEGREES_CLOUD_ENDPOINT`, and
+this page also loads its client script from, and sends its answers to,
+this server.
+
+| Directive | Must allow |
+| --- | --- |
+| `script-src` | The cloud's host, this server, and `'unsafe-eval'` |
+| `connect-src` | The cloud's host, and this server |
+| `worker-src` | `blob:` |
+
+## Running more than one server
+
+The Pipeline keeps the transaction it gives each page in the memory of
+the server that gave it, for ten minutes, and keeps at most 10,000 pages,
+the oldest giving way. `SetHumanConfidencePageLifetimeSeconds` and
+`SetHumanConfidencePageCapacity` on the Cloud Request Engine's builder
+change both. A page's later requests, and the one that sends the sealed
+value back, have to reach the same server, so behind a load balancer use
+sticky sessions. A sealed value sent to another server isn't redeemed,
+and gives `Medium`.
+
+Every view of the page takes one of those places. On a busy site, or one
+open to anyone, limit how often a client can ask for the page, so that
+requests made only to fill the store can't push real pages out.
+
 ## What a run costs
 
 Every call to the cloud is one use against the subscription behind the
-keys. A page load makes several: the server's passive call, the client
-script's calls, and the redeem. The server's check of the key at start-up
-is one more, made once.
+keys. A page load makes several, all from the server's Pipeline: the
+passive call, one for the client script and each request it makes, and
+the call that redeems. The Pipeline's check of the key at start-up is one
+more, made once.
 
 ## Tests
 
 `../../Tests/HumanConfidence.Examples.Tests` runs the example with no
 Resource Key, reads these files for the rules every Human Confidence web
-example keeps, and, with a key in `_51DEGREES_RESOURCE_KEY_BESPOKE`, asks the
-live cloud whether the key carries `HumanConfidence`.
+example keeps, reads the two Properties through the example's Pipeline
+against a stand-in for the cloud, and, with a key in
+`_51DEGREES_RESOURCE_KEY_BESPOKE`, asks the live cloud whether the key
+carries `HumanConfidence`.
 
 The tests of the passive level, and of a key outside the Bespoke product
 getting a null source with a reason, need a cloud that serves

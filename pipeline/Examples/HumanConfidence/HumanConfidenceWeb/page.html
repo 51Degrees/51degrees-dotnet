@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!-- Human Confidence demo page.
-     Served by the small server beside this file, which puts in the
-     Resource Key, the cloud address and whether the key carries Human
-     Confidence, and holds the License Key server side. Styling is the
-     51Degrees example design system, vendored beside this page as the
-     51Did demo vendors it. -->
+     Served by the small server beside this file, which puts in whether
+     the key carries Human Confidence. The 51Degrees Pipeline on that
+     server serves the client script, asks the cloud, and holds both keys,
+     so neither is in this page. Styling is the 51Degrees example design
+     system, vendored beside this page as the 51Did demo vendors it. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -16,9 +16,11 @@
 <div class="c-eg-page">
   <h2 class="c-eg-page__title">Human Confidence demo</h2>
   <p class="c-eg-page__lead">This page shows how likely it is that a
-  person is looking at it. The server asks the cloud from the request
-  alone first. Then your browser runs the 51Degrees browser tests, and the
-  server redeems the sealed result. The License Key stays on the server.</p>
+  person is looking at it. The server's 51Degrees Pipeline asks the cloud
+  from the request alone first. Then your browser runs the 51Degrees
+  browser tests, and the page sends the sealed result back, which the
+  Pipeline redeems. The server only reads HumanConfidence and
+  HumanConfidenceSource, and the License Key stays on the server.</p>
 
   <p class="c-eg-page__lead" id="no-property" style="display: none">
     The Resource Key this page runs with does not carry Human Confidence,
@@ -50,7 +52,7 @@
           class="c-eg-status c-eg-status--none">waiting&#8230;</span></td>
       </tr>
       <tr class="c-eg-table__row">
-        <td class="c-eg-table__cell c-eg-table__cell--key">3. Redeemed by the server</td>
+        <td class="c-eg-table__cell c-eg-table__cell--key">3. Redeemed by the server's Pipeline</td>
         <td class="c-eg-table__cell"><span id="redeem-detail"
           class="c-eg-status c-eg-status--none">waiting&#8230;</span></td>
         <td class="c-eg-table__cell"><span id="redeem-level"
@@ -61,7 +63,7 @@
 
   <p class="c-eg-page__lead">
     <button type="button" id="again" class="b-btn b-btn--secondary"
-      style="display: none">Redeem the same value again</button>
+      style="display: none">Send the same sealed value again</button>
     <span id="again-result"></span>
   </p>
 
@@ -83,29 +85,26 @@
 <script>
 (function () {
   "use strict";
-  var RESOURCE = "__RESOURCE__";
-  // The cloud API base ending in /api/v4/, as the server read it.
-  var API = "__API__";
-  // Whether the key carries Human Confidence, as the server checked it
-  // with accessibleproperties: "yes", "no", or "unknown".
+  // Whether the key carries Human Confidence, as the server read it from
+  // its Pipeline: "yes", "no", or "unknown".
   var CARRIES = "__CARRIES__";
-
+  // The page id the server's Pipeline issued for this page. The client
+  // script is loaded with it, so every call the script makes carries it,
+  // and the page sends it back beside its sealed value.
+  var PAGE = "__PAGE__";
   var PASS = "c-eg-status c-eg-status--pass";
   var FAIL = "c-eg-status c-eg-status--fail";
   var PART = "c-eg-status c-eg-status--part";
   var NONE = "c-eg-status c-eg-status--none";
-
   function show(id, text, cls) {
     var element = document.getElementById(id);
     element.textContent = text;
     element.className = cls;
   }
-
   function levelClass(level) {
     return level === "High" ? PASS : level === "Low" ? FAIL
       : level === "Medium" ? PART : NONE;
   }
-
   // A key without the property gets no level, so the page says so, links
   // to contact us, and asks the cloud for nothing.
   if (CARRIES === "no") {
@@ -116,51 +115,50 @@
     });
     return;
   }
-
   var started = Date.now();
   function seconds() {
     return ((Date.now() - started) / 1000).toFixed(1) + " s";
   }
-
-  // Step 1. The server asks the cloud from the request alone.
-  fetch("passive").then(function (r) { return r.json(); })
-    .then(function (answer) {
-      if (answer.error) {
-        show("passive-source", "failed", FAIL);
-        show("passive-level", answer.error, NONE);
-        return;
-      }
-      show("passive-source", answer.source || "not returned", NONE);
-      show("passive-level", answer.humanConfidence || "not returned",
-        levelClass(answer.humanConfidence));
-    })
-    .catch(function (error) { show("passive-level", String(error), FAIL); });
-
-  // Step 3. The server redeems the sealed value with its License Key.
-  function redeem(value) {
-    var body = new URLSearchParams();
-    body.set("value", value);
-    return fetch("redeem", { method: "POST", body: body })
+  // Asks the server for the two Properties of a request. With a sealed
+  // value, the request carries it as humanconfidence, with this page's id
+  // as humanconfidencepage, and the Pipeline redeems it with the
+  // transaction it kept for the page.
+  function properties(sealed) {
+    var options = { method: "POST" };
+    if (sealed) {
+      var body = new URLSearchParams();
+      body.set("humanconfidence", sealed);
+      body.set("humanconfidencepage", PAGE);
+      options.body = body;
+    }
+    return fetch("humanconfidence", options)
       .then(function (r) { return r.json(); });
   }
-
+  // Step 1. The server's Pipeline asks the cloud from the request alone.
+  properties(null).then(function (answer) {
+    show("passive-source", answer.source || "no value", NONE);
+    show("passive-level", answer.humanConfidence || answer.reason
+      || "no value", levelClass(answer.humanConfidence));
+  }).catch(function (error) { show("passive-level", String(error), FAIL); });
+  // Step 3. The page sends the sealed value back, and shows the two
+  // Properties the server read.
   function showRedeemed(answer) {
     if (answer.humanConfidence) {
-      show("redeem-detail", "redeemed " + answer.secondsSinceVerified
-        + " s after the check", PASS);
+      show("redeem-detail", answer.source, NONE);
       show("redeem-level", answer.humanConfidence,
         levelClass(answer.humanConfidence));
     } else {
-      show("redeem-detail", answer.result || answer.error || "no answer", FAIL);
+      show("redeem-detail", answer.reason || "no value", FAIL);
       show("redeem-level", "no level", NONE);
     }
   }
-
-  // Step 2. The client script runs the browser tests, sends the answers,
-  // and calls back through its complete function with the final result.
+  // Step 2. The client script from the server's Pipeline runs the browser
+  // tests, sends the answers, and calls back through its complete
+  // function with the final result.
   var script = document.createElement("script");
   script.async = true;
-  script.src = API + RESOURCE + ".js";
+  script.src = "51Degrees.core.js?humanconfidencepage="
+    + encodeURIComponent(PAGE);
   script.onerror = function () {
     show("active-source", "the 51Degrees script didn't load", FAIL);
   };
@@ -188,15 +186,15 @@
       show("active-source", "Active after " + seconds(), PASS);
       show("active-value", "sealed value, " + String(value).length
         + " characters, unreadable here", NONE);
-      redeem(value).then(function (answer) {
+      properties(value).then(function (answer) {
         showRedeemed(answer);
+        // A sealed value redeems once, so sending it again gives Medium.
         var again = document.getElementById("again");
         again.style.display = "";
         again.onclick = function () {
-          redeem(value).then(function (second) {
+          properties(value).then(function (second) {
             document.getElementById("again-result").textContent =
-              " Second redeem: " + (second.result || second.humanConfidence
-                || second.error);
+              " Sent again: " + (second.humanConfidence || second.reason);
           });
         };
       }).catch(function (error) {

@@ -22,6 +22,7 @@
 
 using FiftyOne.Pipeline.Core.Exceptions;
 using FiftyOne.Pipeline.Core.FlowElements;
+using FiftyOne.Pipeline.Core.Services;
 using FiftyOne.Pipeline.Core.TypedMap;
 using Microsoft.Extensions.Logging;
 using System;
@@ -695,7 +696,7 @@ namespace FiftyOne.Pipeline.Core.Data
             if (_logger.IsEnabled(LogLevel.Debug))
             {
                 _logger.LogDebug($"FlowData '{GetHashCode()}' set evidence " +
-                    $"'{key}' to '{value.ToString()}'.");
+                    $"'{key}' to '{EvidenceLogValue.Of(key, value)}'.");
             }
             _evidence[key] = value;
             return this;
@@ -723,7 +724,7 @@ namespace FiftyOne.Pipeline.Core.Data
                 if (log)
                 {
                     _logger.LogDebug($"FlowData '{GetHashCode()}' set evidence " +
-                        $"'{entry.Key}' to '{entry.Value.ToString()}'.");
+                        $"'{entry.Key}' to '{EvidenceLogValue.Of(entry.Key, entry.Value)}'.");
                 }
                 _evidence[entry.Key] = entry.Value;
             }

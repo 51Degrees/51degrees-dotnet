@@ -63,6 +63,16 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Data
         }
 
         /// <summary>
+        /// True when the request to the cloud service carried a sealed
+        /// Human Confidence result to redeem, with the License Key, and
+        /// with the transaction kept for its page where there was one. Set
+        /// before the request is sent, so it holds even when the request
+        /// fails. It is not an Element Data value, so it never reaches the
+        /// JSON Builder.
+        /// </summary>
+        internal bool SealedResultSent { get; set; }
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="logger">

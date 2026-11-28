@@ -73,6 +73,8 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         private double _exponentialBackoffInitialDelay = Constants.CLOUD_REQUEST_EXPONENTIAL_BACKOFF_INITIAL_DELAY_SECONDS_DEFAULT;
         private double _exponentialBackoffMaxDelay = Constants.CLOUD_REQUEST_EXPONENTIAL_BACKOFF_MAX_DELAY_SECONDS_DEFAULT;
         private double _exponentialBackoffMultiplier = Constants.CLOUD_REQUEST_EXPONENTIAL_BACKOFF_MULTIPLIER_DEFAULT;
+        private int _humanConfidencePageCapacity = Constants.HUMAN_CONFIDENCE_PAGE_CAPACITY_DEFAULT;
+        private int _humanConfidencePageLifetimeSeconds = Constants.HUMAN_CONFIDENCE_PAGE_LIFETIME_SECONDS_DEFAULT;
 
         #endregion
 
@@ -283,6 +285,49 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     $"{nameof(failuresWindowSeconds)} must be positive,"
                     + $" Received: {failuresWindowSeconds}.");
             }
+            return this;
+        }
+
+        /// <summary>
+        /// The most pages a Human Confidence transaction is kept for at
+        /// once. When every place is taken, the oldest page gives way, and
+        /// a sealed result from it then gives Medium.
+        /// </summary>
+        /// <param name="capacity">The number of pages, at least 1.</param>
+        /// <returns>This builder instance</returns>
+        [DefaultValue(Constants.HUMAN_CONFIDENCE_PAGE_CAPACITY_DEFAULT)]
+        public CloudRequestEngineBuilder SetHumanConfidencePageCapacity(
+            int capacity)
+        {
+            if (capacity <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(capacity),
+                    $"{nameof(capacity)} must be positive,"
+                    + $" Received: {capacity}.");
+            }
+            _humanConfidencePageCapacity = capacity;
+            return this;
+        }
+
+        /// <summary>
+        /// How long, in seconds, a page's Human Confidence transaction is
+        /// kept. A sealed result sent after that gives Medium.
+        /// </summary>
+        /// <param name="lifetimeSeconds">The number of seconds, at least 1.</param>
+        /// <returns>This builder instance</returns>
+        [DefaultValue(Constants.HUMAN_CONFIDENCE_PAGE_LIFETIME_SECONDS_DEFAULT)]
+        public CloudRequestEngineBuilder SetHumanConfidencePageLifetimeSeconds(
+            int lifetimeSeconds)
+        {
+            if (lifetimeSeconds <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(lifetimeSeconds),
+                    $"{nameof(lifetimeSeconds)} must be positive,"
+                    + $" Received: {lifetimeSeconds}.");
+            }
+            _humanConfidencePageLifetimeSeconds = lifetimeSeconds;
             return this;
         }
 
@@ -585,7 +630,7 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
             var logger = _loggerFactory.CreateLogger<CloudRequestEngine>();
 
-            return new CloudRequestEngine(
+            var engine = new CloudRequestEngine(
                 logger,
                 CreateAspectData,
                 _httpClient,
@@ -607,6 +652,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
                     TimeSpan.FromSeconds(_failuresWindowSeconds),
                     logger,
                     nameof(CloudRequestEngine)));
+            engine.SetHumanConfidencePages(
+                _humanConfidencePageCapacity,
+                TimeSpan.FromSeconds(_humanConfidencePageLifetimeSeconds));
+            return engine;
         }
     }
 }
