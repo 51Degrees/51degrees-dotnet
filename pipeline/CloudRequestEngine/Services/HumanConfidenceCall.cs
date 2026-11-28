@@ -23,7 +23,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using FiftyOne.Pipeline.Core.Data;
 
 namespace FiftyOne.Pipeline.CloudRequestEngine.Services
@@ -101,7 +100,6 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Services
             _hidden = hidden
                 .Where(h => string.IsNullOrEmpty(h) == false)
                 .Distinct()
-                .OrderByDescending(h => h.Length)
                 .ToList();
         }
 
@@ -120,13 +118,30 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Services
         /// <summary>
         /// True where the response to the request is for that request
         /// alone, so it is neither stored in nor served from a results
-        /// cache: the request carries a sealed result, or a page id, whose
-        /// call may carry the page's transaction.
+        /// cache: the request carries a page id, whose call may carry the
+        /// page's transaction, or a value named humanconfidence under any
+        /// prefix or none. Only query.humanconfidence is a sealed result
+        /// that is redeemed, and none of the others is sent, but a request
+        /// that carries one is still kept out of the cache.
         /// </summary>
         /// <param name="data">The Flow Data of the request.</param>
         public static bool IsForOneRequest(IFlowData data) =>
-            SealedResultFlowCache.HasSealedResult(data) ||
-            Text(data, EVIDENCE_PAGE) != null;
+            Text(data, EVIDENCE_PAGE) != null ||
+            data.GetEvidence().AsDictionary().Any(e =>
+                NameOf(e.Key).Equals(
+                    SEALED_RESULT_FIELD, StringComparison.OrdinalIgnoreCase) &&
+                string.IsNullOrEmpty(e.Value?.ToString()) == false);
+
+        /// <summary>
+        /// The name of an Evidence key after its prefix, or the whole key
+        /// where it has none.
+        /// </summary>
+        private static string NameOf(string key)
+        {
+            var separator = key.IndexOf(
+                Core.Constants.EVIDENCE_SEPERATOR, StringComparison.Ordinal);
+            return separator >= 0 ? key.Substring(separator + 1) : key;
+        }
 
         /// <summary>
         /// Works out what the call for a request carries.
@@ -175,33 +190,10 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Services
         }
 
         /// <summary>
-        /// The text with every value of the call that must not be written
-        /// replaced in full, whether plain or encoded for a form or a URL.
+        /// The values of the call that no log entry or error message may
+        /// hold.
         /// </summary>
-        /// <param name="text">The text.</param>
-        /// <returns>The text with the values replaced.</returns>
-        public string Hide(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                return text;
-            }
-            var result = text;
-            foreach (var value in _hidden)
-            {
-                var hidden = new string('*', value.Length);
-                foreach (var form in new[]
-                {
-                    value,
-                    Uri.EscapeDataString(value),
-                    WebUtility.UrlEncode(value),
-                }.Distinct())
-                {
-                    result = result.Replace(form, hidden);
-                }
-            }
-            return result;
-        }
+        public IReadOnlyList<string> Hidden => _hidden;
 
         private static string Text(IFlowData data, string key)
         {

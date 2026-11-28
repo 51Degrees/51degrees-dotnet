@@ -1072,16 +1072,6 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
         }
 
         /// <summary>
-        /// The cloud service can repeat a license key in the text of an
-        /// answer. A license key must not appear in full in a log entry or
-        /// an error message, so this masks it in text from the answer.
-        /// The key is sent in the body of the request and not in a URL, so
-        /// the messages of the HTTP library hold no key.
-        /// </summary>
-        private string MaskLicenseKey(string text) =>
-            LicenseKeyMask.MaskText(text, new[] { _endpointsAndKeys.LicenseKey });
-
-        /// <summary>
         /// 1 once the engine is known to be in a Pipeline that gives
         /// HumanConfidence, 2 once it is known not to be, and 0 before.
         /// </summary>
@@ -1141,13 +1131,20 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.FlowElements
 
         /// <summary>
         /// Text from an answer, made safe for a log entry or an error
-        /// message. The values the call holds for Human Confidence are
-        /// replaced in full, and the License Key is then masked as
-        /// <see cref="MaskLicenseKey(string)"/> does.
+        /// message. The cloud service can repeat what it was sent. The
+        /// configured License Key, and the values the call holds for Human
+        /// Confidence, are replaced whole, longest first, on every call.
+        /// Any other key in a license parameter is then masked as
+        /// <see cref="LicenseKeyMask"/> masks it. The key is sent in the
+        /// body of the request and not in a URL, so the messages of the
+        /// HTTP library hold no key.
         /// See the <see href="https://github.com/51Degrees/specifications/blob/main/pipeline-specification/features/human-confidence.md#what-a-package-never-exposes">Specification</see>
         /// </summary>
         private string Mask(string text, HumanConfidenceCall call) =>
-            MaskLicenseKey(call == null ? text : call.Hide(text));
+            LicenseKeyMask.MaskText(HiddenText.Hide(
+                text,
+                (call?.Hidden ?? Array.Empty<string>()).Concat(
+                    new[] { _endpointsAndKeys.LicenseKey })));
 
         /// <summary>
         /// Results are cached through a cache that never stores or serves

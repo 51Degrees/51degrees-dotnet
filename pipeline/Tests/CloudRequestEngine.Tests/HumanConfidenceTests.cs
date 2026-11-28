@@ -1251,6 +1251,216 @@ namespace FiftyOne.Pipeline.CloudRequestEngine.Tests
         }
 
         /// <summary>
+        /// Every four characters of a value, so a test can check that no
+        /// part of it appears.
+        /// </summary>
+        private static IEnumerable<string> PartsOf(string value) =>
+            Enumerable.Range(0, value.Length - 3)
+                .Select(i => value.Substring(i, 4));
+
+        /// <summary>
+        /// On a request with no Human Confidence at all, a License Key the
+        /// cloud service repeats in an error or a warning is hidden whole,
+        /// so no four characters of it appear in the exception or the log.
+        /// </summary>
+        [TestMethod]
+        [DataRow(HttpStatusCode.BadRequest, true)]
+        [DataRow(HttpStatusCode.OK, false)]
+        public void LicenseKey_NoPartInAnyMessage_WithoutHumanConfidence(
+            HttpStatusCode status,
+            bool error)
+        {
+            var pipeline = NewPipeline(suppress: false);
+            var echo = $"{LicenseKey} license={LicenseKey} " +
+                WebUtility.UrlEncode("license=" + LicenseKey);
+            _handler.Answer = () => Json(error
+                ? $"{{\"errors\":[\"Refused {echo}\"]}}"
+                : $"{{\"warnings\":[\"Seen {echo}\"]," +
+                    "\"derived\":{\"humanconfidence\":\"Low\"}}",
+                status);
+
+            var text = new System.Text.StringBuilder();
+            using (var data = pipeline.CreateFlowData())
+            {
+                data.AddEvidence("header.user-agent", UserAgent);
+                try
+                {
+                    data.Process();
+                }
+                catch (AggregateException ex)
+                {
+                    text.AppendLine(ex.ToString());
+                }
+            }
+            lock (_loggers.Logger.Entries)
+            {
+                text.AppendLine(string.Join(Environment.NewLine,
+                    _loggers.Logger.Entries));
+            }
+
+            var all = text.ToString();
+            StringAssert.Contains(all, error ? "Refused" : "Seen");
+            foreach (var part in PartsOf(LicenseKey))
+            {
+                Assert.DoesNotContain(part, all,
+                    $"Part of the License Key appears in:{Environment.NewLine}{all}");
+            }
+        }
+
+        /// <summary>
+        /// A sealed result that is part of the License Key cannot leave the
+        /// rest of the key in a message, because the longest value is
+        /// hidden first.
+        /// </summary>
+        [TestMethod]
+        public void LicenseKey_HiddenWhole_WhereTheSealedResultIsPartOfIt()
+        {
+            var pipeline = NewPipeline(suppress: false);
+            var pageId = RenderPage(pipeline);
+            CallFromPage(pipeline);
+            var sealedResult = LicenseKey.Substring(0, 6);
+            _handler.Answer = () => Json(
+                $"{{\"errors\":[\"Refused {LicenseKey}\"]}}",
+                HttpStatusCode.BadRequest);
+
+            var text = new System.Text.StringBuilder();
+            using (var data = pipeline.CreateFlowData())
+            {
+                data.AddEvidence("query.humanconfidence", sealedResult);
+                data.AddEvidence("query.humanconfidencepage", pageId);
+                try
+                {
+                    data.Process();
+                }
+                catch (AggregateException ex)
+                {
+                    text.AppendLine(ex.ToString());
+                }
+            }
+
+            var all = text.ToString();
+            StringAssert.Contains(all, "Refused");
+            foreach (var part in PartsOf(LicenseKey))
+            {
+                Assert.DoesNotContain(part, all,
+                    $"Part of the License Key appears in:{Environment.NewLine}{all}");
+            }
+        }
+
+        /// <summary>
+        /// A transaction the cloud service repeats in an answer to a page's
+        /// call is hidden too, not only on the call that redeems.
+        /// </summary>
+        [TestMethod]
+        public void Transaction_NoPartInAMessage_OnAPagesCall()
+        {
+            var pipeline = NewPipeline(suppress: false);
+            var transaction = CallFromPage(pipeline);
+            _handler.Answer = () => Json(
+                $"{{\"errors\":[\"Refused {transaction} {_pageIds[Page]}\"]}}",
+                HttpStatusCode.BadRequest);
+
+            var text = new System.Text.StringBuilder();
+            using (var data = pipeline.CreateFlowData())
+            {
+                data.AddEvidence("query.humanconfidencepage", _pageIds[Page]);
+                try
+                {
+                    data.Process();
+                }
+                catch (AggregateException ex)
+                {
+                    text.AppendLine(ex.ToString());
+                }
+            }
+            lock (_loggers.Logger.Entries)
+            {
+                text.AppendLine(string.Join(Environment.NewLine,
+                    _loggers.Logger.Entries));
+            }
+
+            var all = text.ToString();
+            StringAssert.Contains(all, "Refused");
+            foreach (var part in PartsOf(transaction).Concat(PartsOf(_pageIds[Page])))
+            {
+                Assert.DoesNotContain(part, all,
+                    $"Part of a hidden value appears in:{Environment.NewLine}{all}");
+            }
+        }
+
+        /// <summary>
+        /// A value named humanconfidence under any prefix but query, or
+        /// none, is not a sealed result: it is never sent or redeemed, the
+        /// request's own transaction is never sent beside it, and the
+        /// request is neither stored in nor served from the results cache.
+        /// </summary>
+        [TestMethod]
+        [DataRow("header.humanconfidence")]
+        [DataRow("cookie.HumanConfidence")]
+        [DataRow("server.humanconfidence")]
+        [DataRow("humanconfidence")]
+        public void HumanConfidenceUnderAnotherPrefix_NotSentAndNotCached(string key)
+        {
+            var pipeline = NewPipeline(NewEngineBuilder()
+                .SetCacheSize(10)
+                .SetCacheHitOrMiss(true));
+            var engine = pipeline.GetElement<FlowElements.CloudRequestEngine>();
+            using (var cached = Process(pipeline))
+            {
+            }
+            _handler.Answer = () => Json(RedeemAnswer("\"High\""));
+
+            using (var data = Process(pipeline,
+                (key, SealedResult),
+                ("header.transaction", "fromheader"),
+                ("query.challenge", "challengequery")))
+            {
+                Assert.IsFalse(data.GetFromElement(engine).CacheHit,
+                    "It is not served from the cache.");
+            }
+
+            var body = _handler.DataBodies().Last();
+            Assert.HasCount(2, _handler.DataCalls());
+            Assert.DoesNotContain(SealedResult, body);
+            Assert.DoesNotContain("fromheader", body);
+            Assert.DoesNotContain("challengequery", body);
+            _handler.Answer = () => Json(PassiveAnswer);
+            using (var later = Process(pipeline))
+            {
+                Assert.IsTrue(later.GetFromElement(engine).CacheHit);
+                Assert.AreEqual("Passive",
+                    Derived(later).HumanConfidenceSource.Value,
+                    "Its response was not stored in the cache.");
+            }
+        }
+
+        /// <summary>
+        /// No public member of the package hands out a transaction. The
+        /// store and the call are internal, and issuing a page gives only
+        /// its page id, which is not the transaction its calls carry.
+        /// </summary>
+        [TestMethod]
+        public void NoPublicAccessorForTheTransaction()
+        {
+            Assert.IsFalse(typeof(CloudRequestEngine.Services.HumanConfidenceTransactions).IsPublic);
+            Assert.IsFalse(typeof(CloudRequestEngine.Services.HumanConfidenceCall).IsPublic);
+            var publicTypes = typeof(FlowElements.CloudRequestEngine).Assembly
+                .GetExportedTypes();
+            foreach (var type in publicTypes)
+            {
+                foreach (var member in type.GetMembers())
+                {
+                    Assert.DoesNotContain("Transaction", member.Name,
+                        $"{type.Name}.{member.Name} could hand out a transaction.");
+                }
+            }
+            var pipeline = NewPipeline();
+            var pageId = RenderPage(pipeline);
+            var transaction = CallFromPage(pipeline);
+            Assert.AreNotEqual(pageId, transaction);
+        }
+
+        /// <summary>
         /// A read of either Property with a credential that does not carry
         /// it gives no value and the cloud service's reason.
         /// </summary>

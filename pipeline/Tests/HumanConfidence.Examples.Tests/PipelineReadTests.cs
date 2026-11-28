@@ -27,6 +27,7 @@ using FiftyOne.Pipeline.Core.FlowElements;
 using FiftyOne.Pipeline.Engines.FiftyOne.FlowElements;
 using FiftyOne.Pipeline.JavaScriptBuilder.Data;
 using FiftyOne.Pipeline.JavaScriptBuilder.FlowElement;
+using FiftyOne.Pipeline.JsonBuilder.Data;
 using FiftyOne.Pipeline.JsonBuilder.FlowElement;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -173,6 +174,9 @@ public class PipelineReadTests
             StringAssert.Contains(javaScript, "humanconfidencepage");
             StringAssert.Contains(javaScript, pageId,
                 "The script repeats the page id on its calls.");
+            Assert.DoesNotContain(pageId,
+                script.Get<IJsonBuilderElementData>().Json,
+                "The JSON Builder reads no Evidence, so it holds no page id.");
             session = (string)script.GetEvidence()[
                 "query.session-id"];
         }
@@ -205,6 +209,11 @@ public class PipelineReadTests
             Assert.DoesNotContain(Sealed,
                 redeem.Get<IJavaScriptBuilderElementData>().JavaScript,
                 "The sealed value is not repeated in the script.");
+            var json = redeem.Get<IJsonBuilderElementData>().Json;
+            Assert.DoesNotContain(Sealed, json,
+                "The sealed value is not in the JSON Builder's output.");
+            Assert.DoesNotContain(pageId, json,
+                "The page id is not in the JSON Builder's output.");
         }
         var redeeming = _cloud.DataCalls().Last();
         Assert.AreEqual(Sealed, redeeming["humanconfidence"]);
